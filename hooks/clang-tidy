@@ -1,0 +1,35 @@
+#!/bin/bash -e
+
+INCLUDES=$(cat .syntastic_cpp_config)
+EXCLUDE_CHECKS="-cppcoreguidelines-pro-type-vararg,-misc-unused-parameters"
+
+check_file() {
+  file="${1}"
+  # Clang-tidy does not support C++17 yet.
+  # TODO: add -quiet as soon as it is supported
+  clang-tidy --checks=*,${EXCLUDE_CHECKS} \
+    --warnings-as-errors=*,${EXCLUDE_CHECKS} ${1} \
+    -- -std=c++14 ${INCLUDES}
+  git add ${1}
+}
+
+case "${1}" in
+  --about )
+    echo "Runs clang-tidy on source files"
+    ;;
+  * )
+    for file in `git diff-index --cached --name-only HEAD` ; do
+      if [ -f ${file} ]
+      then
+        if [ ${file: -3} == '.cc' ]
+        then
+          check_file "${file}"
+        fi
+        if [ ${file: -2} == '.h' ]
+        then
+          check_file "${file}"
+        fi
+      fi
+    done
+    ;;
+esac
