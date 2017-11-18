@@ -5,11 +5,10 @@ EXCLUDE_CHECKS="-cppcoreguidelines-pro-type-vararg,-misc-unused-parameters"
 
 check_file() {
   file="${1}"
-  # Clang-tidy does not support C++17 yet.
   # TODO: add -quiet as soon as it is supported
   clang-tidy --checks=*,${EXCLUDE_CHECKS} \
     --warnings-as-errors=*,${EXCLUDE_CHECKS} ${1} \
-    -- -std=c++14 ${INCLUDES}
+    -- -std=c++11 ${INCLUDES}
   git add ${1}
 }
 
@@ -25,7 +24,7 @@ case "${1}" in
         then
           check_file "${file}"
         fi
-        if [ ${file: -2} == '.h' ]
+        if [ ${file: -4} == '.hpp' ]
         then
           check_file "${file}"
         fi
