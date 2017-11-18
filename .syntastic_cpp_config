@@ -1,3 +1,4 @@
 -Ibazel-task-maker/external/googletest/googletest/include
 -Ibazel-task-maker/external/googletest/googlemock/include
 -I.
+-Ibazel-genfiles/
