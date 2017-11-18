@@ -1,0 +1,12 @@
+syntax = 'proto3';
+
+package proto;
+
+message Resources {
+  // CPU time limit in seconds.
+  float cpu_time = 1;
+  // Wall time limit in seconds.
+  float wall_time = 2;
+  // Memory limit in kilobytes.
+  int64 memory = 3;
+}

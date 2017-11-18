@@ -1,0 +1,42 @@
+syntax = 'proto3';
+
+package proto;
+
+import 'proto/sha256.proto';
+
+enum FileType {
+  REGULAR_FILE = 0;
+  STDIN = 1;
+  STDOUT = 2;
+  STDERR = 3;
+}
+
+enum FileMode {
+  SYSTEM = 0;
+  GENERATED = 1;
+  PROVIDED = 2;
+}
+
+message FileInfo {
+  FileType type = 1;
+  // If this file is a regular file, then path identifies its location.
+  string path = 2;
+
+  FileMode mode = 3;
+  // Identifies this file univocally. This field is used to retrieve the file
+  // if mode == GENERATED. The id should be unique across all the output files,
+  // but can be repeated across the input files.
+  string id = 4;
+
+  // Contents of the file. This field is used to retrieve the file if mode ==
+  // PROVIDED, or when the file appears as an output of a request.
+  SHA256 hash = 5;
+  // If the file is small enough (<32k), its contents can be set here instead.
+  bytes contents = 6;
+}
+
+message FileContents {
+  SHA256 hash = 1;
+  // Chunks should be ~32k in size.
+  bytes chunk = 2;
+}

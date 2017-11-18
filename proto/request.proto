@@ -1,0 +1,40 @@
+syntax = 'proto3';
+
+package proto;
+
+import 'proto/file.proto';
+import 'proto/resources.proto';
+
+message FifoInfo {
+  string id = 1;
+  string name = 2;
+}
+
+message Request {
+  // Id of this request.
+  string id = 1;
+
+  // Executable to run. Must have type == NORMAL_FILE. If the hash field is not
+  // set, it is assumed to be a system file.
+  FileInfo executable = 2;
+
+  // Command line arguments to pass to the executable.
+  repeated string arg = 3;
+
+  // Input and output files. The mode field in output files is ignored, as are
+  // hash and content.
+  repeated FileInfo input = 4;
+  repeated FileInfo output = 5;
+
+  // FIFOs to provide to this request. Each FIFO is identified by its id and
+  // should appear exactly twice across all the requests that are made at the
+  // same time. The two requests with the same FIFO id will be executed in
+  // such a way that allows them to communicate across the FIFO, which will
+  // be created with the given name in the folder where the executable is
+  // located.
+  repeated FifoInfo fifo = 6;
+
+  // Time and memory limits for the execution. If some fields are 0, the
+  // corresponding limits are infinite.
+  Resources resource_limit = 7;
+}

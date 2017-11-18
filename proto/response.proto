@@ -1,0 +1,42 @@
+syntax = 'proto3';
+
+package proto;
+
+import 'proto/file.proto';
+import 'proto/resources.proto';
+
+enum Status {
+  SUCCESS = 0;
+  SIGNAL = 1;
+  INTERNAL_ERROR = 2;
+}
+
+message Response {
+  // Id of the request that caused this response.
+  string request_id = 1;
+
+  // Termination status of the program (SUCCESS or SIGNAL), or INTERNAL_ERROR
+  // or a more specific error code if it was never executed.
+  Status status = 2;
+
+  // Exit status of the program.
+  int32 status_code = 3;
+
+  // Signal that killed the program.
+  int32 signal = 4;
+
+  // Error message for internal errors.
+  string error_message = 5;
+
+  // Time and memory used by the program.
+  Resources resource_usage = 6;
+
+  // Information (eg. hashes) about the outputs of the command.
+  // Should contain the same paths that were given in the Request structure. If
+  // some path is missing, or has no hash, then that file was not generated for
+  // some reason.
+  // If some file was not found, or the program exited with a non-zero status
+  // code or a signal, then a STDERR file will be included in the output,
+  // regardless of what was requested.
+  repeated FileInfo output = 7;
+}
