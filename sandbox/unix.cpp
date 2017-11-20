@@ -59,6 +59,18 @@ void Unix::Child() {
     _Exit(1);
   };
 
+  // Prepare args.
+  std::vector<std::vector<char>> vec_args;
+  auto add_arg = [&vec_args](const std::string& arg) {
+    vec_args.emplace_back(arg.begin(), arg.end());
+    vec_args.back().push_back(0);
+  };
+  add_arg(options_->executable);
+  for (const std::string& arg : options_->args) add_arg(arg);
+  std::vector<char*> args;
+  for (std::vector<char>& arg : vec_args) args.push_back(arg.data());
+  args.push_back(nullptr);
+
   // Handle I/O redirection.
   close(pipe_fds_[0]);
 #define DUP(field, fd)                                    \
@@ -99,7 +111,7 @@ void Unix::Child() {
   if (!OnChild(&error_msg)) {
     die("OnChild", error_msg.c_str());
   }
-  // exec
+  execv(options_->executable.c_str(), args.data());
   die("exec", strerror(errno));
   // [[noreturn]] does not work on lambdas...
   _Exit(1);
