@@ -14,6 +14,7 @@ bool Echo::Execute(const ExecutionOptions& options, ExecutionInfo* info,
   std::cout << std::endl;
   std::cout << "Inside folder: " << options.root << std::endl;
   info->cpu_time_millis = 0;
+  info->sys_time_millis = 0;
   info->wall_time_millis = 0;
   info->memory_usage_kb = 0;
   info->signal = 0;
