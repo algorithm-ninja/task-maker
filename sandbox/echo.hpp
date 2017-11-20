@@ -6,7 +6,8 @@ namespace sandbox {
 
 class Echo : public Sandbox {
  public:
-  ExecutionInfo Execute(const ExecutionOptions& options) override;
+  bool Execute(const ExecutionOptions& options, ExecutionInfo* info,
+               std::string* error_msg) override;
   static Sandbox* Create() { return new Echo(); }
   static int Score() { return 1; }
 

@@ -8,9 +8,9 @@ cc_library(
 )
 
 cc_library(
-    name = "unix_dummy",
-    srcs = ["unix_dummy.cpp"],
-    hdrs = ["unix_dummy.hpp"],
+    name = "unix",
+    srcs = ["unix.cpp"],
+    hdrs = ["unix.hpp"],
     deps = [":sandbox"],
 )
 

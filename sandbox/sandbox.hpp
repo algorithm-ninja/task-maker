@@ -14,6 +14,12 @@ struct ExecutionOptions {
   int64_t cpu_limit_millis = 0;
   int64_t wall_limit_millis = 0;
   int64_t memory_limit_kb = 0;
+  int32_t max_procs = 0;
+  int32_t max_files = 0;
+  int64_t max_file_size_kb = 0;
+  int64_t max_mlock_kb = 0;
+  int64_t max_stack_kb = 0;
+
   int32_t stdin_fd = -1;
   int32_t stdout_fd = -1;
   int32_t stderr_fd = -1;
@@ -29,6 +35,7 @@ struct ExecutionOptions {
 // Results of the execution.
 struct ExecutionInfo {
   int64_t cpu_time_millis = 0;
+  int64_t sys_time_millis = 0;
   int64_t wall_time_millis = 0;
   int64_t memory_usage_kb = 0;
   int32_t status_code = 0;
@@ -42,12 +49,19 @@ struct ExecutionInfo {
 // value that defines how "good" that sandbox is: negative if the sandbox
 // should not/cannot be used in the current configuration, positive otherwise
 // (a bigger value means a better sandbox).
+// Registering a sandbox is not thread-safe and should be done before any
+// threads are created.
 class Sandbox {
  public:
   using create_t = std::function<Sandbox*()>;
   using score_t = std::function<int()>;
   static std::unique_ptr<Sandbox> Create();
-  virtual ExecutionInfo Execute(const ExecutionOptions& options);
+
+  // Runs the specified command. Returns true if the program was started,
+  // and sets fields in info. Otherwise, returns false and sets error_msg.
+  // Implementations of this function may not be thread safe.
+  virtual bool Execute(const ExecutionOptions& options, ExecutionInfo* info,
+                       std::string* error_msg);
 
   // Constructor and destructors
   virtual ~Sandbox() = default;
