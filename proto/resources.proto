@@ -22,5 +22,5 @@ message Resources {
   // Maximum amount of memory that is locked in RAM, in kilobytes.
   int64 mlock = 8;
   // Maximum stack size, in kilobytes. 0 means unlimited.
-  int64 stack = 0;
+  int64 stack = 9;
 }
