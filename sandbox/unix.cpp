@@ -59,6 +59,10 @@ void Unix::Child() {
     _Exit(1);
   };
 
+  if (chdir(options_->root.c_str()) == -1) {
+    die("chdir", strerror(errno));
+  }
+
   // Prepare args.
   std::vector<std::vector<char>> vec_args;
   auto add_arg = [&vec_args](const std::string& arg) {
