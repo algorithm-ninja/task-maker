@@ -37,4 +37,8 @@ message Request {
   // Time and memory limits for the execution. If some fields are 0, the
   // corresponding limits are infinite.
   Resources resource_limit = 7;
+
+  // If this is true, this request must not be executed in parallel with other
+  // requests.
+  bool exclusive = 8;
 }
