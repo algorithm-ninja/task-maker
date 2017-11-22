@@ -25,9 +25,9 @@ bool Unix::Execute(const ExecutionOptions& options, ExecutionInfo* info,
 }
 
 bool Unix::Setup(std::string* error_msg) {
-  int ret = pipe2(pipe_fds_, O_CLOEXEC);
-  if (!ret) {
-    *error_msg = strerror(errno);
+  if (pipe2(pipe_fds_, O_CLOEXEC) == -1) {
+    *error_msg = "pipe2: ";
+    *error_msg += strerror(errno);
     return false;
   }
   return true;
@@ -160,10 +160,12 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   if (!has_exited) {
-    if (kill(child_pid_, SIGKILL) == -1) {
-      // This should never happen.
-      perror("kill");
-      exit(1);
+    if (options_->wall_limit_millis) {
+      if (kill(child_pid_, SIGKILL) == -1) {
+        // This should never happen.
+        perror("kill");
+        exit(1);
+      }
     }
     if (wait4(child_pid_, &child_status, 0, &rusage) != child_pid_) {
       // This should never happen.
@@ -171,14 +173,14 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
       exit(1);
     }
   }
-  info->signal = WIFEXITED(child_status) ? WEXITSTATUS(child_status) : 0;
-  info->status_code = WIFSIGNALED(child_status) ? WTERMSIG(child_status) : 0;
+  info->status_code = WIFEXITED(child_status) ? WEXITSTATUS(child_status) : 0;
+  info->signal = WIFSIGNALED(child_status) ? WTERMSIG(child_status) : 0;
   info->wall_time_millis = elapsed_millis();
   info->cpu_time_millis =
       (int64_t)rusage.ru_utime.tv_sec * 1000 + rusage.ru_utime.tv_usec / 1000;
   info->sys_time_millis =
       (int64_t)rusage.ru_stime.tv_sec * 1000 + rusage.ru_stime.tv_usec / 1000;
-  info->memory_usage_kb = rusage.ru_maxrss * 1024;
+  info->memory_usage_kb = rusage.ru_maxrss;
 
   OnFinish(info);
   return true;

@@ -61,7 +61,7 @@ class Sandbox {
   // and sets fields in info. Otherwise, returns false and sets error_msg.
   // Implementations of this function may not be thread safe.
   virtual bool Execute(const ExecutionOptions& options, ExecutionInfo* info,
-                       std::string* error_msg);
+                       std::string* error_msg) = 0;
 
   // Constructor and destructors
   virtual ~Sandbox() = default;

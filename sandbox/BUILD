@@ -1,5 +1,6 @@
 # Sandboxes. Other code should only depend on sandbox.{hpp,cpp} and link
 # all the available sandboxes for that system.
+package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "sandbox",
@@ -12,6 +13,23 @@ cc_library(
     srcs = ["unix.cpp"],
     hdrs = ["unix.hpp"],
     deps = [":sandbox"],
+)
+
+cc_test(
+    name = "unix_test",
+    srcs = ["unix_test.cpp"],
+    data = [
+        "//sandbox/test:busywait_arg1",
+        "//sandbox/test:malloc_arg1",
+        "//sandbox/test:return_arg1",
+        "//sandbox/test:signal_arg1",
+        "//sandbox/test:wait_arg1",
+    ],
+    deps = [
+        ":sandbox",
+        ":unix",
+        "@googletest//:gtest_main",
+    ],
 )
 
 cc_library(
