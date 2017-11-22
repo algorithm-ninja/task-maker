@@ -79,7 +79,7 @@ void Unix::Child() {
   close(pipe_fds_[0]);
 #define DUP(field, fd)                                    \
   if (options_->field##_fd != -1) {                       \
-    int ret = dup2(options_->field##_fd, STDIN_FILENO);   \
+    int ret = dup2(options_->field##_fd, fd);             \
     if (ret == -1) die("redir " #field, strerror(errno)); \
   }
   DUP(stdin, STDIN_FILENO);

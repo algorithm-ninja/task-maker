@@ -20,6 +20,7 @@ cc_test(
     srcs = ["unix_test.cpp"],
     data = [
         "//sandbox/test:busywait_arg1",
+        "//sandbox/test:copy_int",
         "//sandbox/test:malloc_arg1",
         "//sandbox/test:return_arg1",
         "//sandbox/test:signal_arg1",

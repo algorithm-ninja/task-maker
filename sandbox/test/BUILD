@@ -25,3 +25,8 @@ cc_binary(
     name = "malloc_arg1",
     srcs = ["malloc_arg1.cpp"],
 )
+
+cc_binary(
+    name = "copy_int",
+    srcs = ["copy_int.cpp"],
+)
