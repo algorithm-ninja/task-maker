@@ -6,3 +6,10 @@ cc_library(
     hdrs = ["sha256.hpp"],
     deps = ["//proto:sha256_cc"],
 )
+
+cc_library(
+    name = "file",
+    srcs = ["file.cpp"],
+    hdrs = ["file.hpp"],
+    deps = ["//proto:file_cc"],
+)

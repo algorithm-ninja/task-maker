@@ -30,7 +30,10 @@ class SHA256 {
   friend class SHA256_t;
 };
 
-class SHA256_t : public std::array<uint8_t, SHA256::DIGEST_SIZE> {};
+class SHA256_t : public std::array<uint8_t, SHA256::DIGEST_SIZE> {
+ public:
+  std::string Hex();
+};
 
 void SHA256ToProto(const SHA256_t& in, proto::SHA256* out);
 void ProtoToSHA256(const proto::SHA256& in, SHA256_t* out);

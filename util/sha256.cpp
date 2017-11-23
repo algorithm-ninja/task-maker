@@ -131,6 +131,17 @@ void SHA256::finalize(unsigned char* digest) {
 
 void SHA256::finalize(SHA256_t* digest) { finalize(digest->data()); }
 
+std::string SHA256_t::Hex() {
+  std::string ans;
+  for (unsigned i = 0; i < size(); i++) {
+    uint32_t a = at(i) / 16;
+    ans += a > 9 ? ('a' + a - 10) : ('0' + a);
+    uint32_t b = at(i) % 16;
+    ans += b > 9 ? ('a' + b - 10) : ('0' + b);
+  }
+  return ans;
+}
+
 #define TOUINT32(in, i)                                                     \
   (uint32_t) in[i] | (uint32_t)in[i + 1] << 8 | (uint32_t)in[i + 2] << 16 | \
       (uint32_t)in[i + 3] << 24
