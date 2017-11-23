@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <signal.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
 #include <sys/time.h>
@@ -25,8 +27,14 @@ bool Unix::Execute(const ExecutionOptions& options, ExecutionInfo* info,
 }
 
 bool Unix::Setup(std::string* error_msg) {
-  if (pipe2(pipe_fds_, O_CLOEXEC) == -1) {
+  if (pipe(pipe_fds_) == -1) {
     *error_msg = "pipe2: ";
+    *error_msg += strerror(errno);
+    return false;
+  }
+  if (fcntl(pipe_fds_[0], F_SETFD, FD_CLOEXEC) == -1 ||
+      fcntl(pipe_fds_[1], F_SETFD, FD_CLOEXEC) == -1) {
+    *error_msg = "fcntl: ";
     *error_msg += strerror(errno);
     return false;
   }
