@@ -19,8 +19,9 @@ enum FileMode {
 
 message FileInfo {
   FileType type = 1;
-  // If this file is a regular file, then path identifies its location.
-  string path = 2;
+  // If this file is a regular file, then name identifies its location.
+  // The name should only contain alphanumeric characters or one or more dots.
+  string name = 2;
 
   FileMode mode = 3;
   // Identifies this file univocally. This field is used to retrieve the file
@@ -32,6 +33,7 @@ message FileInfo {
   // PROVIDED, or when the file appears as an output of a request.
   SHA256 hash = 5;
   // If the file is small enough (<32k), its contents can be set here instead.
+  bool has_contents = 7;
   bytes contents = 6;
 }
 

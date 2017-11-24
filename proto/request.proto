@@ -22,7 +22,8 @@ message Request {
   repeated string arg = 3;
 
   // Input and output files. The mode field in output files is ignored, as are
-  // hash and content.
+  // hash and content. STDOUT and STDERR do not need to be included, as they
+  // will always be added.
   repeated FileInfo input = 4;
   repeated FileInfo output = 5;
 

@@ -32,11 +32,9 @@ message Response {
   Resources resource_usage = 6;
 
   // Information (eg. hashes) about the outputs of the command.
-  // Should contain the same paths that were given in the Request structure. If
-  // some path is missing, or has no hash, then that file was not generated for
-  // some reason.
-  // If some file was not found, or the program exited with a non-zero status
-  // code or a signal, then a STDERR file will be included in the output,
-  // regardless of what was requested.
+  // Should contain the same paths that were given in the Request structure, as
+  // well as two files representing the standard output and the standard error
+  // of the program. If some path is missing, or has no hash, then that file
+  // was not generated for some reason.
   repeated FileInfo output = 7;
 }
