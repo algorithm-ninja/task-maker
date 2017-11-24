@@ -10,6 +10,8 @@
 
 namespace {
 
+using ::testing::AnyOf;
+using ::testing::Eq;
 using ::testing::StartsWith;
 
 using namespace sandbox;
@@ -201,10 +203,10 @@ TEST(UnixTest, TestCpuLimitNotOk) {
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
   EXPECT_EQ(error_msg, "");
-  EXPECT_EQ(info.signal, SIGKILL);
+  EXPECT_THAT(info.signal, AnyOf(Eq(SIGKILL), Eq(SIGXCPU)));
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 990);
-  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 1030);
+  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 1100);
 }
 
 TEST(UnixTest, TestIORedirect) {
