@@ -33,6 +33,7 @@ class Executor {
   virtual void GetFile(const proto::SHA256& hash,
                        const util::File::ChunkReceiver& chunk_receiver) = 0;
 
+  Executor() = default;
   virtual ~Executor() = default;
   Executor(const Executor&) = delete;
   Executor& operator=(const Executor&) = delete;
