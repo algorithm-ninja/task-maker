@@ -67,6 +67,22 @@ void Unix::Child() {
     _Exit(1);
   };
 
+  int stdin_fd = -1;
+  int stdout_fd = -1;
+  int stderr_fd = -1;
+  if (options_->stdin_file != "") {
+    stdin_fd = open(options_->stdin_file.c_str(), O_RDONLY);
+    if (stdin_fd == -1) die("open", strerror(errno));
+  }
+  if (options_->stdout_file != "") {
+    stdout_fd = creat(options_->stdout_file.c_str(), S_IRUSR | S_IWUSR);
+    if (stdout_fd == -1) die("creat", strerror(errno));
+  }
+  if (options_->stderr_file != "") {
+    stderr_fd = creat(options_->stderr_file.c_str(), S_IRUSR | S_IWUSR);
+    if (stderr_fd == -1) die("creat", strerror(errno));
+  }
+
   if (chdir(options_->root.c_str()) == -1) {
     die("chdir", strerror(errno));
   }
@@ -86,8 +102,8 @@ void Unix::Child() {
   // Handle I/O redirection.
   close(pipe_fds_[0]);
 #define DUP(field, fd)                                    \
-  if (options_->field##_fd != -1) {                       \
-    int ret = dup2(options_->field##_fd, fd);             \
+  if (field##_fd != -1) {                                 \
+    int ret = dup2(field##_fd, fd);                       \
     if (ret == -1) die("redir " #field, strerror(errno)); \
   }
   DUP(stdin, STDIN_FILENO);

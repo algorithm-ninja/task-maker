@@ -230,17 +230,9 @@ TEST(UnixTest, TestIORedirect) {
     EXPECT_EQ(fclose(in), 0);
   }
 
-  int in_fd = open(input_file.c_str(), O_RDONLY);
-  int out_fd = creat(output_file.c_str(), S_IRUSR | S_IWUSR);
-  int err_fd = creat(err_file.c_str(), S_IRUSR | S_IWUSR);
-
-  EXPECT_NE(in_fd, -1);
-  EXPECT_NE(out_fd, -1);
-  EXPECT_NE(err_fd, -1);
-
-  options.stdin_fd = in_fd;
-  options.stdout_fd = out_fd;
-  options.stderr_fd = err_fd;
+  options.stdin_file = input_file;
+  options.stdout_file = output_file;
+  options.stderr_file = err_file;
 
   ExecutionInfo info;
   std::string error_msg;
@@ -248,10 +240,6 @@ TEST(UnixTest, TestIORedirect) {
   EXPECT_EQ(error_msg, "");
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
-
-  EXPECT_EQ(close(in_fd), 0);
-  EXPECT_EQ(close(out_fd), 0);
-  EXPECT_EQ(close(err_fd), 0);
 
   int out = 0;
   int err = 0;

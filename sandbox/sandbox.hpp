@@ -20,9 +20,9 @@ struct ExecutionOptions {
   int64_t max_mlock_kb = 0;
   int64_t max_stack_kb = 0;
 
-  int32_t stdin_fd = -1;
-  int32_t stdout_fd = -1;
-  int32_t stderr_fd = -1;
+  std::string stdin_file = "";
+  std::string stdout_file = "";
+  std::string stderr_file = "";
   std::vector<std::string> args;
 
   // Required values
