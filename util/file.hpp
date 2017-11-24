@@ -25,6 +25,21 @@ class File {
   // Creates all the folder that are needed to write the specified file
   // or, if path is a directory, creates all the folders.
   static void MakeDirs(const std::string& path);
+
+  // Makes a full copy of the given file.
+  static void DeepCopy(const std::string& from, const std::string& to);
+
+  // Copies from -> to, but the files may still share the underlying data.
+  static void Copy(const std::string& from, const std::string& to);
+
+  // Moves a file to a new position.
+  static void Move(const std::string& from, const std::string& to);
+
+  // Removes a file.
+  static void Remove(const std::string& path);
+
+  // Recursively removes a tree.
+  static void RemoveTree(const std::string& path);
 };
 
 }  // namespace util

@@ -1,26 +1,48 @@
 #include "util/file.hpp"
 #include "util/sha256.hpp"
 
-#if defined(__unix__) || defined(__linux__) || defined(__apple__)
-#include <sys/stat.h>
-#include <sys/types.h>
-#endif
-
 #include <fstream>
 #include <iostream>
 
-namespace util {
+#if defined(__unix__) || defined(__linux__) || defined(__apple__)
+#include <ftw.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 namespace {
-#if defined(__unix__) || defined(__linux__) || defined(__apple__)
+
 void MkDir(const std::string& dir) {
   if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IXOTH) == -1) {
     if (errno == EEXIST) return;
     throw std::system_error(errno, std::system_category(), "mkdir");
   }
 }
-#endif
+
+bool ShallowCopy(const std::string& from, const std::string& to) {
+  return link(from.c_str(), to.c_str()) != -1;
+}
+
+void OsRemove(const std::string& path) {
+  if (remove(path.c_str()) == -1) {
+    throw std::system_error(errno, std::system_category(), "remove");
+  }
+}
+
+void OsRemoveTree(const std::string& path) {
+  if (nftw(path.c_str(),
+           [](const char* fpath, const struct stat* sb, int typeflags,
+              struct FTW* ftwbuf) { return remove(fpath); },
+           64, FTW_DEPTH | FTW_PHYS | FTW_MOUNT) == -1) {
+    throw std::system_error(errno, std::system_category(), "removetree");
+  }
+}
+
 }  // namespace
+#endif
+
+namespace util {
 
 static const uint32_t kChunkSize = 32 * 1024;
 
@@ -67,5 +89,22 @@ void File::MakeDirs(const std::string& path) {
     MkDir(path.substr(0, pos));
   }
 }
+
+void File::DeepCopy(const std::string& from, const std::string& to) {
+  Read(from, Write(to));
+}
+
+void File::Copy(const std::string& from, const std::string& to) {
+  if (!ShallowCopy(from, to)) DeepCopy(from, to);
+}
+
+void File::Move(const std::string& from, const std::string& to) {
+  Copy(from, to);
+  Remove(from);
+}
+
+void File::Remove(const std::string& path) { OsRemove(path); }
+
+void File::RemoveTree(const std::string& path) { OsRemoveTree(path); }
 
 }  // namespace util
