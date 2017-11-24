@@ -8,7 +8,7 @@ namespace executor {
 
 class ExecutorBuilder {
  public:
-  static std::shared_ptr<Executor> Get(const ExecutorOptions& options);
+  static std::unique_ptr<Executor> Get(const ExecutorOptions& options);
 };
 
 }  // namespace executor

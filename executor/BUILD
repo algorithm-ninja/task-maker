@@ -13,10 +13,22 @@ cc_library(
 )
 
 cc_library(
+    name = "local_executor",
+    srcs = ["local_executor.cpp"],
+    hdrs = ["local_executor.hpp"],
+    deps = [
+        ":executor",
+        "//external:gflags",
+        "//sandbox",
+    ],
+)
+
+cc_library(
     name = "executor_builder",
     srcs = ["executor_builder.cpp"],
     hdrs = ["executor_builder.hpp"],
     deps = [
         ":executor",
+        ":local_executor",
     ],
 )
