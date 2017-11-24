@@ -115,8 +115,12 @@ void Unix::Child() {
   SET_RLIM(MEMLOCK, options_->max_mlock_kb * 1024);
   SET_RLIM(NOFILE, options_->max_files);
   SET_RLIM(NPROC, options_->max_procs);
+
+  // Setting stack size does not seem to work on MAC.
+#ifndef __APPLE__
   SET_RLIM(STACK, options_->max_stack_kb ? options_->max_stack_kb * 1024
                                          : RLIM_INFINITY);
+#endif
 #undef SET_RLIM
 
   std::string error_msg;
@@ -188,7 +192,13 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
       (int64_t)rusage.ru_utime.tv_sec * 1000 + rusage.ru_utime.tv_usec / 1000;
   info->sys_time_millis =
       (int64_t)rusage.ru_stime.tv_sec * 1000 + rusage.ru_stime.tv_usec / 1000;
+
+  // On MAC OS X, rusage.ru_maxrss is in bytes.
+#ifndef __APPLE__
   info->memory_usage_kb = rusage.ru_maxrss;
+#else
+  info->memory_usage_kb = rusage.ru_maxrss / 1024;
+#endif
 
   OnFinish(info);
   return true;
