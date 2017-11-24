@@ -32,7 +32,7 @@ class SHA256 {
 
 class SHA256_t : public std::array<uint8_t, SHA256::DIGEST_SIZE> {
  public:
-  std::string Hex();
+  std::string Hex() const;
 };
 
 void SHA256ToProto(const SHA256_t& in, proto::SHA256* out);

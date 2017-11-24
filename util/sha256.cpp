@@ -131,7 +131,7 @@ void SHA256::finalize(unsigned char* digest) {
 
 void SHA256::finalize(SHA256_t* digest) { finalize(digest->data()); }
 
-std::string SHA256_t::Hex() {
+std::string SHA256_t::Hex() const {
   std::string ans;
   for (unsigned i = 0; i < size(); i++) {
     uint32_t a = at(i) / 16;
