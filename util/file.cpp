@@ -4,7 +4,7 @@
 #include <fstream>
 #include <iostream>
 
-#if defined(__unix__) || defined(__linux__) || defined(__apple__)
+#if defined(__unix__) || defined(__linux__) || defined(__APPLE__)
 #include <ftw.h>
 #include <stdio.h>
 #include <sys/stat.h>
