@@ -7,11 +7,14 @@
 #if defined(__unix__) || defined(__linux__) || defined(__APPLE__)
 #include <ftw.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 namespace {
+
+static const constexpr char* kPathSeparators = "/";
 
 void MkDir(const std::string& dir) {
   if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IXOTH) == -1) {
@@ -39,12 +42,19 @@ void OsRemoveTree(const std::string& path) {
   }
 }
 
+std::string OsTempDir(const std::string& path) {
+  std::string tmp = util::File::JoinPath(path, "XXXXXX");
+  std::unique_ptr<char[]> data{strdup(tmp.c_str())};
+  if (mkdtemp(data.get()) == nullptr) {
+    throw std::system_error(errno, std::system_category(), "mkdtemp");
+  }
+  return data.get();
+}
+
 }  // namespace
 #endif
 
 namespace util {
-
-static const uint32_t kChunkSize = 32 * 1024;
 
 void File::Read(const std::string& path,
                 const File::ChunkReceiver& chunk_receiver) {
@@ -84,7 +94,7 @@ SHA256_t File::Hash(const std::string& path) {
 void File::MakeDirs(const std::string& path) {
   uint64_t pos = 0;
   while (true) {
-    pos = path.find_first_of('/', pos + 1);
+    pos = path.find_first_of(kPathSeparators, pos + 1);
     if (pos == std::string::npos) break;
     MkDir(path.substr(0, pos));
   }
@@ -106,5 +116,29 @@ void File::Move(const std::string& from, const std::string& to) {
 void File::Remove(const std::string& path) { OsRemove(path); }
 
 void File::RemoveTree(const std::string& path) { OsRemoveTree(path); }
+
+std::string File::PathForHash(const SHA256_t& hash) {
+  std::string path = hash.Hex();
+  return JoinPath(JoinPath(path.substr(0, 2), path.substr(2, 2)), path);
+}
+
+std::string File::JoinPath(const std::string& first,
+                           const std::string& second) {
+  if (strchr(kPathSeparators, second[0])) return second;
+  return first + kPathSeparators[0] + second;
+}
+
+int64_t File::Size(const std::string& path) {
+  std::ifstream fin(path, std::ios::ate | std::ios::binary);
+  if (!fin) return -1;
+  return fin.tellg();
+}
+
+TempDir::TempDir(const std::string& base) { path_ = OsTempDir(base); }
+void TempDir::Keep() { keep_ = true; }
+const std::string& TempDir::Path() const { return path_; }
+TempDir::~TempDir() {
+  if (!keep_) File::RemoveTree(path_);
+}
 
 }  // namespace util

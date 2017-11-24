@@ -7,6 +7,8 @@
 
 namespace util {
 
+static const constexpr uint32_t kChunkSize = 32 * 1024;
+
 class File {
  public:
   using ChunkReceiver = std::function<void(const proto::FileContents&)>;
@@ -40,6 +42,33 @@ class File {
 
   // Recursively removes a tree.
   static void RemoveTree(const std::string& path);
+
+  // Computes the path for a file with the given hash.
+  static std::string PathForHash(const SHA256_t& hash);
+
+  // Joins two paths.
+  static std::string JoinPath(const std::string& first,
+                              const std::string& second);
+
+  // Computes a file's size. Returns a negative number in case of errors.
+  static int64_t Size(const std::string& path);
+};
+
+class TempDir {
+ public:
+  explicit TempDir(const std::string& base);
+  const std::string& Path() const;
+  void Keep();
+  ~TempDir();
+
+  TempDir(TempDir&&) = default;
+  TempDir& operator=(TempDir&&) = default;
+  TempDir(const TempDir&) = delete;
+  TempDir& operator=(const TempDir&) = delete;
+
+ private:
+  std::string path_;
+  bool keep_ = false;
 };
 
 }  // namespace util
