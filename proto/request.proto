@@ -14,16 +14,16 @@ message Request {
   // Id of this request.
   string id = 1;
 
-  // Executable to run. Must have type == NORMAL_FILE. If the hash field is not
-  // set, it is assumed to be a system file.
-  FileInfo executable = 2;
+  // Executable to run. Must be either an absolute path or the name of a file
+  // provided in the list of inputs.
+  string executable = 2;
 
   // Command line arguments to pass to the executable.
   repeated string arg = 3;
 
-  // Input and output files. The mode field in output files is ignored, as are
-  // hash and content. STDOUT and STDERR do not need to be included, as they
-  // will always be added.
+  // Input and output files. The system field in output files is ignored, as
+  // are hash and content. STDOUT and STDERR do not need to be included, as
+  // they will always be added.
   repeated FileInfo input = 4;
   repeated FileInfo output = 5;
 

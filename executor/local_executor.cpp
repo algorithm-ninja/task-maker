@@ -23,7 +23,6 @@ proto::Response LocalExecutor::Execute(
   if (request.fifo_size()) {
     throw std::logic_error("FIFOs are not implemented yet");
   }
-  MaybeRequestFile(request.executable(), file_callback);
   for (const auto& input : request.input()) {
     MaybeRequestFile(input, file_callback);
   }
@@ -34,8 +33,7 @@ proto::Response LocalExecutor::Execute(
   util::File::MakeDirs(sandbox_dir);
 
   // Folder and arguments.
-  sandbox::ExecutionOptions exec_options(sandbox_dir,
-                                         request.executable().name());
+  sandbox::ExecutionOptions exec_options(sandbox_dir, request.executable());
   for (const std::string& arg : request.arg()) {
     exec_options.args.push_back(arg);
   }
@@ -51,7 +49,6 @@ proto::Response LocalExecutor::Execute(
   exec_options.max_stack_kb = request.resource_limit().stack();
 
   // Input files.
-  PrepareFile(request.executable(), tmp.Path(), &exec_options);
   for (const auto& input : request.input()) {
     PrepareFile(input, tmp.Path(), &exec_options);
   }
@@ -103,7 +100,6 @@ proto::Response LocalExecutor::Execute(
 void LocalExecutor::PrepareFile(const proto::FileInfo& info,
                                 const std::string& tmp,
                                 sandbox::ExecutionOptions* options) {
-  if (info.mode() == proto::FileMode::SYSTEM) return;
   std::string name = info.name();
   if (info.type() == proto::FileType::STDIN) {
     name = "stdin";
@@ -138,13 +134,12 @@ void LocalExecutor::RetrieveFile(const proto::FileInfo& info,
   util::File::Copy(util::File::JoinPath(tmp, name), destination_path);
 
   if (util::File::Size(destination_path) <= util::kChunkSize) {
-    out_info.set_has_contents(true);
     util::File::Read(
         destination_path, [&out_info](const proto::FileContents& bf) {
-          if (out_info.contents().size() != 0) {
+          if (out_info.contents().chunk().size() != 0) {
             throw std::runtime_error("Small file with more than one chunk");
           }
-          out_info.set_contents(bf.chunk());
+          *out_info.mutable_contents() = bf;
         });
   }
 
@@ -153,15 +148,10 @@ void LocalExecutor::RetrieveFile(const proto::FileInfo& info,
 
 void LocalExecutor::MaybeRequestFile(const proto::FileInfo& info,
                                      const RequestFileCallback& file_callback) {
-  if (info.mode() == proto::FileMode::SYSTEM) return;
-  if (info.mode() == proto::FileMode::GENERATED)
-    throw std::runtime_error("FileMode must be either SYSTEM or PROVIDED");
   std::string path = ProtoSHAToPath(info.hash());
   if (util::File::Size(path) >= 0) return;
   if (info.has_contents()) {
-    proto::FileContents chunk;
-    chunk.set_chunk(info.contents());
-    util::File::Write(path)(chunk);
+    util::File::Write(path)(info.contents());
   } else {
     file_callback(info.hash(), util::File::Write(path));
   }

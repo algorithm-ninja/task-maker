@@ -11,34 +11,22 @@ enum FileType {
   STDERR = 3;
 }
 
-enum FileMode {
-  SYSTEM = 0;
-  GENERATED = 1;
-  PROVIDED = 2;
-}
-
 message FileInfo {
   FileType type = 1;
-  // If this file is a regular file, then name identifies its location.
-  // The name should only contain alphanumeric characters or one or more dots.
+  // If this file is a regular file, then name identifies its location relative
+  // to the sandbox directory. The name should only contain alphanumeric
+  // characters or one or more dots.
   string name = 2;
 
-  FileMode mode = 3;
-  // Identifies this file univocally. This field is used to retrieve the file
-  // if mode == GENERATED. The id should be unique across all the output files,
-  // but can be repeated across the input files.
-  string id = 4;
+  // Hash of the contents of the file. This field is used to retrieve the file
+  // if the file is big.
+  SHA256 hash = 3;
 
-  // Contents of the file. This field is used to retrieve the file if mode ==
-  // PROVIDED, or when the file appears as an output of a request.
-  SHA256 hash = 5;
   // If the file is small enough (<32k), its contents can be set here instead.
-  bool has_contents = 7;
-  bytes contents = 6;
+  FileContents contents = 4;
 }
 
 message FileContents {
-  SHA256 hash = 1;
   // Chunks should be ~32k in size.
-  bytes chunk = 2;
+  bytes chunk = 1;
 }
