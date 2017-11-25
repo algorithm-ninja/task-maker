@@ -8,6 +8,8 @@
 #include "sandbox/sandbox.hpp"
 
 DECLARE_int32(num_cores);
+DECLARE_string(temp_directory);
+DECLARE_string(store_directory);
 
 namespace executor {
 
@@ -61,8 +63,6 @@ class LocalExecutor : public Executor {
 
   void RetrieveFile(const proto::FileInfo& info, const std::string& tmpdir,
                     proto::Response* options);
-
-  ExecutorOptions options_;
 };
 
 }  // namespace executor

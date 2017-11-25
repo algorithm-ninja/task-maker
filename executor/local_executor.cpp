@@ -9,6 +9,8 @@
 DEFINE_int32(
     num_cores, 0,
     "Number of cores to use for the local executor. If unset, autodetect");
+DEFINE_string(store_directory, "files", "Where files should be stored");
+DEFINE_string(temp_directory, "temp", "Where the sandboxes should be created");
 
 namespace {
 bool IsValidChar(char c) {
@@ -28,7 +30,7 @@ proto::Response LocalExecutor::Execute(
   }
 
   sandbox::ExecutionInfo result;
-  util::TempDir tmp(options_.temp_directory);
+  util::TempDir tmp(FLAGS_temp_directory);
   std::string sandbox_dir = util::File::JoinPath(tmp.Path(), kBoxDir);
   util::File::MakeDirs(sandbox_dir);
 
@@ -160,7 +162,7 @@ void LocalExecutor::MaybeRequestFile(const proto::FileInfo& info,
 std::string LocalExecutor::ProtoSHAToPath(const proto::SHA256& hash) {
   util::SHA256_t extracted_hash;
   ProtoToSHA256(hash, &extracted_hash);
-  return util::File::JoinPath(options_.store_directory,
+  return util::File::JoinPath(FLAGS_store_directory,
                               util::File::PathForHash(extracted_hash));
 }
 
@@ -169,10 +171,9 @@ void LocalExecutor::GetFile(const proto::SHA256& hash,
   util::File::Read(ProtoSHAToPath(hash), chunk_receiver);
 }
 
-LocalExecutor::LocalExecutor(const ExecutorOptions& options)
-    : options_(options) {
-  util::File::MakeDirs(options.temp_directory);
-  util::File::MakeDirs(options.store_directory);
+LocalExecutor::LocalExecutor(const ExecutorOptions& options) {
+  util::File::MakeDirs(FLAGS_temp_directory);
+  util::File::MakeDirs(FLAGS_store_directory);
 
   if (FLAGS_num_cores == 0) {
     FLAGS_num_cores = std::thread::hardware_concurrency();

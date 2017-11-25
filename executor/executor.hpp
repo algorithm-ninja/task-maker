@@ -13,11 +13,6 @@ namespace executor {
 struct ExecutorOptions {
   enum Kind { LOCAL };
   Kind kind = LOCAL;
-
-  // Directory where intermediate files should be stored.
-  std::string store_directory = "files";
-  // Directory where the sandboxes should be created.
-  std::string temp_directory = "temp";
 };
 
 class Executor {
