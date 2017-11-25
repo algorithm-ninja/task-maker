@@ -11,21 +11,18 @@ message FifoInfo {
 }
 
 message Request {
-  // Id of this request.
-  string id = 1;
-
   // Executable to run. Must be either an absolute path or the name of a file
   // provided in the list of inputs.
-  string executable = 2;
+  string executable = 1;
 
   // Command line arguments to pass to the executable.
-  repeated string arg = 3;
+  repeated string arg = 2;
 
   // Input and output files. The system field in output files is ignored, as
   // are hash and content. STDOUT and STDERR do not need to be included, as
   // they will always be added.
-  repeated FileInfo input = 4;
-  repeated FileInfo output = 5;
+  repeated FileInfo input = 3;
+  repeated FileInfo output = 4;
 
   // FIFOs to provide to this request. Each FIFO is identified by its id and
   // should appear exactly twice across all the requests that are made at the
@@ -33,13 +30,13 @@ message Request {
   // such a way that allows them to communicate across the FIFO, which will
   // be created with the given name in the folder where the executable is
   // located.
-  repeated FifoInfo fifo = 6;
+  repeated FifoInfo fifo = 5;
 
   // Time and memory limits for the execution. If some fields are 0, the
   // corresponding limits are infinite.
-  Resources resource_limit = 7;
+  Resources resource_limit = 6;
 
   // If this is true, this request must not be executed in parallel with other
   // requests.
-  bool exclusive = 8;
+  bool exclusive = 7;
 }

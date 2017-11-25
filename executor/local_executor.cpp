@@ -65,7 +65,6 @@ proto::Response LocalExecutor::Execute(
   }
 
   proto::Response response;
-  response.set_request_id(request.id());
 
   // Resource usage.
   response.mutable_resource_usage()->set_cpu_time(result.cpu_time_millis /

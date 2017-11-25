@@ -12,29 +12,26 @@ enum Status {
 }
 
 message Response {
-  // Id of the request that caused this response.
-  string request_id = 1;
-
   // Termination status of the program (SUCCESS or SIGNAL), or INTERNAL_ERROR
   // or a more specific error code if it was never executed.
-  Status status = 2;
+  Status status = 1;
 
   // Exit status of the program.
-  int32 status_code = 3;
+  int32 status_code = 2;
 
   // Signal that killed the program.
-  int32 signal = 4;
+  int32 signal = 3;
 
   // Error message for internal errors.
-  string error_message = 5;
+  string error_message = 4;
 
   // Time and memory used by the program.
-  Resources resource_usage = 6;
+  Resources resource_usage = 5;
 
   // Information (eg. hashes) about the outputs of the command.
   // Should contain the same paths that were given in the Request structure, as
   // well as two files representing the standard output and the standard error
   // of the program. If some path is missing, or has no hash, then that file
   // was not generated for some reason.
-  repeated FileInfo output = 7;
+  repeated FileInfo output = 6;
 }
