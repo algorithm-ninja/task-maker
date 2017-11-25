@@ -18,9 +18,9 @@ message Request {
   // Command line arguments to pass to the executable.
   repeated string arg = 2;
 
-  // Input and output files. The system field in output files is ignored, as
-  // are hash and content. STDOUT and STDERR do not need to be included, as
-  // they will always be added.
+  // Input and output files. The hash and content field in output files are
+  // ignored. STDOUT and STDERR do not need to be included, as they will
+  // always be added.
   repeated FileInfo input = 3;
   repeated FileInfo output = 4;
 
