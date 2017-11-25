@@ -10,11 +10,6 @@
 
 namespace executor {
 
-struct ExecutorOptions {
-  enum Kind { LOCAL };
-  Kind kind = LOCAL;
-};
-
 class Executor {
  public:
   using RequestFileCallback =
