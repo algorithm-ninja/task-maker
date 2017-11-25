@@ -114,9 +114,9 @@ void LocalExecutor::RetrieveFile(const proto::FileInfo& info,
                                  const std::string& tmp,
                                  proto::Response* options) {
   std::string name = info.name();
-  if (info.type() == proto::FileType::STDIN ||
-      info.type() == proto::FileType::STDOUT) {
-    name = info.type() == proto::FileType::STDIN ? "stdin" : "stderr";
+  if (info.type() == proto::FileType::STDOUT ||
+      info.type() == proto::FileType::STDERR) {
+    name = info.type() == proto::FileType::STDOUT ? "stdout" : "stderr";
   } else {
     if (std::find_if(name.begin(), name.end(), IsValidChar) != name.end()) {
       throw std::runtime_error("Invalid file name");
