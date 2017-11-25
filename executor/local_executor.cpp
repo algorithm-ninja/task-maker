@@ -106,7 +106,7 @@ void LocalExecutor::PrepareFile(const proto::FileInfo& info,
     }
     name = util::File::JoinPath(kBoxDir, name);
   }
-  std::string source_path = ProtoSHAToPath(info.hash());
+  std::string source_path = util::File::ProtoSHAToPath(info.hash());
   util::File::Copy(source_path, util::File::JoinPath(tmp, name));
 }
 
@@ -125,26 +125,15 @@ void LocalExecutor::RetrieveFile(const proto::FileInfo& info,
   }
   util::SHA256_t hash = util::File::Hash(util::File::JoinPath(tmp, name));
   proto::FileInfo out_info = info;
-  util::SHA256ToProto(hash, out_info.mutable_hash());
-  std::string destination_path = ProtoSHAToPath(out_info.hash());
+  std::string destination_path = util::File::SHAToPath(hash);
   util::File::Copy(util::File::JoinPath(tmp, name), destination_path);
-
-  if (util::File::Size(destination_path) <= util::kChunkSize) {
-    util::File::Read(
-        destination_path, [&out_info](const proto::FileContents& bf) {
-          if (out_info.contents().chunk().size() != 0) {
-            throw std::runtime_error("Small file with more than one chunk");
-          }
-          *out_info.mutable_contents() = bf;
-        });
-  }
-
+  util::File::SetSHA(hash, &out_info);
   *options->add_output() = std::move(out_info);
 }
 
 void LocalExecutor::MaybeRequestFile(const proto::FileInfo& info,
                                      const RequestFileCallback& file_callback) {
-  std::string path = ProtoSHAToPath(info.hash());
+  std::string path = util::File::ProtoSHAToPath(info.hash());
   if (util::File::Size(path) >= 0) return;
   if (info.has_contents()) {
     util::File::Write(path)(info.contents());
@@ -153,16 +142,9 @@ void LocalExecutor::MaybeRequestFile(const proto::FileInfo& info,
   }
 }
 
-std::string LocalExecutor::ProtoSHAToPath(const proto::SHA256& hash) {
-  util::SHA256_t extracted_hash;
-  ProtoToSHA256(hash, &extracted_hash);
-  return util::File::JoinPath(FLAGS_store_directory,
-                              util::File::PathForHash(extracted_hash));
-}
-
 void LocalExecutor::GetFile(const proto::SHA256& hash,
                             const util::File::ChunkReceiver& chunk_receiver) {
-  util::File::Read(ProtoSHAToPath(hash), chunk_receiver);
+  util::File::Read(util::File::ProtoSHAToPath(hash), chunk_receiver);
 }
 
 LocalExecutor::LocalExecutor() {

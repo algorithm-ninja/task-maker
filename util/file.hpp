@@ -52,6 +52,13 @@ class File {
 
   // Computes a file's size. Returns a negative number in case of errors.
   static int64_t Size(const std::string& path);
+
+  // Returns the storage path of a file with the given SHA.
+  static std::string SHAToPath(const SHA256_t& hash);
+  static std::string ProtoSHAToPath(const proto::SHA256& hash);
+
+  // Sets the SHA and possibly reads a small file.
+  static void SetSHA(const SHA256_t& hash, proto::FileInfo* dest);
 };
 
 class TempDir {

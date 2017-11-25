@@ -46,8 +46,6 @@ class LocalExecutor : public Executor {
 
   static const constexpr char* kBoxDir = "box";
 
-  std::string ProtoSHAToPath(const proto::SHA256& hash);
-
   void MaybeRequestFile(const proto::FileInfo& info,
                         const RequestFileCallback& file_callback);
 
