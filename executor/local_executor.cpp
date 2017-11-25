@@ -171,7 +171,7 @@ void LocalExecutor::GetFile(const proto::SHA256& hash,
   util::File::Read(ProtoSHAToPath(hash), chunk_receiver);
 }
 
-LocalExecutor::LocalExecutor(const ExecutorOptions& options) {
+LocalExecutor::LocalExecutor() {
   util::File::MakeDirs(FLAGS_temp_directory);
   util::File::MakeDirs(FLAGS_store_directory);
 

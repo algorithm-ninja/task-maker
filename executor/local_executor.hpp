@@ -30,9 +30,7 @@ class LocalExecutor : public Executor {
   LocalExecutor(LocalExecutor&&) = delete;
   LocalExecutor& operator=(LocalExecutor&&) = delete;
   ~LocalExecutor() override = default;
-
- protected:
-  explicit LocalExecutor(const ExecutorOptions& options);
+  LocalExecutor();
 
  private:
   class ThreadGuard {
