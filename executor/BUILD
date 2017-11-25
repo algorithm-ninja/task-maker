@@ -18,7 +18,7 @@ cc_library(
     hdrs = ["local_executor.hpp"],
     deps = [
         ":executor",
-        "//external:gflags",
         "//sandbox",
+        "//util:flags",
     ],
 )

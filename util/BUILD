@@ -16,3 +16,12 @@ cc_library(
         "//util:sha256",
     ],
 )
+
+cc_library(
+    name = "flags",
+    srcs = ["flags.cpp"],
+    hdrs = ["flags.hpp"],
+    deps = [
+        "//external:gflags",
+    ],
+)

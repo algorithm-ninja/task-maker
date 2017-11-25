@@ -4,12 +4,7 @@
 
 #include <mutex>
 
-#include "gflags/gflags.h"
 #include "sandbox/sandbox.hpp"
-
-DECLARE_int32(num_cores);
-DECLARE_string(temp_directory);
-DECLARE_string(store_directory);
 
 namespace executor {
 
