@@ -17,6 +17,8 @@
 
 namespace sandbox {
 
+static const constexpr size_t kStrErrorBufSize = 2048;
+
 bool Unix::Execute(const ExecutionOptions& options, ExecutionInfo* info,
                    std::string* error_msg) {
   options_ = &options;
@@ -27,24 +29,30 @@ bool Unix::Execute(const ExecutionOptions& options, ExecutionInfo* info,
 }
 
 bool Unix::Setup(std::string* error_msg) {
+  char buf[kStrErrorBufSize] = {};
   if (pipe(pipe_fds_) == -1) {
     *error_msg = "pipe2: ";
-    *error_msg += strerror(errno);
+    strerror_r(errno, buf, kStrErrorBufSize);
+    *error_msg += buf;
     return false;
   }
   if (fcntl(pipe_fds_[0], F_SETFD, FD_CLOEXEC) == -1 ||
       fcntl(pipe_fds_[1], F_SETFD, FD_CLOEXEC) == -1) {
     *error_msg = "fcntl: ";
-    *error_msg += strerror(errno);
+    strerror_r(errno, buf, kStrErrorBufSize);
+    *error_msg += buf;
     return false;
   }
   return true;
 }
 
 bool Unix::DoFork(std::string* error_msg) {
+  char buf[kStrErrorBufSize] = {};
   int fork_result = fork();
   if (fork_result == -1) {
-    *error_msg = strerror(errno);
+    *error_msg = "fork: ";
+    strerror_r(errno, buf, kStrErrorBufSize);
+    *error_msg += buf;
     return false;
   }
   if (fork_result) {
@@ -56,15 +64,22 @@ bool Unix::DoFork(std::string* error_msg) {
 }
 
 void Unix::Child() {
-  auto die = [this](const char* prefix, const char* err) {
-    std::string msg = prefix;
-    msg += ": ";
-    msg += err;
-    int len = msg.size();
+  auto die2 = [this](const char* prefix, const char* err) {
+    char buf[kStrErrorBufSize + 64 + 2] = {};
+    strncat(buf, prefix, 64);
+    strncat(buf, ": ", 2);
+    strncat(buf, err, kStrErrorBufSize);
+    int len = strlen(buf);
     write(pipe_fds_[1], &len, sizeof(len));
-    write(pipe_fds_[1], msg.c_str(), len);
+    write(pipe_fds_[1], buf, len);
     close(pipe_fds_[1]);
     _Exit(1);
+  };
+
+  auto die = [&die2](const char* prefix, int err) {
+    char buf[kStrErrorBufSize] = {};
+    strerror_r(err, buf, kStrErrorBufSize);
+    die2(prefix, buf);
   };
 
   int stdin_fd = -1;
@@ -72,19 +87,19 @@ void Unix::Child() {
   int stderr_fd = -1;
   if (options_->stdin_file != "") {
     stdin_fd = open(options_->stdin_file.c_str(), O_RDONLY);
-    if (stdin_fd == -1) die("open", strerror(errno));
+    if (stdin_fd == -1) die("open", errno);
   }
   if (options_->stdout_file != "") {
     stdout_fd = creat(options_->stdout_file.c_str(), S_IRUSR | S_IWUSR);
-    if (stdout_fd == -1) die("creat", strerror(errno));
+    if (stdout_fd == -1) die("creat", errno);
   }
   if (options_->stderr_file != "") {
     stderr_fd = creat(options_->stderr_file.c_str(), S_IRUSR | S_IWUSR);
-    if (stderr_fd == -1) die("creat", strerror(errno));
+    if (stderr_fd == -1) die("creat", errno);
   }
 
   if (chdir(options_->root.c_str()) == -1) {
-    die("chdir", strerror(errno));
+    die("chdir", errno);
   }
 
   // Prepare args.
@@ -101,10 +116,10 @@ void Unix::Child() {
 
   // Handle I/O redirection.
   close(pipe_fds_[0]);
-#define DUP(field, fd)                                    \
-  if (field##_fd != -1) {                                 \
-    int ret = dup2(field##_fd, fd);                       \
-    if (ret == -1) die("redir " #field, strerror(errno)); \
+#define DUP(field, fd)                          \
+  if (field##_fd != -1) {                       \
+    int ret = dup2(field##_fd, fd);             \
+    if (ret == -1) die("redir " #field, errno); \
   }
   DUP(stdin, STDIN_FILENO);
   DUP(stdout, STDOUT_FILENO);
@@ -120,7 +135,7 @@ void Unix::Child() {
       rlim.rlim_cur = value;                    \
       rlim.rlim_max = value;                    \
       if (setrlimit(RLIMIT_##res, &rlim) < 0) { \
-        die("setrlim " #res, strerror(errno));  \
+        die("setrlim " #res, errno);            \
       }                                         \
     }                                           \
   }
@@ -139,12 +154,12 @@ void Unix::Child() {
 #endif
 #undef SET_RLIM
 
-  std::string error_msg;
-  if (!OnChild(&error_msg)) {
-    die("OnChild", error_msg.c_str());
+  char buf[kStrErrorBufSize] = {};
+  if (!OnChild(buf, kStrErrorBufSize)) {
+    die2("OnChild", buf);
   }
   execv(options_->executable.c_str(), args.data());
-  die("exec", strerror(errno));
+  die("exec", errno);
   // [[noreturn]] does not work on lambdas...
   _Exit(1);
 }

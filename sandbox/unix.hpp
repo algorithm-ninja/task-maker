@@ -31,8 +31,9 @@ class Unix : public Sandbox {
 
   // Hook that is executed just before exec. Returns false if something went
   // wrong and exec should not be called. The error_msg string must not be
-  // longer then 500 characters.
-  virtual bool OnChild(std::string* error_msg) { return true; }
+  // longer then buflen characters. This function must not use dynamic memory
+  // allocation.
+  virtual bool OnChild(const char* error_msg, size_t buflen) { return true; }
 
   // Waits for the termination of the child, possibly killing it if it exceeds
   // the provided wall time limit.
