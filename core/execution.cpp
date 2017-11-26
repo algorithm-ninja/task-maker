@@ -3,18 +3,18 @@
 
 namespace core {
 
-const FileID& Execution::Output(const std::string& name,
-                                const std::string& description) {
+FileID* Execution::Output(const std::string& name,
+                          const std::string& description) {
   if (!outputs_.count(name)) {
-    outputs_.emplace(name, FileID(description));
+    outputs_.emplace(name, std::unique_ptr<FileID>(new FileID(description)));
   }
-  return outputs_.at(name);
+  return outputs_.at(name).get();
 }
 
 std::vector<int64_t> Execution::Deps() const {
   std::vector<int64_t> result;
   if (stdin_) result.push_back(stdin_);
-  for (const auto& in : inputs_) result.push_back(in.second.Id());
+  for (const auto& in : inputs_) result.push_back(in.second);
   return result;
 }
 
@@ -39,7 +39,7 @@ bool Execution::Run(
   };
   if (stdin_) prepare_input(stdin_, "");
   for (const auto& input : inputs_)
-    prepare_input(input.second.Id(), input.first.c_str());
+    prepare_input(input.second, input.first.c_str());
 
   // Output names.
   for (const auto& output : outputs_)
@@ -76,16 +76,16 @@ bool Execution::Run(
     util::ProtoToSHA256(out.hash(), &extracted_hash);
     int64_t id = 0;
     if (out.type() == proto::FileType::STDOUT) {
-      util::ProtoToSHA256(out.hash(), &stdout_.hash_);
-      id = stdout_.Id();
+      util::ProtoToSHA256(out.hash(), &stdout_->hash_);
+      id = stdout_->Id();
     } else if (out.type() == proto::FileType::STDERR) {
-      util::ProtoToSHA256(out.hash(), &stderr_.hash_);
-      id = stderr_.Id();
+      util::ProtoToSHA256(out.hash(), &stderr_->hash_);
+      id = stderr_->Id();
     } else {
       if (outputs_.count(out.name()) == 0)
         throw std::logic_error("Unrequested output");
-      util::ProtoToSHA256(out.hash(), &outputs_.at(out.name()).hash_);
-      id = outputs_.at(out.name()).Id();
+      util::ProtoToSHA256(out.hash(), &outputs_.at(out.name())->hash_);
+      id = outputs_.at(out.name())->Id();
     }
     set_hash(id, extracted_hash);
   }

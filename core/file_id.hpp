@@ -19,16 +19,15 @@ class FileID {
   void WriteTo(const std::string& path);
   std::string Contents(int64_t size_limit = 0);
 
-  FileID(FileID&& other) = default;
-  FileID& operator=(FileID&& other) = default;
+  FileID(FileID&& other) = delete;
+  FileID& operator=(FileID&& other) = delete;
+  FileID(const FileID& other) = delete;
+  FileID& operator=(const FileID& other) = delete;
   ~FileID() = default;
 
  private:
   friend class Core;
   friend class Execution;
-
-  FileID(const FileID& other) = default;
-  FileID& operator=(const FileID& other) = default;
 
   explicit FileID(std::string description)
       : description_(std::move(description)), id_(next_id_++) {}

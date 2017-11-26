@@ -14,7 +14,7 @@ std::string FileID::Contents(int64_t size_limit) {
   std::string ans;
   util::File::Read(util::File::SHAToPath(hash_),
                    [size_limit, &ans](const proto::FileContents& contents) {
-                     if (size_limit && ans.size() > size_limit) {
+                     if (size_limit && (int64_t)ans.size() > size_limit) {
                        throw std::runtime_error("File too big");
                      }
                      ans += contents.chunk();

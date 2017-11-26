@@ -30,8 +30,8 @@ bool Core::Run() {
 
   // First, load the input files.
   for (auto& file : files_to_load_) {
-    fprintf(stderr, "Loading file %s\n", file.Description().c_str());
-    if (file.Load(set_file)) {
+    fprintf(stderr, "Loading file %s\n", file->Description().c_str());
+    if (file->Load(set_file)) {
       successful_tasks++;
     } else {
       failed_tasks++;
@@ -46,8 +46,8 @@ bool Core::Run() {
     std::vector<size_t> tried_tasks;
     for (size_t task_id : tasks_to_run) {
       bool deps_ok = true;
-      Execution& task = executions_[task_id];
-      for (int64_t dep : task.Deps()) {
+      Execution* task = executions_[task_id].get();
+      for (int64_t dep : task->Deps()) {
         if (!known_files.count(dep)) {
           deps_ok = false;
           break;
@@ -55,9 +55,9 @@ bool Core::Run() {
       }
       if (!deps_ok) continue;
       // tried_tasks.push_back(task_id);
-      fprintf(stderr, "Executing %s\n", task.Description().c_str());
+      fprintf(stderr, "Executing %s\n", task->Description().c_str());
       try {
-        if (task.Run(get_file, set_file)) {
+        if (task->Run(get_file, set_file)) {
           successful_tasks++;
         } else {
           failed_tasks++;
@@ -67,7 +67,7 @@ bool Core::Run() {
       } catch (executor::too_many_executions& exc) {
         continue;
       } catch (execution_failure& exc) {
-        fprintf(stderr, "Execution %s failed.\n", task.Description().c_str());
+        fprintf(stderr, "Execution %s failed.\n", task->Description().c_str());
         return false;
       } catch (std::exception& exc) {
         fprintf(stderr, "Error during execution: %s\n", exc.what());

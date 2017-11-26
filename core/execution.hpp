@@ -19,18 +19,18 @@ class Execution {
  public:
   const std::string& Description() const { return description_; }
 
-  void Stdin(const FileID& in) { stdin_ = in.Id(); }
-  void Input(const std::string& name, const FileID& id) {
-    inputs_.emplace(name, FileID(id));
+  void Stdin(const FileID* in) { stdin_ = in->Id(); }
+  void Input(const std::string& name, const FileID* id) {
+    inputs_.emplace(name, id->Id());
   }
 
-  const FileID& Stdout() { return stdout_; }
-  const FileID& Stderr() { return stderr_; }
-  const FileID& Output(const std::string& name) {
+  FileID* Stdout() { return stdout_.get(); }
+  FileID* Stderr() { return stderr_.get(); }
+  FileID* Output(const std::string& name) {
     return Output(name, name + " for " + Description());
   }
 
-  const FileID& Output(const std::string& name, const std::string& description);
+  FileID* Output(const std::string& name, const std::string& description);
 
   void CpuLimit(float limit) { resource_limits_.set_cpu_time(limit); }
   void WallLimit(float limit) { resource_limits_.set_wall_time(limit); }
@@ -54,6 +54,12 @@ class Execution {
   int32_t StatusCode() const { return response_.status_code(); }
   int32_t Signal() const { return response_.signal(); }
 
+  Execution(const Execution&) = delete;
+  Execution& operator=(const Execution&) = delete;
+  Execution(Execution&&) = delete;
+  Execution& operator=(Execution&&) = delete;
+  ~Execution() = default;
+
  private:
   friend class Core;
   std::vector<int64_t> Deps() const;
@@ -67,19 +73,21 @@ class Execution {
       : description_(std::move(description)),
         executable_(std::move(executable)),
         args_(std::move(args)),
-        stdout_("Standard output for " + description_),
-        stderr_("Standard error for " + description_) {}
+        stdout_(std::unique_ptr<FileID>(
+            new FileID("Standard output for " + description_))),
+        stderr_(std::unique_ptr<FileID>(
+            new FileID("Standard error for " + description_))) {}
 
   std::string description_;
 
   std::string executable_;
   std::vector<std::string> args_;
-  std::unordered_map<std::string, FileID> inputs_;
-  std::unordered_map<std::string, FileID> outputs_;
+  std::unordered_map<std::string, int64_t> inputs_;
+  std::unordered_map<std::string, std::unique_ptr<FileID>> outputs_;
 
   int64_t stdin_ = 0;
-  FileID stdout_;
-  FileID stderr_;
+  std::unique_ptr<FileID> stdout_;
+  std::unique_ptr<FileID> stderr_;
 
   bool die_on_error_ = false;
   bool successful_ = false;
