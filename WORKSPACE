@@ -8,9 +8,23 @@ git_repository(
 
 new_git_repository(
     name = "googletest",
-    build_file = "BUILD.googletest",
+    build_file = "tools/googletest.BUILD",
     remote = "https://github.com/google/googletest",
     tag = "release-1.8.0",
+)
+
+load("//tools:python.bzl", "python_repository")
+
+python_repository(
+    name = "python3",
+    version = "3",
+)
+
+new_git_repository(
+    name = "pybind11",
+    build_file = "tools/pybind11.BUILD",
+    remote = "https://github.com/pybind/pybind11",
+    tag = "v2.2.1",
 )
 
 git_repository(
