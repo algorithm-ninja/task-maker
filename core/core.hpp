@@ -8,16 +8,16 @@ namespace core {
 
 class Core {
  public:
-  FileID& LoadFile(const std::string& description, const std::string& path) {
+  FileID* LoadFile(const std::string& description, const std::string& path) {
     files_to_load_.push_back(FileID(description, path));
-    return files_to_load_.back();
+    return &files_to_load_.back();
   }
 
-  Execution& AddExecution(const std::string& description,
+  Execution* AddExecution(const std::string& description,
                           const std::string& executable,
                           const std::vector<std::string>& args) {
     executions_.push_back(Execution(description, executable, args));
-    return executions_.back();
+    return &executions_.back();
   }
 
   bool Run();

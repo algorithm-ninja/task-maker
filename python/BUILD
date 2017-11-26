@@ -3,6 +3,10 @@ package(default_visibility = ["//visibility:public"])
 py_binary(
     name = "test",
     srcs = ["test.py"],
-    data = ["//bindings:sum.so"],
+    data = [
+        "//bindings:core.so",
+        "//bindings:execution.so",
+        "//bindings:file_id.so",
+    ],
     imports = ["bindings"],
 )

@@ -2,11 +2,34 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
-    name = "sum.so",
-    srcs = ["sum.cpp"],
+    name = "file_id.so",
+    srcs = ["file_id.cpp"],
     linkshared = 1,
     linkstatic = 1,
     deps = [
+        "//core:file_id",
+        "@pybind11//:pybind11",
+    ],
+)
+
+cc_binary(
+    name = "execution.so",
+    srcs = ["execution.cpp"],
+    linkshared = 1,
+    linkstatic = 1,
+    deps = [
+        "//core:execution",
+        "@pybind11//:pybind11",
+    ],
+)
+
+cc_binary(
+    name = "core.so",
+    srcs = ["core.cpp"],
+    linkshared = 1,
+    linkstatic = 1,
+    deps = [
+        "//core",
         "@pybind11//:pybind11",
     ],
 )

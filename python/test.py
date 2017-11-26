@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
-import bindings.sum
+import bindings.file_id
+import bindings.execution
+import bindings.core
 
-print(bindings.sum.add(1, 2))
+print(bindings.core.core)
