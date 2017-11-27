@@ -7,6 +7,11 @@
 
 namespace util {
 
+class file_exists : public std::system_error {
+public:
+  explicit file_exists(const std::string& msg) : std::system_error(EEXIST, std::system_category(), msg) {}
+};
+
 static const constexpr uint32_t kChunkSize = 32 * 1024;
 
 class File {
@@ -19,7 +24,7 @@ class File {
 
   // Returns a ChunkReceiver that writes the given data to a file.
   // The file is closed when the ChunkReceiver goes out of scope.
-  static ChunkReceiver Write(const std::string& path);
+  static ChunkReceiver Write(const std::string& path, bool overwrite = false);
 
   // Computes the hash of the file specified by path.
   static SHA256_t Hash(const std::string& path);
@@ -29,10 +34,10 @@ class File {
   static void MakeDirs(const std::string& path);
 
   // Makes a full copy of the given file.
-  static void DeepCopy(const std::string& from, const std::string& to);
+  static void DeepCopy(const std::string& from, const std::string& to, bool overwrite = false);
 
   // Copies from -> to, but the files may still share the underlying data.
-  static void Copy(const std::string& from, const std::string& to);
+  static void Copy(const std::string& from, const std::string& to, bool overwrite = false);
 
   // Moves a file to a new position.
   static void Move(const std::string& from, const std::string& to);
@@ -49,6 +54,9 @@ class File {
   // Joins two paths.
   static std::string JoinPath(const std::string& first,
                               const std::string& second);
+
+  // Computes the directory name for a path
+  static std::string BaseDir(const std::string& path);
 
   // Computes a file's size. Returns a negative number in case of errors.
   static int64_t Size(const std::string& path);

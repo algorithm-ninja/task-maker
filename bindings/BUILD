@@ -30,6 +30,7 @@ cc_binary(
     linkstatic = 1,
     deps = [
         "//core",
+        "//sandbox:unix",
         "@pybind11//:pybind11",
     ],
 )

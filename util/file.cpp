@@ -60,20 +60,21 @@ namespace util {
 void File::Read(const std::string& path,
                 const File::ChunkReceiver& chunk_receiver) {
   std::ifstream fin;
-  fin.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+  fin.exceptions(std::ifstream::badbit);
   fin.open(path);
   proto::FileContents chunk;
   std::vector<char> buf(kChunkSize);
-  size_t read_size = 0;
-  while ((read_size = fin.readsome(buf.data(), kChunkSize)) != 0) {
-    chunk.set_chunk(buf.data(), read_size);
+  while (!fin.eof()) {
+    fin.read(buf.data(), kChunkSize);
+    chunk.set_chunk(buf.data(), fin.gcount());
     chunk_receiver(chunk);
   }
 }
 
-File::ChunkReceiver File::Write(const std::string& path) {
-  using namespace std::placeholders;
-  MakeDirs(path);
+File::ChunkReceiver File::Write(const std::string& path, bool overwrite) {
+  if (!overwrite && util::File::Size(path) >= 0)
+    throw file_exists("File " + path + " exists");
+  MakeDirs(BaseDir(path));
   auto fout = std::make_shared<std::ofstream>();
   fout->exceptions(std::ofstream::failbit | std::ofstream::badbit);
   fout->open(path);
@@ -94,19 +95,19 @@ SHA256_t File::Hash(const std::string& path) {
 
 void File::MakeDirs(const std::string& path) {
   uint64_t pos = 0;
-  while (true) {
+  while (pos != std::string::npos) {
     pos = path.find_first_of(kPathSeparators, pos + 1);
-    if (pos == std::string::npos) break;
     MkDir(path.substr(0, pos));
   }
 }
 
-void File::DeepCopy(const std::string& from, const std::string& to) {
-  Read(from, Write(to));
+void File::DeepCopy(const std::string& from, const std::string& to, bool overwrite) {
+  Read(from, Write(to, overwrite));
 }
 
-void File::Copy(const std::string& from, const std::string& to) {
-  if (!ShallowCopy(from, to)) DeepCopy(from, to);
+void File::Copy(const std::string& from, const std::string& to, bool overwrite) {
+  if (!overwrite && Size(to) >= 0) return;
+  if (!ShallowCopy(from, to)) DeepCopy(from, to, overwrite);
 }
 
 void File::Move(const std::string& from, const std::string& to) {
@@ -127,6 +128,10 @@ std::string File::JoinPath(const std::string& first,
                            const std::string& second) {
   if (strchr(kPathSeparators, second[0])) return second;
   return first + kPathSeparators[0] + second;
+}
+
+std::string File::BaseDir(const std::string &path) {
+  return path.substr(0, path.find_last_of(kPathSeparators));
 }
 
 int64_t File::Size(const std::string& path) {

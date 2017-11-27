@@ -8,8 +8,8 @@
 #include <thread>
 
 namespace {
-bool IsValidChar(char c) {
-  return isalnum(c) || c == '.' || c == '-' || c == '_';
+bool IsIllegalChar(char c) {
+  return !isalnum(c) && c != '.' && c != '-' && c != '_';
 }
 }  // namespace
 
@@ -101,7 +101,7 @@ void LocalExecutor::PrepareFile(const proto::FileInfo& info,
     name = "stdin";
     options->stdin_file = util::File::JoinPath(tmp, name);
   } else {
-    if (std::find_if(name.begin(), name.end(), IsValidChar) != name.end()) {
+    if (std::find_if(name.begin(), name.end(), IsIllegalChar) != name.end()) {
       throw std::runtime_error("Invalid file name");
     }
     name = util::File::JoinPath(kBoxDir, name);
@@ -118,7 +118,7 @@ void LocalExecutor::RetrieveFile(const proto::FileInfo& info,
       info.type() == proto::FileType::STDERR) {
     name = info.type() == proto::FileType::STDOUT ? "stdout" : "stderr";
   } else {
-    if (std::find_if(name.begin(), name.end(), IsValidChar) != name.end()) {
+    if (std::find_if(name.begin(), name.end(), IsIllegalChar) != name.end()) {
       throw std::runtime_error("Invalid file name");
     }
     name = util::File::JoinPath(kBoxDir, name);
