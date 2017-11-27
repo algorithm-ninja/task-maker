@@ -8,8 +8,9 @@
 namespace util {
 
 class file_exists : public std::system_error {
-public:
-  explicit file_exists(const std::string& msg) : std::system_error(EEXIST, std::system_category(), msg) {}
+ public:
+  explicit file_exists(const std::string& msg)
+      : std::system_error(EEXIST, std::system_category(), msg) {}
 };
 
 static const constexpr uint32_t kChunkSize = 32 * 1024;
@@ -34,10 +35,12 @@ class File {
   static void MakeDirs(const std::string& path);
 
   // Makes a full copy of the given file.
-  static void DeepCopy(const std::string& from, const std::string& to, bool overwrite = false);
+  static void DeepCopy(const std::string& from, const std::string& to,
+                       bool overwrite = false);
 
   // Copies from -> to, but the files may still share the underlying data.
-  static void Copy(const std::string& from, const std::string& to, bool overwrite = false);
+  static void Copy(const std::string& from, const std::string& to,
+                   bool overwrite = false);
 
   // Moves a file to a new position.
   static void Move(const std::string& from, const std::string& to);

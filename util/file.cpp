@@ -101,11 +101,13 @@ void File::MakeDirs(const std::string& path) {
   }
 }
 
-void File::DeepCopy(const std::string& from, const std::string& to, bool overwrite) {
+void File::DeepCopy(const std::string& from, const std::string& to,
+                    bool overwrite) {
   Read(from, Write(to, overwrite));
 }
 
-void File::Copy(const std::string& from, const std::string& to, bool overwrite) {
+void File::Copy(const std::string& from, const std::string& to,
+                bool overwrite) {
   if (!overwrite && Size(to) >= 0) return;
   if (!ShallowCopy(from, to)) DeepCopy(from, to, overwrite);
 }
@@ -130,7 +132,7 @@ std::string File::JoinPath(const std::string& first,
   return first + kPathSeparators[0] + second;
 }
 
-std::string File::BaseDir(const std::string &path) {
+std::string File::BaseDir(const std::string& path) {
   return path.substr(0, path.find_last_of(kPathSeparators));
 }
 

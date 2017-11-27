@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-py_binary(
+py_test(
     name = "test",
     srcs = ["test.py"],
     data = [

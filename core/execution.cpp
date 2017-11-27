@@ -27,22 +27,22 @@ bool Execution::Run(
   // Command and args.
   proto::Request request;
   request.set_executable(executable_);
-  for (const std::string &arg : args_) *request.add_arg() = arg;
-  for (const auto &out : outputs_) request.add_output()->set_name(out.first);
+  for (const std::string& arg : args_) *request.add_arg() = arg;
+  for (const auto& out : outputs_) request.add_output()->set_name(out.first);
 
   // Inputs.
-  auto prepare_input = [&request, &get_hash](int64_t id, const char *name) {
-    proto::FileInfo *in = request.add_input();
+  auto prepare_input = [&request, &get_hash](int64_t id, const char* name) {
+    proto::FileInfo* in = request.add_input();
     if (!*name) in->set_type(proto::FileType::STDIN);
     in->set_name(name);
     util::File::SetSHA(get_hash(id), in);
   };
   if (stdin_) prepare_input(stdin_, "");
-  for (const auto &input : inputs_)
+  for (const auto& input : inputs_)
     prepare_input(input.second, input.first.c_str());
 
   // Output names.
-  for (const auto &output : outputs_)
+  for (const auto& output : outputs_)
     request.add_output()->set_name(output.first);
 
   // Resource limits and exclusivity.
@@ -53,10 +53,10 @@ bool Execution::Run(
 
   // Run the request.
   response_ = executor->Execute(
-    request, [](const proto::SHA256 &hash,
-                const util::File::ChunkReceiver &chunk_receiver) {
-      util::File::Read(util::File::ProtoSHAToPath(hash), chunk_receiver);
-    });
+      request, [](const proto::SHA256& hash,
+                  const util::File::ChunkReceiver& chunk_receiver) {
+        util::File::Read(util::File::ProtoSHAToPath(hash), chunk_receiver);
+      });
 
   if (response_.status_code() != 0 || response_.signal() != 0) {
     successful_ = false;
@@ -65,7 +65,7 @@ bool Execution::Run(
   }
 
   // Read output files.
-  for (const proto::FileInfo &out : response_.output()) {
+  for (const proto::FileInfo& out : response_.output()) {
     std::string path = util::File::ProtoSHAToPath(out.hash());
     // skip the file if it already exists
     if (util::File::Size(path) < 0) {
@@ -90,8 +90,7 @@ bool Execution::Run(
       util::ProtoToSHA256(out.hash(), &outputs_.at(out.name())->hash_);
       id = outputs_.at(out.name())->Id();
     }
-    if (successful_)
-      set_hash(id, extracted_hash);
+    if (successful_) set_hash(id, extracted_hash);
   }
   if (successful_) {
     return true;
