@@ -27,16 +27,12 @@ bool FileID::Load(
   if (path_.size() == 0) {
     throw std::logic_error("Invalid call to FileID::Load");
   }
-  try {
-    hash_ = util::File::Hash(path_);
-    util::File::Copy(path_,
-                     util::File::JoinPath(FLAGS_store_directory,
-                                          util::File::PathForHash(hash_)));
-    set_hash(Id(), hash_);
-    return true;
-  } catch (...) {
-    return false;
-  }
+  hash_ = util::File::Hash(path_);
+  util::File::Copy(path_,
+                   util::File::JoinPath(FLAGS_store_directory,
+                                        util::File::PathForHash(hash_)));
+  set_hash(Id(), hash_);
+  return true;
 }
 
 }  // namespace core

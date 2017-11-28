@@ -3,14 +3,9 @@
 #include "util/sha256.hpp"
 
 #include <fstream>
-#include <iostream>
 
 #if defined(__unix__) || defined(__linux__) || defined(__APPLE__)
 #include <ftw.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 namespace {
@@ -62,6 +57,7 @@ void File::Read(const std::string& path,
   std::ifstream fin;
   fin.exceptions(std::ifstream::badbit);
   fin.open(path);
+  if (!fin) throw file_not_found(path);
   proto::FileContents chunk;
   std::vector<char> buf(kChunkSize);
   while (!fin.eof()) {

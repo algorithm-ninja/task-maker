@@ -31,10 +31,12 @@ bool Core::Run() {
   // First, load the input files.
   for (auto& file : files_to_load_) {
     fprintf(stderr, "Loading file %s\n", file->Description().c_str());
-    if (file->Load(set_file)) {
+    try {
+      file->Load(set_file);
       successful_tasks++;
-    } else {
-      failed_tasks++;
+    } catch (...) {
+      std::cerr << "Failed to load file " << file->Description() << std::endl;
+      return false;
     }
     PrintStatus(total_tasks, successful_tasks, failed_tasks);
   }
@@ -60,6 +62,7 @@ bool Core::Run() {
         if (task->Run(get_file, set_file)) {
           successful_tasks++;
         } else {
+          std::cerr << "Failed to execute " << task->Description() << std::endl;
           failed_tasks++;
         }
         tried_tasks.push_back(task_id);

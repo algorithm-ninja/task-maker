@@ -13,6 +13,12 @@ class file_exists : public std::system_error {
       : std::system_error(EEXIST, std::system_category(), msg) {}
 };
 
+class file_not_found : public std::system_error {
+ public:
+  explicit file_not_found(const std::string& msg)
+      : std::system_error(ENOENT, std::system_category(), msg) {}
+};
+
 static const constexpr uint32_t kChunkSize = 32 * 1024;
 
 class File {
