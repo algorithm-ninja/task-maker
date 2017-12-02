@@ -18,6 +18,7 @@ class execution_failure : public std::runtime_error {
 class Execution {
  public:
   const std::string& Description() const { return description_; }
+  int64_t Id() const { return id_; }
 
   void Stdin(const FileID* in) { stdin_ = in->Id(); }
   void Input(const std::string& name, const FileID* id) {
@@ -41,7 +42,6 @@ class Execution {
   void MemoryLockLimit(int64_t limit) { resource_limits_.set_mlock(limit); }
   void StackLimit(int64_t limit) { resource_limits_.set_stack(limit); }
 
-  void DieOnError() { die_on_error_ = true; }
   void Exclusive() { exclusive_ = true; }
 
   // To be called after Core::Run().
@@ -63,7 +63,7 @@ class Execution {
  private:
   friend class Core;
   std::vector<int64_t> Deps() const;
-  bool Run(const std::function<util::SHA256_t(int64_t)>& get_hash,
+  void Run(const std::function<util::SHA256_t(int64_t)>& get_hash,
            const std::function<void(int64_t, const util::SHA256_t&)>& set_hash);
 
   bool IsExclusive() const { return exclusive_; }
@@ -71,6 +71,7 @@ class Execution {
   Execution(std::string description, std::string executable,
             std::vector<std::string> args)
       : description_(std::move(description)),
+        id_(next_id_++),
         executable_(std::move(executable)),
         args_(std::move(args)),
         stdout_(std::unique_ptr<FileID>(
@@ -79,6 +80,8 @@ class Execution {
             new FileID("Standard error for " + description_))) {}
 
   std::string description_;
+  int64_t id_;
+  static std::atomic<int64_t> next_id_;
 
   std::string executable_;
   std::vector<std::string> args_;
@@ -89,7 +92,6 @@ class Execution {
   std::unique_ptr<FileID> stdout_;
   std::unique_ptr<FileID> stderr_;
 
-  bool die_on_error_ = false;
   bool successful_ = false;
   bool exclusive_ = false;
 

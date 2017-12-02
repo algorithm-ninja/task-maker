@@ -30,5 +30,6 @@ cc_library(
     deps = [
         ":execution",
         ":file_id",
+        "//util:flags",
     ],
 )

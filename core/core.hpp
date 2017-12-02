@@ -3,11 +3,49 @@
 
 #include "core/execution.hpp"
 #include "core/file_id.hpp"
+#include "util/flags.hpp"
 
 namespace core {
 
 class Core {
  public:
+  struct TaskStatus {
+    enum Event { START, SUCCESS, BUSY, FAILURE };
+    Event event;
+    std::string message;
+    enum Type { FILE_LOAD, EXECUTION };
+    Type type;
+    const FileID* file_info;
+    const Execution* execution_info_;
+
+    TaskStatus() = delete;
+
+   private:
+    friend class Core;
+    static TaskStatus Start(const FileID* file) {
+      return {START, "", FILE_LOAD, file, nullptr};
+    }
+    static TaskStatus Start(const Execution* execution) {
+      return {START, "", EXECUTION, nullptr, execution};
+    }
+    static TaskStatus Busy(const Execution* execution) {
+      return {BUSY, "", EXECUTION, nullptr, execution};
+    }
+    static TaskStatus Success(const FileID* file) {
+      return {SUCCESS, "", FILE_LOAD, file, nullptr};
+    }
+    static TaskStatus Success(const Execution* execution) {
+      return {SUCCESS, "", EXECUTION, nullptr, execution};
+    }
+    static TaskStatus Failure(const FileID* file, const std::string& msg) {
+      return {FAILURE, msg, FILE_LOAD, file, nullptr};
+    }
+    static TaskStatus Failure(const Execution* execution,
+                              const std::string& msg) {
+      return {FAILURE, msg, EXECUTION, nullptr, execution};
+    }
+  };
+
   FileID* LoadFile(const std::string& description, const std::string& path) {
     files_to_load_.push_back(
         std::unique_ptr<FileID>(new FileID(description, path)));
@@ -22,9 +60,28 @@ class Core {
     return executions_.back().get();
   }
 
+  static void SetNumCores(int32_t num_cores) { FLAGS_num_cores = num_cores; }
+  static void SetTempDirectory(const std::string& temp_directory) {
+    FLAGS_temp_directory = temp_directory;
+  }
+  static void SetStoreDirectory(const std::string& store_directory) {
+    FLAGS_store_directory = store_directory;
+  }
+
+  void SetCallback(const std::function<bool(const TaskStatus& status)>& cb) {
+    callback_ = cb;
+  }
+
   bool Run();
 
+  Core() {
+    callback_ = [](const TaskStatus& status) {
+      return status.event != TaskStatus::FAILURE;
+    };
+  }
+
  private:
+  std::function<bool(const TaskStatus&)> callback_;
   std::vector<std::unique_ptr<FileID>> files_to_load_;
   std::vector<std::unique_ptr<Execution>> executions_;
 };

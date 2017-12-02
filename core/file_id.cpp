@@ -22,17 +22,15 @@ std::string FileID::Contents(int64_t size_limit) {
   return ans;
 }
 
-bool FileID::Load(
+void FileID::Load(
     const std::function<void(int64_t, const util::SHA256_t&)>& set_hash) {
   if (path_.size() == 0) {
     throw std::logic_error("Invalid call to FileID::Load");
   }
   hash_ = util::File::Hash(path_);
-  util::File::Copy(path_,
-                   util::File::JoinPath(FLAGS_store_directory,
-                                        util::File::PathForHash(hash_)));
+  util::File::Copy(path_, util::File::JoinPath(FLAGS_store_directory,
+                                               util::File::PathForHash(hash_)));
   set_hash(Id(), hash_);
-  return true;
 }
 
 }  // namespace core

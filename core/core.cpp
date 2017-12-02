@@ -1,21 +1,10 @@
 #include "core/core.hpp"
 #include "executor/local_executor.hpp"
 
-namespace {
-
-void PrintStatus(int total, int successful, int failed) {
-  fprintf(stderr, "T: % 3d, S: % 3d, F: % 3d\n", total, successful, failed);
-}
-
-}  // namespace
-
 namespace core {
 
 bool Core::Run() {
   // TODO(veluca): implement this with multi-threading.
-  int total_tasks = files_to_load_.size() + executions_.size();
-  int successful_tasks = 0;
-  int failed_tasks = 0;
   std::unordered_map<int64_t, util::SHA256_t> known_files;
   auto get_file = [&known_files](int64_t id) {
     if (!known_files.count(id)) {
@@ -30,15 +19,13 @@ bool Core::Run() {
 
   // First, load the input files.
   for (auto& file : files_to_load_) {
-    fprintf(stderr, "Loading file %s\n", file->Description().c_str());
+    if (!callback_(TaskStatus::Start(file.get()))) return false;
     try {
       file->Load(set_file);
-      successful_tasks++;
-    } catch (...) {
-      std::cerr << "Failed to load file " << file->Description() << std::endl;
-      return false;
+      if (!callback_(TaskStatus::Success(file.get()))) return false;
+    } catch (const std::exception& exc) {
+      if (!callback_(TaskStatus::Failure(file.get(), exc.what()))) return false;
     }
-    PrintStatus(total_tasks, successful_tasks, failed_tasks);
   }
 
   // Scan all the tasks, see if one can be executed. If so, start it.
@@ -56,25 +43,16 @@ bool Core::Run() {
         }
       }
       if (!deps_ok) continue;
-      // tried_tasks.push_back(task_id);
-      fprintf(stderr, "Executing %s\n", task->Description().c_str());
+      if (!callback_(TaskStatus::Start(task))) return false;
       try {
-        if (task->Run(get_file, set_file)) {
-          successful_tasks++;
-        } else {
-          std::cerr << "Failed to execute " << task->Description() << std::endl;
-          failed_tasks++;
-        }
+        task->Run(get_file, set_file);
+        if (!callback_(TaskStatus::Success(task))) return false;
         tried_tasks.push_back(task_id);
-        PrintStatus(total_tasks, successful_tasks, failed_tasks);
       } catch (executor::too_many_executions& exc) {
+        if (!callback_(TaskStatus::Busy(task))) return false;
         continue;
-      } catch (execution_failure& exc) {
-        fprintf(stderr, "Execution %s failed.\n", task->Description().c_str());
-        return false;
       } catch (std::exception& exc) {
-        fprintf(stderr, "Error during execution: %s\n", exc.what());
-        return false;
+        if (!callback_(TaskStatus::Failure(task, exc.what()))) return false;
       }
     }
     for (size_t task_id : tried_tasks) tasks_to_run.erase(task_id);

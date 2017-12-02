@@ -36,7 +36,7 @@ class FileID {
     path_ = std::move(path);
   }
 
-  bool Load(
+  void Load(
       const std::function<void(int64_t, const util::SHA256_t&)>& set_hash);
   int64_t Id() const { return id_; }
 

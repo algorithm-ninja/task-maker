@@ -18,7 +18,7 @@ std::vector<int64_t> Execution::Deps() const {
   return result;
 }
 
-bool Execution::Run(
+void Execution::Run(
     const std::function<util::SHA256_t(int64_t)>& get_hash,
     const std::function<void(int64_t, const util::SHA256_t&)>& set_hash) {
   // TODO(veluca): change this when we implement remote executors.
@@ -92,10 +92,7 @@ bool Execution::Run(
     }
     if (successful_) set_hash(id, extracted_hash);
   }
-  if (successful_) {
-    return true;
-  } else {
-    if (!die_on_error_) return false;
+  if (!successful_) {
     throw execution_failure();
   }
 }
