@@ -1,5 +1,4 @@
 # Python bindings
-package(default_visibility = ["//visibility:public"])
 
 cc_binary(
     name = "file_id.so",
@@ -33,4 +32,16 @@ cc_binary(
         "//sandbox:unix",
         "@pybind11//:pybind11",
     ],
+)
+
+py_library(
+    name = "task_maker",
+    srcs = ["task_maker.py"],
+    data = [
+        ":core.so",
+        ":execution.so",
+        ":file_id.so",
+    ],
+    imports = ["bindings"],
+    visibility = ["//visibility:public"],
 )

@@ -4,9 +4,7 @@ py_test(
     name = "test",
     srcs = ["test.py"],
     data = [
-        "//bindings:core.so",
-        "//bindings:execution.so",
-        "//bindings:file_id.so",
+        "//bindings:task_maker",
     ],
     imports = ["bindings"],
 )
