@@ -18,11 +18,11 @@ class execution_failure : public std::runtime_error {
 class Execution {
  public:
   const std::string& Description() const { return description_; }
-  int64_t Id() const { return id_; }
+  int64_t ID() const { return id_; }
 
-  void Stdin(const FileID* in) { stdin_ = in->Id(); }
+  void Stdin(const FileID* in) { stdin_ = in->ID(); }
   void Input(const std::string& name, const FileID* id) {
-    inputs_.emplace(name, id->Id());
+    inputs_.emplace(name, id->ID());
   }
 
   FileID* Stdout() { return stdout_.get(); }

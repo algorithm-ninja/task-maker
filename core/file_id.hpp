@@ -14,6 +14,7 @@ class Execution;
 class FileID {
  public:
   const std::string& Description() const { return description_; }
+  int64_t ID() const { return id_; }
 
   // These methods should be called after Core::Run is done.
   void WriteTo(const std::string& path);
@@ -38,7 +39,6 @@ class FileID {
 
   void Load(
       const std::function<void(int64_t, const util::SHA256_t&)>& set_hash);
-  int64_t Id() const { return id_; }
 
   std::string description_;
   std::string path_;

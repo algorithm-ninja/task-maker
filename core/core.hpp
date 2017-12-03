@@ -16,7 +16,7 @@ class Core {
     enum Type { FILE_LOAD, EXECUTION };
     Type type;
     const FileID* file_info;
-    const Execution* execution_info_;
+    const Execution* execution_info;
 
     TaskStatus() = delete;
 

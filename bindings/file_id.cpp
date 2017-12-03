@@ -4,8 +4,9 @@
 namespace py = pybind11;
 
 PYBIND11_MODULE(file_id, m) {
-  py::class_<core::FileID>(m, "file_id")
+  py::class_<core::FileID>(m, "FileID")
       .def("description", &core::FileID::Description)
+      .def("id", &core::FileID::ID)
       .def("write_to", &core::FileID::WriteTo)
       .def("contents", &core::FileID::Contents);
 }

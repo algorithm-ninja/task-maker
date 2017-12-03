@@ -30,7 +30,7 @@ void FileID::Load(
   hash_ = util::File::Hash(path_);
   util::File::Copy(path_, util::File::JoinPath(FLAGS_store_directory,
                                                util::File::PathForHash(hash_)));
-  set_hash(Id(), hash_);
+  set_hash(ID(), hash_);
 }
 
 }  // namespace core

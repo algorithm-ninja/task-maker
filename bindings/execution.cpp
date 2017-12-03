@@ -4,8 +4,9 @@
 namespace py = pybind11;
 
 PYBIND11_MODULE(execution, m) {
-  py::class_<core::Execution>(m, "execution")
+  py::class_<core::Execution>(m, "Execution")
       .def("description", &core::Execution::Description)
+      .def("id", &core::Execution::ID)
       .def("stdin", &core::Execution::Stdin)
       .def("input", &core::Execution::Input)
       .def("stdout", &core::Execution::Stdout,
@@ -31,7 +32,6 @@ PYBIND11_MODULE(execution, m) {
       .def("memory_lock_limit", &core::Execution::MemoryLockLimit)
       .def("stack_limit", &core::Execution::StackLimit)
 
-      .def("die_on_error", &core::Execution::DieOnError)
       .def("exclusive", &core::Execution::Exclusive)
 
       .def("success", &core::Execution::Success)

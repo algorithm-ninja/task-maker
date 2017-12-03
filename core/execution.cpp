@@ -3,6 +3,8 @@
 
 namespace core {
 
+std::atomic<int64_t> Execution::next_id_{1};
+
 FileID* Execution::Output(const std::string& name,
                           const std::string& description) {
   if (!outputs_.count(name)) {
@@ -80,15 +82,15 @@ void Execution::Run(
     int64_t id = 0;
     if (out.type() == proto::FileType::STDOUT) {
       util::ProtoToSHA256(out.hash(), &stdout_->hash_);
-      id = stdout_->Id();
+      id = stdout_->ID();
     } else if (out.type() == proto::FileType::STDERR) {
       util::ProtoToSHA256(out.hash(), &stderr_->hash_);
-      id = stderr_->Id();
+      id = stderr_->ID();
     } else {
       if (outputs_.count(out.name()) == 0)
         throw std::logic_error("Unrequested output");
       util::ProtoToSHA256(out.hash(), &outputs_.at(out.name())->hash_);
-      id = outputs_.at(out.name())->Id();
+      id = outputs_.at(out.name())->ID();
     }
     if (successful_) set_hash(id, extracted_hash);
   }
