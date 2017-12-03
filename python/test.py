@@ -5,7 +5,7 @@ import tempfile
 
 def callback(data):
     print(data.event, data.message, data.type)
-    return True
+    return data.event != core.Core.TaskStatus.Event.FAILURE
 
 
 with tempfile.NamedTemporaryFile() as tmp:
