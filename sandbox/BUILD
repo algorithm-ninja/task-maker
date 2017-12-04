@@ -17,6 +17,7 @@ cc_library(
 
 cc_test(
     name = "unix_test",
+    size = "small",
     srcs = ["unix_test.cpp"],
     data = [
         "//sandbox/test:busywait_arg1",
