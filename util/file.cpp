@@ -32,18 +32,7 @@ void OsRemove(const std::string& path) {
 void OsRemoveTree(const std::string& path) {
   if (nftw(path.c_str(),
            [](const char* fpath, const struct stat* sb, int typeflags,
-              struct FTW* ftwbuf) {
-             std::cerr << "FTW_F " << (typeflags == FTW_F) << std::endl;
-             std::cerr << "FTW_D " << (typeflags == FTW_D) << std::endl;
-             std::cerr << "FTW_DNR " << (typeflags == FTW_DNR) << std::endl;
-             std::cerr << "FTW_DP " << (typeflags == FTW_DP) << std::endl;
-             std::cerr << "FTW_NS " << (typeflags == FTW_NS) << std::endl;
-             std::cerr << "FTW_SL " << (typeflags == FTW_SL) << std::endl;
-             std::cerr << "FTW_SLN " << (typeflags == FTW_SLN) << std::endl;
-             std::cerr << "Remove " << fpath << std::endl;
-             system((std::string("ls -lah ") + fpath).c_str());
-             return remove(fpath);
-           },
+              struct FTW* ftwbuf) { return remove(fpath); },
            64, FTW_DEPTH | FTW_PHYS) == -1) {
     throw std::system_error(errno, std::system_category(), "removetree");
   }
