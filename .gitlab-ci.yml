@@ -1,0 +1,35 @@
+image: gcc:7.2
+
+build_and_test:
+  stage: build
+  before_script:
+    - echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list
+    - curl https://bazel.build/bazel-release.pub.gpg | apt-key add -
+    - apt update && apt install -y openjdk-8-jdk bazel python3-dev
+    - |
+      cat > $CI_PROJECT_DIR/.bazelrc <<EOF
+      # This is from Bazel's former travis setup, to avoid blowing up the RAM usage.
+      startup --host_jvm_args=-Xmx2500m
+      startup --host_jvm_args=-Xms2500m
+      startup --batch
+      test --ram_utilization_factor=10
+      # This is so we understand failures better
+      build --verbose_failures
+      # This is so we don't use sandboxed execution. Sandboxed execution
+      # runs stuff in a container, and since GitLabCI already runs its script
+      # in a container this fails to run tests.
+      build --spawn_strategy=standalone --genrule_strategy=standalone
+      test --test_strategy=standalone --test_output=streamed
+      EOF
+
+  script:
+    - bazel test ... --incompatible_disallow_set_constructor=false --force_python=PY3 --python_path=/usr/bin/python3
+
+  artifacts:
+    paths:
+      - ~/.cache/bazel
+    expire_in: 1 week
+
+  cache:
+    paths:
+      - ~/.cache/bazel

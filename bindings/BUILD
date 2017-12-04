@@ -43,5 +43,6 @@ py_library(
         ":file_id.so",
     ],
     imports = ["bindings"],
+    srcs_version = "PY3",
     visibility = ["//visibility:public"],
 )

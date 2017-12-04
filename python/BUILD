@@ -6,5 +6,7 @@ py_test(
     data = [
         "//bindings:task_maker",
     ],
+    default_python_version = "PY3",
     imports = ["bindings"],
+    srcs_version = "PY3",
 )
