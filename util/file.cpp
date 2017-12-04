@@ -32,7 +32,10 @@ void OsRemove(const std::string& path) {
 void OsRemoveTree(const std::string& path) {
   if (nftw(path.c_str(),
            [](const char* fpath, const struct stat* sb, int typeflags,
-              struct FTW* ftwbuf) { return remove(fpath); },
+              struct FTW* ftwbuf) {
+             std::cerr << "Remove " << fpath << std::endl;
+             return remove(fpath);
+           },
            64, FTW_DEPTH | FTW_PHYS | FTW_MOUNT) == -1) {
     throw std::system_error(errno, std::system_category(), "removetree");
   }

@@ -3,7 +3,7 @@ workspace(name = "oii_task_maker")
 git_repository(
     name = "org_pubref_rules_protobuf",
     remote = "https://github.com/pubref/rules_protobuf.git",
-    tag = "v0.8.0",
+    tag = "v0.8.1",
 )
 
 new_git_repository(
