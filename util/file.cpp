@@ -34,6 +34,7 @@ void OsRemoveTree(const std::string& path) {
            [](const char* fpath, const struct stat* sb, int typeflags,
               struct FTW* ftwbuf) {
              std::cerr << "Remove " << fpath << std::endl;
+             system((std::string("ls -lah ") + fpath).c_str());
              return remove(fpath);
            },
            64, FTW_DEPTH | FTW_PHYS | FTW_MOUNT) == -1) {
