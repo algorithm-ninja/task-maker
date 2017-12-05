@@ -19,7 +19,7 @@ class SourceFile:
             graders = []
         lang = self.get_language()
         # No grader support for Python and shell - compilation is a noop.
-        if lang in [Language.PY, Language.SH]:
+        if not lang.needs_compilation():
             return self._dispatcher.load_file(self._path, self._path, cb)
         elif lang in [Language.CPP, Language.C]:
             if lang == Language.CPP:
@@ -38,17 +38,19 @@ class SourceFile:
                 files_to_pass.append(basename,
                                      self._dispatcher.load_file(sf, sf))
                 compilation_args += basename
-            execution = dispatcher.add_execution("Compiling " + self._path,
-                                                 compilation_command,
-                                                 compilation_args, cb)
-            for name, file_id in files_to_pass:
-                execution.input(name, file_id)
-            # Set (very large) time and memory limits for compilation.
-            execution.cpu_limit(10.0)
-            execution.wall_limit(20.0)
-            execution.memory_limit(2 * 1024 * 1024)  # 2 GiB
-            return execution.output(self._compiled_name,
-                                    "Compiled " + self._path)
+
+        # Once compilation commands are decided, the rest is the same for all
+        # languages.
+        execution = dispatcher.add_execution("Compiling " + self._path,
+                                             compilation_command,
+                                             compilation_args, cb)
+        for name, file_id in files_to_pass:
+            execution.input(name, file_id)
+        # Set (very large) time and memory limits for compilation.
+        execution.cpu_limit(10.0)
+        execution.wall_limit(20.0)
+        execution.memory_limit(2 * 1024 * 1024)  # 2 GiB
+        return execution.output(self._compiled_name, "Compiled " + self._path)
 
     def execute(self, description, compilation_output, args, cb):
         execution = self._dispatcher.add_execution(

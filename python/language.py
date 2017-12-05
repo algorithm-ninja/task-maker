@@ -24,3 +24,6 @@ class Language(Enum):
             return cls.SH
         else:
             raise RuntimeError("Unknown source file language")
+
+    def needs_compilation(self):
+        return self not in [Language.SH, Language.PY]
