@@ -22,6 +22,15 @@ py_library(
 )
 
 py_library(
+    name = "task",
+    srcs = ["task.py"],
+    deps = [
+        ":language",
+        ":source_file",
+    ],
+)
+
+py_library(
     name = "dispatcher",
     srcs = ["dispatcher.py"],
     imports = ["bindings"],
