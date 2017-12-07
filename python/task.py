@@ -57,11 +57,12 @@ class Subtask:
 
 
 class Task:
-    def __init__(self, dispatcher):
-        self.dispatcher = dispatcher
+    def __init__(self):
         self.subtasks = []
         self.graders = dict()
+        self.checker_src = None
         self.checker = None
+        self.compiled_checker = None
         self.testcases = []
         self.subtasks = []
         self.generated_testcases = None
@@ -75,7 +76,7 @@ class Task:
         self.subtasks.append(subtask)
 
     def add_checker(self, checker_src):
-        self.checker = SourceFile(dispatcher, checker_src)
+        self.checker_src = checker_src
 
     def add_grader(self, grader_src):
         lang = Language.from_file(grader_src)

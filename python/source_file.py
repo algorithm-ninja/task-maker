@@ -10,6 +10,7 @@ class SourceFile:
         self._path = path
         self._dispatcher = dispatcher
         self._compiled_name = os.path.splitext(os.path.basename(path))[0]
+        self._compilation_output = None
 
     def get_language(self):
         return Language.from_file(self._path)
@@ -20,7 +21,9 @@ class SourceFile:
         lang = self.get_language()
         # No grader support for Python and shell - compilation is a noop.
         if not lang.needs_compilation():
-            return self._dispatcher.load_file(self._path, self._path, cb)
+            self._compilation_output = self._dispatcher.load_file(
+                self._path, self._path, cb)
+            return self._compilation_output
         elif lang in [Language.CPP, Language.C]:
             if lang == Language.CPP:
                 compilation_command = "/usr/bin/g++"
@@ -52,10 +55,12 @@ class SourceFile:
         execution.memory_limit(2 * 1024 * 1024)  # 2 GiB
         return execution.output(self._compiled_name, "Compiled " + self._path)
 
-    def execute(self, description, compilation_output, args, cb):
+    def execute(self, description, args, cb):
+        if self._compilation_output is None:
+            raise RuntimeError("You must compile this source file first")
         execution = self._dispatcher.add_execution(
             description, self._compiled_name, args, cb)
-        execution.input(self._compiled_name, compilation_output)
+        execution.input(self._compiled_name, self._compilation_output)
         # Return the execution to allow doing more complicated things like
         # setting time limits.
         return execution
