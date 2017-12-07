@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
-from . import core
-from . import execution
-from . import file_id
+# pylint: disable=import-error
+from .core import Core
+from .execution import Execution
+from .file_id import FileID

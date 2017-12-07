@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-from bindings import core
+from bindings import Core
 
 
 class Dispatcher:
     def __init__(self):
         self._callbacks = dict()
         self._file_callbacks = dict()
-        self._core = core.Core()
-        core.set_callback(self._callback)
+        self._core = Core()
+        self._core.set_callback(self._callback)
 
     def add_execution(self, description, executable, args, callback):
         execution = self._core.add_execution(description, executable, args)

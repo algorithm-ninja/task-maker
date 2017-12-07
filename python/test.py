@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import tempfile
-from bindings.task_maker import core
+from bindings import Core
 
 
 def callback(data):
     print(data.event, data.message, data.type)
-    return data.event != core.Core.TaskStatus.Event.FAILURE
+    return data.event != Core.TaskStatus.Event.FAILURE
 
 
 def main():
@@ -13,7 +13,7 @@ def main():
         tmp.write(b"Lorem ipsum dolor sit amet.")
         tmp.seek(0)
 
-        exec_core = core.Core()
+        exec_core = Core()
         exec_core.set_callback(callback)
         temp_file = exec_core.load_file("tmp file", tmp.name)
         ex = exec_core.add_execution("test", "/bin/cat", ["foobar"])
