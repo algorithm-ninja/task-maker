@@ -6,6 +6,7 @@ from enum import Enum
 
 
 class Language(Enum):
+    # pylint: disable=invalid-name
     C = 0
     CPP = 1
     PY = 2

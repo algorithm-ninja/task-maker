@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
-from python.language import Language
-from python.source_file import SourceFile
-
 from enum import Enum
+
+from python.language import Language
 
 
 class ScoreMode(Enum):
@@ -30,19 +29,19 @@ class Input:
 
 
 class Testcase:
-    def __init__(self, input, output=None):
+    def __init__(self, input_file, output=None):
         # If the output is None, it will be generated with the official
         # solution. Otherwise it must be the path to the correct output
         # file.
-        if not isinstance(input, Input):
+        if not isinstance(input_file, Input):
             raise ValueError("The input file should be an instance of Input")
         if output is not None and not isinstance(output, str):
             raise ValueError(
                 "The output should be either none or a path to a file")
-        if input.path is None and output is not None:
+        if input_file.path is None and output is not None:
             raise ValueError(
                 "You should not provide an output for generated inputs")
-        self.input = input
+        self.input = input_file
         self.output = output
 
 
@@ -83,6 +82,3 @@ class Task:
         if lang not in self.graders:
             self.graders[lang] = []
         self.graders[lang].append(grader_src)
-
-    def add_subtask(self, subtask):
-        self.subtasks.append(subtask)

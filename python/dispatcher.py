@@ -9,15 +9,15 @@ class Dispatcher:
         self._core = core.Core()
         core.set_callback(self._callback)
 
-    def add_execution(self, description, executable, args, cb):
+    def add_execution(self, description, executable, args, callback):
         execution = self._core.add_execution(description, executable, args)
-        self._callbacks[execution.id()] = cb
+        self._callbacks[execution.id()] = callback
         return execution
 
-    def load_file(self, description, path, cb=None):
+    def load_file(self, description, path, callback=None):
         file_id = self._core.load_file(description, path)
-        if cb:
-            self._file_callbacks[file_id.id()] = cb
+        if callback:
+            self._file_callbacks[file_id.id()] = callback
         return file_id
 
     def run(self):
@@ -30,7 +30,7 @@ class Dispatcher:
             return True
         success = task_status.event == task_status.Event.SUCCESS
         message = None if success else task_status.message
-        if task_status.type == FILE_LOAD:
+        if task_status.type == task_status.Event.FILE_LOAD:
             cause = task_status.file_info
             callback = self._file_callbacks.get(cause.id(), None)
         else:

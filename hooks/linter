@@ -3,7 +3,9 @@
 INCLUDES=$(cat .syntastic_cpp_config)
 EXCLUDE_CHECKS="-cppcoreguidelines-pro-type-vararg,-misc-unused-parameters,-llvm-header-guard"
 
-check_file() {
+PYTHON_EXCLUDE_CHECKS="--disable missing-docstring --disable too-few-public-methods --disable too-many-arguments"
+
+check_file_clang() {
   file="${1}"
   # TODO: add -quiet as soon as it is supported
   clang-tidy --checks=*,${EXCLUDE_CHECKS} \
@@ -12,9 +14,14 @@ check_file() {
   git add ${1}
 }
 
+check_file_python() {
+  pylint ${PYTHON_EXCLUDE_CHECKS} ${1}
+  git add ${1}
+}
+
 case "${1}" in
   --about )
-    echo "Runs clang-tidy on source files"
+    echo "Runs a linter on source files"
     ;;
   * )
     for file in `git diff-index --cached --name-only HEAD` ; do
@@ -22,11 +29,15 @@ case "${1}" in
       then
         if [ ${file: -3} == '.cc' ]
         then
-          check_file "${file}"
+          check_file_clang "${file}"
         fi
         if [ ${file: -4} == '.hpp' ]
         then
-          check_file "${file}"
+          check_file_clang "${file}"
+        fi
+        if [ ${file: -3} == '.py' ]
+        then
+          check_file_python "${file}"
         fi
       fi
     done
