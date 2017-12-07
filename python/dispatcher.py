@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from bindings.task_maker import core
+from bindings import core
 
 
 class Dispatcher:

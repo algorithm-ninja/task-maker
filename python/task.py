@@ -57,8 +57,8 @@ class Subtask:
 
 class Task:
     def __init__(self):
-        self.subtasks = []
         self.graders = dict()
+        self.solution_src = None
         self.checker_src = None
         self.checker = None
         self.compiled_checker = None
@@ -74,6 +74,9 @@ class Task:
             raise ValueError("Subtask with unknown testcase given")
         self.subtasks.append(subtask)
 
+    def add_solution(self, solution_src):
+        self.solution_src = solution_src
+
     def add_checker(self, checker_src):
         self.checker_src = checker_src
 
@@ -82,3 +85,6 @@ class Task:
         if lang not in self.graders:
             self.graders[lang] = []
         self.graders[lang].append(grader_src)
+
+    def was_generated(self):
+        return self.generated_testcases is not None

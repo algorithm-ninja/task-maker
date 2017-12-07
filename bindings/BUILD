@@ -36,7 +36,7 @@ cc_binary(
 
 py_library(
     name = "task_maker",
-    srcs = ["task_maker.py"],
+    srcs = ["__init__.py"],
     data = [
         ":core.so",
         ":execution.so",

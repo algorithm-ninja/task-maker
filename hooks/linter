@@ -3,7 +3,7 @@
 INCLUDES=$(cat .syntastic_cpp_config)
 EXCLUDE_CHECKS="-cppcoreguidelines-pro-type-vararg,-misc-unused-parameters,-llvm-header-guard"
 
-PYTHON_EXCLUDE_CHECKS="--disable missing-docstring --disable too-few-public-methods --disable too-many-arguments"
+PYTHON_EXCLUDE_CHECKS="--disable missing-docstring --disable too-few-public-methods --disable too-many-arguments --disable too-many-instance-attributes"
 
 check_file_clang() {
   file="${1}"
