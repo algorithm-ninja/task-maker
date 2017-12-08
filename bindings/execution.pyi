@@ -27,7 +27,7 @@ class Execution:
     def stderr(self) -> FileID:
         ...
 
-    def output(self, name: str, description: Optional[str]) -> FileID:
+    def output(self, name: str, description: Optional[str] = None) -> FileID:
         ...
 
     def cpu_limit(self, limit: float) -> None:

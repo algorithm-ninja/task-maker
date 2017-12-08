@@ -5,7 +5,8 @@ from typing import Dict  # pylint: disable=unused-import
 from typing import List
 from typing import Optional
 
-from bindings import FileID  # pylint: disable=unused-import
+from bindings import Execution
+from bindings import FileID
 from python.source_file import SourceFile  # pylint: disable=unused-import
 from python.language import Language
 
@@ -30,7 +31,6 @@ class Input:
                 "Args should be specified together with a generator")
         if (path is None) and (validator is None):
             raise ValueError("You should validate generated inputs")
-        self.should_generate = generator is not None
         self.generator = generator
         self.args = args
         self.path = path
@@ -55,38 +55,42 @@ class Testcase:
         self.output = output
         self.input_id = None  # type: Optional[FileID]
         self.output_id = None  # type: Optional[FileID]
+        self.subtask = None  # type: Optional[Subtask]
 
 
 class Subtask:
-    def __init__(self, num: int, max_score: float, score_mode: ScoreMode,
-                 tc_begin: int, tc_end: int) -> None:
-        self.num = num
-        self.score = None  # type: Optional[float]
+    def __init__(self, max_score: float, score_mode: ScoreMode,
+                 testcases: List[Testcase]) -> None:
+        self.num = -1
         self.max_score = max_score
         self.score_mode = score_mode
-        if tc_begin >= tc_end or tc_begin < 0:
-            raise ValueError("Invalid testcase range given")
-        self.tc_range = (tc_begin, tc_end)
+        self.testcases = testcases
+        self.task = None  # type: Optional[Task]
+        for testcase in testcases:
+            testcase.subtask = self
 
 
 class Task:
-    def __init__(self) -> None:
+    def __init__(self, time_limit: float, memory_limit: int) -> None:
         self.graders = dict()  # type: Dict[Language, List[str]]
         self.solution_src = None  # type: Optional[str]
+        self.solution = None  # type: Optional[SourceFile]
         self.checker_src = None  # type: Optional[str]
         self.checker = None  # type: Optional[SourceFile]
-        self.compiled_checker = None  # type: Optional[FileID]
         self.testcases = []  # type: List[Testcase]
         self.subtasks = []  # type: List[Subtask]
         self.generated = False
-
-    def add_testcase(self, testcase: Testcase) -> None:
-        self.testcases.append(testcase)
+        self.time_limit = time_limit
+        self.memory_limit = memory_limit
+        self.input_file = None  # type: Optional[str]
+        self.output_file = None  # type: Optional[str]
 
     def add_subtask(self, subtask: Subtask) -> None:
-        if subtask.tc_range[1] >= len(self.testcases):
-            raise ValueError("Subtask with unknown testcase given")
         self.subtasks.append(subtask)
+        subtask.num = len(self.subtasks)
+        subtask.task = self
+        for testcase in subtask.testcases:
+            self.testcases.append(testcase)
 
     def add_solution(self, solution_src: str) -> None:
         self.solution_src = solution_src
@@ -99,6 +103,21 @@ class Task:
         if lang not in self.graders:
             self.graders[lang] = []
         self.graders[lang].append(grader_src)
+
+    def set_input_file(self, input_file: str) -> None:
+        self.input_file = input_file
+
+    def set_output_file(self, output_file: str) -> None:
+        self.output_file = output_file
+
+    def setup_io(self, execution: Execution, input_data: FileID) -> FileID:
+        if self.input_file is None:
+            execution.stdin(input_data)
+        else:
+            execution.input(self.input_file, input_data)
+        if self.output_file is None:
+            return execution.stdout()
+        return execution.output(self.output_file)
 
     def was_generated(self) -> bool:
         return self.generated

@@ -18,16 +18,19 @@ class GenerationStatus(Enum):
     GENERATING = 1
     GENERATED = 2
     VALIDATING = 3
-    SUCCESS = 4
-    FAILURE = 5
+    VALIDATED = 4
+    SOLVING = 5
+    SUCCESS = 6
+    FAILURE = 7
 
 
 class EvaluationStatus(Enum):
     WAITING = 0
-    RUNNING = 1
-    CHECKING = 2
-    SUCCESS = 3
-    FAILURE = 4
+    EXECUTING = 1
+    EXECUTED = 2
+    CHECKING = 3
+    SUCCESS = 4
+    FAILURE = 5
 
 
 class EvaluationResult:
@@ -43,6 +46,12 @@ class EvaluationResult:
 class UI:
     def __init__(self, task_name: str) -> None:
         self.task_name = task_name
+
+    def set_time_limit(self, time_limit: float) -> None:
+        raise NotImplementedError("Please subclass this class")
+
+    def set_memory_limit(self, memory_limit: int) -> None:
+        raise NotImplementedError("Please subclass this class")
 
     def set_compilation_status(self,
                                file_name: str,
