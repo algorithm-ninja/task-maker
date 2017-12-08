@@ -13,7 +13,7 @@ class Language(Enum):
     SH = 3
 
     @classmethod
-    def from_file(cls, path):
+    def from_file(cls, path: str) -> 'Language':
         ext = os.path.splitext(path)[1]
         if ext in ['.cpp', '.cc', '.C']:
             return cls.CPP
@@ -26,5 +26,5 @@ class Language(Enum):
         else:
             raise RuntimeError("Unknown source file language")
 
-    def needs_compilation(self):
+    def needs_compilation(self) -> bool:
         return self not in [Language.SH, Language.PY]

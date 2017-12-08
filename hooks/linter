@@ -3,7 +3,7 @@
 INCLUDES=$(cat .syntastic_cpp_config)
 EXCLUDE_CHECKS="-cppcoreguidelines-pro-type-vararg,-misc-unused-parameters,-llvm-header-guard"
 
-PYTHON_EXCLUDE_CHECKS="--disable missing-docstring --disable too-few-public-methods --disable too-many-arguments --disable too-many-instance-attributes"
+PYTHON_EXCLUDE_CHECKS="--disable missing-docstring --disable too-few-public-methods --disable too-many-arguments --disable too-many-instance-attributes --disable too-many-public-methods --disable fixme"
 
 check_file_clang() {
   file="${1}"
@@ -16,6 +16,7 @@ check_file_clang() {
 
 check_file_python() {
   pylint ${PYTHON_EXCLUDE_CHECKS} ${1}
+  mypy --strict ${1}
   git add ${1}
 }
 
@@ -36,6 +37,10 @@ case "${1}" in
           check_file_clang "${file}"
         fi
         if [ ${file: -3} == '.py' ]
+        then
+          check_file_python "${file}"
+        fi
+        if [ ${file: -4} == '.pyi' ]
         then
           check_file_python "${file}"
         fi

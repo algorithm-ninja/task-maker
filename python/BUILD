@@ -18,7 +18,10 @@ py_library(
 py_library(
     name = "source_file",
     srcs = ["source_file.py"],
-    deps = [":language"],
+    deps = [
+        ":language",
+        "//bindings:task_maker",
+    ],
 )
 
 py_library(
@@ -27,6 +30,7 @@ py_library(
     deps = [
         ":language",
         ":source_file",
+        "//bindings:task_maker",
     ],
 )
 

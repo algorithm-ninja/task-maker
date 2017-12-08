@@ -3,12 +3,12 @@ import tempfile
 from bindings import Core
 
 
-def callback(data):
+def callback(data: Core.TaskStatus) -> bool:
     print(data.event, data.message, data.type)
     return data.event != Core.TaskStatus.Event.FAILURE
 
 
-def main():
+def main() -> None:
     with tempfile.NamedTemporaryFile() as tmp:
         tmp.write(b"Lorem ipsum dolor sit amet.")
         tmp.seek(0)

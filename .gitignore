@@ -2,3 +2,5 @@ bazel-*
 *.swp
 temp/
 files/
+__pycache__/
+.mypy_cache/
