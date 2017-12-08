@@ -9,6 +9,7 @@ from bindings import Execution
 from bindings import FileID
 from python.source_file import SourceFile  # pylint: disable=unused-import
 from python.language import Language
+from python.ui import UI
 
 
 class ScoreMode(Enum):
@@ -56,6 +57,7 @@ class Testcase:
         self.input_id = None  # type: Optional[FileID]
         self.output_id = None  # type: Optional[FileID]
         self.subtask = None  # type: Optional[Subtask]
+        self.num = -1
 
 
 class Subtask:
@@ -71,7 +73,7 @@ class Subtask:
 
 
 class Task:
-    def __init__(self, time_limit: float, memory_limit: int) -> None:
+    def __init__(self, ui: UI, time_limit: float, memory_limit: int) -> None:
         self.graders = dict()  # type: Dict[Language, List[str]]
         self.solution_src = None  # type: Optional[str]
         self.solution = None  # type: Optional[SourceFile]
@@ -84,13 +86,21 @@ class Task:
         self.memory_limit = memory_limit
         self.input_file = None  # type: Optional[str]
         self.output_file = None  # type: Optional[str]
+        self._ui = ui
+        ui.set_memory_limit(memory_limit)
+        ui.set_time_limit(time_limit)
 
     def add_subtask(self, subtask: Subtask) -> None:
         self.subtasks.append(subtask)
         subtask.num = len(self.subtasks)
         subtask.task = self
+        testcase_nums = []  # type: List[int]
         for testcase in subtask.testcases:
+            testcase.num = len(self.testcases)
             self.testcases.append(testcase)
+            testcase_nums.append(testcase.num)
+        self._ui.set_subtask_info(subtask.num, subtask.max_score,
+                                  testcase_nums)
 
     def add_solution(self, solution_src: str) -> None:
         self.solution_src = solution_src
@@ -118,6 +128,3 @@ class Task:
         if self.output_file is None:
             return execution.stdout()
         return execution.output(self.output_file)
-
-    def was_generated(self) -> bool:
-        return self.generated
