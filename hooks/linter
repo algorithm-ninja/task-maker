@@ -46,5 +46,7 @@ case "${1}" in
         fi
       fi
     done
+    pylint ${PYTHON_EXCLUDE_CHECKS} $(find . -name '*.py')
+    mypy --strict $(find . -name '*.py')
     ;;
 esac

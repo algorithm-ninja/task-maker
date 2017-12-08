@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 from enum import Enum
+from typing import List
 from typing import Optional
-
-from python.task import Subtask
 
 
 class CompilationStatus(Enum):
@@ -53,6 +52,10 @@ class UI:
     def set_memory_limit(self, memory_limit: int) -> None:
         raise NotImplementedError("Please subclass this class")
 
+    def set_subtask_info(self, subtask_num: int, max_score: float,
+                         testcases: List[int]) -> None:
+        raise NotImplementedError("Please subclass this class")
+
     def set_compilation_status(self,
                                file_name: str,
                                is_solution: bool,
@@ -74,10 +77,11 @@ class UI:
                               error: Optional[str] = None) -> None:
         raise NotImplementedError("Please subclass this class")
 
-    def set_subtask_info(self, subtask: Subtask) -> None:
+    def set_subtask_score(self, subtask_num: int, solution_name: str,
+                          score: float) -> None:
         raise NotImplementedError("Please subclass this class")
 
-    def set_task_score(self, score: float) -> None:
+    def set_task_score(self, solution_name: str, score: float) -> None:
         raise NotImplementedError("Please subclass this class")
 
     def final_status(self) -> None:
