@@ -58,10 +58,11 @@ class Testcase:
 
 
 class Subtask:
-    def __init__(self, num: int, score: int, score_mode: ScoreMode,
+    def __init__(self, num: int, max_score: float, score_mode: ScoreMode,
                  tc_begin: int, tc_end: int) -> None:
         self.num = num
-        self.score = score
+        self.score = None  # type: Optional[float]
+        self.max_score = max_score
         self.score_mode = score_mode
         if tc_begin >= tc_end or tc_begin < 0:
             raise ValueError("Invalid testcase range given")

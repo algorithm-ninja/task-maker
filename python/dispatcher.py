@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from enum import Enum
 from typing import Callable
 from typing import Dict  # pylint: disable=unused-import
 from typing import List
@@ -9,10 +10,17 @@ from bindings import Core
 from bindings import Execution
 from bindings import FileID
 
+
+class EventStatus(Enum):
+    START = 0
+    SUCCESS = 1
+    FAILURE = 2
+
+
 # pylint: disable=invalid-name
 
 Event = Union[FileID, Execution]
-DispatcherCallback = Callable[[Event, bool, Optional[str]], bool]
+DispatcherCallback = Callable[[Event, EventStatus, Optional[str]], bool]
 
 # pylint: enable=invalid-name
 
@@ -45,10 +53,8 @@ class Dispatcher:
     def _callback(self, task_status: Core.TaskStatus) -> bool:
         if task_status.event == task_status.Event.BUSY:
             return True
-        if task_status.event == task_status.Event.START:
-            return True
-        success = task_status.event == task_status.Event.SUCCESS
-        message = None if success else task_status.message
+        failure = task_status.event == task_status.Event.FAILURE
+        message = task_status.message if failure else None
         if task_status.type == task_status.Type.FILE_LOAD:
             cause = task_status.file_info  # type: Event
             callback = self._file_callbacks.get(cause.id(), None)
@@ -56,5 +62,13 @@ class Dispatcher:
             cause = task_status.execution_info
             callback = self._callbacks.get(cause.id(), None)
         if not callback:
-            return success
-        return callback(cause, success, message)
+            return not failure
+        if task_status.event == task_status.Event.FAILURE:
+            event_status = EventStatus.FAILURE
+        elif task_status.event == task_status.Event.SUCCESS:
+            event_status = EventStatus.SUCCESS
+        elif task_status.event == task_status.Event.START:
+            event_status = EventStatus.START
+        else:
+            raise ValueError("Invalid task status")
+        return callback(cause, event_status, message)
