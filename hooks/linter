@@ -3,7 +3,8 @@
 INCLUDES=$(cat .syntastic_cpp_config)
 EXCLUDE_CHECKS="-cppcoreguidelines-pro-type-vararg,-misc-unused-parameters,-llvm-header-guard"
 
-PYTHON_EXCLUDE_CHECKS="--disable missing-docstring --disable too-few-public-methods --disable too-many-arguments --disable too-many-instance-attributes --disable too-many-public-methods --disable fixme"
+PYLINT="pylint -s n --rcfile $(git rev-parse --show-toplevel)/.pylintrc"
+MYPY="mypy --strict"
 
 check_file_clang() {
   file="${1}"
@@ -15,8 +16,8 @@ check_file_clang() {
 }
 
 check_file_python() {
-  pylint -s n ${PYTHON_EXCLUDE_CHECKS} ${1}
-  mypy --strict ${1}
+  $PYLINT ${1}
+  $MYPY ${1}
   git add ${1}
 }
 
@@ -46,7 +47,7 @@ case "${1}" in
         fi
       fi
     done
-    pylint -s n ${PYTHON_EXCLUDE_CHECKS} $(find . -name '*.py')
-    mypy --strict $(find . -name '*.py')
+    $PYLINT $(find . -name '*.py')
+    $MYPY $(find . -name '*.py')
     ;;
 esac
