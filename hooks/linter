@@ -15,7 +15,7 @@ check_file_clang() {
 }
 
 check_file_python() {
-  pylint ${PYTHON_EXCLUDE_CHECKS} ${1}
+  pylint -s n ${PYTHON_EXCLUDE_CHECKS} ${1}
   mypy --strict ${1}
   git add ${1}
 }
@@ -46,7 +46,7 @@ case "${1}" in
         fi
       fi
     done
-    pylint ${PYTHON_EXCLUDE_CHECKS} $(find . -name '*.py')
+    pylint -s n ${PYTHON_EXCLUDE_CHECKS} $(find . -name '*.py')
     mypy --strict $(find . -name '*.py')
     ;;
 esac
