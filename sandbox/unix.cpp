@@ -10,14 +10,37 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
+namespace {
+char* mystrerror(int err, char* buf, size_t buf_size) {
+#ifdef _GNU_SOURCE
+  return strerror_r(err, buf, buf_size);
+#else
+  strerror_r(err, buf, buf_size);
+  return buf;
+#endif
+}
+}  // namespace
+
 namespace sandbox {
 
 static const constexpr size_t kStrErrorBufSize = 2048;
+
+bool Unix::PrepareForExecution(const std::string& executable,
+                               std::string* error_msg) {
+  char buf[kStrErrorBufSize] = {};
+  if (chmod(executable.c_str(), S_IRUSR | S_IWUSR | S_IXUSR) == -1) {
+    *error_msg = "chmod: ";
+    *error_msg += mystrerror(errno, buf, kStrErrorBufSize);
+    return false;
+  }
+  return true;
+}
 
 bool Unix::Execute(const ExecutionOptions& options, ExecutionInfo* info,
                    std::string* error_msg) {
@@ -32,15 +55,13 @@ bool Unix::Setup(std::string* error_msg) {
   char buf[kStrErrorBufSize] = {};
   if (pipe(pipe_fds_) == -1) {
     *error_msg = "pipe2: ";
-    strerror_r(errno, buf, kStrErrorBufSize);
-    *error_msg += buf;
+    *error_msg += mystrerror(errno, buf, kStrErrorBufSize);
     return false;
   }
   if (fcntl(pipe_fds_[0], F_SETFD, FD_CLOEXEC) == -1 ||
       fcntl(pipe_fds_[1], F_SETFD, FD_CLOEXEC) == -1) {
     *error_msg = "fcntl: ";
-    strerror_r(errno, buf, kStrErrorBufSize);
-    *error_msg += buf;
+    *error_msg += mystrerror(errno, buf, kStrErrorBufSize);
     return false;
   }
   return true;
@@ -51,8 +72,7 @@ bool Unix::DoFork(std::string* error_msg) {
   int fork_result = fork();
   if (fork_result == -1) {
     *error_msg = "fork: ";
-    strerror_r(errno, buf, kStrErrorBufSize);
-    *error_msg += buf;
+    *error_msg += mystrerror(errno, buf, kStrErrorBufSize);
     return false;
   }
   if (fork_result) {
@@ -65,6 +85,7 @@ bool Unix::DoFork(std::string* error_msg) {
 
 void Unix::Child() {
   auto die2 = [this](const char* prefix, const char* err) {
+    fprintf(stdout, "%s\n", err);
     char buf[kStrErrorBufSize + 64 + 2] = {};
     strncat(buf, prefix, 64);
     strncat(buf, ": ", 2);
@@ -78,8 +99,7 @@ void Unix::Child() {
 
   auto die = [&die2](const char* prefix, int err) {
     char buf[kStrErrorBufSize] = {};
-    strerror_r(err, buf, kStrErrorBufSize);
-    die2(prefix, buf);
+    die2(prefix, mystrerror(err, buf, kStrErrorBufSize));
   };
 
   int stdin_fd = -1;

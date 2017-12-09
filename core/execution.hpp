@@ -10,11 +10,6 @@
 
 namespace core {
 
-class execution_failure : public std::runtime_error {
- public:
-  execution_failure() : std::runtime_error("Execution failure") {}
-};
-
 class Execution {
  public:
   const std::string& Description() const { return description_; }
@@ -71,17 +66,26 @@ class Execution {
   Execution(std::string description, std::string executable,
             std::vector<std::string> args)
       : description_(std::move(description)),
-        id_(next_id_++),
+        id_((reinterpret_cast<int64_t>(&next_id_) << 32) | (next_id_++)),
         executable_(std::move(executable)),
         args_(std::move(args)),
         stdout_(std::unique_ptr<FileID>(
             new FileID("Standard output for " + description_))),
         stderr_(std::unique_ptr<FileID>(
-            new FileID("Standard error for " + description_))) {}
+            new FileID("Standard error for " + description_))) {
+    /*
+    fprintf(stderr, "Description: %s\n", description_.c_str());
+    fprintf(stderr, "Command: %s", executable_.c_str());
+    for (const std::string& arg : args_) {
+      fprintf(stderr, " %s", arg.c_str());
+    }
+    fprintf(stderr, "\n");
+    */
+  }
 
   std::string description_;
   int64_t id_;
-  static std::atomic<int64_t> next_id_;
+  static std::atomic<int32_t> next_id_;
 
   std::string executable_;
   std::vector<std::string> args_;

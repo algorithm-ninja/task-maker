@@ -9,6 +9,7 @@ from typing import Union
 from bindings import Core
 from bindings import Execution
 from bindings import FileID
+from python.ui import UI
 
 
 class EventStatus(Enum):
@@ -20,17 +21,18 @@ class EventStatus(Enum):
 # pylint: disable=invalid-name
 
 Event = Union[FileID, Execution]
-DispatcherCallback = Callable[[Event, EventStatus, Optional[str]], bool]
+DispatcherCallback = Callable[[Event, EventStatus], bool]
 
 # pylint: enable=invalid-name
 
 
 class Dispatcher:
-    def __init__(self) -> None:
+    def __init__(self, ui: UI) -> None:
         self._callbacks = dict()  # type: Dict[int, DispatcherCallback]
         self._file_callbacks = dict()  # type: Dict[int, DispatcherCallback]
         self._core = Core()
         self._core.set_callback(self._callback)
+        self._ui = ui
 
     def add_execution(self, description: str, executable: str, args: List[str],
                       callback: DispatcherCallback) -> Execution:
@@ -53,22 +55,23 @@ class Dispatcher:
     def _callback(self, task_status: Core.TaskStatus) -> bool:
         if task_status.event == task_status.Event.BUSY:
             return True
-        failure = task_status.event == task_status.Event.FAILURE
-        message = task_status.message if failure else None
+        if task_status.event == task_status.Event.FAILURE:
+            self._ui.fatal_error(task_status.message)
+            return False
         if task_status.type == task_status.Type.FILE_LOAD:
             cause = task_status.file_info  # type: Event
             callback = self._file_callbacks.get(cause.id(), None)
+            success = True
         else:
             cause = task_status.execution_info
             callback = self._callbacks.get(cause.id(), None)
+            success = task_status.execution_info.success()
         if not callback:
-            return not failure
-        if task_status.event == task_status.Event.FAILURE:
-            event_status = EventStatus.FAILURE
-        elif task_status.event == task_status.Event.SUCCESS:
-            event_status = EventStatus.SUCCESS
-        elif task_status.event == task_status.Event.START:
+            return success
+        if task_status.event == task_status.Event.START:
             event_status = EventStatus.START
+        elif task_status.event == task_status.Event.SUCCESS:
+            event_status = EventStatus.SUCCESS if success else EventStatus.FAILURE
         else:
             raise ValueError("Invalid task status")
-        return callback(cause, event_status, message)
+        return callback(cause, event_status)

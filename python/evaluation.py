@@ -3,7 +3,7 @@
 import shutil
 from typing import cast
 from typing import List
-from typing import Optional
+from typing import Optional  # pylint: disable=unused-import
 from bindings import Execution
 from python.dispatcher import Dispatcher
 from python.dispatcher import Event
@@ -42,14 +42,14 @@ class SubtaskScoreInfo:
         if all(score is not None for score in self._testcase_scores):
             testcase_scores = cast(List[float], self._testcase_scores)
             score = self._subtask.compute_score(testcase_scores)
-            self._evaluation.update_score(self._subtask.num, score)
             self._ui.set_subtask_score(self._subtask.num,
                                        self._evaluation.solution_src, score)
+            self._evaluation.update_score(self._subtask.num, score)
 
 
 class Evaluation:
-    def _callback(self, testcase_num: int, event: Event, status: EventStatus,
-                  message: Optional[str]) -> bool:
+    def _callback(self, testcase_num: int, event: Event,
+                  status: EventStatus) -> bool:
         evaluation_state = self._evaluations[testcase_num]
         execution = evaluation_state.execution
 
@@ -70,27 +70,29 @@ class Evaluation:
             self._ui.set_evaluation_status(testcase_num, self.solution_src,
                                            EvaluationStatus.EXECUTED)
             return True
+        if status == EventStatus.FAILURE and evaluation_state.has_checker \
+                and event.id() == evaluation_state.check:
+            display_msg = evaluation_state.check.stderr().contents(1024 * 1024)
+            self._ui.set_evaluation_status(testcase_num, self.solution_src,
+                                           EvaluationStatus.FAILURE,
+                                           evaluation_result(0.0, display_msg))
+            return False
         if status == EventStatus.FAILURE and event.id() == execution.id():
             if execution.signal() != 0:
                 display_msg = "Signal " + str(execution.signal())
-            else:
+            elif execution.status_code() != 0:
                 display_msg = "Return code " + str(execution.status_code())
-            self._ui.set_evaluation_status(
-                testcase_num, self.solution_src, EvaluationStatus.SUCCESS,
-                evaluation_result(0.0, display_msg), message)
-            return True
-        if status == EventStatus.FAILURE and evaluation_state.has_checker:
-            display_msg = evaluation_state.check.stderr().contents(1024 * 1024)
-            self._ui.set_evaluation_status(
-                testcase_num, self.solution_src, EvaluationStatus.FAILURE,
-                evaluation_result(0.0, display_msg), message)
-            return False
-        if status == EventStatus.FAILURE and not evaluation_state.has_checker:
-            self._ui.set_evaluation_status(
-                testcase_num, self.solution_src, EvaluationStatus.SUCCESS,
-                evaluation_result(0.0, "Output not correct"), message)
-            return True
-        if evaluation_state.has_checker:
+            else:
+                display_msg = "Missing output files"
+            score = 0.0
+        if not evaluation_state.has_checker:
+            if status == EventStatus.FAILURE:
+                display_msg = "Output not correct"
+                score = 0.0
+            else:
+                display_msg = "Output is correct"
+                score = 1.0
+        else:
             display_msg = evaluation_state.check.stderr().contents(1024 * 1024)
             try:
                 score = float(
@@ -100,18 +102,16 @@ class Evaluation:
                     testcase_num, self.solution_src, EvaluationStatus.FAILURE,
                     evaluation_result(0.0, display_msg),
                     "Invalid score returned by checker")
-        else:
-            display_msg = "Output is correct"
-            score = 1.0
-        self._ui.set_evaluation_status(
-            testcase_num, self.solution_src, EvaluationStatus.SUCCESS,
-            evaluation_result(score, display_msg), message)
+        self._ui.set_evaluation_status(testcase_num, self.solution_src,
+                                       EvaluationStatus.SUCCESS,
+                                       evaluation_result(score, display_msg))
+        self._subtask_score_info[evaluation_state.subtask_num].update_score(
+            evaluation_state.testcase_offset, score)
         return True
 
     def _evaluate_testcase(self, num: int, testcase: Testcase) -> None:
-        def callback(event: Event, status: EventStatus,
-                     message: Optional[str]) -> bool:
-            return self._callback(num, event, status, message)
+        def callback(event: Event, status: EventStatus) -> bool:
+            return self._callback(num, event, status)
 
         if testcase.input_id is None or testcase.output_id is None \
                 or testcase.subtask is None:
@@ -164,7 +164,7 @@ class Evaluation:
         self.score = None  # type: Optional[float]
         self._dispatcher = dispatcher
         self._solution = SourceFile(dispatcher, ui, solution, True)
-        self._solution.compile(task.graders[self._solution.get_language()])
+        self._solution.compile(task.graders(self._solution.get_language()))
         self._task = task
         self._ui = ui
         self._evaluations = []  # type: List[SingleEvaluationState]

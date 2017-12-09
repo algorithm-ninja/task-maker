@@ -31,7 +31,10 @@ class FileID {
   friend class Execution;
 
   explicit FileID(std::string description)
-      : description_(std::move(description)), id_(next_id_++) {}
+      : description_(std::move(description)),
+        id_((reinterpret_cast<int64_t>(&next_id_) << 32) | (next_id_++)) {
+    // fprintf(stderr, "generated id: %lu, next_id_ ptr: %p\n", id_, &next_id_);
+  }
   FileID(std::string description, std::string path)
       : FileID(std::move(description)) {
     path_ = std::move(path);
@@ -45,7 +48,7 @@ class FileID {
   int64_t id_;
   util::SHA256_t hash_ = {};
 
-  static std::atomic<int64_t> next_id_;
+  static std::atomic<int32_t> next_id_;
 };
 
 }  // namespace core

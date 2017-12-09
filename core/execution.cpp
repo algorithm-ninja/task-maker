@@ -3,7 +3,7 @@
 
 namespace core {
 
-std::atomic<int64_t> Execution::next_id_{1};
+std::atomic<int32_t> Execution::next_id_{1};
 
 FileID* Execution::Output(const std::string& name,
                           const std::string& description) {
@@ -60,7 +60,12 @@ void Execution::Run(
         util::File::Read(util::File::ProtoSHAToPath(hash), chunk_receiver);
       });
 
-  if (response_.status_code() != 0 || response_.signal() != 0) {
+  if (response_.status() == proto::Status::INTERNAL_ERROR) {
+    throw std::runtime_error(response_.error_message());
+  }
+
+  if (response_.status_code() != 0 || response_.signal() != 0 ||
+      response_.status() == proto::Status::MISSING_FILES) {
     successful_ = false;
   } else {
     successful_ = true;
@@ -93,9 +98,6 @@ void Execution::Run(
       id = outputs_.at(out.name())->ID();
     }
     if (successful_) set_hash(id, extracted_hash);
-  }
-  if (!successful_) {
-    throw execution_failure();
   }
 }
 

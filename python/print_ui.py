@@ -17,14 +17,14 @@ class PrintUI(UI):
         self._scores = dict()  # type: Dict[str, float]
 
     def set_time_limit(self, time_limit: float) -> None:
-        print("Time limit is set to %f seconds" % time_limit)
+        print("Time limit is set to %.2f seconds" % time_limit)
 
     def set_memory_limit(self, memory_limit: int) -> None:
-        print("Memory limit is set to %f megabytes" % (memory_limit / 1024))
+        print("Memory limit is set to %.2f megabytes" % (memory_limit / 1024))
 
     def set_subtask_info(self, subtask_num: int, max_score: float,
                          testcases: List[int]) -> None:
-        print("Subtask %d has max score %f and %d testcases" %
+        print("Subtask %d has max score %.2f and %d testcases" %
               (subtask_num, max_score, len(testcases)))
 
     def set_compilation_status(self,
@@ -35,7 +35,7 @@ class PrintUI(UI):
         print("%sStatus of the compilation of %s is %s" %
               ("[sol] " if is_solution else "", file_name, status))
         if warnings:
-            print("Compiler output:\n", warnings)
+            print("Compiler output:", warnings, sep="\n")
 
     def set_generation_status(self,
                               testcase_num: int,
@@ -44,7 +44,7 @@ class PrintUI(UI):
         print("Status of the generation of testcase %d is %s" % (testcase_num,
                                                                  status))
         if stderr:
-            print("Errors:\n", stderr)
+            print("Errors:", stderr, sep="\n")
 
     def set_evaluation_status(self,
                               testcase_num: int,
@@ -55,7 +55,7 @@ class PrintUI(UI):
         print("Status of the evaluation of solution %s on testcase %d: %s" %
               (solution_name, testcase_num, status))
         if error:
-            print("Errors:\n", error)
+            print("Errors:", error, sep="\n")
         if result:
             print("Outcome:", result.message)
             print("Score:", result.score)
@@ -67,20 +67,23 @@ class PrintUI(UI):
         if solution_name not in self._subtasks_scores:
             self._subtasks_scores[solution_name] = dict()
         self._subtasks_scores[solution_name][subtask_num] = score
-        print("Solution %s has a score of %f on subtask %d" %
+        print("Solution %s has a score of %.2f on subtask %d" %
               (solution_name, score, subtask_num))
 
     def set_task_score(self, solution_name: str, score: float) -> None:
         self._scores[solution_name] = score
-        print("Solution %s has a score of %f" % (solution_name, score))
+        print("Solution %s has a score of %.2f" % (solution_name, score))
 
     def print_final_status(self) -> None:
         for solution_name in self._scores:
-            print("Solution %s has a score of %f" %
+            print("Solution %s has a score of %.2f" %
                   (solution_name, self._scores[solution_name]))
             print("Solution %s has the following scores on subtasks: %s" %
                   (solution_name, ", ".join([
-                      str(info[0]) + ": " + str(info[1])
+                      "%d: %.2f" % info
                       for info in sorted(
                           self._subtasks_scores[solution_name].items())
                   ])))
+
+    def fatal_error(self, msg: str) -> None:
+        print("FATAL ERROR: %s" % msg)

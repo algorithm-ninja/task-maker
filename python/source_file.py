@@ -25,7 +25,7 @@ class SourceFile:
         self._basename = os.path.basename(path)
         self._compiled_name = os.path.splitext(self._basename)[0]
         self._compilation_output = None  # type: Optional[FileID]
-        self._runtime_deps = []  # type: List[FileID]
+        self._runtime_deps = []  # type: List[Tuple[str, FileID]]
         self._is_solution = is_solution
         self._stderr = None  # type: Optional[FileID]
         self._ui = ui
@@ -33,24 +33,21 @@ class SourceFile:
     def get_language(self) -> Language:
         return Language.from_file(self._path)
 
-    def _callback(self, event: Event, status: EventStatus,
-                  message: Optional[str]) -> bool:
+    def _callback(self, event: Event, status: EventStatus) -> bool:
+        # Ignore load_files of dependencies.
         if self.get_language().needs_compilation() and isinstance(
                 event, FileID):
-            # Error loading the file.
-            if status == EventStatus.FAILURE:
-                self._ui.set_compilation_status(
-                    self._basename, self._is_solution,
-                    CompilationStatus.FAILURE, message)
-                return not self._is_solution
             return True
         if status == EventStatus.START:
             self._ui.set_compilation_status(self._basename, self._is_solution,
                                             CompilationStatus.RUNNING)
             return True
-        # At this point, if self._stderr is not None, we have real output.
+        # At this point, if self._stderr is not None, we have real compilation
+        # output.
         if self._stderr is not None:
-            message = self._stderr.contents(1024 * 1024)
+            message = self._stderr.contents(1024 * 1024)  # type: Optional[str]
+        else:
+            message = None
         if status == EventStatus.FAILURE:
             self._ui.set_compilation_status(self._basename, self._is_solution,
                                             CompilationStatus.FAILURE, message)
@@ -61,7 +58,7 @@ class SourceFile:
             return True
         raise RuntimeError("Unexpected compilation state")
 
-    def compile(self, graders: List[str]) -> FileID:
+    def compile(self, graders: List[str]) -> None:
         self._ui.set_compilation_status(self._basename, self._is_solution,
                                         CompilationStatus.WAITING)
         if graders is None:
@@ -71,10 +68,10 @@ class SourceFile:
         if not lang.needs_compilation():
             self._compilation_output = self._dispatcher.load_file(
                 self._path, self._path, self._callback)
-            self._runtime_deps = [
-                self._dispatcher.load_file(dep, dep) for dep in graders
-            ]
-            return self._compilation_output
+            self._runtime_deps = [(os.path.basename(dep),
+                                   self._dispatcher.load_file(dep, dep))
+                                  for dep in graders]
+            return
         elif lang in [Language.CPP, Language.C]:
             if lang == Language.CPP:
                 compilation_command = "/usr/bin/g++"
@@ -91,7 +88,7 @@ class SourceFile:
                 basename = os.path.basename(source_file)
                 files_to_pass.append((basename, self._dispatcher.load_file(
                     source_file, source_file)))
-                compilation_args += basename
+                compilation_args.append(basename)
 
         # Once compilation commands are decided, the rest is the same for all
         # languages.
@@ -105,7 +102,8 @@ class SourceFile:
         execution.wall_limit(20.0)
         execution.memory_limit(2 * 1024 * 1024)  # 2 GiB
         self._stderr = execution.stderr()
-        return execution.output(self._compiled_name, "Compiled " + self._path)
+        self._compilation_output = execution.output(self._compiled_name,
+                                                    "Compiled " + self._path)
 
     def execute(self, description: str, args: List[str],
                 callback: DispatcherCallback) -> Execution:
@@ -114,6 +112,8 @@ class SourceFile:
         execution = self._dispatcher.add_execution(
             description, self._compiled_name, args, callback)
         execution.input(self._compiled_name, self._compilation_output)
+        for runtime_dep in self._runtime_deps:
+            execution.input(runtime_dep[0], runtime_dep[1])
         # Return the execution to allow doing more complicated things like
         # setting time limits.
         return execution

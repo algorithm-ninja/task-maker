@@ -57,6 +57,13 @@ class Sandbox {
   using score_t = std::function<int()>;
   static std::unique_ptr<Sandbox> Create();
 
+  // Prepares a newly-created file for execution. Returns false on error,
+  // and sets error_msg.
+  virtual bool PrepareForExecution(const std::string& executable,
+                                   std::string* error_msg) {
+    return true;
+  }
+
   // Runs the specified command. Returns true if the program was started,
   // and sets fields in info. Otherwise, returns false and sets error_msg.
   // Implementations of this function may not be thread safe.

@@ -75,6 +75,8 @@ class Testcase:
 class Subtask:
     def __init__(self, max_score: float, score_mode: ScoreMode,
                  testcases: List[Testcase]) -> None:
+        if not testcases:
+            raise ValueError("You need to specify at least one testcase")
         self.num = -1
         self.max_score = max_score
         self.score_mode = score_mode
@@ -99,7 +101,7 @@ class Subtask:
 
 class Task:
     def __init__(self, ui: UI, time_limit: float, memory_limit: int) -> None:
-        self.graders = dict()  # type: Dict[Language, List[str]]
+        self._graders = dict()  # type: Dict[Language, List[str]]
         self.solution_src = None  # type: Optional[str]
         self.solution = None  # type: Optional[SourceFile]
         self.checker_src = None  # type: Optional[str]
@@ -116,8 +118,8 @@ class Task:
         ui.set_time_limit(time_limit)
 
     def add_subtask(self, subtask: Subtask) -> None:
-        self.subtasks.append(subtask)
         subtask.num = len(self.subtasks)
+        self.subtasks.append(subtask)
         subtask.task = self
         testcase_nums = []  # type: List[int]
         for testcase in subtask.testcases:
@@ -135,9 +137,14 @@ class Task:
 
     def add_grader(self, grader_src: str) -> None:
         lang = Language.from_file(grader_src)
-        if lang not in self.graders:
-            self.graders[lang] = []
-        self.graders[lang].append(grader_src)
+        if lang not in self._graders:
+            self._graders[lang] = []
+        self._graders[lang].append(grader_src)
+
+    def graders(self, language: Language) -> List[str]:
+        if language not in self._graders:
+            return []
+        return self._graders[language]
 
     def set_input_file(self, input_file: str) -> None:
         self.input_file = input_file

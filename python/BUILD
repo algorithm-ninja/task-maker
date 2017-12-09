@@ -20,6 +20,7 @@ py_library(
     srcs = ["source_file.py"],
     deps = [
         ":language",
+        ":ui",
         "//bindings:task_maker",
     ],
 )
@@ -30,6 +31,7 @@ py_library(
     deps = [
         ":language",
         ":source_file",
+        ":ui",
         "//bindings:task_maker",
     ],
 )
@@ -39,6 +41,56 @@ py_library(
     srcs = ["dispatcher.py"],
     imports = ["bindings"],
     deps = [
+        ":ui",
         "//bindings:task_maker",
+    ],
+)
+
+py_library(
+    name = "ui",
+    srcs = ["ui.py"],
+)
+
+py_library(
+    name = "print_ui",
+    srcs = ["print_ui.py"],
+    deps = [":ui"],
+)
+
+py_library(
+    name = "generation",
+    srcs = ["generation.py"],
+    deps = [
+        ":dispatcher",
+        ":language",
+        ":source_file",
+        ":task",
+        ":ui",
+        "//bindings:task_maker",
+    ],
+)
+
+py_library(
+    name = "evaluation",
+    srcs = ["evaluation.py"],
+    deps = [
+        ":dispatcher",
+        ":language",
+        ":source_file",
+        ":task",
+        ":ui",
+        "//bindings:task_maker",
+    ],
+)
+
+py_binary(
+    name = "task_maker",
+    srcs = ["task_maker.py"],
+    deps = [
+        ":dispatcher",
+        ":evaluation",
+        ":generation",
+        ":print_ui",
+        ":task",
     ],
 )

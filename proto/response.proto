@@ -7,8 +7,8 @@ import 'proto/resources.proto';
 
 enum Status {
   SUCCESS = 0;
-  SIGNAL = 1;
-  INTERNAL_ERROR = 2;
+  INTERNAL_ERROR = 1;
+  MISSING_FILES = 2;
 }
 
 message Response {

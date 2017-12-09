@@ -7,6 +7,8 @@ namespace sandbox {
 // Base class for sandboxes for UNIX-like systems.
 class Unix : public Sandbox {
  public:
+  bool PrepareForExecution(const std::string& executable,
+                           std::string* error_msg) override;
   bool Execute(const ExecutionOptions& options, ExecutionInfo* info,
                std::string* error_msg) override;
   static Sandbox* Create() { return new Unix(); }

@@ -23,16 +23,16 @@ class SingleGenerationState:
 
 
 class Generation:
-    def _callback(self, testcase_num: int, event: Event, status: EventStatus,
-                  message: Optional[str]) -> bool:
+    def _callback(self, testcase_num: int, event: Event,
+                  status: EventStatus) -> bool:
         def is_event(event1: Event, event2: Optional[Event]) -> bool:
             if event2 is None:
                 return False
             return event1.id() == event2.id()
 
         if status == EventStatus.FAILURE:
-            if isinstance(event, Execution):
-                message = event.stderr().contents(1024 * 1024)
+            assert isinstance(event, Execution)
+            message = event.stderr().contents(1024 * 1024)
             self._ui.set_generation_status(testcase_num,
                                            GenerationStatus.FAILURE, message)
             return False
@@ -62,9 +62,8 @@ class Generation:
         return True
 
     def _generate_testcase(self, num: int, testcase: Testcase) -> None:
-        def callback(event: Event, status: EventStatus,
-                     message: Optional[str]) -> bool:
-            return self._callback(num, event, status, message)
+        def callback(event: Event, status: EventStatus) -> bool:
+            return self._callback(num, event, status)
 
         if testcase.subtask is None or testcase.subtask.task is None:
             raise ValueError("Invalid testcase configuration")
@@ -115,7 +114,8 @@ class Generation:
                 generation_state.output_gen.input("dummy_foobar_deadbaba",
                                                   validator_output)
             assert testcase.input_id is not None  # Help mypy
-            task.setup_io(generation_state.output_gen, testcase.input_id)
+            testcase.output_id = task.setup_io(generation_state.output_gen,
+                                               testcase.input_id)
         self._generations.append(generation_state)
         self._ui.set_generation_status(num, GenerationStatus.WAITING)
 
@@ -130,7 +130,7 @@ class Generation:
         if task.solution_src is not None:
             task.solution = SourceFile(dispatcher, ui, task.solution_src,
                                        False)
-            task.solution.compile(task.graders[task.solution.get_language()])
+            task.solution.compile(task.graders(task.solution.get_language()))
         if task.checker_src is not None:
             task.checker = SourceFile(dispatcher, ui, task.checker_src, False)
             task.checker.compile([])

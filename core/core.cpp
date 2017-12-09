@@ -14,6 +14,7 @@ bool Core::Run() {
   };
 
   auto set_file = [&known_files](int64_t id, const util::SHA256_t& hash) {
+    // fprintf(stderr, "File %ld available\n", id);
     known_files[id] = hash;
   };
 
@@ -36,6 +37,11 @@ bool Core::Run() {
     for (size_t task_id : tasks_to_run) {
       bool deps_ok = true;
       Execution* task = executions_[task_id].get();
+      /*
+      fprintf(stderr, "%s deps:", task->Description().c_str());
+      for (int64_t dep : task->Deps()) fprintf(stderr, " %ld", dep);
+      fprintf(stderr, "\n");
+      */
       for (int64_t dep : task->Deps()) {
         if (!known_files.count(dep)) {
           deps_ok = false;

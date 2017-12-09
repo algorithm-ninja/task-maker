@@ -23,25 +23,34 @@ class Core {
    private:
     friend class Core;
     static TaskStatus Start(const FileID* file) {
+      // fprintf(stderr, "Start: %s\n", file->Description().c_str());
       return {START, "", FILE_LOAD, file, nullptr};
     }
     static TaskStatus Start(const Execution* execution) {
+      // fprintf(stderr, "Start: %s\n", execution->Description().c_str());
       return {START, "", EXECUTION, nullptr, execution};
     }
     static TaskStatus Busy(const Execution* execution) {
+      // fprintf(stderr, "Busy: %s\n", execution->Description().c_str());
       return {BUSY, "", EXECUTION, nullptr, execution};
     }
     static TaskStatus Success(const FileID* file) {
+      // fprintf(stderr, "Success: %s\n", file->Description().c_str());
       return {SUCCESS, "", FILE_LOAD, file, nullptr};
     }
     static TaskStatus Success(const Execution* execution) {
+      // fprintf(stderr, "Success: %s\n", execution->Description().c_str());
       return {SUCCESS, "", EXECUTION, nullptr, execution};
     }
     static TaskStatus Failure(const FileID* file, const std::string& msg) {
+      // fprintf(stderr, "Failure: %s, %s\n", file->Description().c_str(),
+      //        msg.c_str());
       return {FAILURE, msg, FILE_LOAD, file, nullptr};
     }
     static TaskStatus Failure(const Execution* execution,
                               const std::string& msg) {
+      // fprintf(stderr, "Failure: %s, %s\n", execution->Description().c_str(),
+      //        msg.c_str());
       return {FAILURE, msg, EXECUTION, nullptr, execution};
     }
   };

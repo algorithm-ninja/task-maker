@@ -46,8 +46,12 @@ proto::Response LocalExecutor::Execute(
   exec_options.max_stack_kb = request.resource_limit().stack();
 
   // Input files.
+  bool loaded_executable = false;
   for (const auto& input : request.input()) {
     PrepareFile(input, tmp.Path(), &exec_options);
+    if (input.name() == request.executable()) {
+      loaded_executable = true;
+    }
   }
 
   // Stdout/err files.
@@ -59,6 +63,12 @@ proto::Response LocalExecutor::Execute(
     ThreadGuard guard(/*exclusive = */ request.exclusive());
     std::unique_ptr<sandbox::Sandbox> sb = sandbox::Sandbox::Create();
     std::string error_msg;
+    if (loaded_executable &&
+        !sb->PrepareForExecution(
+            util::File::JoinPath(sandbox_dir, request.executable()),
+            &error_msg)) {
+      throw std::runtime_error(error_msg);
+    }
     if (!sb->Execute(exec_options, &result, &error_msg)) {
       throw std::runtime_error(error_msg);
     }
@@ -78,8 +88,7 @@ proto::Response LocalExecutor::Execute(
   // Termination status.
   response.set_status_code(result.status_code);
   response.set_signal(result.signal);
-  response.set_status(result.signal == 0 ? proto::Status::SUCCESS
-                                         : proto::Status::SIGNAL);
+  response.set_status(proto::Status::SUCCESS);
 
   // Output files.
   proto::FileInfo info;
@@ -88,7 +97,11 @@ proto::Response LocalExecutor::Execute(
   info.set_type(proto::FileType::STDERR);
   RetrieveFile(info, tmp.Path(), &response);
   for (const proto::FileInfo& info : request.output()) {
-    RetrieveFile(info, tmp.Path(), &response);
+    try {
+      RetrieveFile(info, tmp.Path(), &response);
+    } catch (util::file_not_found& exc) {
+      response.set_status(proto::Status::MISSING_FILES);
+    }
   }
   return response;
 }

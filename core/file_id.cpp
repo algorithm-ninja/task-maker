@@ -4,7 +4,7 @@
 
 namespace core {
 
-std::atomic<int64_t> FileID::next_id_{1};
+std::atomic<int32_t> FileID::next_id_{1};
 
 void FileID::WriteTo(const std::string& path) {
   util::File::Copy(util::File::SHAToPath(hash_), path);
