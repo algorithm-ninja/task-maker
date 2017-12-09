@@ -66,18 +66,18 @@ class Evaluation:
                 self._ui.set_evaluation_status(testcase_num, self.solution_src,
                                                EvaluationStatus.CHECKING)
             return True
-        if status == EventStatus.SUCCESS and event.id() == execution.id():
-            self._ui.set_evaluation_status(testcase_num, self.solution_src,
-                                           EvaluationStatus.EXECUTED)
-            return True
         if status == EventStatus.FAILURE and evaluation_state.has_checker \
-                and event.id() == evaluation_state.check:
+                and event.id() == evaluation_state.check.id():
             display_msg = evaluation_state.check.stderr().contents(1024 * 1024)
             self._ui.set_evaluation_status(testcase_num, self.solution_src,
                                            EvaluationStatus.FAILURE,
                                            evaluation_result(0.0, display_msg))
             return False
-        if status == EventStatus.FAILURE and event.id() == execution.id():
+        if event.id() == execution.id():
+            if status == EventStatus.SUCCESS:
+                self._ui.set_evaluation_status(testcase_num, self.solution_src,
+                                               EvaluationStatus.EXECUTED)
+                return True
             if execution.signal() != 0:
                 display_msg = "Signal " + str(execution.signal())
             elif execution.status_code() != 0:
@@ -85,23 +85,26 @@ class Evaluation:
             else:
                 display_msg = "Missing output files"
             score = 0.0
-        if not evaluation_state.has_checker:
-            if status == EventStatus.FAILURE:
-                display_msg = "Output not correct"
-                score = 0.0
-            else:
-                display_msg = "Output is correct"
-                score = 1.0
         else:
-            display_msg = evaluation_state.check.stderr().contents(1024 * 1024)
-            try:
-                score = float(
-                    evaluation_state.check.stdout().contents(1024 * 1024))
-            except ValueError:
-                self._ui.set_evaluation_status(
-                    testcase_num, self.solution_src, EvaluationStatus.FAILURE,
-                    evaluation_result(0.0, display_msg),
-                    "Invalid score returned by checker")
+            if not evaluation_state.has_checker:
+                if status == EventStatus.FAILURE:
+                    display_msg = "Output not correct"
+                    score = 0.0
+                else:
+                    display_msg = "Output is correct"
+                    score = 1.0
+            else:
+                display_msg = evaluation_state.check.stderr().contents(
+                    1024 * 1024)
+                try:
+                    score = float(
+                        evaluation_state.check.stdout().contents(1024 * 1024))
+                except ValueError:
+                    self._ui.set_evaluation_status(
+                        testcase_num, self.solution_src,
+                        EvaluationStatus.FAILURE,
+                        evaluation_result(0.0, display_msg),
+                        "Invalid score returned by checker")
         self._ui.set_evaluation_status(testcase_num, self.solution_src,
                                        EvaluationStatus.SUCCESS,
                                        evaluation_result(score, display_msg))
