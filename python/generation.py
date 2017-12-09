@@ -135,13 +135,17 @@ class Generation:
             task.checker = SourceFile(dispatcher, ui, task.checker_src, False)
             task.checker.compile([])
         for testcase in task.testcases:
-            for binary in [testcase.input.generator, testcase.input.validator]:
+            generator_info = (testcase.input.generator,
+                              testcase.input.generator_deps)
+            validator_info = (testcase.input.validator,
+                              testcase.input.validator_deps)
+            for binary, deps in [generator_info, validator_info]:
                 if binary is None:
                     continue
                 if binary in self._generator_cache:
                     continue
                 source_file = SourceFile(dispatcher, ui, binary, False)
-                source_file.compile([])
+                source_file.compile(deps)
                 self._generator_cache[binary] = source_file
 
         for num, testcase in enumerate(task.testcases):

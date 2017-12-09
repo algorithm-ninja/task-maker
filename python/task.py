@@ -23,9 +23,11 @@ class ScoreMode(Enum):
 class Input:
     def __init__(self,
                  generator: Optional[str] = None,
+                 generator_deps: Optional[List[str]] = None,
                  args: Optional[List[str]] = None,
                  path: Optional[str] = None,
-                 validator: Optional[str] = None) -> None:
+                 validator: Optional[str] = None,
+                 validator_deps: Optional[List[str]] = None) -> None:
         if (generator is None) == (path is None):
             raise ValueError(
                 "You need to specify exactly a generator or a path")
@@ -38,6 +40,14 @@ class Input:
         self.args = args
         self.path = path
         self.validator = validator
+        if generator_deps is not None:
+            self.generator_deps = generator_deps
+        else:
+            self.generator_deps = []
+        if validator_deps is not None:
+            self.validator_deps = validator_deps
+        else:
+            self.validator_deps = []
 
 
 class Testcase:

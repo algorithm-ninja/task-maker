@@ -25,6 +25,7 @@ class SourceFile:
         self._basename = os.path.basename(path)
         self._compiled_name = os.path.splitext(self._basename)[0]
         self._compilation_output = None  # type: Optional[FileID]
+        self._runtime_deps = []  # type: List[FileID]
         self._is_solution = is_solution
         self._stderr = None  # type: Optional[FileID]
         self._ui = ui
@@ -70,6 +71,9 @@ class SourceFile:
         if not lang.needs_compilation():
             self._compilation_output = self._dispatcher.load_file(
                 self._path, self._path, self._callback)
+            self._runtime_deps = [
+                self._dispatcher.load_file(dep, dep) for dep in graders
+            ]
             return self._compilation_output
         elif lang in [Language.CPP, Language.C]:
             if lang == Language.CPP:
