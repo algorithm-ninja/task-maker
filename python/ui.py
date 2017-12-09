@@ -84,5 +84,5 @@ class UI:
     def set_task_score(self, solution_name: str, score: float) -> None:
         raise NotImplementedError("Please subclass this class")
 
-    def final_status(self) -> None:
+    def print_final_status(self) -> None:
         raise NotImplementedError("Please subclass this class")

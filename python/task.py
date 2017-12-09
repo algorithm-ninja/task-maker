@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 from enum import Enum
+from functools import reduce
+import operator
 from typing import Dict  # pylint: disable=unused-import
 from typing import List
 from typing import Optional
@@ -70,6 +72,19 @@ class Subtask:
         self.task = None  # type: Optional[Task]
         for testcase in testcases:
             testcase.subtask = self
+
+    def compute_score(self, testcase_scores: List[float]) -> float:
+        if self.score_mode == ScoreMode.SUM:
+            best_score = len(testcase_scores)
+        else:
+            best_score = 1
+        if self.score_mode == ScoreMode.SUM:
+            score = sum(testcase_scores)
+        elif self.score_mode == ScoreMode.MIN:
+            score = min(testcase_scores)
+        elif self.score_mode == ScoreMode.MUL:
+            score = reduce(operator.mul, testcase_scores, 1)
+        return score / best_score * self.max_score
 
 
 class Task:
