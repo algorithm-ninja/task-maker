@@ -157,7 +157,7 @@ TEST(UnixTest, TestWallLimitOk) {
   EXPECT_EQ(error_msg, "");
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
-  EXPECT_GE(info.wall_time_millis, 90);
+  EXPECT_GE(info.wall_time_millis, 70);
   EXPECT_LE(info.wall_time_millis, 130);
 }
 
@@ -189,7 +189,7 @@ TEST(UnixTest, TestCpuLimitOk) {
   EXPECT_EQ(error_msg, "");
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
-  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 90);
+  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 80);
   EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 130);
 }
 
@@ -205,7 +205,7 @@ TEST(UnixTest, TestCpuLimitNotOk) {
   EXPECT_EQ(error_msg, "");
   EXPECT_THAT(info.signal, AnyOf(Eq(SIGKILL), Eq(SIGXCPU)));
   EXPECT_EQ(info.status_code, 0);
-  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 990);
+  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 970);
   EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 1100);
 }
 
