@@ -1,6 +1,11 @@
 #ifndef CORE_CORE_HPP
 #define CORE_CORE_HPP
 
+#include <condition_variable>
+#include <future>
+#include <mutex>
+#include <queue>
+
 #include "core/execution.hpp"
 #include "core/file_id.hpp"
 #include "util/flags.hpp"
@@ -15,40 +20,39 @@ class Core {
     std::string message;
     enum Type { FILE_LOAD, EXECUTION };
     Type type;
-    const FileID* file_info;
-    const Execution* execution_info;
+    FileID* file_info;
+    Execution* execution_info;
 
     TaskStatus() = delete;
 
    private:
     friend class Core;
-    static TaskStatus Start(const FileID* file) {
+    static TaskStatus Start(FileID* file) {
       // fprintf(stderr, "Start: %s\n", file->Description().c_str());
       return {START, "", FILE_LOAD, file, nullptr};
     }
-    static TaskStatus Start(const Execution* execution) {
+    static TaskStatus Start(Execution* execution) {
       // fprintf(stderr, "Start: %s\n", execution->Description().c_str());
       return {START, "", EXECUTION, nullptr, execution};
     }
-    static TaskStatus Busy(const Execution* execution) {
+    static TaskStatus Busy(Execution* execution) {
       // fprintf(stderr, "Busy: %s\n", execution->Description().c_str());
       return {BUSY, "", EXECUTION, nullptr, execution};
     }
-    static TaskStatus Success(const FileID* file) {
+    static TaskStatus Success(FileID* file) {
       // fprintf(stderr, "Success: %s\n", file->Description().c_str());
       return {SUCCESS, "", FILE_LOAD, file, nullptr};
     }
-    static TaskStatus Success(const Execution* execution) {
+    static TaskStatus Success(Execution* execution) {
       // fprintf(stderr, "Success: %s\n", execution->Description().c_str());
       return {SUCCESS, "", EXECUTION, nullptr, execution};
     }
-    static TaskStatus Failure(const FileID* file, const std::string& msg) {
+    static TaskStatus Failure(FileID* file, const std::string& msg) {
       // fprintf(stderr, "Failure: %s, %s\n", file->Description().c_str(),
       //        msg.c_str());
       return {FAILURE, msg, FILE_LOAD, file, nullptr};
     }
-    static TaskStatus Failure(const Execution* execution,
-                              const std::string& msg) {
+    static TaskStatus Failure(Execution* execution, const std::string& msg) {
       // fprintf(stderr, "Failure: %s, %s\n", execution->Description().c_str(),
       //        msg.c_str());
       return {FAILURE, msg, EXECUTION, nullptr, execution};
@@ -93,6 +97,38 @@ class Core {
   std::function<bool(const TaskStatus&)> callback_;
   std::vector<std::unique_ptr<FileID>> files_to_load_;
   std::vector<std::unique_ptr<Execution>> executions_;
+
+  std::queue<std::packaged_task<TaskStatus()>> tasks_;
+  std::mutex task_mutex_;
+  std::condition_variable task_ready_;
+  std::atomic<bool> quitting_{false};
+
+  std::unordered_map<int64_t, util::SHA256_t> known_files_;
+  std::mutex file_lock_;
+
+  util::SHA256_t GetFile(int64_t id) {
+    std::lock_guard<std::mutex> lck(file_lock_);
+    if (known_files_.count(id) == 0u) {
+      throw std::logic_error("Unknown file requested");
+    }
+    return known_files_.at(id);
+  }
+
+  void SetFile(int64_t id, const util::SHA256_t& hash) {
+    std::lock_guard<std::mutex> lck(file_lock_);
+    known_files_[id] = hash;
+  };
+
+  bool FilePresent(int64_t id) {
+    std::lock_guard<std::mutex> lck(file_lock_);
+    return known_files_.count(id) != 0u;
+  }
+
+  TaskStatus LoadFileTask(FileID* file);
+
+  TaskStatus ExecuteTask(Execution* execution);
+
+  void ThreadBody();
 };
 
 }  // namespace core
