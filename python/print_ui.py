@@ -75,12 +75,14 @@ class PrintUI(UI):
         print("Solution %s has a score of %.2f" % (solution_name, score))
 
     def print_final_status(self) -> None:
+        max_sol_name = max(map(len, self._scores.keys()))
         for solution_name in self._scores:
-            print("Solution %s has a score of %.2f" %
+            print("Solution %-{0}s has a score of %6.2f".format(max_sol_name) %
                   (solution_name, self._scores[solution_name]))
-            print("Solution %s has the following scores on subtasks: %s" %
-                  (solution_name, ", ".join([
-                      "%d: %.2f" % info
+        for solution_name in self._scores:
+            print("Solution %-{0}s has the following scores on subtasks: %s".format(max_sol_name) %
+                  (solution_name, " ".join([
+                      "%6.2f" % info[1:]
                       for info in sorted(
                           self._subtasks_scores[solution_name].items())
                   ])))
