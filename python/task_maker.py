@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-# pylint: disable=too-many-locals
-# pylint: disable=unused-import
-# pylint: disable=unused-variable
-
 import glob
 import os
 import sys
