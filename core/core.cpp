@@ -5,7 +5,13 @@
 #include "executor/local_executor.hpp"
 
 namespace {
-enum EnqueueStatus { QUEUE_FULL, CALLBACK_FALSE, LEFTOVERS, NO_TASK };
+enum EnqueueStatus {
+  QUEUE_FULL,
+  CALLBACK_FALSE,
+  LEFTOVERS,
+  NO_TASK,
+  NO_READY_TASK
+};
 }
 
 namespace core {
@@ -114,6 +120,7 @@ bool Core::Run() {
       add_task(std::move(task));
       if (waiting_tasks.size() >= threads.size()) return QUEUE_FULL;
     }
+    if (!waiting_tasks.empty()) return NO_READY_TASK;
     return execution_tasks.empty() ? NO_TASK : LEFTOVERS;
   };
 
@@ -127,6 +134,7 @@ bool Core::Run() {
     case LEFTOVERS:
       should_enqueue = false;
       break;
+    case NO_READY_TASK:
     case QUEUE_FULL:
       break;
   }
@@ -158,6 +166,7 @@ bool Core::Run() {
       case LEFTOVERS:
         should_enqueue = false;
         break;
+      case NO_READY_TASK:
       case QUEUE_FULL:
         break;
     }
