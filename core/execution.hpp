@@ -12,6 +12,8 @@ namespace core {
 
 class Execution {
  public:
+  enum CachingMode { NEVER, SAME_EXECUTOR, ALWAYS };
+
   const std::string& Description() const { return description_; }
   int64_t ID() const { return id_; }
 
@@ -37,7 +39,8 @@ class Execution {
   void MemoryLockLimit(int64_t limit) { resource_limits_.set_mlock(limit); }
   void StackLimit(int64_t limit) { resource_limits_.set_stack(limit); }
 
-  void Exclusive() { exclusive_ = true; }
+  void SetExclusive() { exclusive_ = true; }
+  void SetCachingMode(CachingMode mode) { caching_mode_ = mode; }
 
   // To be called after Core::Run().
   bool Success() const { return successful_; }
@@ -98,6 +101,7 @@ class Execution {
 
   bool successful_ = false;
   bool exclusive_ = false;
+  CachingMode caching_mode_ = ALWAYS;
 
   proto::Response response_;
   proto::Resources resource_limits_;

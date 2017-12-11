@@ -4,11 +4,17 @@
 # pylint: disable=no-self-use
 # pylint: disable=invalid-name
 
+from enum import Enum
 from typing import Optional
 from .file_id import FileID
 
 
 class Execution:
+    class CachingMode(Enum):
+        ALWAYS = ...  # type: int
+        SAME_EXECUTOR = ...  # type: int
+        NEVER = ...  # type: int
+
     def description(self) -> str:
         ...
 
@@ -54,7 +60,10 @@ class Execution:
     def stack_limit(self, limit: int) -> None:
         ...
 
-    def exclusive(self) -> None:
+    def set_exclusive(self) -> None:
+        ...
+
+    def set_caching_mode(self, caching_mode: CachingMode) -> None:
         ...
 
     def status_code(self) -> int:
