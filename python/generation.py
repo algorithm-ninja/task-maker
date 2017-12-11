@@ -94,7 +94,7 @@ class Generation:
             generation_state.validation = self._generator_cache[
                 testcase.input.validator].execute(
                     "Validation of input %d" % num,
-                    ["input", str(testcase.subtask.num)], callback)
+                    ["input", str(testcase.subtask.num + 1)], callback)
             assert testcase.input_id is not None  # Help mypy
             generation_state.validation.input("input", testcase.input_id)
             validator_output = generation_state.validation.stdout()
