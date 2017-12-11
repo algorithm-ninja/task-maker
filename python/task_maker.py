@@ -6,10 +6,10 @@ import sys
 from typing import List
 from typing import Optional
 
+from python.curses_ui import CursesUI
 from python.dispatcher import Dispatcher
 from python.evaluation import Evaluation
 from python.generation import Generation
-from python.print_ui import PrintUI
 from python.task import Input
 from python.task import ScoreMode
 from python.task import Subtask
@@ -107,8 +107,8 @@ def run_for_cwd() -> None:
     subtasks = []  # type: List[Subtask]
     task_name = "test"
 
-    print_ui = PrintUI(task_name)
-    task = parse_task_yaml(print_ui)
+    ui = CursesUI(task_name)
+    task = parse_task_yaml(ui)
 
     for solution in list_files(["sol/solution.*", "sol/soluzione.*"]):
         official_solution = solution
@@ -126,13 +126,13 @@ def run_for_cwd() -> None:
         task.add_grader(grader)
     for subtask in subtasks:
         task.add_subtask(subtask)
-    dispatcher = Dispatcher(print_ui)
-    Generation(dispatcher, print_ui, task)
+    dispatcher = Dispatcher(ui)
+    Generation(dispatcher, ui, task)
     for solution in solutions:
-        Evaluation(dispatcher, print_ui, task, solution)
+        Evaluation(dispatcher, ui, task, solution)
     if not dispatcher.run():
         raise RuntimeError("Error running task")
-    print_ui.print_final_status()
+    ui.print_final_status()
 
 
 def main() -> None:
