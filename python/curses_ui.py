@@ -4,7 +4,6 @@ import os
 import curses
 import threading
 
-from typing import cast
 from typing import Any
 from typing import Dict  # pylint: disable=unused-import
 from typing import List
@@ -65,7 +64,7 @@ class CursesUI(UI):
             success_attr = curses.color_pair(curses.COLOR_GREEN)
         failure_attr = curses.A_BOLD | curses.color_pair(curses.COLOR_RED)
 
-        def print_compilation_status(status: CompilationStatus):
+        def print_compilation_status(status: CompilationStatus) -> None:
             if status == CompilationStatus.WAITING:
                 stdscr.addstr("...\n")
             elif status == CompilationStatus.RUNNING:
@@ -77,6 +76,29 @@ class CursesUI(UI):
             elif status == CompilationStatus.FAILURE:
                 stdscr.addstr("FAILURE", failure_attr)
                 stdscr.addstr("\n")
+
+        def subtask_scores(status: SolutionStatus) -> str:
+            loading = loading_chars[cur_loading_char]
+            res = ""
+            if not status.subtask_scores:
+                res += "% 4s" % "..."
+            elif status.score is not None:
+                res += "% 4.f" % status.score
+            else:
+                res += "% 4s" % loading
+
+            for subtask in self._subtask_max_scores:
+                testcases = self._subtask_testcases[subtask]
+                if all(tc not in status.testcase_status or
+                       status.testcase_status[tc] == EvaluationStatus.WAITING
+                       for tc in testcases):
+                    res += " % 6s" % "..."
+                elif subtask in status.subtask_scores:
+                    res += " % 6.f" % status.subtask_scores[subtask]
+                else:
+                    res += " % 6s" % loading
+
+            return res
 
         while True:
             cur_loading_char = (cur_loading_char + 1) % len(loading_chars)
@@ -96,7 +118,7 @@ class CursesUI(UI):
                 print_compilation_status(self._compilation_status[comp])
 
             stdscr.addstr("\n")
-            for comp in self._solutions:
+            for comp in sorted(self._solutions):
                 stdscr.addstr("%30s: " % comp)
                 print_compilation_status(self._compilation_status[comp])
             stdscr.addstr("\n")
@@ -109,13 +131,16 @@ class CursesUI(UI):
                                                   self._num_testcases))
             stdscr.addstr("\n")
 
-            for sol in self._solutions:
+            stdscr.addstr("%s score" % (" " * 39))
+            for max_score in self._subtask_max_scores.values():
+                stdscr.addstr("% 6.f " % max_score)
+            stdscr.addstr("\n")
+
+            for sol in sorted(self._solutions):
                 stdscr.addstr(
                     "%30s: % 3d/%d  %s\n" %
                     (sol, len(self._solution_status[sol].testcase_result),
-                     self._num_testcases, "score: % 4.f " % cast(
-                         float, self._solution_status[sol].score)
-                     if self._solution_status[sol].score is not None else ""))
+                     self._num_testcases, subtask_scores(self._solution_status[sol])))
             stdscr.refresh()
             try:
                 pressed_key = stdscr.getkey()
