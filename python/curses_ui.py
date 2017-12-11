@@ -4,7 +4,6 @@ import os
 import curses
 import threading
 
-from typing import Any
 from typing import Dict  # pylint: disable=unused-import
 from typing import List
 from typing import Optional
@@ -46,8 +45,7 @@ class CursesUI(UI):
             target=curses.wrapper, args=(self._ui, ))
         self._ui_thread.start()
 
-    def _ui(self, stdscr: Any) -> None:
-        # TODO: fix types for curses.
+    def _ui(self, stdscr: 'curses._CursesWindow') -> None:
         curses.start_color()
         curses.use_default_colors()
         for i in range(1, curses.COLORS):
@@ -137,10 +135,11 @@ class CursesUI(UI):
             stdscr.addstr("\n")
 
             for sol in sorted(self._solutions):
-                stdscr.addstr(
-                    "%30s: % 3d/%d  %s\n" %
-                    (sol, len(self._solution_status[sol].testcase_result),
-                     self._num_testcases, subtask_scores(self._solution_status[sol])))
+                stdscr.addstr("%30s: % 3d/%d  %s\n" %
+                              (sol,
+                               len(self._solution_status[sol].testcase_result),
+                               self._num_testcases,
+                               subtask_scores(self._solution_status[sol])))
             stdscr.refresh()
             try:
                 pressed_key = stdscr.getkey()

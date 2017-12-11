@@ -6,6 +6,8 @@ EXCLUDE_CHECKS="-misc-unused-parameters,-llvm-header-guard,-cppcoreguidelines-pr
 PYLINT="pylint -s n --rcfile $(git rev-parse --show-toplevel)/.pylintrc"
 MYPY="mypy --strict"
 
+export MYPYPATH=stubs/
+
 check_file_clang() {
   file="${1}"
   # TODO: add -quiet as soon as it is supported
