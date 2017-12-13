@@ -28,16 +28,16 @@ class Printer:
     def text(self, what: str) -> None:
         pass
 
-    def red(self, what: str) -> None:
+    def red(self, what: str, bold: bool = True) -> None:
         pass
 
-    def green(self, what: str) -> None:
+    def green(self, what: str, bold: bool = True) -> None:
         pass
 
-    def blue(self, what: str) -> None:
+    def blue(self, what: str, bold: bool = True) -> None:
         pass
 
-    def bold(self, what: str) -> None:
+    def bold(self, what: str, bold: bool = True) -> None:
         pass
 
 
@@ -48,27 +48,36 @@ class StdoutPrinter(Printer):
 
         self.bold_fmt = curses.tparm(curses.tigetstr("bold")).decode()
         if curses.COLORS >= 256:
-            self.green_fmt = _get_color(82) + self.bold_fmt
+            self.green_fmt = _get_color(82)
         else:
-            self.green_fmt = _get_color(curses.COLOR_GREEN) + self.bold_fmt
-        self.red_fmt = _get_color(curses.COLOR_RED) + self.bold_fmt
-        self.blue_fmt = _get_color(curses.COLOR_BLUE) + self.bold_fmt
+            self.green_fmt = _get_color(curses.COLOR_GREEN)
+        self.red_fmt = _get_color(curses.COLOR_RED)
+        self.blue_fmt = _get_color(curses.COLOR_BLUE)
         self.reset_fmt = curses.tparm(curses.tigetstr("sgr0")).decode()
+        self.right_fmt = curses.tparm(curses.tigetstr("cuf"), 1000).decode()
+
+    # pylint: disable=no-self-use
+    def left_fmt(self, amount: int) -> str:
+        return curses.tparm(curses.tigetstr("cub"), amount).decode()
+    # pylint: enable=no-self-use
 
     def text(self, what: str) -> None:
         print(what, end="")
 
-    def red(self, what: str) -> None:
-        print(self.red_fmt + what + self.reset_fmt, end="")
+    def red(self, what: str, bold: bool = True) -> None:
+        print(self.red_fmt + (self.bold_fmt if bold else "") + what + self.reset_fmt, end="")
 
-    def green(self, what: str) -> None:
-        print(self.green_fmt + what + self.reset_fmt, end="")
+    def green(self, what: str, bold: bool = True) -> None:
+        print(self.green_fmt + (self.bold_fmt if bold else "") + what + self.reset_fmt, end="")
 
-    def blue(self, what: str) -> None:
-        print(self.blue_fmt + what + self.reset_fmt, end="")
+    def blue(self, what: str, bold: bool = True) -> None:
+        print(self.blue_fmt + (self.bold_fmt if bold else "") + what + self.reset_fmt, end="")
 
-    def bold(self, what: str) -> None:
+    def bold(self, what: str, bold: bool = True) -> None:
         print(self.bold_fmt + what + self.reset_fmt, end="")
+
+    def right(self, what: str) -> None:
+        print(self.right_fmt + self.left_fmt(len(what)-1) + what)
 
 
 class CursesPrinter(Printer):
@@ -76,25 +85,25 @@ class CursesPrinter(Printer):
         self.stdscr = stdscr
         self.bold_fmt = curses.A_BOLD
         if curses.COLORS >= 256:
-            self.green_fmt = curses.A_BOLD | curses.color_pair(82)
+            self.green_fmt = curses.color_pair(82)
         else:
             self.green_fmt = curses.color_pair(curses.COLOR_GREEN)
-        self.red_fmt = curses.A_BOLD | curses.color_pair(curses.COLOR_RED)
-        self.blue_fmt = curses.A_BOLD | curses.color_pair(curses.COLOR_BLUE)
+        self.red_fmt = curses.color_pair(curses.COLOR_RED)
+        self.blue_fmt = curses.color_pair(curses.COLOR_BLUE)
 
     def text(self, what: str) -> None:
         self.stdscr.addstr(what)
 
-    def red(self, what: str) -> None:
-        self.stdscr.addstr(what, self.red_fmt)
+    def red(self, what: str, bold: bool = True) -> None:
+        self.stdscr.addstr(what, self.red_fmt | (self.bold_fmt if bold else 0))
 
-    def green(self, what: str) -> None:
-        self.stdscr.addstr(what, self.green_fmt)
+    def green(self, what: str, bold: bool = True) -> None:
+        self.stdscr.addstr(what, self.green_fmt | (self.bold_fmt if bold else 0))
 
-    def blue(self, what: str) -> None:
-        self.stdscr.addstr(what, self.blue_fmt)
+    def blue(self, what: str, bold: bool = True) -> None:
+        self.stdscr.addstr(what, self.blue_fmt | (self.bold_fmt if bold else 0))
 
-    def bold(self, what: str) -> None:
+    def bold(self, what: str, bold: bool = True) -> None:
         self.stdscr.addstr(what, self.bold_fmt)
 
 
@@ -348,12 +357,59 @@ class CursesUI(UI):
         self._print_compilation(self._solutions, "?", printer)
         printer.text("\n")
 
+        printer.blue("Solutions\n")
+        max_score = sum(self._subtask_max_scores.values())
+
+        def print_testcase(sol: str, testcase: int, tc_status: EvaluationResult,
+                           max_time: float, max_mem: float) -> None:
+            printer.text("%3d) " % testcase)
+            if tc_status.score == 1.0:
+                printer.green("[%.2f] " % tc_status.score, bold=False)
+            else:
+                printer.red("[%.2f] " % tc_status.score, bold=False)
+            printer.text("[")
+            if tc_status.cpu_time >= max_time * 0.9:
+                printer.bold("%5.3fs" % tc_status.cpu_time)
+            else:
+                printer.text("%5.3fs" % tc_status.cpu_time)
+            printer.text(" |")
+            if tc_status.memory >= max_mem * 0.9:
+                printer.bold("%5.1fMiB" % (tc_status.memory / 1024))
+            else:
+                printer.text("%5.1fMiB" % (tc_status.memory / 1024))
+            printer.text("] %s" % tc_status.message)
+            printer.right("[%s]" % sol)
+
+        for sol in sorted(self._solution_status):
+            status = self._solution_status[sol]
+            printer.bold("%s: " % sol)
+            if status.score is None:
+                printer.red("not available\n")
+                continue
+            elif status.score == max_score:
+                printer.green("%.2f / %.2f\n" % (status.score, max_score), bold=False)
+            else:
+                printer.text("%.2f / %.2f\n" % (status.score, max_score))
+            for num, subtask in self._subtask_testcases.items():
+                if status.subtask_scores[num] == self._subtask_max_scores[num]:
+                    printer.bold("Subtask #%d: %.2f/%.2f\n" %
+                                 (num+1, status.subtask_scores[num], self._subtask_max_scores[num]))
+                else:
+                    printer.text("Subtask #%d: %.2f/%.2f\n" %
+                                 (num+1, status.subtask_scores[num], self._subtask_max_scores[num]))
+
+                max_time = max(status.testcase_result[testcase].cpu_time for testcase in subtask)
+                max_mem = max(status.testcase_result[testcase].memory for testcase in subtask)
+                for testcase in subtask:
+                    tc_status = status.testcase_result[testcase]
+                    print_testcase(sol, testcase, tc_status, max_time, max_mem)
+
+            printer.text("\n")
+
         printer.blue("Generation status: ")
         self._print_generation_status(printer)
         printer.text("\n")
         printer.text("\n")
-
-        # TODO print the summary for each solution with the time/memory for easy testcase
 
         printer.blue("Scores")
         printer.bold("%s total" % (" " * (self._max_sol_len-4)))
@@ -369,6 +425,7 @@ class CursesUI(UI):
         if self._failure:
             printer.red("Fatal error\n")
             printer.red(self._failure)
+            printer.text("\n")
 
     def fatal_error(self, msg: str) -> None:
         self._failure = msg
