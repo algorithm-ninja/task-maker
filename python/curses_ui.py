@@ -204,20 +204,14 @@ class CursesUI(UI):
         pad = curses.newpad(1000, 1000)
         printer = CursesPrinter(pad)
         pos_x, pos_y = 0, 0
-        will_exit = False
         max_y, max_x = stdscr.getmaxyx()
 
-        while (not will_exit or not self._done) and self._failure is None:
+        while not self._done and self._failure is None:
             cur_loading_char = (cur_loading_char + 1) % len(loading_chars)
             loading = loading_chars[cur_loading_char]
             pad.clear()
 
-            if self._done:
-                printer.green("Done\n")
-            elif self._failure:
-                printer.red("Failure\n")
-            else:
-                printer.bold("Running...\n")
+            printer.bold("Running...\n")
 
             printer.text("Time limit: %.2f\n" % self._time_limit)
             printer.text("Memory limit: %.2f\n" % (self._memory_limit / 1024))
@@ -248,9 +242,7 @@ class CursesUI(UI):
 
             try:
                 pressed_key = stdscr.getkey()
-                if pressed_key == "q":
-                    will_exit = not will_exit
-                elif pressed_key == "KEY_UP":
+                if pressed_key == "KEY_UP":
                     pos_y -= 1
                 elif pressed_key == "KEY_DOWN":
                     pos_y += 1
@@ -263,10 +255,6 @@ class CursesUI(UI):
             except curses.error:
                 pass
 
-            if will_exit:
-                printer.text("\n(will exit automatically)")
-            elif self._done:
-                printer.bold("\nPress q to exit...")
             pad.refresh(pos_y, pos_x, 0, 0, max_y-1, max_x-1)
         curses.endwin()
 
