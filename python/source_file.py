@@ -51,7 +51,7 @@ class SourceFile:
         if status == EventStatus.FAILURE:
             self._ui.set_compilation_status(self._basename, self._is_solution,
                                             CompilationStatus.FAILURE, message)
-            return not self._is_solution
+            return self._is_solution
         if status == EventStatus.SUCCESS:
             self._ui.set_compilation_status(self._basename, self._is_solution,
                                             CompilationStatus.SUCCESS, message)
