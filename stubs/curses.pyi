@@ -486,7 +486,7 @@ def tigetstr(capname: str) -> bytes:
     ...
 
 
-def tparm(fmt: str,
+def tparm(fmt: bytes,
           i1: int = 0,
           i2: int = 0,
           i3: int = 0,
@@ -495,7 +495,7 @@ def tparm(fmt: str,
           i6: int = 0,
           i7: int = 0,
           i8: int = 0,
-          i9: int = 0) -> str:
+          i9: int = 0) -> bytes:
     ...
 
 

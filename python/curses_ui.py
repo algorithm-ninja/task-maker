@@ -43,11 +43,17 @@ class Printer:
 
 class StdoutPrinter(Printer):
     def __init__(self) -> None:
-        self.bold_fmt = "\033[1m"
-        self.green_fmt = "\033[92m" + self.bold_fmt
-        self.red_fmt = "\033[91m\033[1m" + self.bold_fmt
-        self.blue_fmt = "\033[34m" + self.bold_fmt
-        self.reset_fmt = "\033[39m\033[0m"
+        def _get_color(color: int) -> str:
+            return curses.tparm(curses.tigetstr("setaf"), color).decode("utf8")
+
+        self.bold_fmt = curses.tparm(curses.tigetstr("bold")).decode()
+        if curses.COLORS >= 256:
+            self.green_fmt = _get_color(82) + self.bold_fmt
+        else:
+            self.green_fmt = _get_color(curses.COLOR_GREEN) + self.bold_fmt
+        self.red_fmt = _get_color(curses.COLOR_RED) + self.bold_fmt
+        self.blue_fmt = _get_color(curses.COLOR_BLUE) + self.bold_fmt
+        self.reset_fmt = curses.tparm(curses.tigetstr("sgr0")).decode()
 
     def text(self, what: str) -> None:
         print(what, end="")
@@ -334,15 +340,16 @@ class CursesUI(UI):
         self._solution_status[solution_name].score = score
 
     def print_final_status(self) -> None:
-        printer = StdoutPrinter()
         self._done = True
         self._ui_thread.join()
+
+        printer = StdoutPrinter()
 
         if any(len(errors) for sol, errors in self._compilation_errors.items()):
             printer.red("Compilation errors\n")
             for sol, errors in sorted(self._compilation_errors.items()):
                 if errors:
-                    printer.text("Solution")
+                    printer.text("Solution ")
                     printer.bold(sol)
                     printer.text("\n")
                     print(errors)
