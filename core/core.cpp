@@ -71,6 +71,7 @@ bool Core::Run() {
   quitting_ = false;
 
   auto cleanup = [this, &threads]() {
+    cacher_.TearDown();
     quitting_ = true;
     task_ready_.notify_all();
     for (std::thread& thread : threads) thread.join();
@@ -175,7 +176,6 @@ bool Core::Run() {
     }
   }
   cleanup();
-  cacher_.TearDown();
   return true;
 }
 
