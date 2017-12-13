@@ -20,6 +20,26 @@ std::vector<int64_t> Execution::Deps() const {
   return result;
 }
 
+proto::Response Execution::RunWithCache(executor::Executor* executor,
+                                        const proto::Request& request) {
+  proto::Response response;
+  cached_ = true;
+  if (caching_mode_ == CachingMode::ALWAYS) {
+    if (cacher_->Get(request, &response)) return response;
+  } else if (caching_mode_ == CachingMode::SAME_EXECUTOR) {
+    if (cacher_->Get(request, executor->Id(), &response)) return response;
+  }
+  cached_ = false;
+  response = executor->Execute(
+      request, [](const proto::SHA256& hash,
+                  const util::File::ChunkReceiver& chunk_receiver) {
+        util::File::Read(util::File::ProtoSHAToPath(hash), chunk_receiver);
+      });
+  if (response.status() != proto::Status::INTERNAL_ERROR)
+    cacher_->Put(request, executor->Id(), response);
+  return response;
+}
+
 void Execution::Run(
     const std::function<util::SHA256_t(int64_t)>& get_hash,
     const std::function<void(int64_t, const util::SHA256_t&)>& set_hash) {
@@ -54,11 +74,7 @@ void Execution::Run(
   // TODO(veluca): FIFO, as soon as we support them anywhere.
 
   // Run the request.
-  response_ = executor->Execute(
-      request, [](const proto::SHA256& hash,
-                  const util::File::ChunkReceiver& chunk_receiver) {
-        util::File::Read(util::File::ProtoSHAToPath(hash), chunk_receiver);
-      });
+  response_ = RunWithCache(executor.get(), request);
 
   if (response_.status() == proto::Status::INTERNAL_ERROR) {
     throw std::runtime_error(response_.error_message());
@@ -79,6 +95,8 @@ void Execution::Run(
       if (out.has_contents()) {
         util::File::Write(path)(out.contents());
       } else {
+        if (cached_)
+          throw std::runtime_error("Cached request with missing output");
         executor->GetFile(out.hash(), util::File::Write(path));
       }
     }

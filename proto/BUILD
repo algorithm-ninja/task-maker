@@ -36,3 +36,12 @@ cc_proto_library(
     ],
     protos = ["response.proto"],
 )
+
+cc_proto_library(
+    name = "cache_entry_cc",
+    proto_deps = [
+        ":request_cc",
+        ":response_cc",
+    ],
+    protos = ["cache_entry.proto"],
+)

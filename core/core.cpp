@@ -58,6 +58,9 @@ bool Core::Run() {
   // TODO(veluca): think about how to automatically resize the thread pool.
   std::vector<std::thread> threads;
 
+  // Load up cache.
+  cacher_.Setup();
+
   if (FLAGS_num_cores == 0) {
     FLAGS_num_cores = std::thread::hardware_concurrency();
   }
@@ -172,6 +175,7 @@ bool Core::Run() {
     }
   }
   cleanup();
+  cacher_.TearDown();
   return true;
 }
 

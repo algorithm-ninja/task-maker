@@ -1,0 +1,16 @@
+syntax = 'proto3';
+
+package proto;
+
+import 'proto/request.proto';
+import 'proto/response.proto';
+
+message CacheEntry {
+  string executor = 1;
+  Request request = 2;
+  Response response = 3;
+}
+
+message CacheData {
+  repeated CacheEntry entry = 1;
+}

@@ -69,7 +69,7 @@ class Core {
                           const std::string& executable,
                           const std::vector<std::string>& args) {
     executions_.push_back(std::unique_ptr<Execution>(
-        new Execution(description, executable, args)));
+        new Execution(&cacher_, description, executable, args)));
     return executions_.back().get();
   }
 
@@ -105,6 +105,8 @@ class Core {
 
   std::unordered_map<int64_t, util::SHA256_t> known_files_;
   std::mutex file_lock_;
+
+  ExecutionCacher cacher_;
 
   util::SHA256_t GetFile(int64_t id) {
     std::lock_guard<std::mutex> lck(file_lock_);
