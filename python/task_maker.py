@@ -131,7 +131,7 @@ def run_for_cwd() -> None:
     for solution in solutions:
         Evaluation(dispatcher, ui, task, solution)
     if not dispatcher.run():
-        raise RuntimeError("Error running task")
+        ui.fatal_error("Error running task")
     ui.print_final_status()
 
 

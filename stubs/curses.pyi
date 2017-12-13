@@ -678,7 +678,7 @@ class _CursesWindow:
     def getkey(self, y: Optional[int] = 0, x: Optional[int] = 0) -> str:
         ...
 
-    def getmaxyx(self) -> Tuple['_CursesWindow', int, int]:
+    def getmaxyx(self) -> Tuple[int, int]:
         ...
 
     def getparyx(self) -> Tuple[int, int]:

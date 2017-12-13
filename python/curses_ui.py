@@ -24,7 +24,76 @@ class SolutionStatus:
         self.compiled = False
 
 
+class Printer:
+    def text(self, what: str) -> None:
+        pass
+
+    def red(self, what: str) -> None:
+        pass
+
+    def green(self, what: str) -> None:
+        pass
+
+    def blue(self, what: str) -> None:
+        pass
+
+    def bold(self, what: str) -> None:
+        pass
+
+
+class StdoutPrinter(Printer):
+    def __init__(self) -> None:
+        self.bold_fmt = "\033[1m"
+        self.green_fmt = "\033[92m" + self.bold_fmt
+        self.red_fmt = "\033[91m\033[1m" + self.bold_fmt
+        self.blue_fmt = "\033[34m" + self.bold_fmt
+        self.reset_fmt = "\033[39m\033[0m"
+
+    def text(self, what: str) -> None:
+        print(what, end="")
+
+    def red(self, what: str) -> None:
+        print(self.red_fmt + what + self.reset_fmt, end="")
+
+    def green(self, what: str) -> None:
+        print(self.green_fmt + what + self.reset_fmt, end="")
+
+    def blue(self, what: str) -> None:
+        print(self.blue_fmt + what + self.reset_fmt, end="")
+
+    def bold(self, what: str) -> None:
+        print(self.bold_fmt + what + self.reset_fmt, end="")
+
+
+class CursesPrinter(Printer):
+    def __init__(self, stdscr: 'curses._CursesWindow') -> None:
+        self.stdscr = stdscr
+        self.bold_fmt = curses.A_BOLD
+        if curses.COLORS >= 256:
+            self.green_fmt = curses.A_BOLD | curses.color_pair(82)
+        else:
+            self.green_fmt = curses.color_pair(curses.COLOR_GREEN)
+        self.red_fmt = curses.A_BOLD | curses.color_pair(curses.COLOR_RED)
+        self.blue_fmt = curses.A_BOLD | curses.color_pair(curses.COLOR_BLUE)
+
+    def text(self, what: str) -> None:
+        self.stdscr.addstr(what)
+
+    def red(self, what: str) -> None:
+        self.stdscr.addstr(what, self.red_fmt)
+
+    def green(self, what: str) -> None:
+        self.stdscr.addstr(what, self.green_fmt)
+
+    def blue(self, what: str) -> None:
+        self.stdscr.addstr(what, self.blue_fmt)
+
+    def bold(self, what: str) -> None:
+        self.stdscr.addstr(what, self.bold_fmt)
+
+
 class CursesUI(UI):
+
     def __init__(self, task_name: str) -> None:
         super().__init__(task_name)
         self._num_testcases = 0
@@ -41,9 +110,81 @@ class CursesUI(UI):
         self._solution_status = dict()  # type: Dict[str, SolutionStatus]
         self._done = False
         self._failure = None  # type: Optional[str]
+        self._max_sol_len = 13
         self._ui_thread = threading.Thread(
             target=curses.wrapper, args=(self._ui, ))
         self._ui_thread.start()
+
+    # pylint: disable=no-self-use
+    def _print_compilation_status(self, status: CompilationStatus,
+                                  loading: str, printer: Printer) -> None:
+        if status == CompilationStatus.WAITING:
+            printer.text("...")
+        elif status == CompilationStatus.RUNNING:
+            printer.bold(loading)
+        elif status == CompilationStatus.SUCCESS:
+            printer.green("OK")
+        elif status == CompilationStatus.FAILURE:
+            printer.red("FAILURE")
+        printer.text("\n")
+    # pylint: enable=no-self-use
+
+    def _print_compilation(self, sources: List[str], loading: str, printer: Printer) -> None:
+        for comp in sources:
+            printer.text("%{}s: ".format(self._max_sol_len) % comp)
+            self._print_compilation_status(self._compilation_status[comp], loading, printer)
+
+    def _print_generation_status(self, printer: Printer) -> None:
+        for subtask in self._subtask_testcases:
+            if subtask > 0:
+                printer.text("|")
+            for testcase in self._subtask_testcases[subtask]:
+                status = self._generation_status[testcase]
+                if status == GenerationStatus.WAITING:
+                    printer.text(".")
+                elif status == GenerationStatus.GENERATING:
+                    printer.text("g")
+                elif status == GenerationStatus.GENERATED:
+                    printer.text("G")
+                elif status == GenerationStatus.VALIDATING:
+                    printer.text("v")
+                elif status == GenerationStatus.VALIDATED:
+                    printer.text("V")
+                elif status == GenerationStatus.SOLVING:
+                    printer.text("s")
+                elif status == GenerationStatus.SUCCESS:
+                    printer.green("S")
+                elif status == GenerationStatus.FAILURE:
+                    printer.red("F")
+                else:
+                    printer.red("?")
+
+    def _print_subtasks_scores(self, status: SolutionStatus,
+                               loading: str, printer: Printer) -> None:
+        max_score = sum(self._subtask_max_scores.values())
+        if not status.subtask_scores:
+            printer.text("% 4s" % "...")
+        elif status.score is not None:
+            if status.score == max_score:
+                printer.bold("% 4.f" % status.score)
+            else:
+                printer.text("% 4.f" % status.score)
+        else:
+            printer.bold("% 4s" % loading)
+
+        for subtask in self._subtask_max_scores:
+            testcases = self._subtask_testcases[subtask]
+            if all(tc not in status.testcase_status or
+                   status.testcase_status[tc] == EvaluationStatus.WAITING
+                   for tc in testcases):
+                printer.text(" % 4s" % "...")
+            elif subtask in status.subtask_scores:
+                if self._subtask_max_scores[subtask] == status.subtask_scores[subtask]:
+                    printer.bold(" % 4.f" % status.subtask_scores[subtask])
+                else:
+                    printer.text(" % 4.f" % status.subtask_scores[subtask])
+            else:
+                printer.bold(" % 4s" % loading)
 
     def _ui(self, stdscr: 'curses._CursesWindow') -> None:
         curses.start_color()
@@ -51,102 +192,77 @@ class CursesUI(UI):
         for i in range(1, curses.COLORS):
             curses.init_pair(i, i, -1)
         curses.halfdelay(1)
+
         loading_chars = "-\\|/"
         cur_loading_char = 0
+        pad = curses.newpad(1000, 1000)
+        printer = CursesPrinter(pad)
+        pos_x, pos_y = 0, 0
+        will_exit = False
+        max_y, max_x = stdscr.getmaxyx()
 
-        loading_attr = curses.A_BOLD
-        if curses.COLORS >= 256:
-            # Extended color support
-            success_attr = curses.A_BOLD | curses.color_pair(82)
-        else:
-            success_attr = curses.color_pair(curses.COLOR_GREEN)
-        failure_attr = curses.A_BOLD | curses.color_pair(curses.COLOR_RED)
-
-        def print_compilation_status(status: CompilationStatus) -> None:
-            if status == CompilationStatus.WAITING:
-                stdscr.addstr("...\n")
-            elif status == CompilationStatus.RUNNING:
-                stdscr.addstr(loading_chars[cur_loading_char], loading_attr)
-                stdscr.addstr("\n")
-            elif status == CompilationStatus.SUCCESS:
-                stdscr.addstr("OK", success_attr)
-                stdscr.addstr("\n")
-            elif status == CompilationStatus.FAILURE:
-                stdscr.addstr("FAILURE", failure_attr)
-                stdscr.addstr("\n")
-
-        def subtask_scores(status: SolutionStatus) -> str:
-            loading = loading_chars[cur_loading_char]
-            res = ""
-            if not status.subtask_scores:
-                res += "% 4s" % "..."
-            elif status.score is not None:
-                res += "% 4.f" % status.score
-            else:
-                res += "% 4s" % loading
-
-            for subtask in self._subtask_max_scores:
-                testcases = self._subtask_testcases[subtask]
-                if all(tc not in status.testcase_status or
-                       status.testcase_status[tc] == EvaluationStatus.WAITING
-                       for tc in testcases):
-                    res += " % 6s" % "..."
-                elif subtask in status.subtask_scores:
-                    res += " % 6.f" % status.subtask_scores[subtask]
-                else:
-                    res += " % 6s" % loading
-
-            return res
-
-        while True:
+        while (not will_exit or not self._done) and self._failure is None:
             cur_loading_char = (cur_loading_char + 1) % len(loading_chars)
-            stdscr.clear()
+            loading = loading_chars[cur_loading_char]
+            pad.clear()
 
             if self._done:
-                stdscr.addstr("Done\n", success_attr)
+                printer.green("Done\n")
             elif self._failure:
-                stdscr.addstr("Failure\n", failure_attr)
+                printer.red("Failure\n")
             else:
-                stdscr.addstr("Running...\n", loading_attr)
+                printer.bold("Running...\n")
 
-            stdscr.addstr("Time limit: %.2f\n" % self._time_limit)
-            stdscr.addstr("Memory limit: %.2f\n" % (self._memory_limit / 1024))
-            for comp in self._other_compilations:
-                stdscr.addstr("%30s: " % comp)
-                print_compilation_status(self._compilation_status[comp])
+            printer.text("Time limit: %.2f\n" % self._time_limit)
+            printer.text("Memory limit: %.2f\n" % (self._memory_limit / 1024))
 
-            stdscr.addstr("\n")
-            for comp in sorted(self._solutions):
-                stdscr.addstr("%30s: " % comp)
-                print_compilation_status(self._compilation_status[comp])
-            stdscr.addstr("\n")
+            self._print_compilation(self._other_compilations, loading, printer)
+            printer.text("\n")
+            self._print_compilation(self._solutions, loading, printer)
+            printer.text("\n")
 
-            stdscr.addstr(
-                "Generation status: % 2d/%d\n" % (len(
-                    list(
-                        filter(lambda x: x == GenerationStatus.SUCCESS,
-                               self._generation_status.values()))),
-                                                  self._num_testcases))
-            stdscr.addstr("\n")
+            printer.blue("Generation status: ")
+            self._print_generation_status(printer)
+            printer.text("\n")
+            printer.text("\n")
 
-            stdscr.addstr("%s score" % (" " * 39))
+            printer.blue("Evaluation")
+            printer.bold("%s total" % (" " * (self._max_sol_len - 1)))
             for max_score in self._subtask_max_scores.values():
-                stdscr.addstr("% 6.f " % max_score)
-            stdscr.addstr("\n")
+                printer.bold("% 4.f " % max_score)
+            printer.text("\n")
 
             for sol in sorted(self._solutions):
-                stdscr.addstr("%30s: % 3d/%d  %s\n" %
-                              (sol,
-                               len(self._solution_status[sol].testcase_result),
-                               self._num_testcases,
-                               subtask_scores(self._solution_status[sol])))
-            stdscr.refresh()
+                printer.text("%{}s: % 3d/%d  ".format(self._max_sol_len) %
+                             (sol,
+                              len(self._solution_status[sol].testcase_result),
+                              self._num_testcases))
+                self._print_subtasks_scores(self._solution_status[sol], loading, printer)
+                printer.text("\n")
+
             try:
                 pressed_key = stdscr.getkey()
-                if self._done and pressed_key == 'q':
-                    break
+                if pressed_key == "q":
+                    will_exit = not will_exit
+                elif pressed_key == "KEY_UP":
+                    pos_y -= 1
+                elif pressed_key == "KEY_DOWN":
+                    pos_y += 1
+                elif pressed_key == "KEY_LEFT":
+                    pos_x -= 1
+                elif pressed_key == "KEY_RIGHT":
+                    pos_x += 1
+                pos_x = max(pos_x, 0)
+                pos_y = max(pos_y, 0)
             except curses.error:
                 pass
+
+            if will_exit:
+                printer.text("\n(will exit automatically)")
+            elif self._done:
+                printer.bold("\nPress q to exit...")
+            pad.refresh(pos_y, pos_x, 0, 0, max_y-1, max_x-1)
+        curses.endwin()
 
     def set_time_limit(self, time_limit: float) -> None:
         self._time_limit = time_limit
@@ -168,11 +284,13 @@ class CursesUI(UI):
         if is_solution:
             if file_name not in self._solutions:
                 self._solutions.append(file_name)
+                self._max_sol_len = max(self._max_sol_len, len(file_name))
             if file_name not in self._solution_status:
                 self._solution_status[file_name] = SolutionStatus()
         else:
             if file_name not in self._other_compilations:
                 self._other_compilations.append(file_name)
+                self._max_sol_len = max(self._max_sol_len, len(file_name))
         self._compilation_status[file_name] = status
         if warnings:
             self._compilation_errors[file_name] = warnings
@@ -216,7 +334,46 @@ class CursesUI(UI):
         self._solution_status[solution_name].score = score
 
     def print_final_status(self) -> None:
+        printer = StdoutPrinter()
         self._done = True
+        self._ui_thread.join()
+
+        if any(len(errors) for sol, errors in self._compilation_errors.items()):
+            printer.red("Compilation errors\n")
+            for sol, errors in sorted(self._compilation_errors.items()):
+                if errors:
+                    printer.text("Solution")
+                    printer.bold(sol)
+                    printer.text("\n")
+                    print(errors)
+
+        printer.blue("Compilation\n")
+        self._print_compilation(self._other_compilations, "?", printer)
+        printer.text("\n")
+        self._print_compilation(self._solutions, "?", printer)
+        printer.text("\n")
+
+        printer.blue("Generation status: ")
+        self._print_generation_status(printer)
+        printer.text("\n")
+        printer.text("\n")
+
+        # TODO print the summary for each solution with the time/memory for easy testcase
+
+        printer.blue("Scores")
+        printer.bold("%s total" % (" " * (self._max_sol_len-4)))
+        for max_score in self._subtask_max_scores.values():
+            printer.bold("% 4.f " % max_score)
+        printer.text("\n")
+
+        for sol in sorted(self._solutions):
+            printer.text("%{}s:  ".format(self._max_sol_len) % sol)
+            self._print_subtasks_scores(self._solution_status[sol], "?", printer)
+            printer.text("\n")
+
+        if self._failure:
+            printer.red("Fatal error\n")
+            printer.red(self._failure)
 
     def fatal_error(self, msg: str) -> None:
         self._failure = msg
