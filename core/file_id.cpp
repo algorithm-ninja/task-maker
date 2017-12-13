@@ -6,8 +6,8 @@ namespace core {
 
 std::atomic<int32_t> FileID::next_id_{1};
 
-void FileID::WriteTo(const std::string& path) {
-  util::File::Copy(util::File::SHAToPath(hash_), path);
+void FileID::WriteTo(const std::string& path, bool overwrite, bool exist_ok) {
+  util::File::Copy(util::File::SHAToPath(hash_), path, overwrite, exist_ok);
 }
 
 std::string FileID::Contents(int64_t size_limit) {

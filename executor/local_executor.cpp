@@ -99,7 +99,10 @@ proto::Response LocalExecutor::Execute(
   for (const proto::FileInfo& info : request.output()) {
     try {
       RetrieveFile(info, tmp.Path(), &response);
-    } catch (util::file_not_found& exc) {
+    } catch (std::system_error& exc) {
+      if (exc.code().value() !=
+          static_cast<int>(std::errc::no_such_file_or_directory))
+        throw exc;
       response.set_status(proto::Status::MISSING_FILES);
     }
   }
@@ -148,10 +151,14 @@ void LocalExecutor::MaybeRequestFile(const proto::FileInfo& info,
                                      const RequestFileCallback& file_callback) {
   std::string path = util::File::ProtoSHAToPath(info.hash());
   if (util::File::Size(path) >= 0) return;
+  const bool overwrite = false;
+  const bool exist_ok = false;
   if (info.has_contents()) {
-    util::File::Write(path)(info.contents());
+    util::File::Write(path, info.contents(), overwrite, exist_ok);
   } else {
-    file_callback(info.hash(), util::File::Write(path));
+    using namespace std::placeholders;
+    util::File::Write(path, std::bind(file_callback, info.hash(), _1),
+                      overwrite, exist_ok);
   }
 }
 

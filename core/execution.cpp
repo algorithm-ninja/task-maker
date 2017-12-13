@@ -77,9 +77,11 @@ void Execution::Run(
     // skip the file if it already exists
     if (util::File::Size(path) < 0) {
       if (out.has_contents()) {
-        util::File::Write(path)(out.contents());
+        util::File::Write(path, out.contents());
       } else {
-        executor->GetFile(out.hash(), util::File::Write(path));
+        using namespace std::placeholders;
+        util::File::Write(path, std::bind(&executor::Executor::GetFile,
+                                          executor.get(), out.hash(), _1));
       }
     }
     util::SHA256_t extracted_hash;

@@ -17,7 +17,8 @@ class FileID {
   int64_t ID() const { return id_; }
 
   // These methods should be called after Core::Run is done.
-  void WriteTo(const std::string& path);
+  void WriteTo(const std::string& path, bool overwrite = false,
+               bool exist_ok = true);
   std::string Contents(int64_t size_limit = 0);
 
   FileID(FileID&& other) = delete;
