@@ -342,15 +342,6 @@ class CursesUI(UI):
 
         printer = StdoutPrinter()
 
-        if any(len(errors) for sol, errors in self._compilation_errors.items()):
-            printer.red("Compilation errors\n")
-            for sol, errors in sorted(self._compilation_errors.items()):
-                if errors:
-                    printer.text("Solution ")
-                    printer.bold(sol)
-                    printer.text("\n")
-                    print(errors)
-
         printer.blue("Compilation\n")
         self._print_compilation(self._other_compilations, "?", printer)
         printer.text("\n")
@@ -390,6 +381,11 @@ class CursesUI(UI):
                 printer.green("%.2f / %.2f\n" % (status.score, max_score), bold=False)
             else:
                 printer.text("%.2f / %.2f\n" % (status.score, max_score))
+            if sol in self._compilation_errors:
+                printer.red("Compilation errors\n")
+                printer.text(self._compilation_errors[sol])
+                printer.text("\n")
+
             for num, subtask in self._subtask_testcases.items():
                 if status.subtask_scores[num] == self._subtask_max_scores[num]:
                     printer.bold("Subtask #%d: %.2f/%.2f\n" %
@@ -405,11 +401,6 @@ class CursesUI(UI):
                     print_testcase(sol, testcase, tc_status, max_time, max_mem)
 
             printer.text("\n")
-
-        printer.blue("Generation status: ")
-        self._print_generation_status(printer)
-        printer.text("\n")
-        printer.text("\n")
 
         printer.blue("Scores")
         printer.bold("%s total" % (" " * (self._max_sol_len-4)))
