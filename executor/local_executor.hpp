@@ -50,7 +50,8 @@ class LocalExecutor : public Executor {
                         const RequestFileCallback& file_callback);
 
   void PrepareFile(const proto::FileInfo& info, const std::string& tmpdir,
-                   sandbox::ExecutionOptions* options);
+                   sandbox::ExecutionOptions* options,
+                   std::vector<std::string>* input_files);
 
   void RetrieveFile(const proto::FileInfo& info, const std::string& tmpdir,
                     proto::Response* options);

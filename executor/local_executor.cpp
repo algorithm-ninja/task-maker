@@ -47,8 +47,9 @@ proto::Response LocalExecutor::Execute(
 
   // Input files.
   bool loaded_executable = false;
+  std::vector<std::string> input_files;
   for (const auto& input : request.input()) {
-    PrepareFile(input, tmp.Path(), &exec_options);
+    PrepareFile(input, tmp.Path(), &exec_options, &input_files);
     if (input.name() == request.executable()) {
       loaded_executable = true;
     }
@@ -58,17 +59,22 @@ proto::Response LocalExecutor::Execute(
   exec_options.stdout_file = util::File::JoinPath(tmp.Path(), "stdout");
   exec_options.stderr_file = util::File::JoinPath(tmp.Path(), "stderr");
 
+  std::string error_msg;
+  std::unique_ptr<sandbox::Sandbox> sb = sandbox::Sandbox::Create();
+
+  for (const std::string& input_file : input_files) {
+    if (!sb->MakeImmutable(input_file, &error_msg))
+      throw std::runtime_error(error_msg);
+  }
+  if (loaded_executable &&
+      !sb->PrepareForExecution(
+          util::File::JoinPath(sandbox_dir, request.executable()),
+          &error_msg)) {
+    throw std::runtime_error(error_msg);
+  }
   // Actual execution.
   {
     ThreadGuard guard(/*exclusive = */ request.exclusive());
-    std::unique_ptr<sandbox::Sandbox> sb = sandbox::Sandbox::Create();
-    std::string error_msg;
-    if (loaded_executable &&
-        !sb->PrepareForExecution(
-            util::File::JoinPath(sandbox_dir, request.executable()),
-            &error_msg)) {
-      throw std::runtime_error(error_msg);
-    }
     if (!sb->Execute(exec_options, &result, &error_msg)) {
       throw std::runtime_error(error_msg);
     }
@@ -111,7 +117,8 @@ proto::Response LocalExecutor::Execute(
 
 void LocalExecutor::PrepareFile(const proto::FileInfo& info,
                                 const std::string& tmp,
-                                sandbox::ExecutionOptions* options) {
+                                sandbox::ExecutionOptions* options,
+                                std::vector<std::string>* input_files) {
   std::string name = info.name();
   if (info.type() == proto::FileType::STDIN) {
     name = "stdin";
@@ -124,6 +131,7 @@ void LocalExecutor::PrepareFile(const proto::FileInfo& info,
   }
   std::string source_path = util::File::ProtoSHAToPath(info.hash());
   util::File::Copy(source_path, util::File::JoinPath(tmp, name));
+  input_files->push_back(util::File::JoinPath(tmp, name));
 }
 
 void LocalExecutor::RetrieveFile(const proto::FileInfo& info,

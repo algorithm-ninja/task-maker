@@ -31,10 +31,21 @@ namespace sandbox {
 
 static const constexpr size_t kStrErrorBufSize = 2048;
 
+bool Unix::MakeImmutable(const std::string& input_file,
+                         std::string* error_msg) {
+  char buf[kStrErrorBufSize] = {};
+  if (chmod(input_file.c_str(), S_IRUSR) == -1) {
+    *error_msg = "chmod: ";
+    *error_msg += mystrerror(errno, buf, kStrErrorBufSize);
+    return false;
+  }
+  return true;
+}
+
 bool Unix::PrepareForExecution(const std::string& executable,
                                std::string* error_msg) {
   char buf[kStrErrorBufSize] = {};
-  if (chmod(executable.c_str(), S_IRUSR | S_IWUSR | S_IXUSR) == -1) {
+  if (chmod(executable.c_str(), S_IRUSR | S_IXUSR) == -1) {
     *error_msg = "chmod: ";
     *error_msg += mystrerror(errno, buf, kStrErrorBufSize);
     return false;
