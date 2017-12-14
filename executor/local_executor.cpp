@@ -52,6 +52,10 @@ proto::Response LocalExecutor::Execute(
     PrepareFile(input, tmp.Path(), &exec_options, &input_files);
     if (input.name() == request.executable()) {
       loaded_executable = true;
+      // Do not call MakeImmutable on the main executable, as
+      // PrepareForExecution will take care of immutability either way and
+      // doing so could cause race conditions because of hardlinks.
+      input_files.pop_back();
     }
   }
 
