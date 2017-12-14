@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
+import argparse
 import glob
 import os
-import sys
 from typing import List
 from typing import Optional
 
+from python.curses_ui import CursesUI
 from python.dispatcher import Dispatcher
 from python.evaluation import Evaluation
 from python.generation import Generation
@@ -18,6 +19,7 @@ from python.task import Testcase
 from python.ui import UI
 
 EXTENSIONS = [".cpp", ".c", ".C", ".cc", ".py"]
+UIS = ["print", "curses"]
 
 
 def list_files(patterns: List[str],
@@ -99,16 +101,23 @@ def parse_task_yaml(ui: UI) -> Task:
     return task
 
 
-def run_for_cwd() -> None:
+def run_for_cwd(args: argparse.Namespace) -> None:
     official_solution = None  # type: Optional[str]
     solutions = []  # type: List[str]
     graders = []  # type: List[str]
     checker = None  # type: Optional[str]
     subtasks = []  # type: List[Subtask]
+    ui = None  # type: Optional[UI]
     task_name = "test"
 
-    print_ui = PrintUI(task_name)
-    task = parse_task_yaml(print_ui)
+    if args.ui == "curses":
+        ui = CursesUI(task_name)
+    elif args.ui == "print":
+        ui = PrintUI(task_name)
+    else:
+        raise RuntimeError("Invalid UI %s" % args.ui)
+
+    task = parse_task_yaml(ui)
 
     for solution in list_files(["sol/solution.*", "sol/soluzione.*"]):
         official_solution = solution
@@ -126,19 +135,25 @@ def run_for_cwd() -> None:
         task.add_grader(grader)
     for subtask in subtasks:
         task.add_subtask(subtask)
-    dispatcher = Dispatcher(print_ui)
-    Generation(dispatcher, print_ui, task)
+    dispatcher = Dispatcher(ui)
+    Generation(dispatcher, ui, task)
     for solution in solutions:
-        Evaluation(dispatcher, print_ui, task, solution)
+        Evaluation(dispatcher, ui, task, solution)
     if not dispatcher.run():
-        raise RuntimeError("Error running task")
-    print_ui.print_final_status()
+        ui.fatal_error("Error running task")
+    ui.print_final_status()
 
 
 def main() -> None:
-    if len(sys.argv) > 1:
-        os.chdir(sys.argv[1])
-    run_for_cwd()
+    parser = argparse.ArgumentParser(description="The new cmsMake!")
+    parser.add_argument("task_dir", help="Directory of the task to build",
+                        nargs="?", default=os.getcwd())
+    parser.add_argument("--ui", help="UI to use", action="store", choices=UIS, default="curses")
+
+    args = parser.parse_args()
+
+    os.chdir(args.task_dir)
+    run_for_cwd(args)
 
 
 if __name__ == '__main__':
