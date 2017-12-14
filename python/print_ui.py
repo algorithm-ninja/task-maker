@@ -11,8 +11,8 @@ from python.ui import UI
 
 
 class PrintUI(UI):
-    def __init__(self, task_name: str) -> None:
-        super().__init__(task_name)
+    def __init__(self) -> None:
+        super().__init__()
         self._subtasks_scores = dict()  # type: Dict[str, Dict[int, float]]
         self._scores = dict()  # type: Dict[str, float]
 

@@ -109,8 +109,8 @@ class CursesPrinter(Printer):
 
 class CursesUI(UI):
 
-    def __init__(self, task_name: str) -> None:
-        super().__init__(task_name)
+    def __init__(self) -> None:
+        super().__init__()
         self._num_testcases = 0
         self._subtask_max_scores = dict()  # type: Dict[int, float]
         self._subtask_testcases = dict()  # type: Dict[int, List[int]]
@@ -429,4 +429,7 @@ class CursesUI(UI):
             printer.text("\n")
 
     def fatal_error(self, msg: str) -> None:
-        self._failure = msg
+        if not self._failure:
+            self._failure = msg
+        else:
+            self._failure += "\n" + msg

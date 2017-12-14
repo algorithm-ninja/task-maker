@@ -3,8 +3,10 @@
 import argparse
 import glob
 import os
-from typing import List
+from typing import List, Any
 from typing import Optional
+
+from external.ruamel_yaml import YAML
 
 from python.curses_ui import CursesUI
 from python.dispatcher import Dispatcher
@@ -87,12 +89,32 @@ def gen_testcases() -> List[Subtask]:
     return subtasks
 
 
-def parse_task_yaml(ui: UI) -> Task:
-    # TODO(veluca): read data from task.yaml or ../task_name.yaml.
-    time_limit = 1.0
-    memory_limit = 256 * 1024
-    input_file = None  # type: Optional[str]
-    output_file = None  # type: Optional[str]
+def detect_yaml() -> str:
+    cwd = os.getcwd()
+    task_name = os.path.basename(cwd)
+    yaml_names = ["task", os.path.join("..", task_name)]
+    yaml_ext = ["yaml", "yml"]
+    for name in yaml_names:
+        for ext in yaml_ext:
+            path = os.path.join(cwd, name+"."+ext)
+            if os.path.exists(path):
+                return path
+    raise FileNotFoundError("Cannot find the task yaml of %s" % cwd)
+
+
+def parse_task_yaml() -> Any:
+    path = detect_yaml()
+    with open(path) as yaml_file:
+        return YAML().load(yaml_file)
+
+
+def create_task(ui: UI, yaml: YAML) -> Task:
+    ui.set_task_name("%s (%s)" % (yaml["title"], yaml["name"]))
+    time_limit = yaml["time_limit"]
+    memory_limit = yaml["memory_limit"] * 1024
+    input_file = yaml["infile"]
+    output_file = yaml["outfile"]
+
     task = Task(ui, time_limit, memory_limit)
     if input_file:
         task.set_input_file(input_file)
@@ -108,16 +130,16 @@ def run_for_cwd(args: argparse.Namespace) -> None:
     checker = None  # type: Optional[str]
     subtasks = []  # type: List[Subtask]
     ui = None  # type: Optional[UI]
-    task_name = "test"
+    yaml = parse_task_yaml()
 
     if args.ui == "curses":
-        ui = CursesUI(task_name)
+        ui = CursesUI()
     elif args.ui == "print":
-        ui = PrintUI(task_name)
+        ui = PrintUI()
     else:
         raise RuntimeError("Invalid UI %s" % args.ui)
 
-    task = parse_task_yaml(ui)
+    task = create_task(ui, yaml)
 
     for solution in list_files(["sol/solution.*", "sol/soluzione.*"]):
         official_solution = solution

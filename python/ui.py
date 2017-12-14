@@ -43,7 +43,10 @@ class EvaluationResult:
 
 
 class UI:
-    def __init__(self, task_name: str) -> None:
+    def __init__(self) -> None:
+        self.task_name = ""
+
+    def set_task_name(self, task_name: str) -> None:
         self.task_name = task_name
 
     def set_time_limit(self, time_limit: float) -> None:

@@ -20,6 +20,13 @@ python_repository(
     version = "3",
 )
 
+new_http_archive(
+    name = "ruamel_yaml",
+    build_file = "tools/ruamel_yaml.BUILD",
+    strip_prefix = "ruamel-yaml-ea4d54f8e034",
+    url = "https://bitbucket.org/ruamel/yaml/get/0.15.34.tar.bz2",
+)
+
 new_git_repository(
     name = "pybind11",
     build_file = "tools/pybind11.BUILD",
