@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import string
 from typing import List
 from typing import Optional  # pylint: disable=unused-import
 from typing import Tuple  # pylint: disable=unused-import
@@ -16,6 +17,12 @@ from python.ui import UI
 from python.ui import CompilationStatus
 
 
+def _sanitize(filename: str) -> str:
+    return "".join(
+        filter(lambda x: x in string.ascii_letters + string.digits + "_-.",
+               filename))
+
+
 class SourceFile:
     def __init__(self, dispatcher: Dispatcher, ui: UI, path: str,
                  is_solution: bool) -> None:
@@ -23,7 +30,7 @@ class SourceFile:
         self._path = path
         self._dispatcher = dispatcher
         self._basename = os.path.basename(path)
-        self._compiled_name = os.path.splitext(self._basename)[0]
+        self._compiled_name = _sanitize(os.path.splitext(self._basename)[0])
         self._compilation_output = None  # type: Optional[FileID]
         self._runtime_deps = []  # type: List[Tuple[str, FileID]]
         self._is_solution = is_solution
@@ -59,6 +66,7 @@ class SourceFile:
         raise RuntimeError("Unexpected compilation state")
 
     def compile(self, graders: List[str]) -> None:
+
         self._ui.set_compilation_status(self._basename, self._is_solution,
                                         CompilationStatus.WAITING)
         if graders is None:
@@ -85,7 +93,7 @@ class SourceFile:
             files_to_pass = []  # type: List[Tuple[str, FileID]]
             for source_file in [self._path] + graders:
                 # TODO(veluca): call callback?
-                basename = os.path.basename(source_file)
+                basename = _sanitize(os.path.basename(source_file))
                 files_to_pass.append((basename, self._dispatcher.load_file(
                     source_file, source_file)))
                 compilation_args.append(basename)
