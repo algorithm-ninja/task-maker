@@ -6,7 +6,7 @@ import os
 from typing import List, Any
 from typing import Optional
 
-from external.ruamel_yaml import YAML
+from external import ruamel_yaml
 
 from python.curses_ui import CursesUI
 from python.dispatcher import Dispatcher
@@ -105,15 +105,29 @@ def detect_yaml() -> str:
 def parse_task_yaml() -> Any:
     path = detect_yaml()
     with open(path) as yaml_file:
-        return YAML().load(yaml_file)
+        return ruamel_yaml.YAML().load(yaml_file)
 
 
-def create_task(ui: UI, yaml: YAML) -> Task:
-    ui.set_task_name("%s (%s)" % (yaml["title"], yaml["name"]))
-    time_limit = yaml["time_limit"]
-    memory_limit = yaml["memory_limit"] * 1024
-    input_file = yaml["infile"]
-    output_file = yaml["outfile"]
+def get_options(yaml: ruamel_yaml.YAML, names: List[str], default: Optional[Any] = None) -> Any:
+    for name in names:
+        if name in yaml:
+            return yaml[name]
+    return default
+
+
+def create_task(ui: UI, yaml: ruamel_yaml.YAML) -> Task:
+    name = get_options(yaml, ["name", "nome_breve"])
+    title = get_options(yaml, ["title", "nome"])
+    if name is None:
+        ui.fatal_error("The name is not set in the yaml")
+    if title is None:
+        ui.fatal_error("The title is not set in the yaml")
+    ui.set_task_name("%s (%s)" % (title, name))
+
+    time_limit = get_options(yaml, ["time_limit", "timeout"])
+    memory_limit = get_options(yaml, ["memory_limit", "memlimit"]) * 1024
+    input_file = get_options(yaml, ["infile"], "input.txt")
+    output_file = get_options(yaml, ["outfile"], "output.txt")
 
     task = Task(ui, time_limit, memory_limit)
     if input_file:
