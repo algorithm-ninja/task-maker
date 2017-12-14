@@ -1,11 +1,10 @@
-image: gcc:7.2
+image: registry.gitlab.com/olimpiadi-informatica/task-maker/runner:latest
 
 build_and_test:
   stage: build
   before_script:
-    - echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list
-    - curl https://bazel.build/bazel-release.pub.gpg | apt-key add -
-    - apt update && apt install -y openjdk-8-jdk bazel python3-dev
+    - if [ -f ./cache.tar.gz ]; then tar -xzf ./cache.tar.gz -C / --warning=no-timestamp; fi
+    - apt update && apt upgrade
     - |
       cat > $CI_PROJECT_DIR/.bazelrc <<EOF
       # This is from Bazel's former travis setup, to avoid blowing up the RAM usage.
@@ -22,14 +21,20 @@ build_and_test:
       test --test_strategy=standalone --test_output=streamed
       EOF
 
+  variables:
+    TEST_TMPDIR: "/tmp/cache"
+
   script:
-    - bazel test ... --python_path=/usr/bin/python3
+    - bazel test ... --python_path=/usr/bin/python3 --nocache_test_results
+
+  after_script:
+    - tar -czf ./cache.tar.gz /tmp/cache
 
   artifacts:
     paths:
-      - ~/.cache/bazel
+      - ./cache.tar.gz
     expire_in: 1 week
 
   cache:
     paths:
-      - ~/.cache/bazel
+      - ./cache.tar.gz

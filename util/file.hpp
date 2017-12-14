@@ -7,31 +7,33 @@
 
 namespace util {
 
-class file_exists : public std::system_error {
- public:
-  explicit file_exists(const std::string& msg)
-      : std::system_error(EEXIST, std::system_category(), msg) {}
-};
-
-class file_not_found : public std::system_error {
- public:
-  explicit file_not_found(const std::string& msg)
-      : std::system_error(ENOENT, std::system_category(), msg) {}
-};
-
 static const constexpr uint32_t kChunkSize = 32 * 1024;
 
 class File {
  public:
   using ChunkReceiver = std::function<void(const proto::FileContents&)>;
+  using ChunkProducer = std::function<void(const ChunkReceiver&)>;
 
   // Reads the file specified by path in chunks.
   static void Read(const std::string& path,
                    const ChunkReceiver& chunk_receiver);
 
-  // Returns a ChunkReceiver that writes the given data to a file.
-  // The file is closed when the ChunkReceiver goes out of scope.
-  static ChunkReceiver Write(const std::string& path, bool overwrite = false);
+  // Takes as an argument a function that requires a chunk receiver, which is
+  // called on a receiver that will output to the given file.
+  static void Write(const std::string& path,
+                    const ChunkProducer& chunk_producer, bool overwrite = false,
+                    bool exist_ok = true);
+
+  // Overload for writing directly a single chunk.
+  static void Write(const std::string& path,
+                    const proto::FileContents& contents, bool overwrite = false,
+                    bool exist_ok = true) {
+    Write(path,
+          [&contents](const ChunkReceiver& chunk_receiver) {
+            chunk_receiver(contents);
+          },
+          overwrite, exist_ok);
+  }
 
   // Computes the hash of the file specified by path.
   static SHA256_t Hash(const std::string& path);
@@ -42,14 +44,16 @@ class File {
 
   // Makes a full copy of the given file.
   static void DeepCopy(const std::string& from, const std::string& to,
-                       bool overwrite = false);
+                       bool overwrite = false, bool exist_ok = true);
 
   // Copies from -> to, but the files may still share the underlying data.
   static void Copy(const std::string& from, const std::string& to,
-                   bool overwrite = false);
+                   bool overwrite = false, bool exist_ok = true);
 
-  // Moves a file to a new position.
-  static void Move(const std::string& from, const std::string& to);
+  // Moves a file to a new position. If overwrite is false and exist_ok
+  // is true, the original file is deleted anyway.
+  static void Move(const std::string& from, const std::string& to,
+                   bool overwrite = false, bool exist_ok = true);
 
   // Removes a file.
   static void Remove(const std::string& path);

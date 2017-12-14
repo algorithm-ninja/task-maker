@@ -52,6 +52,12 @@ py_library(
 )
 
 py_library(
+    name = "curses_ui",
+    srcs = ["curses_ui.py"],
+    deps = [":ui"],
+)
+
+py_library(
     name = "print_ui",
     srcs = ["print_ui.py"],
     deps = [":ui"],
@@ -87,6 +93,7 @@ py_binary(
     name = "task_maker",
     srcs = ["task_maker.py"],
     deps = [
+        ":curses_ui",
         ":dispatcher",
         ":evaluation",
         ":generation",
