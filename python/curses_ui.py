@@ -303,7 +303,7 @@ class CursesUI(UI):
                               status: GenerationStatus,
                               stderr: Optional[str] = None) -> None:
         self._generation_status[testcase_num] = status
-        if stderr:
+        if stderr is not None:
             self._generation_errors[testcase_num] = stderr
 
     def set_evaluation_status(self,
@@ -412,6 +412,16 @@ class CursesUI(UI):
             printer.text("%{}s:  ".format(self._max_sol_len) % sol)
             self._print_subtasks_scores(self._solution_status[sol], "?", printer)
             printer.text("\n")
+
+        if self._generation_errors:
+            printer.red("\nGeneration errors\n")
+            printer.blue("Generation summary: ")
+            self._print_generation_status(printer)
+            printer.text("\n")
+            for testcase, error in self._generation_errors.items():
+                printer.bold("Testcase %d\n" % testcase)
+                printer.text(error)
+                printer.text("\n")
 
         if self._failure:
             printer.red("Fatal error\n")
