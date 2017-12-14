@@ -16,6 +16,9 @@ class Executor {
       std::function<void(const proto::SHA256& hash,
                          const util::File::ChunkReceiver& chunk_receiver)>;
 
+  // A string that identifies this executor.
+  virtual std::string Id() const = 0;
+
   // Executes a request and returns the response, after possibly using the
   // provided file_callback to load missing files.
   virtual proto::Response Execute(const proto::Request& request,

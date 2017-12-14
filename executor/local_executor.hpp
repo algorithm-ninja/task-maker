@@ -15,6 +15,7 @@ class too_many_executions : public std::runtime_error {
 
 class LocalExecutor : public Executor {
  public:
+  std::string Id() const override { return "LOCAL"; }
   proto::Response Execute(const proto::Request& request,
                           const RequestFileCallback& file_callback) override;
   void GetFile(const proto::SHA256& hash,

@@ -13,10 +13,26 @@ cc_library(
 )
 
 cc_library(
+    name = "execution_cacher",
+    srcs = ["execution_cacher.cpp"],
+    hdrs = ["execution_cacher.hpp"],
+    deps = [
+        "//external:protobuf",
+        "//proto:cache_entry_cc",
+        "//proto:request_cc",
+        "//proto:response_cc",
+        "//util:file",
+        "//util:flags",
+        "//util:sha256",
+    ],
+)
+
+cc_library(
     name = "execution",
     srcs = ["execution.cpp"],
     hdrs = ["execution.hpp"],
     deps = [
+        ":execution_cacher",
         ":file_id",
         "//executor:local_executor",
         "//proto:response_cc",
@@ -29,6 +45,7 @@ cc_library(
     hdrs = ["core.hpp"],
     deps = [
         ":execution",
+        ":execution_cacher",
         ":file_id",
         "//util:flags",
     ],

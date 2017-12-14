@@ -5,13 +5,17 @@
 #include <unordered_map>
 #include <vector>
 
+#include "core/execution_cacher.hpp"
 #include "core/file_id.hpp"
+#include "executor/executor.hpp"
 #include "proto/response.pb.h"
 
 namespace core {
 
 class Execution {
  public:
+  enum CachingMode { NEVER, SAME_EXECUTOR, ALWAYS };
+
   const std::string& Description() const { return description_; }
   int64_t ID() const { return id_; }
 
@@ -37,7 +41,8 @@ class Execution {
   void MemoryLockLimit(int64_t limit) { resource_limits_.set_mlock(limit); }
   void StackLimit(int64_t limit) { resource_limits_.set_stack(limit); }
 
-  void Exclusive() { exclusive_ = true; }
+  void SetExclusive() { exclusive_ = true; }
+  void SetCachingMode(CachingMode mode) { caching_mode_ = mode; }
 
   // To be called after Core::Run().
   bool Success() const { return successful_; }
@@ -58,13 +63,15 @@ class Execution {
  private:
   friend class Core;
   std::vector<int64_t> Deps() const;
+  proto::Response RunWithCache(executor::Executor* executor,
+                               const proto::Request& request);
   void Run(const std::function<util::SHA256_t(int64_t)>& get_hash,
            const std::function<void(int64_t, const util::SHA256_t&)>& set_hash);
 
   bool IsExclusive() const { return exclusive_; }
 
-  Execution(std::string description, std::string executable,
-            std::vector<std::string> args)
+  Execution(ExecutionCacher* cacher, std::string description,
+            std::string executable, std::vector<std::string> args)
       : description_(std::move(description)),
         id_((reinterpret_cast<int64_t>(&next_id_) << 32) | (next_id_++)),
         executable_(std::move(executable)),
@@ -72,7 +79,8 @@ class Execution {
         stdout_(std::unique_ptr<FileID>(
             new FileID("Standard output for " + description_))),
         stderr_(std::unique_ptr<FileID>(
-            new FileID("Standard error for " + description_))) {
+            new FileID("Standard error for " + description_))),
+        cacher_(cacher) {
     /*
     fprintf(stderr, "Description: %s\n", description_.c_str());
     fprintf(stderr, "Command: %s", executable_.c_str());
@@ -98,6 +106,10 @@ class Execution {
 
   bool successful_ = false;
   bool exclusive_ = false;
+  CachingMode caching_mode_ = ALWAYS;
+
+  ExecutionCacher* cacher_;
+  bool cached_ = false;
 
   proto::Response response_;
   proto::Resources resource_limits_;

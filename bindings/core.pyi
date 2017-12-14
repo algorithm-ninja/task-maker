@@ -31,16 +31,16 @@ class Core:
     def __init__(self) -> None:
         ...
 
-    @classmethod
-    def set_num_cores(cls, num_cores: int) -> None:
+    @staticmethod
+    def set_num_cores(num_cores: int) -> None:
         ...
 
-    @classmethod
-    def set_temp_directory(cls, directory: str) -> None:
+    @staticmethod
+    def set_temp_directory(directory: str) -> None:
         ...
 
-    @classmethod
-    def set_store_directory(cls, directory: str) -> None:
+    @staticmethod
+    def set_store_directory(directory: str) -> None:
         ...
 
     def load_file(self, description: str, path: str) -> FileID:
