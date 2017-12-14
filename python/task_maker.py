@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
+import argparse
 import glob
 import os
-import sys
 from typing import List
 from typing import Optional
 
@@ -10,6 +10,7 @@ from python.curses_ui import CursesUI
 from python.dispatcher import Dispatcher
 from python.evaluation import Evaluation
 from python.generation import Generation
+from python.print_ui import PrintUI
 from python.task import Input
 from python.task import ScoreMode
 from python.task import Subtask
@@ -18,6 +19,7 @@ from python.task import Testcase
 from python.ui import UI
 
 EXTENSIONS = [".cpp", ".c", ".C", ".cc", ".py"]
+UIS = ["print", "curses"]
 
 
 def list_files(patterns: List[str],
@@ -99,15 +101,22 @@ def parse_task_yaml(ui: UI) -> Task:
     return task
 
 
-def run_for_cwd() -> None:
+def run_for_cwd(args: argparse.Namespace) -> None:
     official_solution = None  # type: Optional[str]
     solutions = []  # type: List[str]
     graders = []  # type: List[str]
     checker = None  # type: Optional[str]
     subtasks = []  # type: List[Subtask]
+    ui = None  # type: Optional[UI]
     task_name = "test"
 
-    ui = CursesUI(task_name)
+    if args.ui == "curses":
+        ui = CursesUI(task_name)
+    elif args.ui == "print":
+        ui = PrintUI(task_name)
+    else:
+        raise RuntimeError("Invalid UI %s" % args.ui)
+
     task = parse_task_yaml(ui)
 
     for solution in list_files(["sol/solution.*", "sol/soluzione.*"]):
@@ -136,9 +145,15 @@ def run_for_cwd() -> None:
 
 
 def main() -> None:
-    if len(sys.argv) > 1:
-        os.chdir(sys.argv[1])
-    run_for_cwd()
+    parser = argparse.ArgumentParser(description="The new cmsMake!")
+    parser.add_argument("task_dir", help="Directory of the task to build",
+                        nargs="?", default=os.getcwd())
+    parser.add_argument("--ui", help="UI to use", action="store", choices=UIS, default="curses")
+
+    args = parser.parse_args()
+
+    os.chdir(args.task_dir)
+    run_for_cwd(args)
 
 
 if __name__ == '__main__':
