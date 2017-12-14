@@ -112,7 +112,8 @@ class Evaluation:
             evaluation_state.testcase_offset, score)
         return True
 
-    def _evaluate_testcase(self, num: int, testcase: Testcase) -> None:
+    def _evaluate_testcase(self, num: int, testcase: Testcase,
+                           exclusive: bool = False) -> None:
         def callback(event: Event, status: EventStatus) -> bool:
             return self._callback(num, event, status)
 
@@ -121,8 +122,8 @@ class Evaluation:
             raise ValueError("Invalid testcase state")
 
         execution = self._solution.execute(
-            "Evaluation of solution %s on testcase %d" % (self.solution_src,
-                                                          num), [], callback)
+            "Evaluation of solution %s on testcase %d" % (self.solution_src, num),
+            [], callback, exclusive)
         execution.cpu_limit(self._task.time_limit)
         execution.wall_limit(self._task.time_limit + 0.2)
         execution.memory_limit(self._task.memory_limit)
@@ -154,7 +155,7 @@ class Evaluation:
                                        EvaluationStatus.WAITING)
 
     def __init__(self, dispatcher: Dispatcher, ui: UI, task: Task,
-                 solution: str) -> None:
+                 solution: str, exclusive: bool = False) -> None:
         if not task.generated:
             raise ValueError("You must first generate the task")
         self._diff_path = shutil.which("diff")
@@ -174,7 +175,7 @@ class Evaluation:
         self._subtask_score_info = \
             [SubtaskScoreInfo(self, subtask, ui) for subtask in task.subtasks]
         for num, testcase in enumerate(task.testcases):
-            self._evaluate_testcase(num, testcase)
+            self._evaluate_testcase(num, testcase, exclusive)
 
     def update_score(self, subtask_num: int, score: float) -> None:
         self.subtask_scores[subtask_num] = score

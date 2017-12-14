@@ -176,7 +176,7 @@ def run_for_cwd(args: argparse.Namespace) -> None:
     dispatcher = Dispatcher(ui)
     Generation(dispatcher, ui, task)
     for solution in solutions:
-        Evaluation(dispatcher, ui, task, solution)
+        Evaluation(dispatcher, ui, task, solution, args.exclusive)
     if not dispatcher.run():
         ui.fatal_error("Error running task")
     ui.print_final_status()
@@ -195,6 +195,11 @@ def main() -> None:
         action="store",
         choices=UIS,
         default="curses")
+    parser.add_argument(
+        "--exclusive",
+        help="Evaluate the solutions using only one core at time",
+        action="store_true",
+        default=False)
 
     args = parser.parse_args()
 

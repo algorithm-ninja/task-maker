@@ -106,11 +106,13 @@ class SourceFile:
                                                     "Compiled " + self._path)
 
     def execute(self, description: str, args: List[str],
-                callback: DispatcherCallback) -> Execution:
+                callback: DispatcherCallback, exclusive: bool = False) -> Execution:
         if self._compilation_output is None:
             raise RuntimeError("You must compile this source file first")
         execution = self._dispatcher.add_execution(
             description, self._compiled_name, args, callback)
+        if exclusive:
+            execution.set_exclusive()
         execution.input(self._compiled_name, self._compilation_output)
         for runtime_dep in self._runtime_deps:
             execution.input(runtime_dep[0], runtime_dep[1])
