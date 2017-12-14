@@ -220,7 +220,7 @@ class CursesUI(UI):
             loading = loading_chars[cur_loading_char]
             pad.clear()
 
-            printer.bold("Running...\n")
+            printer.bold("Running... %s\n" % self.task_name)
 
             printer.text("Time limit: %.2f\n" % self._time_limit)
             printer.text("Memory limit: %.2f\n" % (self._memory_limit / 1024))
