@@ -3,10 +3,10 @@
 import argparse
 import glob
 import os
-from typing import List, Any
+from typing import Dict, List, Any
 from typing import Optional
 
-from external import ruamel_yaml
+from external.ruamel_yaml import YAML
 
 from python.curses_ui import CursesUI
 from python.dispatcher import Dispatcher
@@ -96,26 +96,28 @@ def detect_yaml() -> str:
     yaml_ext = ["yaml", "yml"]
     for name in yaml_names:
         for ext in yaml_ext:
-            path = os.path.join(cwd, name+"."+ext)
+            path = os.path.join(cwd, name + "." + ext)
             if os.path.exists(path):
                 return path
     raise FileNotFoundError("Cannot find the task yaml of %s" % cwd)
 
 
-def parse_task_yaml() -> Any:
+def parse_task_yaml() -> Dict[str, Any]:
     path = detect_yaml()
     with open(path) as yaml_file:
-        return ruamel_yaml.YAML().load(yaml_file)
+        return YAML().load(yaml_file)
 
 
-def get_options(yaml: ruamel_yaml.YAML, names: List[str], default: Optional[Any] = None) -> Any:
+def get_options(yaml: Dict[str, Any],
+                names: List[str],
+                default: Optional[Any] = None) -> Any:
     for name in names:
         if name in yaml:
             return yaml[name]
     return default
 
 
-def create_task(ui: UI, yaml: ruamel_yaml.YAML) -> Task:
+def create_task(ui: UI, yaml: Dict[str, Any]) -> Task:
     name = get_options(yaml, ["name", "nome_breve"])
     title = get_options(yaml, ["title", "nome"])
     if name is None:
@@ -182,9 +184,17 @@ def run_for_cwd(args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="The new cmsMake!")
-    parser.add_argument("task_dir", help="Directory of the task to build",
-                        nargs="?", default=os.getcwd())
-    parser.add_argument("--ui", help="UI to use", action="store", choices=UIS, default="curses")
+    parser.add_argument(
+        "task_dir",
+        help="Directory of the task to build",
+        nargs="?",
+        default=os.getcwd())
+    parser.add_argument(
+        "--ui",
+        help="UI to use",
+        action="store",
+        choices=UIS,
+        default="curses")
 
     args = parser.parse_args()
 
