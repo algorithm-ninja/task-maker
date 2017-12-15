@@ -6,7 +6,7 @@ import os
 from typing import Dict, List, Any
 from typing import Optional
 
-from external.ruamel_yaml import YAML
+from external.pyyaml.lib3 import yaml
 
 from python.curses_ui import CursesUI
 from python.dispatcher import Dispatcher
@@ -105,31 +105,31 @@ def detect_yaml() -> str:
 def parse_task_yaml() -> Dict[str, Any]:
     path = detect_yaml()
     with open(path) as yaml_file:
-        return YAML().load(yaml_file)
+        return yaml.load(yaml_file)
 
 
-def get_options(yaml: Dict[str, Any],
+def get_options(data: Dict[str, Any],
                 names: List[str],
                 default: Optional[Any] = None) -> Any:
     for name in names:
-        if name in yaml:
-            return yaml[name]
+        if name in data:
+            return data[name]
     return default
 
 
-def create_task(ui: UI, yaml: Dict[str, Any]) -> Task:
-    name = get_options(yaml, ["name", "nome_breve"])
-    title = get_options(yaml, ["title", "nome"])
+def create_task(ui: UI, data: Dict[str, Any]) -> Task:
+    name = get_options(data, ["name", "nome_breve"])
+    title = get_options(data, ["title", "nome"])
     if name is None:
         ui.fatal_error("The name is not set in the yaml")
     if title is None:
         ui.fatal_error("The title is not set in the yaml")
     ui.set_task_name("%s (%s)" % (title, name))
 
-    time_limit = get_options(yaml, ["time_limit", "timeout"])
-    memory_limit = get_options(yaml, ["memory_limit", "memlimit"]) * 1024
-    input_file = get_options(yaml, ["infile"], "input.txt")
-    output_file = get_options(yaml, ["outfile"], "output.txt")
+    time_limit = get_options(data, ["time_limit", "timeout"])
+    memory_limit = get_options(data, ["memory_limit", "memlimit"]) * 1024
+    input_file = get_options(data, ["infile"], "input.txt")
+    output_file = get_options(data, ["outfile"], "output.txt")
 
     task = Task(ui, time_limit, memory_limit)
     if input_file:
@@ -146,7 +146,7 @@ def run_for_cwd(args: argparse.Namespace) -> None:
     checker = None  # type: Optional[str]
     subtasks = []  # type: List[Subtask]
     ui = None  # type: Optional[UI]
-    yaml = parse_task_yaml()
+    data = parse_task_yaml()
 
     if args.ui == "curses":
         ui = CursesUI()
@@ -155,7 +155,7 @@ def run_for_cwd(args: argparse.Namespace) -> None:
     else:
         raise RuntimeError("Invalid UI %s" % args.ui)
 
-    task = create_task(ui, yaml)
+    task = create_task(ui, data)
 
     for solution in list_files(["sol/solution.*", "sol/soluzione.*"]):
         official_solution = solution

@@ -1,8 +1,8 @@
 package(default_visibility = ["//visibility:public"])
 
 py_library(
-    name = "ruamel_yaml",
+    name = "pyyaml",
     srcs = glob(
-      include=["*.py"],
+      include=["lib3/yaml/*.py"],
     ),
 )

@@ -99,6 +99,6 @@ py_binary(
         ":generation",
         ":print_ui",
         ":task",
-        "@ruamel_yaml//:ruamel_yaml",
+        "@pyyaml//:pyyaml",
     ],
 )
