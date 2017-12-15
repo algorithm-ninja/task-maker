@@ -193,6 +193,13 @@ def run_for_cwd(args: argparse.Namespace) -> None:
         eval_executor = args.evaluate_on
 
         dispatcher = Dispatcher(ui)
+        if args.num_cores:
+            dispatcher.core.set_num_cores(args.num_cores)
+        if args.temp_dir:
+            dispatcher.core.set_temp_directory(args.temp_dir)
+        if args.store_dir:
+            dispatcher.core.set_store_directory(args.store_dir)
+
         Generation(dispatcher, ui, task, cache_mode)
         for solution in solutions:
             Evaluation(dispatcher, ui, task, solution, args.exclusive,
@@ -224,6 +231,16 @@ def _validate_extra_eval_time(num: str) -> float:
         if float(num) < 0:
             raise argparse.ArgumentTypeError(error_message)
         return float(num)
+    except ValueError:
+        raise argparse.ArgumentTypeError(error_message)
+
+
+def _validate_num_cores(num: str) -> int:
+    error_message = "%s is not a positive number" % num
+    try:
+        if int(num) <= 0:
+            raise argparse.ArgumentTypeError(error_message)
+        return int(num)
     except ValueError:
         raise argparse.ArgumentTypeError(error_message)
 
@@ -273,6 +290,22 @@ def main() -> None:
         help="Execute everything but do not touch the task directory",
         action="store_true",
         default=False)
+    parser.add_argument(
+        "--num-cores",
+        help="Number of cores to use",
+        action="store",
+        type=_validate_num_cores,
+        default=None)
+    parser.add_argument(
+        "--temp-dir",
+        help="Temporary directory to use",
+        action="store",
+        default=None)
+    parser.add_argument(
+        "--store-dir",
+        help="Directory to use to store persistent internal data",
+        action="store",
+        default=None)
 
     args = parser.parse_args()
 
