@@ -8,6 +8,7 @@ from typing import Tuple  # pylint: disable=unused-import
 
 from bindings import Execution
 from bindings import FileID  # pylint: disable=unused-import
+from python import dependency_finder
 from python.dispatcher import Dispatcher
 from python.dispatcher import DispatcherCallback
 from python.dispatcher import Event
@@ -72,6 +73,7 @@ class SourceFile:
         if graders is None:
             graders = []
         lang = self.get_language()
+        files_to_pass = []  # type: List[Tuple[str, FileID]]
         # No grader support for Python and shell - compilation is a noop.
         if not lang.needs_compilation():
             self.compilation_output = self._dispatcher.load_file(
@@ -90,13 +92,17 @@ class SourceFile:
             compilation_args += [
                 "-O2", "-Wall", "-DEVAL", "-o", self._compiled_name
             ]
-            files_to_pass = []  # type: List[Tuple[str, FileID]]
             for source_file in [self._path] + graders:
                 # TODO(veluca): call callback?
                 basename = _sanitize(os.path.basename(source_file))
                 files_to_pass.append((basename, self._dispatcher.load_file(
                     source_file, source_file)))
                 compilation_args.append(basename)
+
+        dependencies = dependency_finder.find_dependency(self._path)
+        for dependency in dependencies:
+            files_to_pass.append((dependency.name, self._dispatcher.load_file(
+                dependency.path, dependency.path)))
 
         # Once compilation commands are decided, the rest is the same for all
         # languages.

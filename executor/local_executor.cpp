@@ -129,7 +129,7 @@ void LocalExecutor::PrepareFile(const proto::FileInfo& info,
     options->stdin_file = util::File::JoinPath(tmp, name);
   } else {
     if (std::find_if(name.begin(), name.end(), IsIllegalChar) != name.end()) {
-      throw std::runtime_error("Invalid file name");
+      throw std::runtime_error("Invalid file name: " + name);
     }
     name = util::File::JoinPath(kBoxDir, name);
   }

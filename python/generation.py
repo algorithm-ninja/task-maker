@@ -5,6 +5,7 @@ from typing import List  # pylint: disable=unused-import
 from typing import Optional
 from bindings import Execution  # pylint: disable=unused-import
 from bindings import FileID  # pylint: disable=unused-import
+from python import dependency_finder
 from python.dispatcher import Dispatcher
 from python.dispatcher import Event
 from python.dispatcher import EventStatus
@@ -82,10 +83,20 @@ class Generation:
                 raise ValueError("Invalid testcase configuration")
             if testcase.input.args is None:
                 raise ValueError("Invalid testcase configuration")
+
+            # some generators may have an option that requires an external file (for example
+            # --fastify testo/input0.txt). The command is changed and the required file is copied
+            # with a safe name into the sandbox (which doesn't support subdirs)
+            dependencies = dependency_finder.sanitize_command(testcase.input.args)
+
             generation_state.input_gen = self._generator_cache[
                 testcase.input.generator].execute(
                     "Generation of input %d" % num, testcase.input.args,
                     callback, exclusive=False, cache_mode=cache_mode)
+            for dependency in dependencies:
+                generation_state.input_gen.input(dependency.name, self._dispatcher.load_file(
+                    dependency.path, dependency.path))
+
             testcase.input_id = generation_state.input_gen.stdout()
 
         # We make the output generation depend on the validator stdout
