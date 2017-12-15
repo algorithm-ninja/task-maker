@@ -1,0 +1,19 @@
+syntax = 'proto3';
+
+package proto;
+
+import 'proto/file.proto';
+import 'proto/request.proto';
+import 'proto/response.proto';
+import 'proto/sha256.proto';
+
+message SendFileResponse {}
+
+service TaskMakerServer {
+  rpc SendFile(stream FileContents) returns (SendFileResponse);
+  rpc RetrieveFile(SHA256) returns (stream FileContents);
+  // Runs a request on the workers.
+  rpc Execute(Request) returns (Response);
+  // Gets requests to run and sends back responses.
+  rpc GetWork(stream Response) returns (stream Request);
+}

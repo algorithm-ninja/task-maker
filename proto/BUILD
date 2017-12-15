@@ -45,3 +45,15 @@ cc_proto_library(
     ],
     protos = ["cache_entry.proto"],
 )
+
+cc_proto_library(
+    name = "server_cc",
+    proto_deps = [
+        ":file_cc",
+        ":request_cc",
+        ":response_cc",
+        ":sha256_cc",
+    ],
+    protos = ["server.proto"],
+    with_grpc = True,
+)

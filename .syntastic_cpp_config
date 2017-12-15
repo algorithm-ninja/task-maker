@@ -3,6 +3,7 @@
 -Ibazel-genfiles/external/com_github_gflags_gflags/include/
 -Ibazel-task-maker/external/pybind11/include
 -Ibazel-task-maker/external/python3/include/_usr_include_python3.6m/
+-Ibazel-task-maker/external/com_google_grpc/include
 -I.
 -Ibazel-genfiles
 -Ibazel-task-maker/external/com_google_protobuf/src/
