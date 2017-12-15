@@ -101,12 +101,17 @@ void File::Write(const std::string& path, const ChunkProducer& chunk_producer,
   std::string temp_file_ = OsTempFile(path);
   if (temp_file_ == "")
     throw std::system_error(errno, std::system_category(), "mkstemp");
-  fout.open(temp_file_);
-  chunk_producer([&fout](const proto::FileContents& chunk) {
-    fout.write(chunk.chunk().c_str(), chunk.chunk().size());
-  });
-  if (!OsAtomicMove(temp_file_, path, overwrite, exist_ok))
-    throw std::system_error(errno, std::system_category(), path);
+  try {
+    fout.open(temp_file_);
+    chunk_producer([&fout](const proto::FileContents& chunk) {
+      fout.write(chunk.chunk().c_str(), chunk.chunk().size());
+    });
+    if (!OsAtomicMove(temp_file_, path, overwrite, exist_ok))
+      throw std::system_error(errno, std::system_category(), path);
+  } catch (std::exception& e) {
+    Remove(temp_file_);
+    throw e;
+  }
 }
 
 SHA256_t File::Hash(const std::string& path) {
