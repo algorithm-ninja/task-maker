@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
+import math
 import shutil
-from typing import cast
 from typing import List
 from typing import Optional  # pylint: disable=unused-import
+from typing import cast
+
 from bindings import Execution
 from python.dispatcher import Dispatcher
 from python.dispatcher import Event
@@ -117,7 +119,8 @@ class Evaluation:
         return True
 
     def _evaluate_testcase(self, num: int, testcase: Testcase,
-                           exclusive: bool, cache_mode: Execution.CachingMode) -> None:
+                           exclusive: bool, cache_mode: Execution.CachingMode,
+                           extra_eval_time: float) -> None:
         def callback(event: Event, status: EventStatus) -> bool:
             return self._callback(num, event, status)
 
@@ -129,8 +132,8 @@ class Evaluation:
             "Evaluation of solution %s on testcase %d" % (self.solution_src, num),
             [], callback, exclusive, cache_mode)
         # CPU time can only be set to an integer
-        execution.cpu_limit(self._task.time_limit + 1)
-        execution.wall_limit(self._task.time_limit + 0.4)
+        execution.cpu_limit(self._task.time_limit + math.ceil(extra_eval_time))
+        execution.wall_limit(self._task.time_limit + extra_eval_time)
         execution.memory_limit(self._task.memory_limit)
         contestant_output = self._task.setup_io(execution, testcase.input_id)
         check_description = "Checking result of solution %s on testcase %d" % (
@@ -163,7 +166,7 @@ class Evaluation:
 
     def __init__(self, dispatcher: Dispatcher, ui: UI, task: Task,
                  solution: str, exclusive: bool, cache_mode: Execution.CachingMode,
-                 eval_cache_mode: Execution.CachingMode) -> None:
+                 eval_cache_mode: Execution.CachingMode, extra_eval_time: float) -> None:
         if not task.generated:
             raise ValueError("You must first generate the task")
         self._diff_path = shutil.which("diff")
@@ -183,7 +186,7 @@ class Evaluation:
         self._subtask_score_info = \
             [SubtaskScoreInfo(self, subtask, ui) for subtask in task.subtasks]
         for num, testcase in enumerate(task.testcases):
-            self._evaluate_testcase(num, testcase, exclusive, eval_cache_mode)
+            self._evaluate_testcase(num, testcase, exclusive, eval_cache_mode, extra_eval_time)
 
     def update_score(self, subtask_num: int, score: float) -> None:
         self.subtask_scores[subtask_num] = score

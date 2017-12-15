@@ -201,14 +201,26 @@ def run_for_cwd(args: argparse.Namespace) -> None:
         eval_cache_mode = CACHES[args.result_cache_mode]
     else:
         eval_cache_mode = cache_mode
+    extra_eval_time = args.extra_eval_time
 
     dispatcher = Dispatcher(ui)
     Generation(dispatcher, ui, task, cache_mode, eval_cache_mode)
     for solution in solutions:
-        Evaluation(dispatcher, ui, task, solution, args.exclusive, cache_mode, eval_cache_mode)
+        Evaluation(dispatcher, ui, task, solution, args.exclusive, cache_mode,
+                   eval_cache_mode, extra_eval_time)
     if not dispatcher.run():
         ui.fatal_error("Error running task")
     ui.print_final_status()
+
+
+def _validate_extra_eval_time(num: str) -> float:
+    error_message = "%s is not a non-negative number" % num
+    try:
+        if float(num) < 0:
+            raise argparse.ArgumentTypeError(error_message)
+        return float(num)
+    except ValueError:
+        raise argparse.ArgumentTypeError(error_message)
 
 
 def main() -> None:
@@ -241,6 +253,12 @@ def main() -> None:
         action="store",
         choices=CACHES.keys(),
         default=None)
+    parser.add_argument(
+        "--extra-eval-time",
+        help="Raise the timeout of the solution before killing",
+        action="store",
+        type=_validate_extra_eval_time,
+        default=0.5)
 
     args = parser.parse_args()
 
