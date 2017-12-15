@@ -166,7 +166,10 @@ def run_for_cwd(args: argparse.Namespace) -> None:
     if official_solution is None:
         raise RuntimeError("No official solution found")
     graders = list_files(["sol/grader.*"])
-    solutions = list_files(["sol/*"], exclude=graders)
+    if args.solutions:
+        solutions = [sol if sol.startswith("sol/") else "sol/"+sol for sol in args.solutions]
+    else:
+        solutions = list_files(["sol/*"], exclude=graders)
     checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])
     if checkers:
         checker = checkers[0]
@@ -225,9 +228,14 @@ def _validate_extra_eval_time(num: str) -> float:
 def main() -> None:
     parser = argparse.ArgumentParser(description="The new cmsMake!")
     parser.add_argument(
-        "task_dir",
+        "solutions",
+        help="Test only these solutions",
+        nargs="*",
+        default=[],
+        metavar="solution")
+    parser.add_argument(
+        "--task-dir",
         help="Directory of the task to build",
-        nargs="?",
         default=os.getcwd())
     parser.add_argument(
         "--ui",
