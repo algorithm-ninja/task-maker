@@ -3,6 +3,7 @@
 import argparse
 import glob
 import os
+import signal
 from typing import Dict, List, Any
 from typing import Optional
 
@@ -145,7 +146,7 @@ def run_for_cwd(args: argparse.Namespace) -> None:
     graders = []  # type: List[str]
     checker = None  # type: Optional[str]
     subtasks = []  # type: List[Subtask]
-    ui = None  # type: Optional[UI]
+    ui = UI()
     data = parse_task_yaml()
 
     if args.ui == "curses":
@@ -154,6 +155,20 @@ def run_for_cwd(args: argparse.Namespace) -> None:
         ui = PrintUI()
     else:
         raise RuntimeError("Invalid UI %s" % args.ui)
+
+    def stop_ui(signum: int, _frame: Any) -> None:
+        sig = "SIGNAL %d" % signum
+        if signum == signal.SIGTERM:
+            sig = "SIGTERM"
+        elif signum == signal.SIGABRT:
+            sig = "SIGABRT"
+        elif signum == signal.SIGINT:
+            sig = "SIGINT"
+        ui.fatal_error("Interrupted by " + sig)
+
+    signal.signal(signal.SIGABRT, stop_ui)
+    signal.signal(signal.SIGINT, stop_ui)
+    signal.signal(signal.SIGTERM, stop_ui)
 
     task = create_task(ui, data)
 
