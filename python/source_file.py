@@ -31,7 +31,7 @@ class SourceFile:
         self._dispatcher = dispatcher
         self._basename = os.path.basename(path)
         self._compiled_name = _sanitize(os.path.splitext(self._basename)[0])
-        self._compilation_output = None  # type: Optional[FileID]
+        self.compilation_output = None  # type: Optional[FileID]
         self._runtime_deps = []  # type: List[Tuple[str, FileID]]
         self._is_solution = is_solution
         self._stderr = None  # type: Optional[FileID]
@@ -74,7 +74,7 @@ class SourceFile:
         lang = self.get_language()
         # No grader support for Python and shell - compilation is a noop.
         if not lang.needs_compilation():
-            self._compilation_output = self._dispatcher.load_file(
+            self.compilation_output = self._dispatcher.load_file(
                 self._path, self._path, self._callback)
             self._runtime_deps = [(os.path.basename(dep),
                                    self._dispatcher.load_file(dep, dep))
@@ -110,17 +110,17 @@ class SourceFile:
         execution.wall_limit(20.0)
         execution.memory_limit(2 * 1024 * 1024)  # 2 GiB
         self._stderr = execution.stderr()
-        self._compilation_output = execution.output(self._compiled_name,
-                                                    "Compiled " + self._path)
+        self.compilation_output = execution.output(self._compiled_name,
+                                                   "Compiled " + self._path)
 
     def execute(self, description: str, args: List[str],
                 callback: DispatcherCallback, exclusive: bool,
                 cache_mode: Execution.CachingMode) -> Execution:
-        if self._compilation_output is None:
+        if self.compilation_output is None:
             raise RuntimeError("You must compile this source file first")
         execution = self._dispatcher.add_execution(
             description, self._compiled_name, args, callback, exclusive, cache_mode)
-        execution.input(self._compiled_name, self._compilation_output)
+        execution.input(self._compiled_name, self.compilation_output)
         for runtime_dep in self._runtime_deps:
             execution.input(runtime_dep[0], runtime_dep[1])
         # Return the execution to allow doing more complicated things like

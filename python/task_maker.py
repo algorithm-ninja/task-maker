@@ -167,6 +167,9 @@ def run_for_cwd(args: argparse.Namespace) -> None:
         raise RuntimeError("No official solution found")
     graders = list_files(["sol/grader.*"])
     solutions = list_files(["sol/*"], exclude=graders)
+    checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])
+    if checkers:
+        checker = checkers[0]
 
     subtasks = gen_testcases()
     task.add_solution(official_solution)
@@ -202,6 +205,11 @@ def run_for_cwd(args: argparse.Namespace) -> None:
         else:
             ui.fatal_error(str(exc))
             raise
+
+    if args.dry_run:
+        print("Dry run mode, the task directory has not been touched")
+    else:
+        task.store_results(os.getcwd())
 
 
 def _validate_extra_eval_time(num: str) -> float:
@@ -250,6 +258,11 @@ def main() -> None:
         action="store",
         type=_validate_extra_eval_time,
         default=0.5)
+    parser.add_argument(
+        "--dry-run",
+        help="Execute everything but do not touch the task directory",
+        action="store_true",
+        default=False)
 
     args = parser.parse_args()
 

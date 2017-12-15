@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-
+import glob
+import operator
+import os.path
 from enum import Enum
 from functools import reduce
-import operator
 from typing import Dict  # pylint: disable=unused-import
 from typing import List
 from typing import Optional
 
 from bindings import Execution
 from bindings import FileID
-from python.source_file import SourceFile  # pylint: disable=unused-import
 from python.language import Language
+from python.source_file import SourceFile  # pylint: disable=unused-import
 from python.ui import UI
 
 
@@ -160,3 +161,26 @@ class Task:
         if self.output_file is None:
             return execution.stdout()
         return execution.output(self.output_file)
+
+    def store_results(self, task_dir: str) -> None:
+        input_dir = os.path.join(task_dir, "input")
+        output_dir = os.path.join(task_dir, "output")
+        os.makedirs(input_dir, exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
+        for file in glob.glob(os.path.join(input_dir, "input*.txt")):
+            os.remove(file)
+        for file in glob.glob(os.path.join(output_dir, "output*.txt")):
+            os.remove(file)
+        for testcase in self.testcases:
+            if testcase.input_id:
+                testcase.input_id.write_to(os.path.join(input_dir, "input%d.txt" % testcase.num),
+                                           False, False)
+            if testcase.output_id:
+                testcase.output_id.write_to(os.path.join(output_dir, "output%d.txt" % testcase.num),
+                                            False, False)
+        if self.checker_src:
+            checker_dir = os.path.dirname(os.path.join(task_dir, self.checker_src))
+            checker_name = os.path.splitext(os.path.basename(self.checker_src))[0]
+            checker_path = os.path.join(checker_dir, checker_name)
+            if self.checker and self.checker.compilation_output:
+                self.checker.compilation_output.write_to(checker_path, True, True)

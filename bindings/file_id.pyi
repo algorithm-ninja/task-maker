@@ -11,7 +11,7 @@ class FileID:
     def id(self) -> int:
         ...
 
-    def write_to(self, path: str) -> None:
+    def write_to(self, path: str, overwrite: bool, exist_ok: bool) -> None:
         ...
 
     def contents(self, size_limit: int) -> str:
