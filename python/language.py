@@ -11,6 +11,9 @@ class Language(Enum):
     CPP = 1
     PY = 2
     SH = 3
+    C_HEADER = 4
+    CPP_HEADER = 5
+
 
     @classmethod
     def from_file(cls, path: str) -> 'Language':
@@ -23,6 +26,10 @@ class Language(Enum):
             return cls.PY
         elif ext in ['.sh']:
             return cls.SH
+        elif ext in ['.h']:
+            return cls.C_HEADER
+        elif ext in ['.hpp']:
+            return cls.CPP_HEADER
         else:
             raise RuntimeError("Unknown source file language")
 

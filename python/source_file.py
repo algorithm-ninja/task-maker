@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import string
 from typing import List
 from typing import Optional  # pylint: disable=unused-import
 from typing import Tuple  # pylint: disable=unused-import
@@ -9,19 +8,14 @@ from typing import Tuple  # pylint: disable=unused-import
 from bindings import Execution
 from bindings import FileID  # pylint: disable=unused-import
 from python import dependency_finder
+from python import sanitize
 from python.dispatcher import Dispatcher
 from python.dispatcher import DispatcherCallback
 from python.dispatcher import Event
 from python.dispatcher import EventStatus
 from python.language import Language
-from python.ui import UI
 from python.ui import CompilationStatus
-
-
-def _sanitize(filename: str) -> str:
-    return "".join(
-        filter(lambda x: x in string.ascii_letters + string.digits + "_-.",
-               filename))
+from python.ui import UI
 
 
 class SourceFile:
@@ -31,7 +25,7 @@ class SourceFile:
         self._path = path
         self._dispatcher = dispatcher
         self._basename = os.path.basename(path)
-        self._compiled_name = _sanitize(os.path.splitext(self._basename)[0])
+        self._compiled_name = sanitize.sanitize_filename(os.path.splitext(self._basename)[0])
         self.compilation_output = None  # type: Optional[FileID]
         self._runtime_deps = []  # type: List[Tuple[str, FileID]]
         self._is_solution = is_solution
@@ -94,7 +88,7 @@ class SourceFile:
             ]
             for source_file in [self._path] + graders:
                 # TODO(veluca): call callback?
-                basename = _sanitize(os.path.basename(source_file))
+                basename = sanitize.sanitize_filename(os.path.basename(source_file))
                 files_to_pass.append((basename, self._dispatcher.load_file(
                     source_file, source_file)))
                 compilation_args.append(basename)

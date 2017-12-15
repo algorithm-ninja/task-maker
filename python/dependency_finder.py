@@ -2,8 +2,10 @@
 
 import os.path
 import re
-from typing import List
 from collections import namedtuple
+from typing import List
+
+from python.language import Language
 
 CXX_INCLUDE = re.compile('#include *["<](.+)[">]')
 PY_IMPORT = re.compile('import +(.+)|from +(.+) +import')
@@ -40,27 +42,13 @@ def find_cxx_dependency(content: str, scope: str) -> List[Dependency]:
 
 def find_dependency(filename: str) -> List[Dependency]:
     scope = os.path.dirname(filename)
-    ext = os.path.splitext(filename)[1]
     try:
         with open(filename) as file:
-            if ext == ".py":
+            lang = Language.from_file(filename)
+            if lang == Language.PY:
                 return list(set(find_python_dependency(file.read(), scope)))
-            elif ext in [".cpp", ".hpp", ".c", ".h"]:
+            elif lang in [Language.C, Language.CPP, Language.C_HEADER, Language.CPP_HEADER]:
                 return list(set(find_cxx_dependency(file.read(), scope)))
             return []
     except FileNotFoundError:
         return []
-
-
-def sanitize_command(args: List[str]) -> List[Dependency]:
-    dependencies = []  # type: List[Dependency]
-    for i, arg in enumerate(args):
-        if os.path.exists(arg):
-            name = _sanitize_filename(arg)
-            args[i] = name
-            dependencies += [Dependency(name=name, path=arg)]
-    return dependencies
-
-
-def _sanitize_filename(filename: str) -> str:
-    return "".join(c if c != os.sep else "__" for c in filename)
