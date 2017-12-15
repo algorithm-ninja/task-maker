@@ -19,6 +19,7 @@ py_library(
     name = "source_file",
     srcs = ["source_file.py"],
     deps = [
+        ":dependency_finder",
         ":language",
         ":ui",
         "//bindings:task_maker",
@@ -67,6 +68,7 @@ py_library(
     name = "generation",
     srcs = ["generation.py"],
     deps = [
+        ":dependency_finder",
         ":dispatcher",
         ":language",
         ":source_file",
@@ -87,6 +89,12 @@ py_library(
         ":ui",
         "//bindings:task_maker",
     ],
+)
+
+py_library(
+    name = "dependency_finder",
+    srcs = ["dependency_finder.py"],
+    deps = []
 )
 
 py_binary(
