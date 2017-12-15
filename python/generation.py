@@ -61,7 +61,9 @@ class Generation:
                                                GenerationStatus.SUCCESS)
         return True
 
-    def _generate_testcase(self, num: int, testcase: Testcase) -> None:
+    def _generate_testcase(self, num: int, testcase: Testcase,
+                           cache_mode: Execution.CachingMode,
+                           eval_cache_mode: Execution.CachingMode) -> None:
         def callback(event: Event, status: EventStatus) -> bool:
             return self._callback(num, event, status)
 
@@ -84,7 +86,7 @@ class Generation:
             generation_state.input_gen = self._generator_cache[
                 testcase.input.generator].execute(
                     "Generation of input %d" % num, testcase.input.args,
-                    callback)
+                    callback, exclusive=False, cache_mode=cache_mode)
             testcase.input_id = generation_state.input_gen.stdout()
 
         # We make the output generation depend on the validator stdout
@@ -94,7 +96,8 @@ class Generation:
             generation_state.validation = self._generator_cache[
                 testcase.input.validator].execute(
                     "Validation of input %d" % num,
-                    ["input", str(testcase.subtask.num + 1)], callback)
+                    ["input", str(testcase.subtask.num + 1)], callback,
+                    exclusive=False, cache_mode=cache_mode)
             assert testcase.input_id is not None  # Help mypy
             generation_state.validation.input("input", testcase.input_id)
             validator_output = generation_state.validation.stdout()
@@ -108,8 +111,11 @@ class Generation:
         else:
             if task.solution is None:
                 raise ValueError("Invalid task configuration")
+            # TODO(edomora97): raise up the timelimit for the solution when generating the
+            # official outputs?
             generation_state.output_gen = task.solution.execute(
-                "Generation of output %d" % num, [], callback)
+                "Generation of output %d" % num, [], callback,
+                exclusive=False, cache_mode=eval_cache_mode)
             if validator_output is not None:
                 generation_state.output_gen.input("dummy_foobar_deadbaba",
                                                   validator_output)
@@ -119,7 +125,9 @@ class Generation:
         self._generations.append(generation_state)
         self._ui.set_generation_status(num, GenerationStatus.WAITING)
 
-    def __init__(self, dispatcher: Dispatcher, ui: UI, task: Task) -> None:
+    def __init__(self, dispatcher: Dispatcher, ui: UI, task: Task,
+                 cache_mode: Execution.CachingMode,
+                 eval_cache_mode: Execution.CachingMode) -> None:
         self._dispatcher = dispatcher
         self._ui = ui
         self._task = task
@@ -128,12 +136,11 @@ class Generation:
 
         # Compilations needed: solution, checker, generator(s) and validator(s)
         if task.solution_src is not None:
-            task.solution = SourceFile(dispatcher, ui, task.solution_src,
-                                       False)
-            task.solution.compile(task.graders(task.solution.get_language()))
+            task.solution = SourceFile(dispatcher, ui, task.solution_src, is_solution=False)
+            task.solution.compile(task.graders(task.solution.get_language()), cache_mode=cache_mode)
         if task.checker_src is not None:
-            task.checker = SourceFile(dispatcher, ui, task.checker_src, False)
-            task.checker.compile([])
+            task.checker = SourceFile(dispatcher, ui, task.checker_src, is_solution=False)
+            task.checker.compile([], cache_mode=cache_mode)
         for testcase in task.testcases:
             generator_info = (testcase.input.generator,
                               testcase.input.generator_deps)
@@ -144,10 +151,10 @@ class Generation:
                     continue
                 if binary in self._generator_cache:
                     continue
-                source_file = SourceFile(dispatcher, ui, binary, False)
-                source_file.compile(deps)
+                source_file = SourceFile(dispatcher, ui, binary, is_solution=False)
+                source_file.compile(deps, cache_mode)
                 self._generator_cache[binary] = source_file
 
         for num, testcase in enumerate(task.testcases):
-            self._generate_testcase(num, testcase)
+            self._generate_testcase(num, testcase, cache_mode, eval_cache_mode)
         task.generated = True

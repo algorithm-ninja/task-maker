@@ -65,7 +65,7 @@ class SourceFile:
             return True
         raise RuntimeError("Unexpected compilation state")
 
-    def compile(self, graders: List[str]) -> None:
+    def compile(self, graders: List[str], cache_mode: Execution.CachingMode) -> None:
 
         self._ui.set_compilation_status(self._basename, self._is_solution,
                                         CompilationStatus.WAITING)
@@ -102,7 +102,7 @@ class SourceFile:
         # languages.
         execution = self._dispatcher.add_execution(
             "Compiling " + self._path, compilation_command, compilation_args,
-            self._callback)
+            self._callback, exclusive=False, cache_mode=cache_mode)
         for name, file_id in files_to_pass:
             execution.input(name, file_id)
         # Set (very large) time and memory limits for compilation.
@@ -114,13 +114,12 @@ class SourceFile:
                                                     "Compiled " + self._path)
 
     def execute(self, description: str, args: List[str],
-                callback: DispatcherCallback, exclusive: bool = False) -> Execution:
+                callback: DispatcherCallback, exclusive: bool,
+                cache_mode: Execution.CachingMode) -> Execution:
         if self._compilation_output is None:
             raise RuntimeError("You must compile this source file first")
         execution = self._dispatcher.add_execution(
-            description, self._compiled_name, args, callback)
-        if exclusive:
-            execution.set_exclusive()
+            description, self._compiled_name, args, callback, exclusive, cache_mode)
         execution.input(self._compiled_name, self._compilation_output)
         for runtime_dep in self._runtime_deps:
             execution.input(runtime_dep[0], runtime_dep[1])

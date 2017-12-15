@@ -35,10 +35,12 @@ class Dispatcher:
         self._ui = ui
 
     def add_execution(self, description: str, executable: str, args: List[str],
-                      callback: DispatcherCallback, exclusive: bool = False) -> Execution:
+                      callback: DispatcherCallback, exclusive: bool,
+                      cache_mode: Execution.CachingMode) -> Execution:
         execution = self._core.add_execution(description, executable, args)
         if exclusive:
             execution.set_exclusive()
+        execution.set_caching_mode(cache_mode)
         self._callbacks[execution.id()] = callback
         return execution
 

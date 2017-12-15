@@ -9,6 +9,7 @@ from typing import Optional
 
 from external.pyyaml.lib3 import yaml
 
+from bindings import Execution
 from python.curses_ui import CursesUI
 from python.dispatcher import Dispatcher
 from python.evaluation import Evaluation
@@ -22,7 +23,15 @@ from python.task import Testcase
 from python.ui import UI
 
 EXTENSIONS = [".cpp", ".c", ".C", ".cc", ".py"]
-UIS = ["print", "curses"]
+UIS = {
+    "print": PrintUI,
+    "curses": CursesUI
+}
+CACHES = {
+    "always": Execution.CachingMode.ALWAYS,
+    "same_executor": Execution.CachingMode.SAME_EXECUTOR,
+    "never": Execution.CachingMode.NEVER
+}
 
 
 def list_files(patterns: List[str],
@@ -149,10 +158,8 @@ def run_for_cwd(args: argparse.Namespace) -> None:
     ui = UI()
     data = parse_task_yaml()
 
-    if args.ui == "curses":
-        ui = CursesUI()
-    elif args.ui == "print":
-        ui = PrintUI()
+    if args.ui in UIS:
+        ui = UIS[args.ui]()
     else:
         raise RuntimeError("Invalid UI %s" % args.ui)
 
@@ -188,10 +195,17 @@ def run_for_cwd(args: argparse.Namespace) -> None:
         task.add_grader(grader)
     for subtask in subtasks:
         task.add_subtask(subtask)
+
+    cache_mode = CACHES[args.cache_mode]
+    if args.result_cache_mode:
+        eval_cache_mode = CACHES[args.result_cache_mode]
+    else:
+        eval_cache_mode = cache_mode
+
     dispatcher = Dispatcher(ui)
-    Generation(dispatcher, ui, task)
+    Generation(dispatcher, ui, task, cache_mode, eval_cache_mode)
     for solution in solutions:
-        Evaluation(dispatcher, ui, task, solution, args.exclusive)
+        Evaluation(dispatcher, ui, task, solution, args.exclusive, cache_mode, eval_cache_mode)
     if not dispatcher.run():
         ui.fatal_error("Error running task")
     ui.print_final_status()
@@ -208,13 +222,25 @@ def main() -> None:
         "--ui",
         help="UI to use",
         action="store",
-        choices=UIS,
+        choices=UIS.keys(),
         default="curses")
     parser.add_argument(
         "--exclusive",
         help="Evaluate the solutions using only one core at time",
         action="store_true",
         default=False)
+    parser.add_argument(
+        "--cache-mode",
+        help="Global cache mode",
+        action="store",
+        choices=CACHES.keys(),
+        default="always")
+    parser.add_argument(
+        "--result-cache-mode",
+        help="Cache mode for the evaluation results, overrides --cache-mode",
+        action="store",
+        choices=CACHES.keys(),
+        default=None)
 
     args = parser.parse_args()
 
