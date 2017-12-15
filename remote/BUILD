@@ -12,3 +12,13 @@ cc_binary(
         "//util:file",
     ] + GRPC_COMPILE_DEPS,
 )
+
+cc_library(
+    name = "common",
+    srcs = ["common.cpp"],
+    hdrs = ["common.hpp"],
+    deps = [
+        "//proto:server_cc",
+        "//util:file",
+    ] + GRPC_COMPILE_DEPS,
+)
