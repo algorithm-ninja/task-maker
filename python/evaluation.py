@@ -165,8 +165,8 @@ class Evaluation:
                                        EvaluationStatus.WAITING)
 
     def __init__(self, dispatcher: Dispatcher, ui: UI, task: Task,
-                 solution: str, exclusive: bool, cache_mode: Execution.CachingMode,
-                 eval_cache_mode: Execution.CachingMode, extra_eval_time: float) -> None:
+                 solution: str, exclusive: bool, eval_cache_mode: Execution.CachingMode,
+                 extra_eval_time: float) -> None:
         if not task.generated:
             raise ValueError("You must first generate the task")
         self._diff_path = shutil.which("diff")
@@ -179,7 +179,7 @@ class Evaluation:
         self.score = None  # type: Optional[float]
         self._dispatcher = dispatcher
         self._solution = SourceFile(dispatcher, ui, solution, is_solution=True)
-        self._solution.compile(task.graders(self._solution.get_language()), cache_mode)
+        self._solution.compile(task.graders(self._solution.get_language()), eval_cache_mode)
         self._task = task
         self._ui = ui
         self._evaluations = []  # type: List[SingleEvaluationState]

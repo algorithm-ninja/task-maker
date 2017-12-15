@@ -24,9 +24,9 @@ from python.ui import UI
 EXTENSIONS = [".cpp", ".c", ".C", ".cc", ".py"]
 UIS = {"print": PrintUI, "curses": CursesUI}
 CACHES = {
-    "always": Execution.CachingMode.ALWAYS,
-    "same_executor": Execution.CachingMode.SAME_EXECUTOR,
-    "never": Execution.CachingMode.NEVER
+    "all": (Execution.CachingMode.ALWAYS, Execution.CachingMode.SAME_EXECUTOR),
+    "generation": (Execution.CachingMode.ALWAYS, Execution.CachingMode.NEVER),
+    "nothing": (Execution.CachingMode.NEVER, Execution.CachingMode.NEVER)
 }
 
 
@@ -185,18 +185,14 @@ def run_for_cwd(args: argparse.Namespace) -> None:
         for subtask in subtasks:
             task.add_subtask(subtask)
 
-        cache_mode = CACHES[args.cache_mode]
-        if args.result_cache_mode:
-            eval_cache_mode = CACHES[args.result_cache_mode]
-        else:
-            eval_cache_mode = cache_mode
+        cache_mode, eval_cache_mode = CACHES[args.cache]
         extra_eval_time = args.extra_eval_time
 
         dispatcher = Dispatcher(ui)
-        Generation(dispatcher, ui, task, cache_mode, eval_cache_mode)
+        Generation(dispatcher, ui, task, cache_mode)
         for solution in solutions:
-            Evaluation(dispatcher, ui, task, solution, args.exclusive, cache_mode,
-                       eval_cache_mode, extra_eval_time)
+            Evaluation(dispatcher, ui, task, solution, args.exclusive, eval_cache_mode,
+                       extra_eval_time)
         if not dispatcher.run():
             raise RuntimeError("Error running task")
         else:
@@ -252,17 +248,11 @@ def main() -> None:
         action="store_true",
         default=False)
     parser.add_argument(
-        "--cache-mode",
-        help="Global cache mode",
+        "--cache",
+        help="Cache policy to use",
         action="store",
         choices=CACHES.keys(),
-        default="always")
-    parser.add_argument(
-        "--result-cache-mode",
-        help="Cache mode for the evaluation results, overrides --cache-mode",
-        action="store",
-        choices=CACHES.keys(),
-        default=None)
+        default="all")
     parser.add_argument(
         "--extra-eval-time",
         help="Raise the timeout of the solution before killing",

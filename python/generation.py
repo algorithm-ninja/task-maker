@@ -62,8 +62,7 @@ class Generation:
         return True
 
     def _generate_testcase(self, num: int, testcase: Testcase,
-                           cache_mode: Execution.CachingMode,
-                           eval_cache_mode: Execution.CachingMode) -> None:
+                           cache_mode: Execution.CachingMode) -> None:
         def callback(event: Event, status: EventStatus) -> bool:
             return self._callback(num, event, status)
 
@@ -115,7 +114,7 @@ class Generation:
             # official outputs?
             generation_state.output_gen = task.solution.execute(
                 "Generation of output %d" % num, [], callback,
-                exclusive=False, cache_mode=eval_cache_mode)
+                exclusive=False, cache_mode=cache_mode)
             if validator_output is not None:
                 generation_state.output_gen.input("dummy_foobar_deadbaba",
                                                   validator_output)
@@ -126,8 +125,7 @@ class Generation:
         self._ui.set_generation_status(num, GenerationStatus.WAITING)
 
     def __init__(self, dispatcher: Dispatcher, ui: UI, task: Task,
-                 cache_mode: Execution.CachingMode,
-                 eval_cache_mode: Execution.CachingMode) -> None:
+                 cache_mode: Execution.CachingMode) -> None:
         self._dispatcher = dispatcher
         self._ui = ui
         self._task = task
@@ -156,5 +154,5 @@ class Generation:
                 self._generator_cache[binary] = source_file
 
         for num, testcase in enumerate(task.testcases):
-            self._generate_testcase(num, testcase, cache_mode, eval_cache_mode)
+            self._generate_testcase(num, testcase, cache_mode)
         task.generated = True
