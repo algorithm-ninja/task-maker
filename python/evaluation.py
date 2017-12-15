@@ -129,7 +129,8 @@ class Evaluation:
             raise ValueError("Invalid testcase state")
 
         execution = self._solution.execute(
-            "Evaluation of solution %s on testcase %d" % (self.solution_src, num),
+            "Evaluation of solution %s on testcase %d" %
+            (self.solution_src, num),
             [], callback, exclusive, cache_mode)
         # CPU time can only be set to an integer
         execution.cpu_limit(self._task.time_limit + math.ceil(extra_eval_time))
@@ -165,7 +166,8 @@ class Evaluation:
                                        EvaluationStatus.WAITING)
 
     def __init__(self, dispatcher: Dispatcher, ui: UI, task: Task,
-                 solution: str, exclusive: bool, eval_cache_mode: Execution.CachingMode,
+                 solution: str, exclusive: bool,
+                 eval_cache_mode: Execution.CachingMode,
                  extra_eval_time: float) -> None:
         if not task.generated:
             raise ValueError("You must first generate the task")
@@ -179,14 +181,16 @@ class Evaluation:
         self.score = None  # type: Optional[float]
         self._dispatcher = dispatcher
         self._solution = SourceFile(dispatcher, ui, solution, is_solution=True)
-        self._solution.compile(task.graders(self._solution.get_language()), eval_cache_mode)
+        self._solution.compile(task.graders(self._solution.get_language()),
+                               eval_cache_mode)
         self._task = task
         self._ui = ui
         self._evaluations = []  # type: List[SingleEvaluationState]
         self._subtask_score_info = \
             [SubtaskScoreInfo(self, subtask, ui) for subtask in task.subtasks]
         for num, testcase in enumerate(task.testcases):
-            self._evaluate_testcase(num, testcase, exclusive, eval_cache_mode, extra_eval_time)
+            self._evaluate_testcase(num, testcase, exclusive, eval_cache_mode,
+                                    extra_eval_time)
 
     def update_score(self, subtask_num: int, score: float) -> None:
         self.subtask_scores[subtask_num] = score

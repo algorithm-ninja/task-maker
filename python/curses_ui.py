@@ -260,7 +260,8 @@ class CursesUI(UI):
             for sol in sorted(self._solutions):
                 printer.text("%{}s: ".format(self._max_sol_len) % sol)
                 if sol not in self._compilation_status or \
-                                self._compilation_status[sol] == CompilationStatus.WAITING:
+                                self._compilation_status[sol] == \
+                                CompilationStatus.WAITING:
                     printer.text("....")
                 elif self._compilation_status[
                         sol] == CompilationStatus.RUNNING:

@@ -168,7 +168,8 @@ def run_for_cwd(args: argparse.Namespace) -> None:
             raise RuntimeError("No official solution found")
         graders = list_files(["sol/grader.*"])
         if args.solutions:
-            solutions = [sol if sol.startswith("sol/") else "sol/"+sol for sol in args.solutions]
+            solutions = [sol if sol.startswith("sol/") else "sol/"+sol
+                         for sol in args.solutions]
         else:
             solutions = list_files(["sol/*"], exclude=graders)
         checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])
@@ -198,8 +199,8 @@ def run_for_cwd(args: argparse.Namespace) -> None:
 
         Generation(dispatcher, ui, task, cache_mode)
         for solution in solutions:
-            Evaluation(dispatcher, ui, task, solution, args.exclusive, eval_cache_mode,
-                       extra_eval_time)
+            Evaluation(dispatcher, ui, task, solution, args.exclusive,
+                       eval_cache_mode, extra_eval_time)
         if not dispatcher.run():
             raise RuntimeError("Error running task")
         else:

@@ -84,9 +84,10 @@ class Generation:
             if testcase.input.args is None:
                 raise ValueError("Invalid testcase configuration")
 
-            # some generators may have an option that requires an external file (for example
-            # --fastify testo/input0.txt). The command is changed and the required file is copied
-            # with a safe name into the sandbox (which doesn't support subdirs)
+            # some generators may have an option that requires an external file
+            # (for example --fastify testo/input0.txt). The command is changed
+            # and the required file is copied with a safe name into the sandbox
+            # (which doesn't support subdirs)
             dependencies = sanitize.sanitize_command(testcase.input.args)
 
             generation_state.input_gen = self._generator_cache[
@@ -94,8 +95,10 @@ class Generation:
                     "Generation of input %d" % num, testcase.input.args,
                     callback, exclusive=False, cache_mode=cache_mode)
             for dependency in dependencies:
-                generation_state.input_gen.input(dependency.name, self._dispatcher.load_file(
-                    dependency.path, dependency.path))
+                generation_state.input_gen.input(dependency.name,
+                                                 self._dispatcher.load_file(
+                                                     dependency.path,
+                                                     dependency.path))
 
             testcase.input_id = generation_state.input_gen.stdout()
 
@@ -121,8 +124,8 @@ class Generation:
         else:
             if task.solution is None:
                 raise ValueError("Invalid task configuration")
-            # TODO(edomora97): raise up the timelimit for the solution when generating the
-            # official outputs?
+            # TODO(edomora97): raise up the timelimit for the solution when
+            # generating the official outputs?
             generation_state.output_gen = task.solution.execute(
                 "Generation of output %d" % num, [], callback,
                 exclusive=False, cache_mode=cache_mode)
@@ -145,10 +148,13 @@ class Generation:
 
         # Compilations needed: solution, checker, generator(s) and validator(s)
         if task.solution_src is not None:
-            task.solution = SourceFile(dispatcher, ui, task.solution_src, is_solution=False)
-            task.solution.compile(task.graders(task.solution.get_language()), cache_mode=cache_mode)
+            task.solution = SourceFile(dispatcher, ui, task.solution_src,
+                                       is_solution=False)
+            task.solution.compile(task.graders(task.solution.get_language()),
+                                  cache_mode=cache_mode)
         if task.checker_src is not None:
-            task.checker = SourceFile(dispatcher, ui, task.checker_src, is_solution=False)
+            task.checker = SourceFile(dispatcher, ui, task.checker_src,
+                                      is_solution=False)
             task.checker.compile([], cache_mode=cache_mode)
         for testcase in task.testcases:
             generator_info = (testcase.input.generator,
@@ -160,7 +166,8 @@ class Generation:
                     continue
                 if binary in self._generator_cache:
                     continue
-                source_file = SourceFile(dispatcher, ui, binary, is_solution=False)
+                source_file = SourceFile(dispatcher, ui, binary,
+                                         is_solution=False)
                 source_file.compile(deps, cache_mode)
                 self._generator_cache[binary] = source_file
 
