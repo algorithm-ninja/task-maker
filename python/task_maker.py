@@ -3,7 +3,6 @@
 import argparse
 import glob
 import os
-import signal
 from typing import Dict, List, Any
 from typing import Optional
 
@@ -23,10 +22,7 @@ from python.task import Testcase
 from python.ui import UI
 
 EXTENSIONS = [".cpp", ".c", ".C", ".cc", ".py"]
-UIS = {
-    "print": PrintUI,
-    "curses": CursesUI
-}
+UIS = {"print": PrintUI, "curses": CursesUI}
 CACHES = {
     "always": Execution.CachingMode.ALWAYS,
     "same_executor": Execution.CachingMode.SAME_EXECUTOR,
@@ -163,20 +159,6 @@ def run_for_cwd(args: argparse.Namespace) -> None:
     else:
         raise RuntimeError("Invalid UI %s" % args.ui)
 
-    def stop_ui(signum: int, _frame: Any) -> None:
-        sig = "SIGNAL %d" % signum
-        if signum == signal.SIGTERM:
-            sig = "SIGTERM"
-        elif signum == signal.SIGABRT:
-            sig = "SIGABRT"
-        elif signum == signal.SIGINT:
-            sig = "SIGINT"
-        ui.fatal_error("Interrupted by " + sig)
-
-    signal.signal(signal.SIGABRT, stop_ui)
-    signal.signal(signal.SIGINT, stop_ui)
-    signal.signal(signal.SIGTERM, stop_ui)
-
     task = create_task(ui, data)
 
     for solution in list_files(["sol/solution.*", "sol/soluzione.*"]):
@@ -208,9 +190,18 @@ def run_for_cwd(args: argparse.Namespace) -> None:
     for solution in solutions:
         Evaluation(dispatcher, ui, task, solution, args.exclusive, cache_mode,
                    eval_cache_mode, extra_eval_time)
-    if not dispatcher.run():
-        ui.fatal_error("Error running task")
-    ui.print_final_status()
+    try:
+        if not dispatcher.run():
+            raise RuntimeError("Error running task")
+        else:
+            ui.print_final_status()
+    except RuntimeError as exc:
+        msg = str(exc)
+        if msg.startswith("KeyboardInterrupt"):
+            ui.fatal_error("Ctrl-C pressed")
+        else:
+            ui.fatal_error(str(exc))
+            raise
 
 
 def _validate_extra_eval_time(num: str) -> float:

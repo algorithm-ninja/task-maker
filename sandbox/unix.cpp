@@ -113,6 +113,9 @@ void Unix::Child() {
     die2(prefix, mystrerror(err, buf, kStrErrorBufSize));
   };
 
+  // Change process group, so that we do not receive Ctrl-Cs in the terminal.
+  if (setsid() == -1) die("setsid", errno);
+
   int stdin_fd = -1;
   int stdout_fd = -1;
   int stderr_fd = -1;
