@@ -25,7 +25,8 @@ class SourceFile:
         self._path = path
         self._dispatcher = dispatcher
         self._basename = os.path.basename(path)
-        self._compiled_name = sanitize.sanitize_filename(os.path.splitext(self._basename)[0])
+        self._compiled_name = sanitize.sanitize_filename(
+            os.path.splitext(self._basename)[0])
         self.compilation_output = None  # type: Optional[FileID]
         self._runtime_deps = []  # type: List[Tuple[str, FileID]]
         self._is_solution = is_solution
@@ -60,7 +61,8 @@ class SourceFile:
             return True
         raise RuntimeError("Unexpected compilation state")
 
-    def compile(self, graders: List[str], cache_mode: Execution.CachingMode) -> None:
+    def compile(self, graders: List[str],
+                cache_mode: Execution.CachingMode) -> None:
 
         self._ui.set_compilation_status(self._basename, self._is_solution,
                                         CompilationStatus.WAITING)
@@ -88,7 +90,8 @@ class SourceFile:
             ]
             for source_file in [self._path] + graders:
                 # TODO(veluca): call callback?
-                basename = sanitize.sanitize_filename(os.path.basename(source_file))
+                basename = sanitize.sanitize_filename(
+                    os.path.basename(source_file))
                 files_to_pass.append((basename, self._dispatcher.load_file(
                     source_file, source_file)))
                 compilation_args.append(basename)
@@ -119,7 +122,8 @@ class SourceFile:
         if self.compilation_output is None:
             raise RuntimeError("You must compile this source file first")
         execution = self._dispatcher.add_execution(
-            description, self._compiled_name, args, callback, exclusive, cache_mode)
+            description, self._compiled_name, args, callback, exclusive,
+            cache_mode)
         execution.input(self._compiled_name, self.compilation_output)
         for runtime_dep in self._runtime_deps:
             execution.input(runtime_dep[0], runtime_dep[1])

@@ -75,7 +75,10 @@ class Dispatcher:
         if task_status.event == task_status.Event.START:
             event_status = EventStatus.START
         elif task_status.event == task_status.Event.SUCCESS:
-            event_status = EventStatus.SUCCESS if success else EventStatus.FAILURE
+            if success:
+                event_status = EventStatus.SUCCESS
+            else:
+                event_status = EventStatus.FAILURE
         else:
             raise ValueError("Invalid task status")
         return callback(cause, event_status)

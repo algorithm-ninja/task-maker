@@ -32,8 +32,8 @@ def find_cxx_dependency(content: str, scope: str) -> List[Dependency]:
     dependencies = []  # type: List[Dependency]
     for include in includes:
         file_path = os.path.join(scope, include)
-        # the sandbox does not support file inside subdirs (nor ../something), for convenience skip
-        # all the files that includes "/" in the name
+        # the sandbox does not support file inside subdirs (nor ../something),
+        # for convenience skip all the files that includes "/" in the name
         if os.path.exists(file_path) and os.sep not in include:
             dependencies += [Dependency(name=include, path=file_path)]
             dependencies += find_dependency(file_path)
@@ -47,7 +47,8 @@ def find_dependency(filename: str) -> List[Dependency]:
             lang = Language.from_file(filename)
             if lang == Language.PY:
                 return list(set(find_python_dependency(file.read(), scope)))
-            elif lang in [Language.C, Language.CPP, Language.C_HEADER, Language.CPP_HEADER]:
+            elif lang in [Language.C, Language.CPP,
+                          Language.C_HEADER, Language.CPP_HEADER]:
                 return list(set(find_cxx_dependency(file.read(), scope)))
             return []
     except FileNotFoundError:

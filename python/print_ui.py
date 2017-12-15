@@ -80,7 +80,8 @@ class PrintUI(UI):
             print("Solution %-{0}s has a score of %6.2f".format(max_sol_name) %
                   (solution_name, self._scores[solution_name]))
         for solution_name in self._scores:
-            print("Solution %-{0}s has the following scores on subtasks: %s".format(max_sol_name) %
+            print("Solution %-{0}s has the following scores on subtasks: %s"
+                  .format(max_sol_name) %
                   (solution_name, " ".join([
                       "%6.2f" % info[1:]
                       for info in sorted(
