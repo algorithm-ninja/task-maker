@@ -227,8 +227,6 @@ class CursesUI(UI):
 
             self._print_compilation(self._other_compilations, loading, printer)
             printer.text("\n")
-            self._print_compilation(self._solutions, loading, printer)
-            printer.text("\n")
 
             printer.blue("Generation status: ")
             self._print_generation_status(printer)
@@ -236,19 +234,27 @@ class CursesUI(UI):
             printer.text("\n")
 
             printer.blue("Evaluation")
-            printer.bold("%s total" % (" " * (self._max_sol_len - 1)))
+            printer.bold("%s total" % (" " * (self._max_sol_len + 4)))
             for max_score in self._subtask_max_scores.values():
                 printer.bold("% 4.f " % max_score)
             printer.text("\n")
 
             for sol in sorted(self._solutions):
-                printer.text("%{}s: % 3d/%d  ".format(self._max_sol_len) %
-                             (sol,
-                              len(self._solution_status[sol].testcase_result),
-                              self._num_testcases))
-                self._print_subtasks_scores(self._solution_status[sol], loading, printer)
+                printer.text("%{}s: ".format(self._max_sol_len) % sol)
+                if sol not in self._compilation_status or \
+                                self._compilation_status[sol] == CompilationStatus.WAITING:
+                    printer.text("....")
+                elif self._compilation_status[sol] == CompilationStatus.RUNNING:
+                    printer.bold("  " + loading + " ")
+                elif self._compilation_status[sol] == CompilationStatus.SUCCESS:
+                    printer.green(" OK ")
+                    printer.text(" % 3d/%d  " %
+                                 (len(self._solution_status[sol].testcase_result),
+                                  self._num_testcases))
+                    self._print_subtasks_scores(self._solution_status[sol], loading, printer)
+                else:
+                    printer.red("FAIL")
                 printer.text("\n")
-
             try:
                 pressed_key = stdscr.getkey()
                 if pressed_key == "KEY_UP":
@@ -376,15 +382,18 @@ class CursesUI(UI):
             printer.bold("%s: " % sol)
             if status.score is None:
                 printer.red("not available\n")
-                continue
             elif status.score == max_score:
                 printer.green("%.2f / %.2f\n" % (status.score, max_score), bold=False)
             else:
                 printer.text("%.2f / %.2f\n" % (status.score, max_score))
+
             if sol in self._compilation_errors:
                 printer.red("Compilation errors\n")
                 printer.text(self._compilation_errors[sol])
                 printer.text("\n")
+
+            if status.score is None:
+                continue
 
             for num, subtask in self._subtask_testcases.items():
                 if status.subtask_scores[num] == self._subtask_max_scores[num]:
