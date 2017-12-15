@@ -74,16 +74,20 @@ class Evaluation:
                                            evaluation_result(0.0, display_msg))
             return False
         if event.id() == execution.id():
-            if status == EventStatus.SUCCESS:
-                self._ui.set_evaluation_status(testcase_num, self.solution_src,
-                                               EvaluationStatus.EXECUTED)
-                return True
-            if execution.signal() != 0:
-                display_msg = "Signal " + str(execution.signal())
-            elif execution.status_code() != 0:
-                display_msg = "Return code " + str(execution.status_code())
+            if execution.cpu_time() <= self._task.time_limit:
+                if status == EventStatus.SUCCESS:
+                    self._ui.set_evaluation_status(testcase_num,
+                                                   self.solution_src,
+                                                   EvaluationStatus.EXECUTED)
+                    return True
+                if execution.signal() != 0:
+                    display_msg = "Signal " + str(execution.signal())
+                elif execution.status_code() != 0:
+                    display_msg = "Return code " + str(execution.status_code())
+                else:
+                    display_msg = "Missing output files"
             else:
-                display_msg = "Missing output files"
+                display_msg = "Execution timed out"
             score = 0.0
         else:
             if not evaluation_state.has_checker:
@@ -124,8 +128,9 @@ class Evaluation:
         execution = self._solution.execute(
             "Evaluation of solution %s on testcase %d" % (self.solution_src, num),
             [], callback, exclusive, cache_mode)
-        execution.cpu_limit(self._task.time_limit)
-        execution.wall_limit(self._task.time_limit + 0.2)
+        # CPU time can only be set to an integer
+        execution.cpu_limit(self._task.time_limit + 1)
+        execution.wall_limit(self._task.time_limit + 0.4)
         execution.memory_limit(self._task.memory_limit)
         contestant_output = self._task.setup_io(execution, testcase.input_id)
         check_description = "Checking result of solution %s on testcase %d" % (
