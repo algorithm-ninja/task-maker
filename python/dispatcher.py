@@ -30,14 +30,14 @@ class Dispatcher:
     def __init__(self, ui: UI) -> None:
         self._callbacks = dict()  # type: Dict[int, DispatcherCallback]
         self._file_callbacks = dict()  # type: Dict[int, DispatcherCallback]
-        self._core = Core()
-        self._core.set_callback(self._callback)
+        self.core = Core()
+        self.core.set_callback(self._callback)
         self._ui = ui
 
     def add_execution(self, description: str, executable: str, args: List[str],
                       callback: DispatcherCallback, exclusive: bool,
                       cache_mode: Execution.CachingMode) -> Execution:
-        execution = self._core.add_execution(description, executable, args)
+        execution = self.core.add_execution(description, executable, args)
         if exclusive:
             execution.set_exclusive()
         execution.set_caching_mode(cache_mode)
@@ -48,13 +48,13 @@ class Dispatcher:
                   description: str,
                   path: str,
                   callback: Optional[DispatcherCallback] = None) -> FileID:
-        file_id = self._core.load_file(description, path)
+        file_id = self.core.load_file(description, path)
         if callback:
             self._file_callbacks[file_id.id()] = callback
         return file_id
 
     def run(self) -> bool:
-        return self._core.run()
+        return self.core.run()
 
     def _callback(self, task_status: Core.TaskStatus) -> bool:
         if task_status.event == task_status.Event.BUSY:
