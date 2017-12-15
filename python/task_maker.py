@@ -159,44 +159,44 @@ def run_for_cwd(args: argparse.Namespace) -> None:
     else:
         raise RuntimeError("Invalid UI %s" % args.ui)
 
-    task = create_task(ui, data)
-
-    for solution in list_files(["sol/solution.*", "sol/soluzione.*"]):
-        official_solution = solution
-    if official_solution is None:
-        raise RuntimeError("No official solution found")
-    graders = list_files(["sol/grader.*"])
-    if args.solutions:
-        solutions = [sol if sol.startswith("sol/") else "sol/"+sol for sol in args.solutions]
-    else:
-        solutions = list_files(["sol/*"], exclude=graders)
-    checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])
-    if checkers:
-        checker = checkers[0]
-
-    subtasks = gen_testcases()
-    task.add_solution(official_solution)
-
-    if checker is not None:
-        task.add_checker(checker)
-    for grader in graders:
-        task.add_grader(grader)
-    for subtask in subtasks:
-        task.add_subtask(subtask)
-
-    cache_mode = CACHES[args.cache_mode]
-    if args.result_cache_mode:
-        eval_cache_mode = CACHES[args.result_cache_mode]
-    else:
-        eval_cache_mode = cache_mode
-    extra_eval_time = args.extra_eval_time
-
-    dispatcher = Dispatcher(ui)
-    Generation(dispatcher, ui, task, cache_mode, eval_cache_mode)
-    for solution in solutions:
-        Evaluation(dispatcher, ui, task, solution, args.exclusive, cache_mode,
-                   eval_cache_mode, extra_eval_time)
     try:
+        task = create_task(ui, data)
+
+        for solution in list_files(["sol/solution.*", "sol/soluzione.*"]):
+            official_solution = solution
+        if official_solution is None:
+            raise RuntimeError("No official solution found")
+        graders = list_files(["sol/grader.*"])
+        if args.solutions:
+            solutions = [sol if sol.startswith("sol/") else "sol/"+sol for sol in args.solutions]
+        else:
+            solutions = list_files(["sol/*"], exclude=graders)
+        checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])
+        if checkers:
+            checker = checkers[0]
+
+        subtasks = gen_testcases()
+        task.add_solution(official_solution)
+
+        if checker is not None:
+            task.add_checker(checker)
+        for grader in graders:
+            task.add_grader(grader)
+        for subtask in subtasks:
+            task.add_subtask(subtask)
+
+        cache_mode = CACHES[args.cache_mode]
+        if args.result_cache_mode:
+            eval_cache_mode = CACHES[args.result_cache_mode]
+        else:
+            eval_cache_mode = cache_mode
+        extra_eval_time = args.extra_eval_time
+
+        dispatcher = Dispatcher(ui)
+        Generation(dispatcher, ui, task, cache_mode, eval_cache_mode)
+        for solution in solutions:
+            Evaluation(dispatcher, ui, task, solution, args.exclusive, cache_mode,
+                       eval_cache_mode, extra_eval_time)
         if not dispatcher.run():
             raise RuntimeError("Error running task")
         else:
@@ -208,6 +208,9 @@ def run_for_cwd(args: argparse.Namespace) -> None:
         else:
             ui.fatal_error(str(exc))
             raise
+    except Exception as exc:
+        ui.fatal_error(str(exc))
+        raise
 
     if args.dry_run:
         print("Dry run mode, the task directory has not been touched")
