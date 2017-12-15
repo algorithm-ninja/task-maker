@@ -5,7 +5,7 @@ from typing import List  # pylint: disable=unused-import
 from typing import Optional
 from bindings import Execution  # pylint: disable=unused-import
 from bindings import FileID  # pylint: disable=unused-import
-from python import dependency_finder
+from python import sanitize
 from python.dispatcher import Dispatcher
 from python.dispatcher import Event
 from python.dispatcher import EventStatus
@@ -87,7 +87,7 @@ class Generation:
             # some generators may have an option that requires an external file (for example
             # --fastify testo/input0.txt). The command is changed and the required file is copied
             # with a safe name into the sandbox (which doesn't support subdirs)
-            dependencies = dependency_finder.sanitize_command(testcase.input.args)
+            dependencies = sanitize.sanitize_command(testcase.input.args)
 
             generation_state.input_gen = self._generator_cache[
                 testcase.input.generator].execute(

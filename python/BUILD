@@ -68,9 +68,9 @@ py_library(
     name = "generation",
     srcs = ["generation.py"],
     deps = [
-        ":dependency_finder",
         ":dispatcher",
         ":language",
+        ":sanitize",
         ":source_file",
         ":task",
         ":ui",
@@ -94,7 +94,17 @@ py_library(
 py_library(
     name = "dependency_finder",
     srcs = ["dependency_finder.py"],
-    deps = []
+    deps = [
+        ":language"
+    ]
+)
+
+py_library(
+    name = "sanitize",
+    srcs = ["sanitize.py"],
+    deps = [
+        ":dependency_finder"
+    ]
 )
 
 py_binary(
