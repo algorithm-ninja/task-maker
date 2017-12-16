@@ -10,6 +10,7 @@ cc_binary(
         "//proto:server_cc",
         "//util:flags",
         "//util:file",
+        "//external:glog",
     ] + GRPC_COMPILE_DEPS,
 )
 
@@ -34,5 +35,6 @@ cc_binary(
         "//util:flags",
         "//util:file",
         "//sandbox:unix",
+        "//external:glog",
     ] + GRPC_COMPILE_DEPS,
 )

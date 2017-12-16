@@ -1,9 +1,9 @@
 #include <future>
-#include <iostream>
 #include <queue>
 #include <string>
 
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "grpc++/security/server_credentials.h"
 #include "grpc++/server.h"
 #include "grpc++/server_builder.h"
@@ -28,12 +28,12 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
     proto::FileContents contents;
     reader->Read(&contents);
     if (!contents.has_hash()) {
-      std::cerr << "SendFile without hash" << std::endl;
+      LOG(ERROR) << "SendFile without hash";
       return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
                           "No hash provided");
     }
     std::string path = util::File::ProtoSHAToPath(contents.hash());
-    std::cerr << "Receiving file " << path << std::endl;
+    LOG(INFO) << "Receiving file " << path;
     if (util::File::Size(path) >= 0)
       return grpc::Status(grpc::StatusCode::ALREADY_EXISTS, "File exists");
     try {
@@ -41,17 +41,17 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
           path, [&contents,
                  &reader](const util::File::ChunkReceiver& chunk_receiver) {
             do {
-              std::cerr << "Received chunk" << std::endl;
+              LOG(INFO) << "Received chunk";
               chunk_receiver(contents);
             } while (reader->Read(&contents));
             if (!contents.last()) {
               throw std::runtime_error("Connection closed unexpectedly");
             }
           });
-      std::cerr << "Saved file " << path << std::endl;
+      LOG(INFO) << "Saved file " << path;
       return grpc::Status::OK;
     } catch (std::exception& e) {
-      std::cerr << "SendFile: " << e.what() << std::endl;
+      LOG(ERROR) << "SendFile: " << e.what();
       return grpc::Status(grpc::StatusCode::UNKNOWN, e.what());
     }
   }
@@ -60,20 +60,21 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
       grpc::ServerContext* context, const proto::SHA256* hash,
       grpc::ServerWriter<proto::FileContents>* writer) override {
     std::string path = util::File::ProtoSHAToPath(*hash);
-    std::cerr << "Ask for file " << path << std::endl;
+    LOG(INFO) << "Ask for file " << path;
     try {
       util::File::Read(path, [&writer](const proto::FileContents& contents) {
         writer->Write(contents);
       });
+      LOG(INFO) << "Sent file " << path;
       return grpc::Status::OK;
     } catch (std::system_error& e) {
       if (e.code().value() ==
           static_cast<int>(std::errc::no_such_file_or_directory))
         return grpc::Status(grpc::StatusCode::NOT_FOUND, path);
-      std::cerr << "RetrieveFile: " << e.what() << std::endl;
+      LOG(ERROR) << "RetrieveFile: " << e.what();
       return grpc::Status(grpc::StatusCode::UNKNOWN, e.what());
     } catch (std::exception& e) {
-      std::cerr << "RetrieveFile: " << e.what() << std::endl;
+      LOG(ERROR) << "RetrieveFile: " << e.what();
       return grpc::Status(grpc::StatusCode::UNKNOWN, e.what());
     }
   }
@@ -84,8 +85,8 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
     for (int i = 0; i < max_attempts; i++) {
       PendingRequest pending_request;
       pending_request.request = *request;
-      std::cerr << "Execute attempt " << (i + 1) << " " << request->executable()
-                << std::endl;
+      LOG(INFO) << "Execute attempt " << (i + 1) << " "
+                << request->executable();
       std::future<proto::Response> response_future =
           pending_request.response.get_future();
       {
@@ -97,14 +98,13 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
         *response = response_future.get();
         if (response->status() == proto::Status::INTERNAL_ERROR &&
             i + 1 < max_attempts) {
-          std::cerr << "Error on worker: " << response->error_message()
-                    << std::endl;
+          LOG(ERROR) << "Error on worker: " << response->error_message();
           continue;
         }
         break;
       } catch (std::future_error& e) {
         if (i + 1 == max_attempts) {
-          std::cerr << "Execute failed: " << e.what() << std::endl;
+          LOG(ERROR) << "Execute failed: " << e.what();
           return grpc::Status(grpc::StatusCode::UNAVAILABLE, e.what());
         }
       }
@@ -122,7 +122,7 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
         name = std::string(kv.second.data(), kv.second.length());
       }
     }
-    std::cerr << "Worker " << name << " connected" << std::endl;
+    LOG(INFO) << "Worker " << name << " connected";
     while (true) {
       std::unique_lock<std::mutex> lck(requests_mutex_);
       while (pending_requests_.empty()) {
@@ -131,8 +131,8 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
       PendingRequest pending_request = std::move(pending_requests_.front());
       pending_requests_.pop();
       lck.unlock();
-      std::cerr << "Sent work to worker" << name << ": "
-                << pending_request.request.executable() << std::endl;
+      LOG(INFO) << "Sent work to worker" << name << ": "
+                << pending_request.request.executable();
       if (!stream->Write(pending_request.request)) {
         std::unique_lock<std::mutex> lck(requests_mutex_);
         pending_requests_.push(std::move(pending_request));
@@ -141,14 +141,14 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
       }
       proto::Response response;
       if (!stream->Read(&response)) {
-        std::cerr << "Worker " << name << " did not answer" << std::endl;
+        LOG(ERROR) << "Worker " << name << " did not answer";
         return grpc::Status(grpc::StatusCode::UNAVAILABLE,
                             "Worker did not answer");
       }
-      std::cerr << "Worker " << name << " done" << std::endl;
+      LOG(INFO) << "Worker " << name << " done";
       pending_request.response.set_value(response);
     }
-    std::cerr << "Worker " << name << " disconnected" << std::endl;
+    LOG(WARNING) << "Worker " << name << " disconnected";
     return grpc::Status(grpc::StatusCode::UNAVAILABLE, "Worker disconnected");
   }
 
@@ -165,6 +165,8 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  google::InitGoogleLogging(argv[0]);
+  google::InstallFailureSignalHandler();
   std::string server_address = FLAGS_address + ":" + std::to_string(FLAGS_port);
   TaskMakerServerImpl service(FLAGS_store_directory);
   grpc::ServerBuilder builder;

@@ -5,6 +5,7 @@
 
 #include "executor/local_executor.hpp"
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "grpc++/channel.h"
 #include "grpc++/client_context.h"
 #include "grpc++/create_channel.h"
@@ -24,7 +25,7 @@ void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
       stream(stub->GetWork(&context));
   proto::Request request;
   while (stream->Read(&request)) {
-    std::cerr << "Got work: " << request.executable() << std::endl;
+    LOG(INFO) << "Got work: " << request.executable();
     std::unique_ptr<executor::Executor> executor{new executor::LocalExecutor()};
     using namespace std::placeholders;
     proto::Response response;
@@ -32,9 +33,9 @@ void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
       response = executor->Execute(
           request, [&stub](const proto::SHA256& hash,
                            const util::File::ChunkReceiver& chunk_receiver) {
-            std::cerr << "Retrieving file " << hash.DebugString() << std::endl;
+            LOG(INFO) << "Retrieving file " << hash.DebugString();
             remote::RetrieveFile(stub, hash, chunk_receiver);
-            std::cerr << "Got file " << hash.DebugString() << std::endl;
+            LOG(INFO) << "Got file " << hash.DebugString();
           });
     } catch (std::exception& e) {
       response.set_status_code(proto::Status::INTERNAL_ERROR);
@@ -42,29 +43,29 @@ void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
     }
     for (const proto::FileInfo& info : response.output()) {
       if (info.has_contents()) continue;  // Small file
-      std::cerr << "Sending file " << info.hash().DebugString() << std::endl;
+      LOG(INFO) << "Sending file " << info.hash().DebugString();
       remote::SendFile(
           stub, info.hash(),
           std::bind(&executor::Executor::GetFile, executor.get(), _1, _2));
-      std::cerr << "Sent file " << info.hash().DebugString() << std::endl;
+      LOG(INFO) << "Sent file " << info.hash().DebugString();
     }
-    std::cerr << "Done, sending answer..." << std::endl;
+    LOG(INFO) << "Done, sending answer..." << std::endl;
     if (!stream->Write(response)) break;
-    std::cerr << "Ok" << std::endl;
+    LOG(INFO) << "Ok";
   }
   grpc::Status status = stream->Finish();
-  std::cerr << "DoWork: " << status.error_message() << std::endl;
+  LOG(ERROR) << "DoWork: " << status.error_message();
 }
 
 void worker(const std::string& server, const std::string& name) {
   while (true) {
-    std::cerr << "Worker connecting..." << std::endl;
+    LOG(INFO) << "Worker connecting...";
     std::shared_ptr<grpc::Channel> channel =
         grpc::CreateChannel(server, grpc::InsecureChannelCredentials());
     if (channel->GetState(/* try_to_connect = */ true) ==
         GRPC_CHANNEL_SHUTDOWN) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
-      std::cerr << "Connection failed" << std::endl;
+      LOG(ERROR) << "Connection failed";
       continue;
     }
     std::unique_ptr<proto::TaskMakerServer::Stub> stub(
@@ -77,10 +78,9 @@ void worker(const std::string& server, const std::string& name) {
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  if (FLAGS_server == "") {
-    std::cerr << "You need to specify a server!" << std::endl;
-    return 1;
-  }
+  google::InitGoogleLogging(argv[0]);
+  google::InstallFailureSignalHandler();
+  CHECK_NE(FLAGS_server, "") << "You need to specify a server!";
   std::vector<std::thread> worker_threads;
   if (FLAGS_num_cores == 0) {
     FLAGS_num_cores = std::thread::hardware_concurrency();

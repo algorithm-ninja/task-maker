@@ -40,6 +40,25 @@ git_repository(
     tag = "v2.2.1",
 )
 
+# Rules for glog.
+git_repository(
+    name = "bazel_rules",
+    commit = "36c56e5b96731d01693500f86dcb23ff9b405e34",
+    remote = "https://github.com/antonovvk/bazel_rules",
+)
+
+new_git_repository(
+    name = "glog_repo",
+    build_file = "tools/glog.BUILD",
+    remote = "https://github.com/google/glog.git",
+    tag = "v0.3.5",
+)
+
+bind(
+    name = "glog",
+    actual = "@glog_repo//:glog",
+)
+
 bind(
     name = "gflags",
     actual = "@com_github_gflags_gflags//:gflags",
