@@ -29,14 +29,14 @@ std::size_t RequestHasher::operator()(const proto::Request& request) const {
     hash = hash_combine(hash, arg);
   }
   for (const auto& input : request.input()) {
-    hash = hash_combine(hash, input.type());
+    hash = hash_combine(hash, static_cast<int>(input.type()));
     hash = hash_combine(hash, input.name());
     util::SHA256_t sha;
     ProtoToSHA256(input.hash(), &sha);
     hash = hash_combine(hash, sha.Hex());
   }
   for (const auto& output : request.output()) {
-    hash = hash_combine(hash, output.type());
+    hash = hash_combine(hash, static_cast<int>(output.type()));
     hash = hash_combine(hash, output.name());
   }
   // TODO(veluca): FIFOs
