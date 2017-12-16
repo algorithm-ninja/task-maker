@@ -23,11 +23,11 @@ bool MkDir(const std::string& dir) {
 
 bool OsRemove(const std::string& path) { return remove(path.c_str()) == -1; }
 
-// Best-effort implementation - in some conditions this may still
-// fail to overwrite the file even if the flag is specified.
 bool ShallowCopy(const std::string& from, const std::string& to,
                  bool exist_ok = true) {
-  if (link(from.c_str(), to.c_str()) != -1) return true;
+  if (linkat(AT_FDCWD, from.c_str(), AT_FDCWD, to.c_str(), AT_SYMLINK_FOLLOW) !=
+      -1)
+    return true;
   if (!exist_ok) return false;
   return errno == EEXIST;
 }
@@ -70,6 +70,7 @@ int OsTempFile(const std::string& path, std::string* tmp) {
 // Returns errno, or 0 on success.
 int OsAtomicMove(const std::string& src, const std::string& dst,
                  bool overwrite = false, bool exist_ok = true) {
+  // This may not have the desired effect if src is a symlink.
   if (overwrite) {
     if (rename(src.c_str(), dst.c_str()) == -1) return errno;
     return 0;
@@ -78,7 +79,8 @@ int OsAtomicMove(const std::string& src, const std::string& dst,
     if (!exist_ok || errno != EEXIST) return errno;
     return 0;
   }
-  return remove(src.c_str()) != -1 ? 0 : errno;
+  if (remove(src.c_str()) == -1) return errno != ENOENT ? errno : 0;
+  return 0;
 }
 
 int OsRead(const std::string& path,
