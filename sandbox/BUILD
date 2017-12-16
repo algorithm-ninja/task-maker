@@ -13,6 +13,7 @@ cc_library(
     srcs = ["unix.cpp"],
     hdrs = ["unix.hpp"],
     deps = [":sandbox"],
+    alwayslink = 1,
 )
 
 cc_test(

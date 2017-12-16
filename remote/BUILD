@@ -33,5 +33,6 @@ cc_binary(
         "//proto:server_cc",
         "//util:flags",
         "//util:file",
+        "//sandbox:unix",
     ] + GRPC_COMPILE_DEPS,
 )

@@ -33,7 +33,7 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
                           "No hash provided");
     }
     std::string path = util::File::ProtoSHAToPath(contents.hash());
-    std::cerr << "Send file " << path << std::endl;
+    std::cerr << "Receiving file " << path << std::endl;
     if (util::File::Size(path) >= 0)
       return grpc::Status(grpc::StatusCode::ALREADY_EXISTS, "File exists");
     try {
@@ -41,12 +41,14 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
           path, [&contents,
                  &reader](const util::File::ChunkReceiver& chunk_receiver) {
             do {
+              std::cerr << "Received chunk" << std::endl;
               chunk_receiver(contents);
             } while (reader->Read(&contents));
             if (!contents.last()) {
               throw std::runtime_error("Connection closed unexpectedly");
             }
           });
+      std::cerr << "Saved file " << path << std::endl;
       return grpc::Status::OK;
     } catch (std::exception& e) {
       std::cerr << "SendFile: " << e.what() << std::endl;
@@ -82,7 +84,8 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
     for (int i = 0; i < max_attempts; i++) {
       PendingRequest pending_request;
       pending_request.request = *request;
-      std::cerr << "Execute attempt " << (i + 1) << request->executable();
+      std::cerr << "Execute attempt " << (i + 1) << " " << request->executable()
+                << std::endl;
       std::future<proto::Response> response_future =
           pending_request.response.get_future();
       {
@@ -122,6 +125,8 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
       PendingRequest pending_request = std::move(pending_requests_.front());
       pending_requests_.pop();
       lck.unlock();
+      std::cerr << "Sent work to worker: "
+                << pending_request.request.executable() << std::endl;
       stream->Write(pending_request.request);
       proto::Response response;
       if (!stream->Read(&response)) {
@@ -129,6 +134,7 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
         return grpc::Status(grpc::StatusCode::UNAVAILABLE,
                             "Worker did not answer");
       }
+      std::cerr << "Worker done" << std::endl;
       pending_request.response.set_value(response);
     }
   }

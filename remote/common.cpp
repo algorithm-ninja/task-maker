@@ -20,6 +20,7 @@ void SendFile(proto::TaskMakerServer::Stub* stub, const proto::SHA256& hash,
     hdr.set_last(true);
     writer->Write(hdr);
   }
+  writer->WritesDone();
   grpc::Status status = writer->Finish();
   if (!status.ok() && status.error_code() != grpc::StatusCode::ALREADY_EXISTS) {
     throw std::runtime_error(status.error_message());

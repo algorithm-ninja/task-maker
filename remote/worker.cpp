@@ -23,23 +23,33 @@ void DoWork(proto::TaskMakerServer::Stub* stub) {
       stream(stub->GetWork(&context));
   proto::Request request;
   while (stream->Read(&request)) {
+    std::cerr << "Got work: " << request.executable() << std::endl;
     std::unique_ptr<executor::Executor> executor{new executor::LocalExecutor()};
     using namespace std::placeholders;
     proto::Response response;
     try {
       response = executor->Execute(
-          request, std::bind(remote::RetrieveFile, stub, _1, _2));
+          request, [&stub](const proto::SHA256& hash,
+                           const util::File::ChunkReceiver& chunk_receiver) {
+            std::cerr << "Retrieving file " << hash.DebugString() << std::endl;
+            remote::RetrieveFile(stub, hash, chunk_receiver);
+            std::cerr << "Got file " << hash.DebugString() << std::endl;
+          });
     } catch (std::exception& e) {
       response.set_status_code(proto::Status::INTERNAL_ERROR);
       response.set_error_message(e.what());
     }
     for (const proto::FileInfo& info : response.output()) {
       if (info.has_contents()) continue;  // Small file
+      std::cerr << "Sending file " << info.hash().DebugString() << std::endl;
       remote::SendFile(
           stub, info.hash(),
           std::bind(&executor::Executor::GetFile, executor.get(), _1, _2));
+      std::cerr << "Sent file " << info.hash().DebugString() << std::endl;
     }
+    std::cerr << "Done, sending answer..." << std::endl;
     if (!stream->Write(response)) break;
+    std::cerr << "Ok" << std::endl;
   }
   grpc::Status status = stream->Finish();
   std::cerr << "DoWork: " << status.error_message() << std::endl;
