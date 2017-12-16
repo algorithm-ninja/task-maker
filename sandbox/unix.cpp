@@ -192,7 +192,13 @@ void Unix::Child() {
   if (!OnChild(buf, kStrErrorBufSize)) {
     die2("OnChild", buf);
   }
-  execv(options_->executable.c_str(), args.data());
+  int count = 0;
+  do {
+    execv(options_->executable.c_str(), args.data());
+    usleep(100);
+    // We try at most 16 times to avoid livelocks (which should not be possible,
+    // but better safe than sorry).
+  } while (errno == ETXTBSY && count++ < 16);
   die("exec", errno);
   // [[noreturn]] does not work on lambdas...
   _Exit(1);

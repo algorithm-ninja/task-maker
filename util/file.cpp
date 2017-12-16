@@ -7,7 +7,9 @@
 #include <fstream>
 
 #if defined(__unix__) || defined(__linux__) || defined(__APPLE__)
+#include <fcntl.h>
 #include <ftw.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace {
@@ -24,8 +26,7 @@ bool OsRemove(const std::string& path) { return remove(path.c_str()) == -1; }
 // Best-effort implementation - in some conditions this may still
 // fail to overwrite the file even if the flag is specified.
 bool ShallowCopy(const std::string& from, const std::string& to,
-                 bool overwrite = true, bool exist_ok = true) {
-  if (overwrite) OsRemove(to);
+                 bool exist_ok = true) {
   if (link(from.c_str(), to.c_str()) != -1) return true;
   if (!exist_ok) return false;
   return errno == EEXIST;
@@ -38,17 +39,6 @@ bool OsRemoveTree(const std::string& path) {
               64, FTW_DEPTH | FTW_PHYS | FTW_MOUNT) != -1;
 }
 
-std::string OsTempFile(const std::string& path) {
-  std::string tmp = path + ".XXXXXX";
-  std::unique_ptr<char[]> data{strdup(tmp.c_str())};
-  int fd = mkstemp(data.get());
-  if (fd == -1) {
-    return "";
-  }
-  close(fd);
-  return data.get();
-}
-
 std::string OsTempDir(const std::string& path) {
   std::string tmp = util::File::JoinPath(path, "XXXXXX");
   std::unique_ptr<char[]> data{strdup(tmp.c_str())};
@@ -58,15 +48,91 @@ std::string OsTempDir(const std::string& path) {
   return data.get();
 }
 
-bool OsAtomicMove(const std::string& src, const std::string& dst,
-                  bool overwrite = false, bool exist_ok = true) {
+int OsTempFile(const std::string& path, std::string* tmp) {
+#ifdef __APPLE__
+  *tmp = path + ".";
+  do {
+    *tmp += 'a' + rand() % 26;
+    int fd =
+        open(tmp->c_str(), O_WRONLY | O_CREAT | O_CLOEXEC, S_IRUSR | S_IWUSR);
+    if (fd == -1 && errno == EEXIST) continue;
+    return fd;
+  } while (true);
+#else
+  *tmp = path + ".XXXXXX";
+  std::unique_ptr<char[]> data{strdup(tmp->c_str())};
+  int fd = mkostemp(data.get(), O_CLOEXEC);
+  *tmp = data.get();
+  return fd;
+#endif
+}
+
+// Returns errno, or 0 on success.
+int OsAtomicMove(const std::string& src, const std::string& dst,
+                 bool overwrite = false, bool exist_ok = true) {
   if (overwrite) {
-    return rename(src.c_str(), dst.c_str()) != -1;
+    if (rename(src.c_str(), dst.c_str()) == -1) return errno;
+    return 0;
   }
   if (link(src.c_str(), dst.c_str()) == -1) {
-    if (!exist_ok || errno != EEXIST) return false;
+    if (!exist_ok || errno != EEXIST) return errno;
+    return 0;
   }
-  return remove(src.c_str()) != -1;
+  return remove(src.c_str()) != -1 ? 0 : errno;
+}
+
+int OsRead(const std::string& path,
+           const util::File::ChunkReceiver& chunk_receiver) {
+  int fd = open(path.c_str(), O_CLOEXEC | O_RDONLY);
+  if (fd == -1) return errno;
+  char buf[util::kChunkSize] = {};
+  ssize_t amount;
+  proto::FileContents contents;
+  try {
+    while ((amount = read(fd, buf, util::kChunkSize))) {
+      if (amount == -1 && errno == EINTR) continue;
+      if (amount == -1) break;
+      contents.set_chunk(buf, amount);
+      chunk_receiver(contents);
+    }
+  } catch (...) {
+    close(fd);
+    throw;
+  }
+  if (amount == -1) {
+    int error = errno;
+    close(fd);
+    return error;
+  }
+  return close(fd) == -1 ? errno : 0;
+}
+
+int OsWrite(const std::string& path,
+            const util::File::ChunkProducer& chunk_producer, bool overwrite,
+            bool exist_ok) {
+  std::string temp_file;
+  int fd = OsTempFile(path, &temp_file);
+  if (fd == -1) return errno;
+  try {
+    chunk_producer([&fd, &temp_file](const proto::FileContents& chunk) {
+      size_t pos = 0;
+      while (pos < chunk.chunk().size()) {
+        ssize_t written =
+            write(fd, chunk.chunk().c_str() + pos, chunk.chunk().size() - pos);
+        if (written == -1 && errno == EINTR) continue;
+        if (written == -1) {
+          throw std::system_error(errno, std::system_category(),
+                                  "write " + temp_file);
+        }
+        pos += written;
+      }
+    });
+  } catch (...) {
+    close(fd);
+    throw;
+  }
+  if (close(fd) == -1) return errno;
+  return OsAtomicMove(temp_file, path, overwrite, exist_ok);
 }
 
 }  // namespace
@@ -76,17 +142,8 @@ namespace util {
 
 void File::Read(const std::string& path,
                 const File::ChunkReceiver& chunk_receiver) {
-  std::ifstream fin;
-  fin.exceptions(std::ifstream::badbit);
-  fin.open(path);
-  if (!fin) throw std::system_error(ENOENT, std::system_category(), path);
-  proto::FileContents chunk;
-  std::vector<char> buf(kChunkSize);
-  while (!fin.eof()) {
-    fin.read(buf.data(), kChunkSize);
-    chunk.set_chunk(buf.data(), fin.gcount());
-    chunk_receiver(chunk);
-  }
+  int err = OsRead(path, chunk_receiver);
+  if (err) throw std::system_error(err, std::system_category(), "Read " + path);
 }
 
 void File::Write(const std::string& path, const ChunkProducer& chunk_producer,
@@ -94,24 +151,10 @@ void File::Write(const std::string& path, const ChunkProducer& chunk_producer,
   MakeDirs(BaseDir(path));
   if (!overwrite && Size(path) >= 0) {
     if (exist_ok) return;
-    throw std::system_error(EEXIST, std::system_category(), path);
+    throw std::system_error(EEXIST, std::system_category(), "Write " + path);
   }
-  std::ofstream fout;
-  fout.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-  std::string temp_file_ = OsTempFile(path);
-  if (temp_file_ == "")
-    throw std::system_error(errno, std::system_category(), "mkstemp");
-  try {
-    fout.open(temp_file_);
-    chunk_producer([&fout](const proto::FileContents& chunk) {
-      fout.write(chunk.chunk().c_str(), chunk.chunk().size());
-    });
-    if (!OsAtomicMove(temp_file_, path, overwrite, exist_ok))
-      throw std::system_error(errno, std::system_category(), path);
-  } catch (std::exception& e) {
-    Remove(temp_file_);
-    throw e;
-  }
+  int err = OsWrite(path, chunk_producer, overwrite, exist_ok);
+  if (err) throw std::system_error(err, std::system_category(), path);
 }
 
 SHA256_t File::Hash(const std::string& path) {
@@ -142,7 +185,7 @@ void File::DeepCopy(const std::string& from, const std::string& to,
 
 void File::Copy(const std::string& from, const std::string& to, bool overwrite,
                 bool exist_ok) {
-  if (!ShallowCopy(from, to, overwrite, exist_ok)) {
+  if (!ShallowCopy(from, to, !overwrite && exist_ok)) {
     DeepCopy(from, to, overwrite, exist_ok);
   }
 }
