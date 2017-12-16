@@ -1,5 +1,6 @@
 #include "core/execution.hpp"
 #include "executor/local_executor.hpp"
+#include "executor/remote_executor.hpp"
 
 namespace core {
 
@@ -44,7 +45,12 @@ void Execution::Run(
     const std::function<util::SHA256_t(int64_t)>& get_hash,
     const std::function<void(int64_t, const util::SHA256_t&)>& set_hash) {
   // TODO(veluca): change this when we implement remote executors.
-  std::unique_ptr<executor::Executor> executor{new executor::LocalExecutor()};
+  std::unique_ptr<executor::Executor> executor;
+  if (executor_ == "") {
+    executor.reset(new executor::LocalExecutor());
+  } else {
+    executor.reset(new executor::RemoteExecutor(executor_));
+  }
 
   // Command and args.
   proto::Request request;

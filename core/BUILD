@@ -35,6 +35,7 @@ cc_library(
         ":execution_cacher",
         ":file_id",
         "//executor:local_executor",
+        "//executor:remote_executor",
         "//proto:response_cc",
     ],
 )
