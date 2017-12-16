@@ -21,7 +21,7 @@ from python.task import Task
 from python.task import Testcase
 from python.ui import UI
 
-EXTENSIONS = [".cpp", ".c", ".C", ".cc", ".py"]
+EXTENSIONS = [".cpp", ".c", ".C", ".cc", ".py", ".sh"]
 UIS = {"print": PrintUI, "curses": CursesUI}
 CACHES = {
     "all": (Execution.CachingMode.ALWAYS, Execution.CachingMode.SAME_EXECUTOR),
