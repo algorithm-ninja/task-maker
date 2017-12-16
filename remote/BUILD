@@ -18,7 +18,20 @@ cc_library(
     srcs = ["common.cpp"],
     hdrs = ["common.hpp"],
     deps = [
+        "//executor",
         "//proto:server_cc",
+        "//util:file",
+    ],
+)
+
+cc_binary(
+    name = "worker",
+    srcs = ["worker.cpp"],
+    deps = [
+        ":common",
+        "//executor:local_executor",
+        "//proto:server_cc",
+        "//util:flags",
         "//util:file",
     ] + GRPC_COMPILE_DEPS,
 )

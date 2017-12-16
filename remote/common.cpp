@@ -1,20 +1,22 @@
 #include "remote/common.hpp"
-#include "util/file.hpp"
 
 namespace remote {
 
-void SendFile(proto::TaskMakerServer::Stub* stub, grpc::ClientContext* context,
-              const proto::SHA256& hash) {
+void SetupContext(grpc::ClientContext* context) {}
+
+void SendFile(proto::TaskMakerServer::Stub* stub, const proto::SHA256& hash,
+              const executor::Executor::RequestFileCallback& load_file) {
+  grpc::ClientContext context;
+  SetupContext(&context);
   proto::SendFileResponse response;
   std::unique_ptr<grpc::ClientWriter<proto::FileContents>> writer(
-      stub->SendFile(context, &response));
+      stub->SendFile(&context, &response));
   proto::FileContents hdr;
   *hdr.mutable_hash() = hash;
   if (writer->Write(hdr)) {
-    util::File::Read(util::File::ProtoSHAToPath(hash),
-                     [&writer](const proto::FileContents& contents) {
-                       writer->Write(contents);
-                     });
+    load_file(hash, [&writer](const proto::FileContents& contents) {
+      writer->Write(contents);
+    });
     hdr.set_last(true);
     writer->Write(hdr);
   }
@@ -24,20 +26,19 @@ void SendFile(proto::TaskMakerServer::Stub* stub, grpc::ClientContext* context,
   }
 }
 
-void RetrieveFile(proto::TaskMakerServer::Stub* stub,
-                  grpc::ClientContext* context, const proto::SHA256& hash) {
+void RetrieveFile(proto::TaskMakerServer::Stub* stub, const proto::SHA256& hash,
+                  const util::File::ChunkReceiver& chunk_receiver) {
+  grpc::ClientContext context;
+  SetupContext(&context);
   std::unique_ptr<grpc::ClientReader<proto::FileContents>> reader(
-      stub->RetrieveFile(context, hash));
-  util::File::Write(util::File::ProtoSHAToPath(hash),
-                    [&reader](const util::File::ChunkReceiver& chunk_receiver) {
-                      proto::FileContents contents;
-                      while (reader->Read(&contents)) {
-                        chunk_receiver(contents);
-                      }
-                      grpc::Status status = reader->Finish();
-                      if (!status.ok() && status.error_code()) {
-                        throw std::runtime_error(status.error_message());
-                      }
-                    });
+      stub->RetrieveFile(&context, hash));
+  proto::FileContents contents;
+  while (reader->Read(&contents)) {
+    chunk_receiver(contents);
+  }
+  grpc::Status status = reader->Finish();
+  if (!status.ok() && status.error_code()) {
+    throw std::runtime_error(status.error_message());
+  }
 }
 }  // namespace remote
