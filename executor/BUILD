@@ -1,6 +1,8 @@
 # More user-friendly interface on top of sandboxes.
 package(default_visibility = ["//visibility:public"])
 
+load("@org_pubref_rules_protobuf//cpp:rules.bzl", "GRPC_COMPILE_DEPS")
+
 cc_library(
     name = "executor",
     hdrs = ["executor.hpp"],
@@ -21,4 +23,14 @@ cc_library(
         "//sandbox",
         "//util:flags",
     ],
+)
+
+cc_library(
+    name = "remote_executor",
+    srcs = ["remote_executor.cpp"],
+    hdrs = ["remote_executor.hpp"],
+    deps = [
+        ":executor",
+        "//remote:common",
+    ] + GRPC_COMPILE_DEPS,
 )

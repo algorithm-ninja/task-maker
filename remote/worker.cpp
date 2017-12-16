@@ -10,6 +10,7 @@
 #include "grpc++/create_channel.h"
 #include "grpc++/security/credentials.h"
 #include "grpc/grpc.h"
+#include "proto/server.grpc.pb.h"
 #include "remote/common.hpp"
 #include "util/flags.hpp"
 
@@ -24,8 +25,14 @@ void DoWork(proto::TaskMakerServer::Stub* stub) {
   while (stream->Read(&request)) {
     std::unique_ptr<executor::Executor> executor{new executor::LocalExecutor()};
     using namespace std::placeholders;
-    proto::Response response = executor->Execute(
-        request, std::bind(remote::RetrieveFile, stub, _1, _2));
+    proto::Response response;
+    try {
+      response = executor->Execute(
+          request, std::bind(remote::RetrieveFile, stub, _1, _2));
+    } catch (std::exception& e) {
+      response.set_status_code(proto::Status::INTERNAL_ERROR);
+      response.set_error_message(e.what());
+    }
     for (const proto::FileInfo& info : response.output()) {
       if (info.has_contents()) continue;  // Small file
       remote::SendFile(

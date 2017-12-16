@@ -93,8 +93,11 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
       try {
         *response = response_future.get();
         if (response->status() == proto::Status::INTERNAL_ERROR &&
-            i + 1 < max_attempts)
+            i + 1 < max_attempts) {
+          std::cerr << "Error on worker: " << response->error_message()
+                    << std::endl;
           continue;
+        }
         break;
       } catch (std::future_error& e) {
         if (i + 1 == max_attempts) {
