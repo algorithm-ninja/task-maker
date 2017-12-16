@@ -66,6 +66,9 @@ class Execution:
     def set_caching_mode(self, caching_mode: CachingMode) -> None:
         ...
 
+    def set_executor(self, executor: str) -> None:
+        ...
+
     def status_code(self) -> int:
         ...
 

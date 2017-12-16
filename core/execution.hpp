@@ -43,6 +43,7 @@ class Execution {
 
   void SetExclusive() { exclusive_ = true; }
   void SetCachingMode(CachingMode mode) { caching_mode_ = mode; }
+  void SetExecutor(const std::string& executor) { executor_ = executor; }
 
   // To be called after Core::Run().
   bool Success() const { return successful_; }
@@ -107,6 +108,7 @@ class Execution {
   bool successful_ = false;
   bool exclusive_ = false;
   CachingMode caching_mode_ = ALWAYS;
+  std::string executor_;
 
   ExecutionCacher* cacher_;
   bool cached_ = false;

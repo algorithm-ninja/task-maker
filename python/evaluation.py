@@ -118,8 +118,9 @@ class Evaluation:
             evaluation_state.testcase_offset, score)
         return True
 
-    def _evaluate_testcase(self, num: int, testcase: Testcase,
-                           exclusive: bool, cache_mode: Execution.CachingMode,
+    def _evaluate_testcase(self, num: int, testcase: Testcase, exclusive: bool,
+                           cache_mode: Execution.CachingMode,
+                           eval_executor: Optional[str],
                            extra_eval_time: float) -> None:
         def callback(event: Event, status: EventStatus) -> bool:
             return self._callback(num, event, status)
@@ -130,8 +131,9 @@ class Evaluation:
 
         execution = self._solution.execute(
             "Evaluation of solution %s on testcase %d" %
-            (self.solution_src, num),
-            [], callback, exclusive, cache_mode)
+            (self.solution_src, num), [], callback, exclusive, cache_mode)
+        if eval_executor is not None:
+            execution.set_executor(eval_executor)
         # CPU time can only be set to an integer
         execution.cpu_limit(self._task.time_limit + math.ceil(extra_eval_time))
         execution.wall_limit((self._task.time_limit + extra_eval_time) * 1.3)
@@ -145,14 +147,17 @@ class Evaluation:
             check = self._dispatcher.add_execution(
                 check_description,
                 cast(str, self._diff_path),
-                ["-w", "output", "contestant_output"], callback,
-                exclusive=False, cache_mode=cache_mode)
+                ["-w", "output", "contestant_output"],
+                callback,
+                exclusive=False,
+                cache_mode=cache_mode)
         else:
             has_checker = True
             check = self._task.checker.execute(
-                check_description, ["input", "output",
-                                    "contestant_output"], callback,
-                exclusive=False, cache_mode=cache_mode)
+                check_description, ["input", "output", "contestant_output"],
+                callback,
+                exclusive=False,
+                cache_mode=cache_mode)
             check.input("input", testcase.input_id)
         check.input("output", testcase.output_id)
         check.input("contestant_output", contestant_output)
@@ -168,7 +173,7 @@ class Evaluation:
     def __init__(self, dispatcher: Dispatcher, ui: UI, task: Task,
                  solution: str, exclusive: bool,
                  eval_cache_mode: Execution.CachingMode,
-                 extra_eval_time: float) -> None:
+                 eval_executor: Optional[str], extra_eval_time: float) -> None:
         if not task.generated:
             raise ValueError("You must first generate the task")
         self._diff_path = shutil.which("diff")
@@ -190,7 +195,7 @@ class Evaluation:
             [SubtaskScoreInfo(self, subtask, ui) for subtask in task.subtasks]
         for num, testcase in enumerate(task.testcases):
             self._evaluate_testcase(num, testcase, exclusive, eval_cache_mode,
-                                    extra_eval_time)
+                                    eval_executor, extra_eval_time)
 
     def update_score(self, subtask_num: int, score: float) -> None:
         self.subtask_scores[subtask_num] = score

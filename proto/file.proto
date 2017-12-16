@@ -29,4 +29,10 @@ message FileInfo {
 message FileContents {
   // Chunks should be ~32k in size.
   bytes chunk = 1;
+  // Hash of the file this chunk belongs to. It only needs to be set in the
+  // first message of a SendFile request.
+  SHA256 hash = 2;
+  // True if this is the last chunk of the file. It only needs to be set in
+  // the last message of a SendFile request, to detect errors.
+  bool last = 3;
 }

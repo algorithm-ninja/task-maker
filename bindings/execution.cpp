@@ -37,6 +37,8 @@ PYBIND11_MODULE(execution, m) {
 
           .def("set_caching_mode", &core::Execution::SetCachingMode)
 
+          .def("set_executor", &core::Execution::SetExecutor)
+
           .def("success", &core::Execution::Success)
           .def("cpu_time", &core::Execution::CpuTime)
           .def("sys_time", &core::Execution::SysTime)
