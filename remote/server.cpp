@@ -116,7 +116,13 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
       grpc::ServerContext* context,
       grpc::ServerReaderWriter<proto::Request, proto::Response>* stream)
       override {
-    std::cerr << "Worker connected" << std::endl;
+    std::string name;
+    for (const auto& kv : context->client_metadata()) {
+      if (kv.first == "name") {
+        name = std::string(kv.second.data(), kv.second.length());
+      }
+    }
+    std::cerr << "Worker " << name << " connected" << std::endl;
     while (true) {
       std::unique_lock<std::mutex> lck(requests_mutex_);
       while (pending_requests_.empty()) {
@@ -125,18 +131,25 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
       PendingRequest pending_request = std::move(pending_requests_.front());
       pending_requests_.pop();
       lck.unlock();
-      std::cerr << "Sent work to worker: "
+      std::cerr << "Sent work to worker" << name << ": "
                 << pending_request.request.executable() << std::endl;
-      stream->Write(pending_request.request);
+      if (!stream->Write(pending_request.request)) {
+        std::unique_lock<std::mutex> lck(requests_mutex_);
+        pending_requests_.push(std::move(pending_request));
+        request_available_.notify_all();
+        break;
+      }
       proto::Response response;
       if (!stream->Read(&response)) {
-        std::cerr << "Worker did not answer" << std::endl;
+        std::cerr << "Worker " << name << " did not answer" << std::endl;
         return grpc::Status(grpc::StatusCode::UNAVAILABLE,
                             "Worker did not answer");
       }
-      std::cerr << "Worker done" << std::endl;
+      std::cerr << "Worker " << name << " done" << std::endl;
       pending_request.response.set_value(response);
     }
+    std::cerr << "Worker " << name << " disconnected" << std::endl;
+    return grpc::Status(grpc::StatusCode::UNAVAILABLE, "Worker disconnected");
   }
 
  private:

@@ -15,10 +15,11 @@
 #include "util/flags.hpp"
 
 DEFINE_string(server, "", "server to connect to");
+DEFINE_string(name, "unnamed_worker", "name that identifies this worker");
 
-void DoWork(proto::TaskMakerServer::Stub* stub) {
+void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
   grpc::ClientContext context;
-  remote::SetupContext(&context);
+  remote::SetupContext(&context, name);
   std::unique_ptr<grpc::ClientReaderWriter<proto::Response, proto::Request> >
       stream(stub->GetWork(&context));
   proto::Request request;
@@ -55,7 +56,7 @@ void DoWork(proto::TaskMakerServer::Stub* stub) {
   std::cerr << "DoWork: " << status.error_message() << std::endl;
 }
 
-void worker(const std::string& server) {
+void worker(const std::string& server, const std::string& name) {
   while (true) {
     std::cerr << "Worker connecting..." << std::endl;
     std::shared_ptr<grpc::Channel> channel =
@@ -69,7 +70,8 @@ void worker(const std::string& server) {
     std::unique_ptr<proto::TaskMakerServer::Stub> stub(
         proto::TaskMakerServer::NewStub(channel));
     grpc::ClientContext context;
-    DoWork(stub.get());
+    remote::SetupContext(&context, name);
+    DoWork(stub.get(), name);
   }
 }
 
@@ -84,7 +86,8 @@ int main(int argc, char** argv) {
     FLAGS_num_cores = std::thread::hardware_concurrency();
   }
   for (int i = 0; i < FLAGS_num_cores; i++) {
-    worker_threads.emplace_back(worker, FLAGS_server);
+    worker_threads.emplace_back(worker, FLAGS_server,
+                                FLAGS_name + "_thread" + std::to_string(i));
   }
   for (int i = 0; i < FLAGS_num_cores; i++) {
     worker_threads[i].join();

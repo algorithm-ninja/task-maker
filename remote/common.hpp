@@ -5,7 +5,7 @@
 
 namespace remote {
 
-void SetupContext(grpc::ClientContext* context);
+void SetupContext(grpc::ClientContext* context, const std::string& name = "");
 
 void SendFile(proto::TaskMakerServer::Stub* stub, const proto::SHA256& hash,
               const executor::Executor::RequestFileCallback& load_file);
