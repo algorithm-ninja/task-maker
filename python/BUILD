@@ -68,6 +68,7 @@ py_library(
     name = "generation",
     srcs = ["generation.py"],
     deps = [
+        ":dependency_finder",
         ":dispatcher",
         ":language",
         ":sanitize",
