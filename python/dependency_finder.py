@@ -53,3 +53,5 @@ def find_dependency(filename: str) -> List[Dependency]:
             return []
     except FileNotFoundError:
         return []
+    except UnicodeDecodeError:
+        return []
