@@ -32,6 +32,8 @@ def find_cxx_dependency(content: str, scope: str) -> List[Dependency]:
     dependencies = []  # type: List[Dependency]
     for include in includes:
         file_path = os.path.join(scope, include)
+        if os.path.islink(file_path):
+            file_path = os.path.realpath(file_path)
         # the sandbox does not support file inside subdirs (nor ../something),
         # for convenience skip all the files that includes "/" in the name
         if os.path.exists(file_path) and os.sep not in include:
@@ -52,4 +54,6 @@ def find_dependency(filename: str) -> List[Dependency]:
                 return list(set(find_cxx_dependency(file.read(), scope)))
             return []
     except FileNotFoundError:
+        return []
+    except UnicodeDecodeError:
         return []

@@ -21,7 +21,7 @@ from python.task import Task
 from python.task import Testcase
 from python.ui import UI
 
-EXTENSIONS = [".cpp", ".c", ".C", ".cc", ".py"]
+EXTENSIONS = [".cpp", ".c", ".C", ".cc", ".py", ".sh"]
 UIS = {"print": PrintUI, "curses": CursesUI}
 CACHES = {
     "all": (Execution.CachingMode.ALWAYS, Execution.CachingMode.SAME_EXECUTOR),
@@ -44,9 +44,7 @@ def list_files(patterns: List[str],
 
 def gen_testcases() -> List[Subtask]:
     generator = None  # type: Optional[str]
-    generator_deps = []  # type: List[str]
     validator = None  # type: Optional[str]
-    validator_deps = []  # type: List[str]
     subtasks = []  # type: List[Subtask]
 
     def create_subtask(testcases: List[Testcase], score: float) -> None:
@@ -57,12 +55,10 @@ def gen_testcases() -> List[Subtask]:
         generator = _generator
     if not generator:
         raise RuntimeError("No generator found")
-    generator_deps = list_files(["gen/varie.*", "gen/limiti.*", "gen/graph.*"])
     for _validator in list_files(["gen/validator.*", "gen/valida.*"]):
         validator = _validator
     if not validator:
-        raise RuntimeError("No generator found")
-    validator_deps = generator_deps
+        raise RuntimeError("No validator found")
 
     current_testcases = []  # type: List[Testcase]
     current_score = 0.0
@@ -81,9 +77,7 @@ def gen_testcases() -> List[Subtask]:
                 continue
             testcase_input = Input(
                 generator=generator,
-                generator_deps=generator_deps,
                 validator=validator,
-                validator_deps=validator_deps,
                 args=line.split())
         current_testcases.append(Testcase(testcase_input))
 
@@ -168,10 +162,8 @@ def run_for_cwd(args: argparse.Namespace) -> None:
             raise RuntimeError("No official solution found")
         graders = list_files(["sol/grader.*"])
         if args.solutions:
-            solutions = [
-                sol if sol.startswith("sol/") else "sol/" + sol
-                for sol in args.solutions
-            ]
+            solutions = [sol if sol.startswith("sol/") else "sol/"+sol
+                         for sol in args.solutions]
         else:
             solutions = list_files(["sol/*"], exclude=graders)
         checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])

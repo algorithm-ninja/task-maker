@@ -136,7 +136,7 @@ class Evaluation:
             execution.set_executor(eval_executor)
         # CPU time can only be set to an integer
         execution.cpu_limit(self._task.time_limit + math.ceil(extra_eval_time))
-        execution.wall_limit(self._task.time_limit + extra_eval_time)
+        execution.wall_limit((self._task.time_limit + extra_eval_time) * 1.3)
         execution.memory_limit(self._task.memory_limit)
         contestant_output = self._task.setup_io(execution, testcase.input_id)
         check_description = "Checking result of solution %s on testcase %d" % (
@@ -186,8 +186,8 @@ class Evaluation:
         self.score = None  # type: Optional[float]
         self._dispatcher = dispatcher
         self._solution = SourceFile(dispatcher, ui, solution, is_solution=True)
-        self._solution.compile(
-            task.graders(self._solution.get_language()), eval_cache_mode)
+        self._solution.compile(task.graders(self._solution.get_language()),
+                               eval_cache_mode)
         self._task = task
         self._ui = ui
         self._evaluations = []  # type: List[SingleEvaluationState]

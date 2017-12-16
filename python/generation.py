@@ -5,7 +5,7 @@ from typing import List  # pylint: disable=unused-import
 from typing import Optional
 from bindings import Execution  # pylint: disable=unused-import
 from bindings import FileID  # pylint: disable=unused-import
-from python import sanitize
+from python import sanitize, dependency_finder
 from python.dispatcher import Dispatcher
 from python.dispatcher import Event
 from python.dispatcher import EventStatus
@@ -89,6 +89,8 @@ class Generation:
             # and the required file is copied with a safe name into the sandbox
             # (which doesn't support subdirs)
             dependencies = sanitize.sanitize_command(testcase.input.args)
+            dependencies += dependency_finder.find_dependency(
+                testcase.input.generator)
 
             generation_state.input_gen = self._generator_cache[
                 testcase.input.generator].execute(
@@ -106,13 +108,21 @@ class Generation:
         # so that we can ensure that the validation is executed before.
         validator_output = None  # type: Optional[FileID]
         if testcase.input.validator is not None:
+            dependencies = dependency_finder.find_dependency(
+                testcase.input.validator)
             generation_state.validation = self._generator_cache[
                 testcase.input.validator].execute(
                     "Validation of input %d" % num,
                     ["input", str(testcase.subtask.num + 1)], callback,
                     exclusive=False, cache_mode=cache_mode)
+            for dependency in dependencies:
+                generation_state.validation.input(dependency.name,
+                                                  self._dispatcher.load_file(
+                                                      dependency.path,
+                                                      dependency.path))
             assert testcase.input_id is not None  # Help mypy
             generation_state.validation.input("input", testcase.input_id)
+
             validator_output = generation_state.validation.stdout()
 
         # Output
