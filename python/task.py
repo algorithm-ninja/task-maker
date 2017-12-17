@@ -2,6 +2,7 @@
 import glob
 import operator
 import os.path
+import shutil
 from enum import Enum
 from functools import reduce
 from typing import Dict  # pylint: disable=unused-import
@@ -189,3 +190,36 @@ class Task:
             if self.checker and self.checker.compilation_output:
                 self.checker.compilation_output.write_to(checker_path,
                                                          True, True)
+
+    @staticmethod
+    def do_clean(task_dir: str, temp_dir: str, store_dir: str) -> None:
+        def remove_dir(dir_type: str) -> None:
+            path = os.path.join(task_dir, dir_type)
+            if not os.path.exists(path):
+                return
+            for file in glob.glob(os.path.join(path, dir_type+"*.txt")):
+                os.remove(file)
+            try:
+                os.rmdir(path)
+            except OSError:
+                print("Directory %s not empty, kept non-%s files" % (path,
+                                                                     dir_type))
+
+        def remove_dir_recursive(path: str) -> None:
+            try:
+                shutil.rmtree(path)
+            except FileNotFoundError:
+                pass
+
+        def remove_file(path: str) -> None:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+        remove_dir("input")
+        remove_dir("output")
+        remove_file(os.path.join(task_dir, "cor", "checker"))
+        remove_file(os.path.join(task_dir, "cor", "correttore"))
+        remove_dir_recursive(temp_dir)
+        remove_dir_recursive(store_dir)

@@ -140,6 +140,11 @@ def create_task(ui: UI, data: Dict[str, Any]) -> Task:
 
 
 def run_for_cwd(args: argparse.Namespace) -> None:
+    if args.clean:
+        Task.do_clean(args.task_dir, args.temp_dir, args.store_dir)
+        print("Task directory clean")
+        return
+
     official_solution = None  # type: Optional[str]
     solutions = []  # type: List[str]
     graders = []  # type: List[str]
@@ -290,14 +295,19 @@ def main() -> None:
         default=None)
     parser.add_argument(
         "--temp-dir",
-        help="Temporary directory to use",
+        help="Where the sandboxes should be created",
         action="store",
-        default=None)
+        default="temp")
     parser.add_argument(
         "--store-dir",
-        help="Directory to use to store persistent internal data",
+        help="Where files should be stored",
         action="store",
-        default=None)
+        default="files")
+    parser.add_argument(
+        "--clean",
+        help="Clear the task directory and exit",
+        action="store_true",
+        default=False)
 
     args = parser.parse_args()
 
