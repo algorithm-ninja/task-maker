@@ -1,10 +1,11 @@
 package(default_visibility = ["//visibility:public"])
 
+load("//tools:smart_py_binary.bzl", "smart_py_binary")
+
 py_test(
     name = "test",
     size = "small",
     srcs = ["test.py"],
-    imports = ["bindings"],
     deps = [
         "//bindings:task_maker",
     ],
@@ -40,7 +41,6 @@ py_library(
 py_library(
     name = "dispatcher",
     srcs = ["dispatcher.py"],
-    imports = ["bindings"],
     deps = [
         ":ui",
         "//bindings:task_maker",
@@ -96,19 +96,19 @@ py_library(
     name = "dependency_finder",
     srcs = ["dependency_finder.py"],
     deps = [
-        ":language"
-    ]
+        ":language",
+    ],
 )
 
 py_library(
     name = "sanitize",
     srcs = ["sanitize.py"],
     deps = [
-        ":dependency_finder"
-    ]
+        ":dependency_finder",
+    ],
 )
 
-py_binary(
+smart_py_binary(
     name = "task_maker",
     srcs = ["task_maker.py"],
     deps = [

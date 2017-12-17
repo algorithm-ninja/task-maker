@@ -8,6 +8,6 @@ cc_library(
     ),
     includes = ["include"],
     deps = [
-        "@python3//:python",
+        "//external:python_3_6_hdr",
     ],
 )
