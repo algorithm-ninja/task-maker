@@ -34,7 +34,8 @@ case "${1}" in
         fi
       fi
     done
-    $PYLINT $(find . -name '*.py')
-    $MYPY $(find . -name '*.py')
+    PY_FILES=$(find . -path ./test_task -prune -o -name '*.py' -print)
+    $PYLINT $PY_FILES
+    $MYPY $PY_FILES
     ;;
 esac
