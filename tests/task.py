@@ -33,7 +33,7 @@ shutil.copytree(orig_task_dir, task_dir)
 
 os.chdir(task_dir)
 
-args = Namespace(
+args = Namespace(  # type: ignore
     solutions=[],
     task_dir=task_dir,
     ui="testing",
@@ -110,26 +110,26 @@ for testcase in soluzione.testcase_result.values():
 float_error = test_data._solution_status["float_error.cpp"]
 assert float_error.score == 0
 for testcase in float_error.testcase_result.values():
-    assert testcase.message == "Signal 8"
+    assert testcase.message == "Floating point exception"
     assert testcase.score == 0
 
 mle = test_data._solution_status["mle.cpp"]
 assert mle.score == 0
 for testcase in mle.testcase_result.values():
-    assert testcase.message == "Signal 6"
+    assert testcase.message == "Memory limit exceeded"
     assert testcase.score == 0
     assert testcase.memory > 60000
 
 nonzero = test_data._solution_status["nonzero.cpp"]
 assert nonzero.score == 0
 for testcase in nonzero.testcase_result.values():
-    assert testcase.message == "Return code 1"
+    assert testcase.message == "Non-zero return code"
     assert testcase.score == 0
 
 sigsegv = test_data._solution_status["sigsegv.cpp"]
 assert sigsegv.score == 0
 for testcase in sigsegv.testcase_result.values():
-    assert testcase.message == "Signal 11"
+    assert testcase.message == "Segmentation fault"
     assert testcase.score == 0
 
 tle = test_data._solution_status["tle.cpp"]
@@ -140,15 +140,11 @@ for tc_num, testcase in tle.testcase_result.items():
         assert testcase.cpu_time <= 1
         assert testcase.wall_time <= 1.3
         assert testcase.score == 1
-    # TODO(edomora97): due to an actual bug in the evaluation process, the
-    # measured time is correct but the limit considers the extra time as valid
-    # limit. REMOVE THE COMMENTS WHEN THIS THING IS FIXED!
-    #
-    # else:
-    #     assert testcase.message == "Execution timed out"
-    #     assert testcase.cpu_time > 1
-    #     assert testcase.wall_time > 1
-    #     assert testcase.score == 0
+    else:
+        assert testcase.message == "CPU limit exceeded"
+        assert testcase.cpu_time > 1
+        assert testcase.wall_time > 1
+        assert testcase.score == 0
 
 wa = test_data._solution_status["wa.cpp"]
 assert wa.score == 0
