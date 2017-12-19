@@ -6,7 +6,7 @@ build_and_test:
     - if [ -f ./cache.tar.gz ]; then tar -xzf ./cache.tar.gz -C / --warning=no-timestamp; fi
     - apt update -yy && apt upgrade -yy
     # TODO: when rebuilding the images consider putting this symlink in it
-    - if [ ! -f /usr/bin/g++ ] && [ -f /usr/bin/g++-6 ]; then ln -s /usr/bin/g++ /usr/bin/g++-6; fi
+    - if [ ! -f /usr/bin/g++ ] && [ -f /usr/bin/g++-6 ]; then ln -s /usr/bin/g++-6 /usr/bin/g++; fi
     - |
       cat > $CI_PROJECT_DIR/.bazelrc <<EOF
       # This is from Bazel's former travis setup, to avoid blowing up the RAM usage.
