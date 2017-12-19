@@ -1,5 +1,6 @@
 #include "sandbox/unix.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <thread>
 
@@ -27,7 +28,32 @@ char* mystrerror(int err, char* buf, size_t buf_size) {
 #endif
 }
 
+int GetProcessMemoryUsageFromProc(pid_t pid, long long* memory_usage_kb) {
+  int fd = open(("/proc/" + std::to_string(pid) + "/statm").c_str(),
+                O_RDONLY | O_CLOEXEC);
+  if (fd == -1) return fd;
+  char buf[64 * 1024] = {};
+  int num_read = 0;
+  int cur = 0;
+  do {
+    cur = read(fd, buf + num_read, 64 * 1024 - num_read);
+    if (cur < 0) {
+      close(fd);
+      return -1;
+    }
+    num_read += cur;
+  } while (cur > 0);
+  close(fd);
+  sscanf(buf, "%lld", memory_usage_kb);
+  *memory_usage_kb *= 4;
+  return 0;
+}
+
 int GetProcessMemoryUsage(pid_t pid, long long* memory_usage_kb) {
+#ifndef __APPLE__
+  return GetProcessMemoryUsageFromProc(pid, memory_usage_kb);
+#else
+  if (GetProcessMemoryUsageFromProc(pid, memory_usage_kb) == 0) return 0;
   int pipe_fds[2];
   if (pipe(pipe_fds) == -1) return errno;
   posix_spawn_file_actions_t actions;
@@ -84,6 +110,7 @@ int GetProcessMemoryUsage(pid_t pid, long long* memory_usage_kb) {
     *memory_usage_kb = 0;
   }
   return 0;
+#endif
 }
 }  // namespace
 
@@ -278,6 +305,20 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
     *error_msg = error;
     return false;
   }
+  std::atomic<long long> memory_usage{0};
+  bool done = false;
+  std::thread memory_watcher(
+      [&memory_usage, &done](int pid) {
+        while (!done) {
+          long long mem;
+          if (GetProcessMemoryUsage(pid, &mem) == 0) {
+            if (mem > memory_usage) memory_usage = mem;
+          }
+          std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
+      },
+      child_pid_);
+
   close(pipe_fds_[0]);
 
   auto program_start = std::chrono::high_resolution_clock::now();
@@ -294,15 +335,8 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
   int child_status = 0;
   bool has_exited = false;
   struct rusage rusage;
-  long long memory_usage = 0;
-  info->memory_usage_kb = 0;
   while (elapsed_millis() < options_->wall_limit_millis) {
-    if (GetProcessMemoryUsage(child_pid_, &memory_usage) == 0) {
-      if (memory_usage > info->memory_usage_kb)
-        info->memory_usage_kb = memory_usage;
-    }
-    if (options_->memory_limit_kb &&
-        info->memory_usage_kb > options_->memory_limit_kb)
+    if (options_->memory_limit_kb && memory_usage > options_->memory_limit_kb)
       break;
     int ret = wait4(child_pid_, &child_status, WNOHANG, &rusage);
     if (ret == -1) {
@@ -324,16 +358,15 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
         exit(1);
       }
     }
-    if (GetProcessMemoryUsage(child_pid_, &memory_usage) == 0) {
-      if (memory_usage > info->memory_usage_kb)
-        info->memory_usage_kb = memory_usage;
-    }
     if (wait4(child_pid_, &child_status, 0, &rusage) != child_pid_) {
       // This should never happen.
       perror("wait4");
       exit(1);
     }
   }
+  done = true;
+  memory_watcher.join();
+  info->memory_usage_kb = memory_usage;
   info->status_code = WIFEXITED(child_status) ? WEXITSTATUS(child_status) : 0;
   info->signal = WIFSIGNALED(child_status) ? WTERMSIG(child_status) : 0;
   info->wall_time_millis = elapsed_millis();
