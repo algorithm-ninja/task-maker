@@ -171,7 +171,8 @@ def run_for_cwd(args: argparse.Namespace) -> None:
             solutions = [sol if sol.startswith("sol/") else "sol/"+sol
                          for sol in args.solutions]
         else:
-            solutions = list_files(["sol/*"], exclude=graders)
+            solutions = list_files(["sol/*"],
+                                   exclude=graders + ["sol/__init__.py"])
         checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])
         if checkers:
             checker = checkers[0]

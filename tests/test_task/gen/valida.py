@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# pylint: disable=wildcard-import
+# pylint: disable=invalid-name
+
 import sys
 from limiti import *
 

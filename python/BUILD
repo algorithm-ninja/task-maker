@@ -1,15 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 
-py_test(
-    name = "test",
-    size = "small",
-    srcs = ["test.py"],
-    imports = ["bindings"],
-    deps = [
-        "//bindings:task_maker",
-    ],
-)
-
 py_library(
     name = "language",
     srcs = ["language.py"],
