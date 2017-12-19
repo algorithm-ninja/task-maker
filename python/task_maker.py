@@ -14,6 +14,7 @@ from python.dispatcher import Dispatcher
 from python.evaluation import Evaluation
 from python.generation import Generation
 from python.print_ui import PrintUI
+from python.silent_ui import SilentUI
 from python.task import Input
 from python.task import ScoreMode
 from python.task import Subtask
@@ -22,7 +23,7 @@ from python.task import Testcase
 from python.ui import UI
 
 EXTENSIONS = [".cpp", ".c", ".C", ".cc", ".py", ".sh"]
-UIS = {"print": PrintUI, "curses": CursesUI}
+UIS = {"print": PrintUI, "curses": CursesUI, "silent": SilentUI}
 CACHES = {
     "all": (Execution.CachingMode.ALWAYS, Execution.CachingMode.SAME_EXECUTOR),
     "generation": (Execution.CachingMode.ALWAYS, Execution.CachingMode.NEVER),
