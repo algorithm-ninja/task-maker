@@ -86,12 +86,8 @@ void Execution::Run(
     throw std::runtime_error(response_.error_message());
   }
 
-  if (response_.status_code() != 0 || response_.signal() != 0 ||
-      response_.status() == proto::Status::MISSING_FILES) {
-    successful_ = false;
-  } else {
-    successful_ = true;
-  }
+  successful_ = response_.status() == proto::Status::SUCCESS;
+  message_ = response_.error_message();
 
   // Read output files.
   for (const proto::FileInfo& out : response_.output()) {

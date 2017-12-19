@@ -47,6 +47,7 @@ class Execution {
 
   // To be called after Core::Run().
   bool Success() const { return successful_; }
+  std::string Message() const { return message_; }
   float CpuTime() const { return response_.resource_usage().cpu_time(); }
   float SysTime() const { return response_.resource_usage().sys_time(); }
   float WallTime() const { return response_.resource_usage().wall_time(); }
@@ -106,6 +107,7 @@ class Execution {
   std::unique_ptr<FileID> stderr_;
 
   bool successful_ = false;
+  std::string message_;
   bool exclusive_ = false;
   CachingMode caching_mode_ = ALWAYS;
   std::string executor_;
