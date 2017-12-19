@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
+#include <spawn.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
@@ -24,6 +25,65 @@ char* mystrerror(int err, char* buf, size_t buf_size) {
   strerror_r(err, buf, buf_size);
   return buf;
 #endif
+}
+
+int GetProcessMemoryUsage(pid_t pid, long long* memory_usage_kb) {
+  int pipe_fds[2];
+  if (pipe(pipe_fds) == -1) return errno;
+  posix_spawn_file_actions_t actions;
+  int ret = posix_spawn_file_actions_init(&actions);
+  if (ret != 0) return ret;
+  ret = posix_spawn_file_actions_addclose(&actions, pipe_fds[0]);
+  if (ret != 0) return ret;
+  ret = posix_spawn_file_actions_addclose(&actions, STDIN_FILENO);
+  if (ret != 0) return ret;
+  ret = posix_spawn_file_actions_adddup2(&actions, pipe_fds[1], STDOUT_FILENO);
+  if (ret != 0) return ret;
+  ret = posix_spawn_file_actions_addclose(&actions, pipe_fds[1]);
+  if (ret != 0) return ret;
+  std::vector<std::unique_ptr<char[]>> args;
+  std::vector<char*> args_list;
+  auto add_arg = [&args, &args_list](const char* a) {
+    args.emplace_back(strdup(a));
+    args_list.push_back(args.back().get());
+  };
+  add_arg("ps");
+  add_arg("-o");
+  add_arg("vsz=");
+  add_arg(std::to_string(pid).c_str());
+  args_list.push_back(nullptr);
+
+  char** environ = {nullptr};
+
+  int child_pid = 0;
+  ret = posix_spawnp(&child_pid, "ps", &actions, nullptr, args_list.data(),
+                     environ);
+  close(pipe_fds[1]);
+  if (ret != 0) {
+    close(pipe_fds[0]);
+    return ret;
+  }
+  int child_status = 0;
+  if (waitpid(child_pid, &child_status, 0) == -1) {
+    close(pipe_fds[0]);
+    return errno;
+  }
+  if (child_status != 0) {
+    close(pipe_fds[0]);
+    *memory_usage_kb = 0;
+    return 0;
+  }
+  char memory_usage_buf[1024] = {};
+  if (read(pipe_fds[0], memory_usage_buf, 1024) == -1) {
+    close(pipe_fds[0]);
+    *memory_usage_kb = 0;
+    return 0;
+  }
+  close(pipe_fds[0]);
+  if (sscanf(memory_usage_buf, "%lld", memory_usage_kb) != 1) {
+    *memory_usage_kb = 0;
+  }
+  return 0;
 }
 }  // namespace
 
@@ -95,6 +155,7 @@ bool Unix::DoFork(std::string* error_msg) {
 }
 
 void Unix::Child() {
+  close(pipe_fds_[0]);
   auto die2 = [this](const char* prefix, const char* err) {
     fprintf(stdout, "%s\n", err);
     char buf[kStrErrorBufSize + 64 + 2] = {};
@@ -136,6 +197,7 @@ void Unix::Child() {
     die("chdir", errno);
   }
 
+  // TODO(veluca): do not use dynamic memory allocation here.
   // Prepare args.
   std::vector<std::vector<char>> vec_args;
   auto add_arg = [&vec_args](const std::string& arg) {
@@ -149,13 +211,16 @@ void Unix::Child() {
   args.push_back(nullptr);
 
   // Handle I/O redirection.
-  close(pipe_fds_[0]);
 #define DUP(field, fd)                          \
   if (field##_fd != -1) {                       \
     int ret = dup2(field##_fd, fd);             \
     if (ret == -1) die("redir " #field, errno); \
   }
-  DUP(stdin, STDIN_FILENO);
+  if (stdin_fd) {
+    DUP(stdin, STDIN_FILENO);
+  } else if (close(STDIN_FILENO) == -1) {
+    die("close", errno);
+  }
   DUP(stdout, STDOUT_FILENO);
   DUP(stderr, STDERR_FILENO);
 #undef DUP
@@ -229,7 +294,16 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
   int child_status = 0;
   bool has_exited = false;
   struct rusage rusage;
+  long long memory_usage = 0;
+  info->memory_usage_kb = 0;
   while (elapsed_millis() < options_->wall_limit_millis) {
+    if (GetProcessMemoryUsage(child_pid_, &memory_usage) == 0) {
+      if (memory_usage > info->memory_usage_kb)
+        info->memory_usage_kb = memory_usage;
+    }
+    if (options_->memory_limit_kb &&
+        info->memory_usage_kb > options_->memory_limit_kb)
+      break;
     int ret = wait4(child_pid_, &child_status, WNOHANG, &rusage);
     if (ret == -1) {
       // This should never happen.
@@ -250,6 +324,10 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
         exit(1);
       }
     }
+    if (GetProcessMemoryUsage(child_pid_, &memory_usage) == 0) {
+      if (memory_usage > info->memory_usage_kb)
+        info->memory_usage_kb = memory_usage;
+    }
     if (wait4(child_pid_, &child_status, 0, &rusage) != child_pid_) {
       // This should never happen.
       perror("wait4");
@@ -263,13 +341,6 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
       (int64_t)rusage.ru_utime.tv_sec * 1000 + rusage.ru_utime.tv_usec / 1000;
   info->sys_time_millis =
       (int64_t)rusage.ru_stime.tv_sec * 1000 + rusage.ru_stime.tv_usec / 1000;
-
-  // On MAC OS X, rusage.ru_maxrss is in bytes.
-#ifndef __APPLE__
-  info->memory_usage_kb = rusage.ru_maxrss;
-#else
-  info->memory_usage_kb = rusage.ru_maxrss / 1024;
-#endif
 
   OnFinish(info);
   return true;

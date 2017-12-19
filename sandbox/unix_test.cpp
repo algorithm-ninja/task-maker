@@ -91,7 +91,7 @@ TEST(UnixTest, TestBusyWaitArg1) {
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 70);
-  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 130);
+  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 150);
   EXPECT_GE(info.wall_time_millis, 70);
   EXPECT_LE(info.wall_time_millis, 150);
   EXPECT_LE(info.sys_time_millis, 30);
@@ -109,7 +109,7 @@ TEST(UnixTest, TestMallocArg1) {
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.memory_usage_kb, 10 * sizeof(int) * 1024);
-  EXPECT_LE(info.memory_usage_kb, 12 * sizeof(int) * 1024);
+  EXPECT_LE(info.memory_usage_kb, 15 * sizeof(int) * 1024);
 }
 
 TEST(UnixTest, TestMemoryLimitOk) {
@@ -125,11 +125,9 @@ TEST(UnixTest, TestMemoryLimitOk) {
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.memory_usage_kb, 10 * sizeof(int) * 1024);
-  EXPECT_LE(info.memory_usage_kb, 12 * sizeof(int) * 1024);
+  EXPECT_LE(info.memory_usage_kb, 15 * sizeof(int) * 1024);
 }
 
-// Setting the memory limit does not seem to work on MAC OS X.
-#ifndef __APPLE__
 TEST(UnixTest, TestMemoryLimitNotOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -143,7 +141,6 @@ TEST(UnixTest, TestMemoryLimitNotOk) {
   EXPECT_EQ(info.signal, SIGSEGV);
   EXPECT_EQ(info.status_code, 0);
 }
-#endif
 
 TEST(UnixTest, TestWallLimitOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
@@ -158,7 +155,7 @@ TEST(UnixTest, TestWallLimitOk) {
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.wall_time_millis, 70);
-  EXPECT_LE(info.wall_time_millis, 130);
+  EXPECT_LE(info.wall_time_millis, 150);
 }
 
 TEST(UnixTest, TestWallLimitNotOk) {
@@ -174,7 +171,7 @@ TEST(UnixTest, TestWallLimitNotOk) {
   EXPECT_EQ(info.signal, SIGKILL);
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.wall_time_millis, 100);
-  EXPECT_LE(info.wall_time_millis, 130);
+  EXPECT_LE(info.wall_time_millis, 150);
 }
 
 TEST(UnixTest, TestCpuLimitOk) {
@@ -190,7 +187,7 @@ TEST(UnixTest, TestCpuLimitOk) {
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 80);
-  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 130);
+  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 150);
 }
 
 TEST(UnixTest, TestCpuLimitNotOk) {
