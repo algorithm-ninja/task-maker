@@ -267,7 +267,7 @@ void Unix::Child() {
   }
 
   SET_RLIM(AS, options_->memory_limit_kb * 1024);
-  SET_RLIM(CPU, options_->cpu_limit_millis / 1000);
+  SET_RLIM(CPU, (options_->cpu_limit_millis + 999) / 1000);
   SET_RLIM(FSIZE, options_->max_file_size_kb * 1024);
   SET_RLIM(MEMLOCK, options_->max_mlock_kb * 1024);
   SET_RLIM(NOFILE, options_->max_files);
@@ -374,7 +374,11 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
       (int64_t)rusage.ru_utime.tv_sec * 1000 + rusage.ru_utime.tv_usec / 1000;
   info->sys_time_millis =
       (int64_t)rusage.ru_stime.tv_sec * 1000 + rusage.ru_stime.tv_usec / 1000;
-
+  if (info->signal) {
+    info->message = strsignal(info->signal);
+  } else if (info->status_code) {
+    info->message = "Non-zero return code";
+  }
   OnFinish(info);
   return true;
 }

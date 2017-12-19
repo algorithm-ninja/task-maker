@@ -7,13 +7,17 @@ import 'proto/resources.proto';
 
 enum Status {
   SUCCESS = 0;
-  INTERNAL_ERROR = 1;
-  MISSING_FILES = 2;
+  SIGNAL = 1;
+  NONZERO = 2;
+  TIME_LIMIT = 3;
+  MEMORY_LIMIT = 4;
+  MISSING_FILES = 5;
+  INTERNAL_ERROR = 6;
 }
 
 message Response {
-  // Termination status of the program (SUCCESS or SIGNAL), or INTERNAL_ERROR
-  // or a more specific error code if it was never executed.
+  // Termination status of the program, or INTERNAL_ERROR or a more specific
+  // error code if it was never executed.
   Status status = 1;
 
   // Exit status of the program.
@@ -22,7 +26,7 @@ message Response {
   // Signal that killed the program.
   int32 signal = 3;
 
-  // Error message for internal errors.
+  // Error message for error conditions.
   string error_message = 4;
 
   // Time and memory used by the program.

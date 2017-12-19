@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import math
 import shutil
 from typing import List
 from typing import Optional  # pylint: disable=unused-import
@@ -76,20 +75,11 @@ class Evaluation:
                                            evaluation_result(0.0, display_msg))
             return False
         if event.id() == execution.id():
-            if execution.cpu_time() <= self._task.time_limit:
-                if status == EventStatus.SUCCESS:
-                    self._ui.set_evaluation_status(testcase_num,
-                                                   self.solution_src,
-                                                   EvaluationStatus.EXECUTED)
-                    return True
-                if execution.signal() != 0:
-                    display_msg = "Signal " + str(execution.signal())
-                elif execution.status_code() != 0:
-                    display_msg = "Return code " + str(execution.status_code())
-                else:
-                    display_msg = "Missing output files"
-            else:
-                display_msg = "Execution timed out"
+            if status == EventStatus.SUCCESS:
+                self._ui.set_evaluation_status(testcase_num, self.solution_src,
+                                               EvaluationStatus.EXECUTED)
+                return True
+            display_msg = execution.message()
             score = 0.0
         else:
             if not evaluation_state.has_checker:
@@ -120,8 +110,7 @@ class Evaluation:
 
     def _evaluate_testcase(self, num: int, testcase: Testcase, exclusive: bool,
                            cache_mode: Execution.CachingMode,
-                           eval_executor: Optional[str],
-                           extra_eval_time: float) -> None:
+                           eval_executor: Optional[str]) -> None:
         def callback(event: Event, status: EventStatus) -> bool:
             return self._callback(num, event, status)
 
@@ -135,8 +124,8 @@ class Evaluation:
         if eval_executor is not None:
             execution.set_executor(eval_executor)
         # CPU time can only be set to an integer
-        execution.cpu_limit(self._task.time_limit + math.ceil(extra_eval_time))
-        execution.wall_limit((self._task.time_limit + extra_eval_time) * 1.3)
+        execution.cpu_limit(self._task.time_limit)
+        execution.wall_limit(1.5 * self._task.time_limit)
         execution.memory_limit(self._task.memory_limit)
         contestant_output = self._task.setup_io(execution, testcase.input_id)
         check_description = "Checking result of solution %s on testcase %d" % (
@@ -173,7 +162,7 @@ class Evaluation:
     def __init__(self, dispatcher: Dispatcher, ui: UI, task: Task,
                  solution: str, exclusive: bool,
                  eval_cache_mode: Execution.CachingMode,
-                 eval_executor: Optional[str], extra_eval_time: float) -> None:
+                 eval_executor: Optional[str]) -> None:
         if not task.generated:
             raise ValueError("You must first generate the task")
         self._diff_path = shutil.which("diff")
@@ -186,8 +175,8 @@ class Evaluation:
         self.score = None  # type: Optional[float]
         self._dispatcher = dispatcher
         self._solution = SourceFile(dispatcher, ui, solution, is_solution=True)
-        self._solution.compile(task.graders(self._solution.get_language()),
-                               eval_cache_mode)
+        self._solution.compile(
+            task.graders(self._solution.get_language()), eval_cache_mode)
         self._task = task
         self._ui = ui
         self._evaluations = []  # type: List[SingleEvaluationState]
@@ -195,7 +184,7 @@ class Evaluation:
             [SubtaskScoreInfo(self, subtask, ui) for subtask in task.subtasks]
         for num, testcase in enumerate(task.testcases):
             self._evaluate_testcase(num, testcase, exclusive, eval_cache_mode,
-                                    eval_executor, extra_eval_time)
+                                    eval_executor)
 
     def update_score(self, subtask_num: int, score: float) -> None:
         self.subtask_scores[subtask_num] = score
