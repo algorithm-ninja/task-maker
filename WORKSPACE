@@ -27,6 +27,14 @@ new_git_repository(
     tag = "3.12",
 )
 
+new_http_archive(
+    name = "pytest",
+    url = "https://pypi.python.org/packages/53/d0/208853c09be8377e6d4de7c0df875ef7ef37189373d76a74b65b44e50528/pytest-3.2.3.tar.gz",
+    sha256 = "27fa6617efc2869d3e969a3e75ec060375bfb28831ade8b5cdd68da3a741dc3c",
+    build_file = "tools/pytest.BUILD",
+    strip_prefix = "pytest-3.2.3",
+)
+
 new_git_repository(
     name = "pybind11",
     build_file = "tools/pybind11.BUILD",
