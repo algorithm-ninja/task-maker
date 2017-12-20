@@ -6,22 +6,21 @@ def run_setup_py_impl(ctx):
                 'export DIR=$(pwd)/%s' % installed_files.dirname,
                 'export PYTHON=$(pwd)/%s' % python_path.path,
                 'export LD_LIBRARY_PATH=$(pwd)/$(dirname %s)/../lib' % python_path.path,
+                'export PYTHONHOME=$(pwd)/$(dirname %s)/../' % python_path.path,
                 'export PYTHONPATH=$DIR',
-                'pushd %s' % setup_py.dirname,
+                'pushd %s > /dev/null' % setup_py.dirname,
                 '$PYTHON setup.py install'
                 + ' --home=$DIR'
                 + ' --install-purelib=$DIR'
                 + ' --install-platlib=$DIR'
-                + ' --install-scripts=$DIR',
-                'popd',
-                'find $DIR | grep "^.*\.egg\$" > %s' % installed_files.path,
-                'echo "[DONE] running setup.py"']
+                + ' --install-scripts=$DIR > /dev/null',
+                'popd > /dev/null',
+                'find $DIR | grep "^.*\.egg\$" > %s' % installed_files.path]
     ctx.actions.run_shell(
         inputs = ctx.files.dep + ctx.files.deps,
         command = ' && '.join(commands),
         mnemonic = 'RunPySetup',
-        outputs = [installed_files],
-        use_default_shell_env = True
+        outputs = [installed_files]
     )
 
 run_setup_py = rule(
