@@ -6,7 +6,7 @@ import os
 from typing import Dict, List, Any
 from typing import Optional
 
-from external.pyyaml.lib3 import yaml
+from external.pyyaml.lib3 import yaml  # pylint: disable=import-error
 
 from bindings import Execution
 from python.curses_ui import CursesUI
@@ -14,6 +14,7 @@ from python.dispatcher import Dispatcher
 from python.evaluation import Evaluation
 from python.generation import Generation
 from python.print_ui import PrintUI
+from python.silent_ui import SilentUI
 from python.task import Input
 from python.task import ScoreMode
 from python.task import Subtask
@@ -22,7 +23,7 @@ from python.task import Testcase
 from python.ui import UI
 
 EXTENSIONS = [".cpp", ".c", ".C", ".cc", ".py", ".sh"]
-UIS = {"print": PrintUI, "curses": CursesUI}
+UIS = {"print": PrintUI, "curses": CursesUI, "silent": SilentUI}
 CACHES = {
     "all": (Execution.CachingMode.ALWAYS, Execution.CachingMode.SAME_EXECUTOR),
     "generation": (Execution.CachingMode.ALWAYS, Execution.CachingMode.NEVER),
@@ -170,7 +171,8 @@ def run_for_cwd(args: argparse.Namespace) -> None:
                 for sol in args.solutions
             ]
         else:
-            solutions = list_files(["sol/*"], exclude=graders)
+            solutions = list_files(["sol/*"],
+                                   exclude=graders + ["sol/__init__.py"])
         checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])
         if checkers:
             checker = checkers[0]

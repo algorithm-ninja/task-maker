@@ -171,13 +171,13 @@ class Generation:
 
         # Compilations needed: solution, checker, generator(s) and validator(s)
         if task.solution_src is not None:
-            task.solution = SourceFile(
+            task.solution = SourceFile.from_file(
                 dispatcher, ui, task.solution_src, is_solution=False)
             task.solution.compile(
                 task.graders(task.solution.get_language()),
                 cache_mode=cache_mode)
         if task.checker_src is not None:
-            task.checker = SourceFile(
+            task.checker = SourceFile.from_file(
                 dispatcher, ui, task.checker_src, is_solution=False)
             task.checker.compile([], cache_mode=cache_mode)
         for testcase in task.testcases:
@@ -190,7 +190,7 @@ class Generation:
                     continue
                 if binary in self._generator_cache:
                     continue
-                source_file = SourceFile(
+                source_file = SourceFile.from_file(
                     dispatcher, ui, binary, is_solution=False)
                 source_file.compile(deps, cache_mode)
                 self._generator_cache[binary] = source_file

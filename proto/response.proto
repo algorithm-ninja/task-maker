@@ -13,6 +13,7 @@ enum Status {
   MEMORY_LIMIT = 4;
   MISSING_FILES = 5;
   INTERNAL_ERROR = 6;
+  NOT_EXECUTABLE = 7;
 }
 
 message Response {

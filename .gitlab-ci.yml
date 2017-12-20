@@ -1,10 +1,10 @@
-image: registry.gitlab.com/olimpiadi-informatica/task-maker/runner:latest
+image: registry.gitlab.com/olimpiadi-informatica/task-maker/runner:v2
 
 build_and_test:
   stage: build
   before_script:
     - if [ -f ./cache.tar.gz ]; then tar -xzf ./cache.tar.gz -C / --warning=no-timestamp; fi
-    - apt update && apt upgrade
+    - apt update -yy && apt upgrade -yy
     - |
       cat > $CI_PROJECT_DIR/.bazelrc <<EOF
       # This is from Bazel's former travis setup, to avoid blowing up the RAM usage.
@@ -18,14 +18,14 @@ build_and_test:
       # runs stuff in a container, and since GitLabCI already runs its script
       # in a container this fails to run tests.
       build --spawn_strategy=standalone --genrule_strategy=standalone
-      test --test_strategy=standalone --test_output=streamed
+      test --test_strategy=standalone --test_output=streamed --python_path=/usr/bin/python3 --nocache_test_results
       EOF
 
   variables:
     TEST_TMPDIR: "/tmp/cache"
 
   script:
-    - bazel test ... --python_path=/usr/bin/python3 --nocache_test_results
+    - bazel test ...
 
   after_script:
     - tar -czf ./cache.tar.gz /tmp/cache

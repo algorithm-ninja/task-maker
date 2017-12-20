@@ -1,15 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 
-py_test(
-    name = "test",
-    size = "small",
-    srcs = ["test.py"],
-    imports = ["bindings"],
-    deps = [
-        "//bindings:task_maker",
-    ],
-)
-
 py_library(
     name = "language",
     srcs = ["language.py"],
@@ -53,9 +43,15 @@ py_library(
 )
 
 py_library(
+    name = "silent_ui",
+    srcs = ["silent_ui.py"],
+    deps = [":ui"],
+)
+
+py_library(
     name = "curses_ui",
     srcs = ["curses_ui.py"],
-    deps = [":ui"],
+    deps = [":ui", ":silent_ui"],
 )
 
 py_library(
@@ -117,6 +113,7 @@ py_binary(
         ":evaluation",
         ":generation",
         ":print_ui",
+        ":silent_ui",
         ":task",
         "@pyyaml//:pyyaml",
     ],
