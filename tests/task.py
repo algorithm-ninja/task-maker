@@ -132,6 +132,12 @@ def test_solutions() -> None:
         assert testcase.score == 0
         assert testcase.memory > 60000
 
+    no_shebang = test_data._solution_status["no_shebang.py"]
+    assert no_shebang.score == 0
+    for testcase in no_shebang.testcase_result.values():
+        assert testcase.message == "Execution error: exec: Exec format error"
+        assert testcase.score == 0
+
     nonzero = test_data._solution_status["nonzero.cpp"]
     assert nonzero.score == 0
     for testcase in nonzero.testcase_result.values():
