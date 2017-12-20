@@ -84,7 +84,9 @@ def test_solution_files() -> None:
     assert "generatore.cpp" in test_data._other_compilations
     assert "valida.py" in test_data._other_compilations
 
-    assert len(test_data._solutions) == 10
+    assert len(test_data._solutions) == 12
+    assert "bash.sh" in test_data._solutions
+    assert "bash_no_shebang.sh" in test_data._solutions
     assert "float_error.cpp" in test_data._solutions
     assert "mle.cpp" in test_data._solutions
     assert "no_shebang.py" in test_data._solutions
@@ -102,6 +104,18 @@ def test_compilation_status() -> None:
     for sol, comp_status in test_data._compilation_status.items():
         if sol == "not_compile.cpp":
             assert comp_status == CompilationStatus.FAILURE
+            errors = test_data._compilation_errors[sol]
+            assert "does not name a type" in errors
+        elif sol == "no_shebang.py":
+            assert comp_status == CompilationStatus.FAILURE
+            errors = test_data._compilation_errors[sol]
+            assert "Missing shebang!" in errors
+            assert "Add #!/usr/bin/env python" in errors
+        elif sol == "bash_no_shebang.sh":
+            assert comp_status == CompilationStatus.FAILURE
+            errors = test_data._compilation_errors[sol]
+            assert "Missing shebang!" in errors
+            assert "Add #!/usr/bin/env bash" in errors
         else:
             assert comp_status == CompilationStatus.SUCCESS
 
@@ -119,6 +133,12 @@ def test_solutions() -> None:
         assert testcase.message == "Output is correct"
         assert testcase.score == 1
 
+    bash = test_data._solution_status["soluzione.py"]
+    assert bash.score == 100
+    for testcase in bash.testcase_result.values():
+        assert testcase.message == "Output is correct"
+        assert testcase.score == 1
+
     float_error = test_data._solution_status["float_error.cpp"]
     assert float_error.score == 0
     for testcase in float_error.testcase_result.values():
@@ -131,12 +151,6 @@ def test_solutions() -> None:
         assert testcase.message == "Memory limit exceeded"
         assert testcase.score == 0
         assert testcase.memory > 60000
-
-    no_shebang = test_data._solution_status["no_shebang.py"]
-    assert no_shebang.score == 0
-    for testcase in no_shebang.testcase_result.values():
-        assert testcase.message == "Execution error: exec: Exec format error"
-        assert testcase.score == 0
 
     nonzero = test_data._solution_status["nonzero.cpp"]
     assert nonzero.score == 0
@@ -175,7 +189,6 @@ def test_solutions() -> None:
     for testcase in wrong_file.testcase_result.values():
         assert testcase.message == "Missing output files"
         assert testcase.score == 0
-
 
 if __name__ == "__main__":
     raise SystemExit(_pytest.config.main([

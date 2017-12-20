@@ -101,12 +101,9 @@ class SourceFile:
 
 class Compiled(SourceFile):
     def _compile(self, graders: List[str], cache_mode: Execution.CachingMode,
-                 compilation_command: str, extra_args: List[str]) -> None:
+                 compilation_command: str, compilation_args: List[str]) -> None:
         super().compile(graders, cache_mode)
         files_to_pass = []  # type: List[Tuple[str, FileID]]
-        compilation_args = extra_args + [
-            "-O2", "-Wall", "-DEVAL", "-o", self._compiled_name
-        ]
         for source_file in [self._path] + graders:
             basename = sanitize.sanitize_filename(
                 os.path.basename(source_file))
@@ -134,46 +131,47 @@ class Compiled(SourceFile):
 
 # pylint: disable=invalid-name
 
+
 class CPP(Compiled):
     def compile(self, graders: List[str],
                 cache_mode: Execution.CachingMode) -> None:
-        self._compile(graders, cache_mode, "/usr/bin/g++", ["-std=c++14"])
+        self._compile(
+            graders,
+            cache_mode,
+            "/usr/bin/g++",
+            ["-std=c++14", "-O2", "-Wall", "-DEVAL", "-o", self._compiled_name])
 
 
 class C(Compiled):
     def compile(self, graders: List[str],
                 cache_mode: Execution.CachingMode) -> None:
-        self._compile(graders, cache_mode, "/usr/bin/gcc", ["-std=c11"])
+        self._compile(
+            graders,
+            cache_mode,
+            "/usr/bin/gcc",
+            ["-std=c11", "-O2", "-Wall", "-DEVAL", "-o", self._compiled_name])
 
 
-class PY(SourceFile):
-    class FakeFileID(FileID):
-        def __init__(self, message: str) -> None:
-            self.message = message
-
-        def contents(self, _: int) -> str:
-            return self.message
-
-    def _shebang_error(self) -> None:
-        self._stderr = PY.FakeFileID(
-            "The source does not have the shebang!\n"
-            "Please add #!/usr/bin/env python")
+class PY(Compiled):
+    ERROR_CMD = ["-c",
+                 "echo 'Missing shebang!\nAdd #!/usr/bin/env python' >&2",
+                 "&&", "false"]
 
     def compile(self, graders: List[str],
                 cache_mode: Execution.CachingMode) -> None:
         super().compile(graders, cache_mode)
+        with open(self._path) as source:
+            if source.read(2) != "#!":
+                self._compile(graders, cache_mode, "/bin/bash", self.ERROR_CMD)
+                return
         self.compilation_output = self._dispatcher.load_file(
             self._path, self._path, self._callback)
         self._runtime_deps = [(os.path.basename(dep),
                                self._dispatcher.load_file(dep, dep))
                               for dep in graders]
-        with open(self._path) as source:
-            if source.read(2) != "#!":
-                self._shebang_error()
 
 
 class SH(PY):
-    def _shebang_error(self) -> None:
-        self._stderr = PY.FakeFileID(
-            "The source does not have the shebang!\n"
-            "Please add #!/bin/bash")
+    ERROR_CMD = ["-c",
+                 "echo 'Missing shebang!\nAdd #!/usr/bin/env bash' >&2",
+                 "&&", "false"]
