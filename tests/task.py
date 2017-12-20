@@ -49,7 +49,6 @@ args = Namespace(
     exclusive=False,
     cache="nothing",
     evaluate_on=None,
-    extra_eval_time=0.5,
     dry_run=False,
     num_cores=None,
     temp_dir="temp",
