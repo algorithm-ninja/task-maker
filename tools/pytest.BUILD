@@ -1,5 +1,5 @@
 filegroup(
     name = "files",
-    srcs = glob(["_pytest/**/*.py", "pytest.py", "setup.py"]),
+    srcs = glob(["**"], exclude=["extra/**"]),
     visibility = ["//visibility:public"]
 )

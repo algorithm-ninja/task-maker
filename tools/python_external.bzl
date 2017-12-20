@@ -5,7 +5,7 @@ def run_setup_py_impl(ctx):
                 'export DIR=$(pwd)/%s' % installed_files.dirname,
                 'export PYTHONPATH=$DIR',
                 'pushd %s' % setup_py.dirname,
-                'python setup.py install'
+                'python3 setup.py install'
                 + ' --home=$DIR'
                 + ' --install-purelib=$DIR'
                 + ' --install-platlib=$DIR'
