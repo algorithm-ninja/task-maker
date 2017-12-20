@@ -121,7 +121,7 @@ PYTHON_COMPILE_COMMAND = " \
   ./configure --prefix=$$DIR/$(@D)/python_3_6_files \
               --enable-shared --with-lto \
               --exec-prefix=$$DIR/$(@D)/python_3_6_files > /dev/null && \
-  make install > /dev/null && \
+  make install > /dev/null && make distclean > /dev/null && \
   touch $$DIR/$(@D)/python_3_6_files/lib/libpython3.6m.so.1.0 && \
   touch $$DIR/$(@D)/python_3_6_files/lib/libpython3.6m.so && \
   touch $$DIR/$(@D)/python_3_6_files/lib/libpython3.6m.dylib"

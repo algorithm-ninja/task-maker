@@ -18,7 +18,7 @@ build_and_test:
       # runs stuff in a container, and since GitLabCI already runs its script
       # in a container this fails to run tests.
       build --spawn_strategy=standalone --genrule_strategy=standalone
-      test --test_strategy=standalone --test_output=streamed --python_path=/usr/bin/python3 --nocache_test_results
+      test --test_strategy=standalone --test_output=streamed --nocache_test_results
       EOF
 
   variables:

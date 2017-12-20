@@ -1,11 +1,14 @@
 def run_setup_py_impl(ctx):
     installed_files = ctx.outputs.installed_files
     setup_py = [f for f in ctx.files.dep if f.path.endswith('/setup.py')][0]
+    python_path = [f for f in ctx.files.deps if f.path.endswith('/python3')][0]
     commands = ['cd $(pwd)',
                 'export DIR=$(pwd)/%s' % installed_files.dirname,
+                'export PYTHON=$(pwd)/%s' % python_path.path,
+                'export LD_LIBRARY_PATH=$(pwd)/$(dirname %s)/../lib' % python_path.path,
                 'export PYTHONPATH=$DIR',
                 'pushd %s' % setup_py.dirname,
-                'python3 setup.py install'
+                '$PYTHON setup.py install'
                 + ' --home=$DIR'
                 + ' --install-purelib=$DIR'
                 + ' --install-platlib=$DIR'
@@ -13,8 +16,8 @@ def run_setup_py_impl(ctx):
                 'popd',
                 'find $DIR | grep "^.*\.egg\$" > %s' % installed_files.path,
                 'echo "[DONE] running setup.py"']
-    ctx.action(
-        inputs = ctx.files.dep,
+    ctx.actions.run_shell(
+        inputs = ctx.files.dep + ctx.files.deps,
         command = ' && '.join(commands),
         mnemonic = 'RunPySetup',
         outputs = [installed_files],
@@ -24,18 +27,19 @@ def run_setup_py_impl(ctx):
 run_setup_py = rule(
     run_setup_py_impl,
     attrs = {
-        'dep': attr.label(allow_files=True),
-        'installed_files': attr.output(),
+        "dep": attr.label(allow_files = True),
+        "deps": attr.label_list(allow_files = True),
+        "installed_files": attr.output(),
     },
 )
-
 
 def python_package_lib(name, dep, **kwargs):
     # Install the files into the current directory and save them into a file.
     run_setup_py(
         name = name + '_build_files',
         installed_files = name + '_eggs',
-        dep = dep
+        dep = dep,
+        deps = ["//tools:python_3_6"],
     )
 
     # Can't add eggs into runfiles so just create a loader module that
@@ -51,14 +55,13 @@ def python_package_lib(name, dep, **kwargs):
         name = name + '_loader',
         outs = [name + '_loader.py'],
         srcs = [src],
-        cmd = '&&'.join(commands)
+        cmd = ' && '.join(commands)
     )
     native.py_library(
         name = name,
         srcs = [':' + name + '_loader'],
         **kwargs
     )
-
 
 def python_package_bundle(name, deps, visibility=None):
     lib_deps = []
