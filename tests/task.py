@@ -84,9 +84,10 @@ def test_solution_files() -> None:
     assert "generatore.cpp" in test_data._other_compilations
     assert "valida.py" in test_data._other_compilations
 
-    assert len(test_data._solutions) == 9
+    assert len(test_data._solutions) == 10
     assert "float_error.cpp" in test_data._solutions
     assert "mle.cpp" in test_data._solutions
+    assert "no_shebang.py" in test_data._solutions
     assert "nonzero.cpp" in test_data._solutions
     assert "not_compile.cpp" in test_data._solutions
     assert "sigsegv.cpp" in test_data._solutions

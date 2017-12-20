@@ -174,7 +174,8 @@ class Evaluation:
             [None for _ in task.subtasks]  # type: List[Optional[float]]
         self.score = None  # type: Optional[float]
         self._dispatcher = dispatcher
-        self._solution = SourceFile(dispatcher, ui, solution, is_solution=True)
+        self._solution = SourceFile.from_file(dispatcher, ui, solution,
+                                              is_solution=True)
         self._solution.compile(
             task.graders(self._solution.get_language()), eval_cache_mode)
         self._task = task
