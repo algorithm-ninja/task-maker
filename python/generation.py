@@ -33,7 +33,13 @@ class Generation:
 
         if status == EventStatus.FAILURE:
             assert isinstance(event, Execution)
-            message = event.stderr().contents(1024 * 1024)
+            if event.signal() != 0:
+                message = "Signal " + str(event.signal())
+            elif event.status_code() != 0:
+                message = "Return code " + str(event.status_code())
+            else:
+                message = "Missing output files"
+            message += "\n" + event.stderr().contents(1024 * 1024)
             self._ui.set_generation_status(testcase_num,
                                            GenerationStatus.FAILURE, message)
             return False
@@ -94,8 +100,11 @@ class Generation:
 
             generation_state.input_gen = self._generator_cache[
                 testcase.input.generator].execute(
-                    "Generation of input %d" % num, testcase.input.args,
-                    callback, exclusive=False, cache_mode=cache_mode)
+                    "Generation of input %d" % num,
+                    testcase.input.args,
+                    callback,
+                    exclusive=False,
+                    cache_mode=cache_mode)
             for dependency in dependencies:
                 generation_state.input_gen.input(dependency.name,
                                                  self._dispatcher.load_file(
@@ -113,8 +122,10 @@ class Generation:
             generation_state.validation = self._generator_cache[
                 testcase.input.validator].execute(
                     "Validation of input %d" % num,
-                    ["input", str(testcase.subtask.num + 1)], callback,
-                    exclusive=False, cache_mode=cache_mode)
+                    ["input", str(testcase.subtask.num + 1)],
+                    callback,
+                    exclusive=False,
+                    cache_mode=cache_mode)
             for dependency in dependencies:
                 generation_state.validation.input(dependency.name,
                                                   self._dispatcher.load_file(
@@ -137,8 +148,10 @@ class Generation:
             # TODO(edomora97): raise up the timelimit for the solution when
             # generating the official outputs?
             generation_state.output_gen = task.solution.execute(
-                "Generation of output %d" % num, [], callback,
-                exclusive=False, cache_mode=cache_mode)
+                "Generation of output %d" % num, [],
+                callback,
+                exclusive=False,
+                cache_mode=cache_mode)
             if validator_output is not None:
                 generation_state.output_gen.input("dummy_foobar_deadbaba",
                                                   validator_output)
@@ -158,13 +171,14 @@ class Generation:
 
         # Compilations needed: solution, checker, generator(s) and validator(s)
         if task.solution_src is not None:
-            task.solution = SourceFile(dispatcher, ui, task.solution_src,
-                                       is_solution=False)
-            task.solution.compile(task.graders(task.solution.get_language()),
-                                  cache_mode=cache_mode)
+            task.solution = SourceFile.from_file(
+                dispatcher, ui, task.solution_src, is_solution=False)
+            task.solution.compile(
+                task.graders(task.solution.get_language()),
+                cache_mode=cache_mode)
         if task.checker_src is not None:
-            task.checker = SourceFile(dispatcher, ui, task.checker_src,
-                                      is_solution=False)
+            task.checker = SourceFile.from_file(
+                dispatcher, ui, task.checker_src, is_solution=False)
             task.checker.compile([], cache_mode=cache_mode)
         for testcase in task.testcases:
             generator_info = (testcase.input.generator,
@@ -176,8 +190,8 @@ class Generation:
                     continue
                 if binary in self._generator_cache:
                     continue
-                source_file = SourceFile(dispatcher, ui, binary,
-                                         is_solution=False)
+                source_file = SourceFile.from_file(
+                    dispatcher, ui, binary, is_solution=False)
                 source_file.compile(deps, cache_mode)
                 self._generator_cache[binary] = source_file
 

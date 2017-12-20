@@ -37,7 +37,7 @@ class Unix : public Sandbox {
   // wrong and exec should not be called. The error_msg string must not be
   // longer then buflen characters. This function must not use dynamic memory
   // allocation.
-  virtual bool OnChild(const char* error_msg, size_t buflen) { return true; }
+  virtual bool OnChild(char* error_msg, size_t buflen) { return true; }
 
   // Waits for the termination of the child, possibly killing it if it exceeds
   // the provided wall time limit.

@@ -31,13 +31,23 @@ proto::Response Execution::RunWithCache(executor::Executor* executor,
     if (cacher_->Get(request, executor->Id(), &response)) return response;
   }
   cached_ = false;
-  response = executor->Execute(
-      request, [](const proto::SHA256& hash,
-                  const util::File::ChunkReceiver& chunk_receiver) {
-        util::File::Read(util::File::ProtoSHAToPath(hash), chunk_receiver);
-      });
-  if (response.status() != proto::Status::INTERNAL_ERROR)
-    cacher_->Put(request, executor->Id(), response);
+  try {
+    response = executor->Execute(
+        request, [](const proto::SHA256& hash,
+                    const util::File::ChunkReceiver& chunk_receiver) {
+          util::File::Read(util::File::ProtoSHAToPath(hash), chunk_receiver);
+        });
+    if (response.status() != proto::Status::INTERNAL_ERROR)
+      cacher_->Put(request, executor->Id(), response);
+  } catch (std::exception& ex) {
+    if (ex.what() == std::string("exec: Exec format error")) {
+      response.set_status(proto::Status::NOT_EXECUTABLE);
+      response.set_error_message(std::string("Execution error: ") + ex.what());
+    } else {
+      response.set_status(proto::Status::INTERNAL_ERROR);
+      response.set_error_message(std::string("Sandbox error: ") + ex.what());
+    }
+  }
   return response;
 }
 
@@ -86,12 +96,8 @@ void Execution::Run(
     throw std::runtime_error(response_.error_message());
   }
 
-  if (response_.status_code() != 0 || response_.signal() != 0 ||
-      response_.status() == proto::Status::MISSING_FILES) {
-    successful_ = false;
-  } else {
-    successful_ = true;
-  }
+  successful_ = response_.status() == proto::Status::SUCCESS;
+  message_ = response_.error_message();
 
   // Read output files.
   for (const proto::FileInfo& out : response_.output()) {

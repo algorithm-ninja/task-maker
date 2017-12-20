@@ -53,9 +53,15 @@ py_library(
 )
 
 py_library(
+    name = "silent_ui",
+    srcs = ["silent_ui.py"],
+    deps = [":ui"],
+)
+
+py_library(
     name = "curses_ui",
     srcs = ["curses_ui.py"],
-    deps = [":ui"],
+    deps = [":ui", ":silent_ui"],
 )
 
 py_library(
@@ -117,6 +123,7 @@ smart_py_binary(
         ":evaluation",
         ":generation",
         ":print_ui",
+        ":silent_ui",
         ":task",
         "@pyyaml//:pyyaml",
     ],

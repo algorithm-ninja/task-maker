@@ -40,6 +40,7 @@ PYBIND11_MODULE(execution, m) {
           .def("set_executor", &core::Execution::SetExecutor)
 
           .def("success", &core::Execution::Success)
+          .def("message", &core::Execution::Message)
           .def("cpu_time", &core::Execution::CpuTime)
           .def("sys_time", &core::Execution::SysTime)
           .def("wall_time", &core::Execution::WallTime)

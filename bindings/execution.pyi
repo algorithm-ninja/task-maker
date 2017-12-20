@@ -78,6 +78,9 @@ class Execution:
     def success(self) -> bool:
         ...
 
+    def message(self) -> str:
+        ...
+
     def cpu_time(self) -> float:
         ...
 

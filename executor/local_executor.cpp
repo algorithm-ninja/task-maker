@@ -36,8 +36,9 @@ proto::Response LocalExecutor::Execute(
   }
 
   // Limits.
-  exec_options.cpu_limit_millis = request.resource_limit().cpu_time() * 1000;
-  exec_options.wall_limit_millis = request.resource_limit().wall_time() * 1000;
+  // Scale up time limits to have a good margin for random occurrences.
+  exec_options.cpu_limit_millis = request.resource_limit().cpu_time() * 1200;
+  exec_options.wall_limit_millis = request.resource_limit().wall_time() * 1200;
   exec_options.memory_limit_kb = request.resource_limit().memory();
   exec_options.max_files = request.resource_limit().nfiles();
   exec_options.max_procs = request.resource_limit().processes();
@@ -98,7 +99,30 @@ proto::Response LocalExecutor::Execute(
   // Termination status.
   response.set_status_code(result.status_code);
   response.set_signal(result.signal);
-  response.set_status(proto::Status::SUCCESS);
+  if (request.resource_limit().memory() &&
+      response.resource_usage().memory() >= request.resource_limit().memory()) {
+    response.set_status(proto::Status::MEMORY_LIMIT);
+    response.set_error_message("Memory limit exceeded");
+  } else if (request.resource_limit().cpu_time() &&
+             response.resource_usage().sys_time() +
+                     response.resource_usage().cpu_time() >=
+                 request.resource_limit().cpu_time()) {
+    response.set_status(proto::Status::TIME_LIMIT);
+    response.set_error_message("CPU limit exceeded");
+  } else if (request.resource_limit().wall_time() &&
+             response.resource_usage().wall_time() >=
+                 request.resource_limit().wall_time()) {
+    response.set_status(proto::Status::TIME_LIMIT);
+    response.set_error_message("Wall limit exceeded");
+  } else if (response.signal()) {
+    response.set_status(proto::Status::SIGNAL);
+    response.set_error_message(result.message);
+  } else if (response.status_code()) {
+    response.set_status(proto::Status::NONZERO);
+    response.set_error_message(result.message);
+  } else {
+    response.set_status(proto::Status::SUCCESS);
+  }
 
   // Output files.
   proto::FileInfo info;
@@ -113,7 +137,10 @@ proto::Response LocalExecutor::Execute(
       if (exc.code().value() !=
           static_cast<int>(std::errc::no_such_file_or_directory))
         throw exc;
-      response.set_status(proto::Status::MISSING_FILES);
+      if (response.status() == proto::Status::SUCCESS) {
+        response.set_status(proto::Status::MISSING_FILES);
+        response.set_error_message("Missing output files");
+      }
     }
   }
   return response;

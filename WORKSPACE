@@ -21,6 +21,13 @@ new_git_repository(
 )
 
 new_git_repository(
+    name = "pytest",
+    remote = "https://github.com/pytest-dev/pytest.git",
+    build_file = "tools/pytest.BUILD",
+    tag = "3.2.3",
+)
+
+new_git_repository(
     name = "pybind11",
     build_file = "tools/pybind11.BUILD",
     remote = "https://github.com/pybind/pybind11",

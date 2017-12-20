@@ -6,7 +6,7 @@ import os
 from typing import Dict, List, Any
 from typing import Optional
 
-from external.pyyaml.lib3 import yaml
+from external.pyyaml.lib3 import yaml  # pylint: disable=import-error
 
 from bindings import Execution
 from python.curses_ui import CursesUI
@@ -14,6 +14,7 @@ from python.dispatcher import Dispatcher
 from python.evaluation import Evaluation
 from python.generation import Generation
 from python.print_ui import PrintUI
+from python.silent_ui import SilentUI
 from python.task import Input
 from python.task import ScoreMode
 from python.task import Subtask
@@ -22,7 +23,7 @@ from python.task import Testcase
 from python.ui import UI
 
 EXTENSIONS = [".cpp", ".c", ".C", ".cc", ".py", ".sh"]
-UIS = {"print": PrintUI, "curses": CursesUI}
+UIS = {"print": PrintUI, "curses": CursesUI, "silent": SilentUI}
 CACHES = {
     "all": (Execution.CachingMode.ALWAYS, Execution.CachingMode.SAME_EXECUTOR),
     "generation": (Execution.CachingMode.ALWAYS, Execution.CachingMode.NEVER),
@@ -76,9 +77,7 @@ def gen_testcases() -> List[Subtask]:
             if not line:
                 continue
             testcase_input = Input(
-                generator=generator,
-                validator=validator,
-                args=line.split())
+                generator=generator, validator=validator, args=line.split())
         current_testcases.append(Testcase(testcase_input))
 
     create_subtask(current_testcases, current_score)
@@ -140,6 +139,11 @@ def create_task(ui: UI, data: Dict[str, Any]) -> Task:
 
 
 def run_for_cwd(args: argparse.Namespace) -> None:
+    if args.clean:
+        Task.do_clean(args.task_dir, args.temp_dir, args.store_dir)
+        print("Task directory clean")
+        return
+
     official_solution = None  # type: Optional[str]
     solutions = []  # type: List[str]
     graders = []  # type: List[str]
@@ -162,10 +166,13 @@ def run_for_cwd(args: argparse.Namespace) -> None:
             raise RuntimeError("No official solution found")
         graders = list_files(["sol/grader.*"])
         if args.solutions:
-            solutions = [sol if sol.startswith("sol/") else "sol/"+sol
-                         for sol in args.solutions]
+            solutions = [
+                sol if sol.startswith("sol/") else "sol/" + sol
+                for sol in args.solutions
+            ]
         else:
-            solutions = list_files(["sol/*"], exclude=graders)
+            solutions = list_files(["sol/*"],
+                                   exclude=graders + ["sol/__init__.py"])
         checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])
         if checkers:
             checker = checkers[0]
@@ -181,7 +188,6 @@ def run_for_cwd(args: argparse.Namespace) -> None:
             task.add_subtask(subtask)
 
         cache_mode, eval_cache_mode = CACHES[args.cache]
-        extra_eval_time = args.extra_eval_time
         eval_executor = args.evaluate_on
 
         dispatcher = Dispatcher(ui)
@@ -195,7 +201,7 @@ def run_for_cwd(args: argparse.Namespace) -> None:
         Generation(dispatcher, ui, task, cache_mode)
         for solution in solutions:
             Evaluation(dispatcher, ui, task, solution, args.exclusive,
-                       eval_cache_mode, eval_executor, extra_eval_time)
+                       eval_cache_mode, eval_executor)
         if not dispatcher.run():
             raise RuntimeError("Error running task")
         else:
@@ -215,16 +221,6 @@ def run_for_cwd(args: argparse.Namespace) -> None:
         print("Dry run mode, the task directory has not been touched")
     else:
         task.store_results(os.getcwd())
-
-
-def _validate_extra_eval_time(num: str) -> float:
-    error_message = "%s is not a non-negative number" % num
-    try:
-        if float(num) < 0:
-            raise argparse.ArgumentTypeError(error_message)
-        return float(num)
-    except ValueError:
-        raise argparse.ArgumentTypeError(error_message)
 
 
 def _validate_num_cores(num: str) -> int:
@@ -272,12 +268,6 @@ def main() -> None:
         help="Where evaluations should be run",
         default=None)
     parser.add_argument(
-        "--extra-eval-time",
-        help="Raise the timeout of the solution before killing",
-        action="store",
-        type=_validate_extra_eval_time,
-        default=0.5)
-    parser.add_argument(
         "--dry-run",
         help="Execute everything but do not touch the task directory",
         action="store_true",
@@ -290,14 +280,19 @@ def main() -> None:
         default=None)
     parser.add_argument(
         "--temp-dir",
-        help="Temporary directory to use",
+        help="Where the sandboxes should be created",
         action="store",
-        default=None)
+        default="temp")
     parser.add_argument(
         "--store-dir",
-        help="Directory to use to store persistent internal data",
+        help="Where files should be stored",
         action="store",
-        default=None)
+        default="files")
+    parser.add_argument(
+        "--clean",
+        help="Clear the task directory and exit",
+        action="store_true",
+        default=False)
 
     args = parser.parse_args()
 
