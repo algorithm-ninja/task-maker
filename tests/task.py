@@ -16,7 +16,7 @@ import _pytest.config  # type: ignore
 # pylint: enable=unused-import
 
 from python.silent_ui import SilentUI
-from python.task_maker import UIS, run_for_cwd
+from python.italian_format import UIS, run_for_cwd
 from python.ui import CompilationStatus, GenerationStatus
 
 

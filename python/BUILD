@@ -2,15 +2,6 @@ package(default_visibility = ["//visibility:public"])
 
 load("//tools:smart_py_binary.bzl", "smart_py_binary")
 
-py_test(
-    name = "test",
-    size = "small",
-    srcs = ["test.py"],
-    deps = [
-        "//bindings:task_maker",
-    ],
-)
-
 py_library(
     name = "language",
     srcs = ["language.py"],
@@ -61,7 +52,10 @@ py_library(
 py_library(
     name = "curses_ui",
     srcs = ["curses_ui.py"],
-    deps = [":ui", ":silent_ui"],
+    deps = [
+        ":silent_ui",
+        ":ui",
+    ],
 )
 
 py_library(
@@ -114,9 +108,9 @@ py_library(
     ],
 )
 
-smart_py_binary(
-    name = "task_maker",
-    srcs = ["task_maker.py"],
+py_library(
+    name = "italian_format",
+    srcs = ["italian_format.py"],
     deps = [
         ":curses_ui",
         ":dispatcher",
@@ -126,5 +120,13 @@ smart_py_binary(
         ":silent_ui",
         ":task",
         "@pyyaml//:pyyaml",
+    ],
+)
+
+smart_py_binary(
+    name = "task_maker",
+    srcs = ["task_maker.py"],
+    deps = [
+        ":italian_format",
     ],
 )
