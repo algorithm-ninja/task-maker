@@ -104,6 +104,7 @@ PYTHON_HDRS = [
 ]
 
 PYTHON_RUNTIME = [
+    "python_3_6_files/bin/python",
     "python_3_6_files/bin/python3",
     "python_3_6_files/bin/python3.6",
     "python_3_6_files/lib/python3.6",
@@ -122,6 +123,7 @@ PYTHON_COMPILE_COMMAND = " \
               --enable-shared --with-lto \
               --exec-prefix=$$DIR/$(@D)/python_3_6_files > /dev/null && \
   make install > /dev/null && make distclean > /dev/null && \
+  ln -s python3 $$DIR/$(@D)/python_3_6_files/bin/python && \
   touch $$DIR/$(@D)/python_3_6_files/lib/libpython3.6m.so.1.0 && \
   touch $$DIR/$(@D)/python_3_6_files/lib/libpython3.6m.so && \
   touch $$DIR/$(@D)/python_3_6_files/lib/libpython3.6m.dylib"

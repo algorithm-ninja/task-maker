@@ -5,9 +5,11 @@ def run_setup_py_impl(ctx):
     commands = ['cd $(pwd)',
                 'export DIR=$(pwd)/%s' % installed_files.dirname,
                 'export PYTHON=$(pwd)/%s' % python_path.path,
+                'export PATH=$(pwd)/$(dirname %s)/:$PATH' % python_path.path,
                 'export LD_LIBRARY_PATH=$(pwd)/$(dirname %s)/../lib' % python_path.path,
                 'export PYTHONHOME=$(pwd)/$(dirname %s)/../' % python_path.path,
                 'export PYTHONPATH=$DIR',
+                'export PYTHONNOUSERSITE=true',
                 'pushd %s > /dev/null' % setup_py.dirname,
                 '$PYTHON setup.py install'
                 + ' --home=$DIR'
