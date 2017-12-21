@@ -20,7 +20,8 @@ def run_setup_py_impl(ctx):
         inputs = ctx.files.dep + ctx.files.deps,
         command = ' && '.join(commands),
         mnemonic = 'RunPySetup',
-        outputs = [installed_files]
+        outputs = [installed_files],
+        env = dict()
     )
 
 run_setup_py = rule(
