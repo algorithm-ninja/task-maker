@@ -211,11 +211,7 @@ def run_for_cwd(args: argparse.Namespace) -> None:
         if msg.startswith("KeyboardInterrupt"):
             ui.fatal_error("Ctrl-C pressed")
         else:
-            ui.fatal_error(str(exc))
             raise
-    except Exception as exc:
-        ui.fatal_error(str(exc))
-        raise
 
     if args.dry_run:
         print("Dry run mode, the task directory has not been touched")

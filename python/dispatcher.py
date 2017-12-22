@@ -60,7 +60,7 @@ class Dispatcher:
         if task_status.event == task_status.Event.BUSY:
             return True
         if task_status.event == task_status.Event.FAILURE:
-            self._ui.fatal_error(task_status.message)
+            self._ui.fatal_error("File load error: " + task_status.message)
             return False
         if task_status.type == task_status.Type.FILE_LOAD:
             cause = task_status.file_info  # type: Event

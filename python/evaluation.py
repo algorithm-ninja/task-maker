@@ -73,6 +73,7 @@ class Evaluation:
             self._ui.set_evaluation_status(testcase_num, self.solution_src,
                                            EvaluationStatus.FAILURE,
                                            evaluation_result(0.0, display_msg))
+            self._ui.fatal_error("Checker failure: " + display_msg)
             return False
         if event.id() == execution.id():
             if status == EventStatus.SUCCESS:
@@ -93,14 +94,17 @@ class Evaluation:
                 display_msg = evaluation_state.check.stderr().contents(
                     1024 * 1024)
                 try:
-                    score = float(
-                        evaluation_state.check.stdout().contents(1024 * 1024))
+                    score = float(evaluation_state.check.stdout().contents(
+                        1024 * 1024))
                 except ValueError:
                     self._ui.set_evaluation_status(
                         testcase_num, self.solution_src,
                         EvaluationStatus.FAILURE,
                         evaluation_result(0.0, display_msg),
                         "Invalid score returned by checker")
+                    self._ui.fatal_error("Invalid score returned by checker: "
+                                         + display_msg)
+                    return False
         self._ui.set_evaluation_status(testcase_num, self.solution_src,
                                        EvaluationStatus.SUCCESS,
                                        evaluation_result(score, display_msg))
@@ -174,8 +178,8 @@ class Evaluation:
             [None for _ in task.subtasks]  # type: List[Optional[float]]
         self.score = None  # type: Optional[float]
         self._dispatcher = dispatcher
-        self._solution = SourceFile.from_file(dispatcher, ui, solution,
-                                              is_solution=True)
+        self._solution = SourceFile.from_file(
+            dispatcher, ui, solution, is_solution=True)
         self._solution.compile(
             task.graders(self._solution.get_language()), eval_cache_mode)
         self._task = task

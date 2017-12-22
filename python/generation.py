@@ -33,15 +33,11 @@ class Generation:
 
         if status == EventStatus.FAILURE:
             assert isinstance(event, Execution)
-            if event.signal() != 0:
-                message = "Signal " + str(event.signal())
-            elif event.status_code() != 0:
-                message = "Return code " + str(event.status_code())
-            else:
-                message = "Missing output files"
+            message = event.message()
             message += "\n" + event.stderr().contents(1024 * 1024)
             self._ui.set_generation_status(testcase_num,
                                            GenerationStatus.FAILURE, message)
+            self._ui.fatal_error("Error during generation: " + message)
             return False
 
         generation_state = self._generations[testcase_num]

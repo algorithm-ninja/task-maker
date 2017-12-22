@@ -68,17 +68,24 @@ class SourceFile:
         if status == EventStatus.FAILURE:
             self._ui.set_compilation_status(self._basename, self._is_solution,
                                             CompilationStatus.FAILURE, message)
-            return self._is_solution
+            if self._is_solution:
+                return True
+            if message is not None:
+                self._ui.fatal_error("Error during compilation: " + message)
+            else:
+                self._ui.fatal_error("Unknown error during compilation")
+            return False
         if status == EventStatus.SUCCESS:
             self._ui.set_compilation_status(self._basename, self._is_solution,
                                             CompilationStatus.SUCCESS, message)
             return True
         raise RuntimeError("Unexpected compilation state")
 
-    def compile(self,
-                graders: List[str],  # pylint: disable=unused-argument
-                cache_mode: Execution.CachingMode  # pylint: disable=unused-argument
-               ) -> None:
+    def compile(
+            self,
+            graders: List[str],  # pylint: disable=unused-argument
+            cache_mode: Execution.CachingMode  # pylint: disable=unused-argument
+    ) -> None:
         self._ui.set_compilation_status(self._basename, self._is_solution,
                                         CompilationStatus.WAITING)
         # the subclass will create the real compilation
@@ -101,7 +108,8 @@ class SourceFile:
 
 class Compiled(SourceFile):
     def _compile(self, graders: List[str], cache_mode: Execution.CachingMode,
-                 compilation_command: str, compilation_args: List[str]) -> None:
+                 compilation_command: str,
+                 compilation_args: List[str]) -> None:
         super().compile(graders, cache_mode)
         files_to_pass = []  # type: List[Tuple[str, FileID]]
         for source_file in [self._path] + graders:
@@ -117,8 +125,12 @@ class Compiled(SourceFile):
                 dependency.path, dependency.path)))
 
         execution = self._dispatcher.add_execution(
-            "Compiling " + self._path, compilation_command, compilation_args,
-            self._callback, exclusive=False, cache_mode=cache_mode)
+            "Compiling " + self._path,
+            compilation_command,
+            compilation_args,
+            self._callback,
+            exclusive=False,
+            cache_mode=cache_mode)
         for name, file_id in files_to_pass:
             execution.input(name, file_id)
         # Set (very large) time and memory limits for compilation.
@@ -129,33 +141,31 @@ class Compiled(SourceFile):
         self.compilation_output = execution.output(self._compiled_name,
                                                    "Compiled " + self._path)
 
+
 # pylint: disable=invalid-name
 
 
 class CPP(Compiled):
     def compile(self, graders: List[str],
                 cache_mode: Execution.CachingMode) -> None:
-        self._compile(
-            graders,
-            cache_mode,
-            "/usr/bin/g++",
-            ["-std=c++14", "-O2", "-Wall", "-DEVAL", "-o", self._compiled_name])
+        self._compile(graders, cache_mode, "/usr/bin/g++", [
+            "-std=c++14", "-O2", "-Wall", "-DEVAL", "-o", self._compiled_name
+        ])
 
 
 class C(Compiled):
     def compile(self, graders: List[str],
                 cache_mode: Execution.CachingMode) -> None:
         self._compile(
-            graders,
-            cache_mode,
-            "/usr/bin/gcc",
+            graders, cache_mode, "/usr/bin/gcc",
             ["-std=c11", "-O2", "-Wall", "-DEVAL", "-o", self._compiled_name])
 
 
 class PY(Compiled):
-    ERROR_CMD = ["-c",
-                 "echo 'Missing shebang!\nAdd #!/usr/bin/env python' >&2",
-                 "&&", "false"]
+    ERROR_CMD = [
+        "-c", "echo 'Missing shebang!\nAdd #!/usr/bin/env python' >&2", "&&",
+        "false"
+    ]
 
     def compile(self, graders: List[str],
                 cache_mode: Execution.CachingMode) -> None:
@@ -172,6 +182,7 @@ class PY(Compiled):
 
 
 class SH(PY):
-    ERROR_CMD = ["-c",
-                 "echo 'Missing shebang!\nAdd #!/usr/bin/env bash' >&2",
-                 "&&", "false"]
+    ERROR_CMD = [
+        "-c", "echo 'Missing shebang!\nAdd #!/usr/bin/env bash' >&2", "&&",
+        "false"
+    ]
