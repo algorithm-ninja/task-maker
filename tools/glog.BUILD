@@ -5,7 +5,7 @@ load("@bazel_rules//:config.bzl", "cc_fix_config")
 cc_fix_config(
     name = "gen_config",
     cmake = True,
-    files = { "src/config.h.cmake.in": "config.h" },
+    files = {"src/config.h.cmake.in": "config.h"},
     values = {
         "_START_GOOGLE_NAMESPACE_": "namespace google {",
         "_END_GOOGLE_NAMESPACE_": "}",
@@ -74,19 +74,7 @@ cc_fix_config(
 )
 
 cc_library(
-    visibility = ["//visibility:public"],
     name = "glog",
-    deps = [
-        "//external:gflags",
-        ":gen_config",
-        ":gen_headers",
-    ],
-    includes = [
-        "src",
-    ],
-    copts = [
-        "-isystem$(GENDIR)/external/com_github_gflags_gflags/",
-    ],
     srcs = [
         "src/demangle.cc",
         "src/logging.cc",
@@ -97,17 +85,29 @@ cc_library(
         "src/vlog_is_on.cc",
     ],
     hdrs = [
+        "src/base/commandlineflags.h",
+        "src/base/googleinit.h",
+        "src/base/mutex.h",
         "src/demangle.h",
+        "src/glog/log_severity.h",
         "src/mock-log.h",
         "src/stacktrace.h",
         "src/symbolize.h",
         "src/utilities.h",
-        "src/base/commandlineflags.h",
-        "src/base/googleinit.h",
-        "src/base/mutex.h",
-        "src/glog/log_severity.h",
+    ],
+    copts = [
+        "-isystem$(GENDIR)/external/com_github_gflags_gflags/",
+    ],
+    includes = [
+        "src",
     ],
     linkopts = [
         "-pthread",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":gen_config",
+        ":gen_headers",
+        "//external:gflags",
     ],
 )

@@ -13,13 +13,6 @@ new_git_repository(
     tag = "release-1.8.0",
 )
 
-load("//tools:python.bzl", "python_repository")
-
-python_repository(
-    name = "python3",
-    version = "3",
-)
-
 new_git_repository(
     name = "pyyaml",
     build_file = "tools/pyyaml.BUILD",
@@ -59,6 +52,19 @@ new_git_repository(
     build_file = "tools/glog.BUILD",
     remote = "https://github.com/google/glog.git",
     tag = "v0.3.5",
+)
+
+# Rules for internal python
+new_http_archive(
+    name = "python_repo",
+    build_file = "tools/python.BUILD",
+    sha256 = "cda7d967c9a4bfa52337cdf551bcc5cff026b6ac50a8834e568ce4a794ca81da",
+    url = "https://www.python.org/ftp/python/3.6.3/Python-3.6.3.tar.xz",
+)
+
+bind(
+    name = "python_3_6_hdr",
+    actual = "@python_repo//:python_3_6_hdr",
 )
 
 bind(

@@ -1,5 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
+load("//tools:smart_py_binary.bzl", "smart_py_binary")
+
 py_library(
     name = "language",
     srcs = ["language.py"],
@@ -30,7 +32,6 @@ py_library(
 py_library(
     name = "dispatcher",
     srcs = ["dispatcher.py"],
-    imports = ["bindings"],
     deps = [
         ":ui",
         "//bindings:task_maker",
@@ -51,7 +52,10 @@ py_library(
 py_library(
     name = "curses_ui",
     srcs = ["curses_ui.py"],
-    deps = [":ui", ":silent_ui"],
+    deps = [
+        ":silent_ui",
+        ":ui",
+    ],
 )
 
 py_library(
@@ -92,21 +96,21 @@ py_library(
     name = "dependency_finder",
     srcs = ["dependency_finder.py"],
     deps = [
-        ":language"
-    ]
+        ":language",
+    ],
 )
 
 py_library(
     name = "sanitize",
     srcs = ["sanitize.py"],
     deps = [
-        ":dependency_finder"
-    ]
+        ":dependency_finder",
+    ],
 )
 
-py_binary(
-    name = "task_maker",
-    srcs = ["task_maker.py"],
+py_library(
+    name = "italian_format",
+    srcs = ["italian_format.py"],
     deps = [
         ":curses_ui",
         ":dispatcher",
@@ -116,5 +120,13 @@ py_binary(
         ":silent_ui",
         ":task",
         "@pyyaml//:pyyaml",
+    ],
+)
+
+smart_py_binary(
+    name = "task_maker",
+    srcs = ["task_maker.py"],
+    deps = [
+        ":italian_format",
     ],
 )

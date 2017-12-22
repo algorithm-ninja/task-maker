@@ -16,7 +16,7 @@ import _pytest.config  # type: ignore
 # pylint: enable=unused-import
 
 from python.silent_ui import SilentUI
-from python.task_maker import UIS, run_for_cwd
+from python.italian_format import UIS, run_for_cwd
 from python.ui import CompilationStatus, GenerationStatus
 
 
@@ -42,7 +42,7 @@ shutil.copytree(orig_task_dir, task_dir)
 
 os.chdir(task_dir)
 
-args = Namespace(
+args = Namespace(  # type: ignore
     solutions=[],
     task_dir=task_dir,
     ui="testing",
@@ -58,6 +58,7 @@ args = Namespace(
 run_for_cwd(args)
 assert TestingUI.inst
 test_data = TestingUI.inst  # type: TestingUI
+
 # pylint: disable=protected-access
 
 
@@ -190,7 +191,6 @@ def test_solutions() -> None:
         assert testcase.score == 0
 
 if __name__ == "__main__":
-    raise SystemExit(_pytest.config.main([
-        __file__,
-        "--override-ini=python_classes=IDontWantThis"
-    ]))
+    raise SystemExit(
+        _pytest.config.main(
+            [__file__, "--override-ini=python_classes=IDontWantThis"]))
