@@ -127,16 +127,6 @@ PYTHON_MODULES = [
     "python_3_6_files/lib/python3.6/tkinter/simpledialog.py",
     "python_3_6_files/lib/python3.6/tkinter/tix.py",
     "python_3_6_files/lib/python3.6/tkinter/ttk.py",
-    "python_3_6_files/lib/python3.6/site-packages/setuptools-28.8.0.dist-info/METADATA",
-    "python_3_6_files/lib/python3.6/site-packages/setuptools-28.8.0.dist-info/WHEEL",
-    "python_3_6_files/lib/python3.6/site-packages/setuptools-28.8.0.dist-info/zip-safe",
-    "python_3_6_files/lib/python3.6/site-packages/setuptools-28.8.0.dist-info/top_level.txt",
-    "python_3_6_files/lib/python3.6/site-packages/setuptools-28.8.0.dist-info/metadata.json",
-    "python_3_6_files/lib/python3.6/site-packages/setuptools-28.8.0.dist-info/entry_points.txt",
-    "python_3_6_files/lib/python3.6/site-packages/setuptools-28.8.0.dist-info/dependency_links.txt",
-    "python_3_6_files/lib/python3.6/site-packages/setuptools-28.8.0.dist-info/DESCRIPTION.rst",
-    "python_3_6_files/lib/python3.6/site-packages/setuptools-28.8.0.dist-info/INSTALLER",
-    "python_3_6_files/lib/python3.6/site-packages/setuptools-28.8.0.dist-info/RECORD",
     "python_3_6_files/lib/python3.6/site-packages/setuptools/extern/__init__.py",
     "python_3_6_files/lib/python3.6/site-packages/setuptools/command/upload_docs.py",
     "python_3_6_files/lib/python3.6/site-packages/setuptools/command/upload.py",
@@ -204,14 +194,6 @@ PYTHON_MODULES = [
     "python_3_6_files/lib/python3.6/site-packages/pkg_resources/_vendor/appdirs.py",
     "python_3_6_files/lib/python3.6/site-packages/pkg_resources/_vendor/__init__.py",
     "python_3_6_files/lib/python3.6/site-packages/pkg_resources/__init__.py",
-    "python_3_6_files/lib/python3.6/site-packages/pip-9.0.1.dist-info/METADATA",
-    "python_3_6_files/lib/python3.6/site-packages/pip-9.0.1.dist-info/WHEEL",
-    "python_3_6_files/lib/python3.6/site-packages/pip-9.0.1.dist-info/top_level.txt",
-    "python_3_6_files/lib/python3.6/site-packages/pip-9.0.1.dist-info/metadata.json",
-    "python_3_6_files/lib/python3.6/site-packages/pip-9.0.1.dist-info/entry_points.txt",
-    "python_3_6_files/lib/python3.6/site-packages/pip-9.0.1.dist-info/DESCRIPTION.rst",
-    "python_3_6_files/lib/python3.6/site-packages/pip-9.0.1.dist-info/INSTALLER",
-    "python_3_6_files/lib/python3.6/site-packages/pip-9.0.1.dist-info/RECORD",
     "python_3_6_files/lib/python3.6/site-packages/pip/vcs/subversion.py",
     "python_3_6_files/lib/python3.6/site-packages/pip/vcs/mercurial.py",
     "python_3_6_files/lib/python3.6/site-packages/pip/vcs/git.py",
@@ -1445,6 +1427,8 @@ PYTHON_MODULES = [
 ]
 
 EXTRA_MODULES = [
+    # Seems to be needed, don't know why
+    "python_3_6_files/lib/python3.6/site-packages/pkg_resources/py31compat.py",
     # pytest
     "python_3_6_files/lib/python3.6/site-packages/py/_code/assertion.py",
     "python_3_6_files/lib/python3.6/site-packages/py/_code/code.py",
@@ -1479,23 +1463,6 @@ EXTRA_MODULES = [
     "python_3_6_files/lib/python3.6/site-packages/py/_xmlgen.py",
     "python_3_6_files/lib/python3.6/site-packages/py/__init__.py",
     "python_3_6_files/lib/python3.6/site-packages/py/__metainfo.py",
-    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/RECORD",
-    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/INSTALLER",
-    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/DESCRIPTION.rst",
-    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/LICENSE.txt",
-    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/metadata.json",
-    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/top_level.txt",
-    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/WHEEL",
-    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/METADATA",
-    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/RECORD",
-    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/INSTALLER",
-    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/DESCRIPTION.rst",
-    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/LICENSE.txt",
-    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/entry_points.txt",
-    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/metadata.json",
-    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/top_level.txt",
-    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/WHEEL",
-    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/METADATA",
     "python_3_6_files/lib/python3.6/site-packages/pytest.py",
     "python_3_6_files/lib/python3.6/site-packages/_pytest/vendored_packages/__init__.py",
     "python_3_6_files/lib/python3.6/site-packages/_pytest/vendored_packages/pluggy.py",
@@ -1570,6 +1537,7 @@ PYTHON_COMPILE_COMMAND = " \
   export CFLAGS='-Wno-implicit-fallthrough -Wno-stringop-overflow' && \
   export TGT=`pwd`/$(@D)/python_3_6_files && \
   cd `dirname $(location Python-3.6.3/configure)` && \
+  rm -rf $$TGT && \
   ./configure --prefix=$$TGT \
               --enable-shared --with-lto \
               --exec-prefix=$$TGT > /dev/null && \
@@ -1578,8 +1546,8 @@ PYTHON_COMPILE_COMMAND = " \
   ln -s python3 $$TGT/bin/python && \
   export PATH=$$TGT/bin:$$PATH && \
   export LD_LIBRARY_PATH=$$TGT/lib && \
-  python3 $$TGT/bin/pip3 install pytest==3.2.3 && \
-  python3 $$TGT/bin/pip3 install pyyaml==3.12 && \
+  python3 $$TGT/bin/pip3 install -I pytest==3.2.3 > /dev/null && \
+  python3 $$TGT/bin/pip3 install -I pyyaml==3.12 > /dev/null && \
   touch $$TGT/lib/libpython3.6m.so.1.0 && \
   touch $$TGT/lib/libpython3.6m.so && \
   touch $$TGT/lib/libpython3.6m.dylib && \
