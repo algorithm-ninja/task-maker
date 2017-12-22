@@ -42,6 +42,5 @@ py_library(
         ":execution.so",
         ":file_id.so",
     ],
-    imports = ["bindings"],
     visibility = ["//visibility:public"],
 )

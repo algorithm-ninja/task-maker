@@ -38,4 +38,3 @@ cc_library(
     ],
     deps = ["//:gtest"],
 )
-

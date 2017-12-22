@@ -1,28 +1,30 @@
 package(default_visibility = ["//visibility:public"])
 
-load("/tools/python_external", "python_package_lib")
+load("//tools:python_external.bzl", "python_package_lib")
+load("//tools:smart_py_binary.bzl", "smart_py_test")
 
 python_package_lib(
     name = "pytest",
     dep = "@pytest//:files",
 )
 
-py_test(
+smart_py_test(
     name = "simple_bindings",
-    size = "small",
+    size = "medium",
+    timeout = "short",
     srcs = ["simple_bindings.py"],
-    imports = ["bindings"],
     deps = [
         "//bindings:task_maker",
     ],
 )
 
-py_test(
+smart_py_test(
     name = "task",
-    size = "small",
+    size = "medium",
+    timeout = "short",
     srcs = ["task.py"],
     data = glob(["test_task/**"]),
-    imports = ["bindings"],
+    flaky = True,
     deps = [
         ":pytest",
         "//python:italian_format",
