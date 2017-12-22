@@ -19,12 +19,15 @@ build_and_test:
       build --spawn_strategy=standalone --genrule_strategy=standalone
       test --test_strategy=standalone --test_output=streamed --nocache_test_results
       EOF
+    - rm -rf /builddir
+    - cd / && mv $CI_PROJECT_DIR /builddir && mkdir $CI_PROJECT_DIR
+    - mv /builddir/bazel-cache $CI_PROJECT_DIR/
 
   variables:
-    TEST_TMPDIR: "$CI_PROJECT_DIR/build_cache"
+    TEST_TMPDIR: "$CI_PROJECT_DIR/bazel-cache"
 
   script:
-    - bazel test ...
+    - cd /builddir && bazel test ...
 
   cache:
     paths:
