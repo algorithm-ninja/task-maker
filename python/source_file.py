@@ -178,8 +178,8 @@ class PY(Compiled):
     def compile(self, graders: List[str],
                 cache_mode: Execution.CachingMode) -> None:
         super().compile(graders, cache_mode)
-        with open(self._path) as source:
-            if source.read(2) != "#!":
+        with open(self._path, "rb") as source:
+            if source.read(2) != b"#!":
                 self._compile(graders, cache_mode, "/bin/bash", self.ERROR_CMD)
                 return
         self.compilation_output = self._dispatcher.load_file(
