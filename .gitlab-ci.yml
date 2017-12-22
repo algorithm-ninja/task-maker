@@ -21,11 +21,11 @@ build_and_test:
       EOF
 
   variables:
-    TEST_TMPDIR: "/tmp/cache"
+    TEST_TMPDIR: "$CI_PROJECT_DIR/build_cache"
 
   script:
     - bazel test ...
 
   cache:
     paths:
-      - /tmp/cache
+      - build_cache
