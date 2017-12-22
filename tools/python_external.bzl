@@ -12,8 +12,8 @@ def run_setup_py_impl(ctx):
         'export PYTHONHOME=$(pwd)/$(dirname %s)/../' % python_path.path,
         'export PYTHONPATH=$DIR', 'export PYTHONNOUSERSITE=true',
         'pushd %s > /dev/null' % setup_py.dirname,
-        '$PYTHON setup.py install' + ' --home=$DIR' + ' --install-purelib=$DIR'
-        + ' --install-platlib=$DIR' + ' --install-scripts=$DIR > /dev/null',
+        '$PYTHON setup.py install --home=$DIR --install-purelib=$DIR'
+        + ' --install-platlib=$DIR --install-scripts=$DIR > /dev/null',
         'popd > /dev/null',
         'find $DIR | grep "^.*\.egg\$" > %s' % installed_files.path
     ]

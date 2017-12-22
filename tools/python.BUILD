@@ -123,6 +123,7 @@ PYTHON_COMPILE_COMMAND = " \
               --enable-shared --with-lto \
               --exec-prefix=$$DIR/$(@D)/python_3_6_files > /dev/null && \
   make install > /dev/null && make distclean > /dev/null && \
+  ln -s site-packages $$DIR/$(@D)/python_3_6_files/lib/python3.6/dist-packages && \
   ln -s python3 $$DIR/$(@D)/python_3_6_files/bin/python && \
   touch $$DIR/$(@D)/python_3_6_files/lib/libpython3.6m.so.1.0 && \
   touch $$DIR/$(@D)/python_3_6_files/lib/libpython3.6m.so && \
