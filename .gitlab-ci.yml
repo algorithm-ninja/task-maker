@@ -31,4 +31,4 @@ build_and_test:
 
   cache:
     paths:
-      - build_cache
+      - bazel-cache
