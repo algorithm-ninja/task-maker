@@ -2,7 +2,7 @@
 
 import os
 from typing import List
-from typing import Optional  # pylint: disable=unused-import
+from typing import Optional
 from typing import Tuple  # pylint: disable=unused-import
 
 from bindings import Execution
@@ -20,21 +20,24 @@ from python.ui import UI
 
 class SourceFile:
     @staticmethod
-    def from_file(dispatcher: Dispatcher, ui: UI, path: str,
-                  is_solution: bool) -> "SourceFile":
+    def from_file(dispatcher: Dispatcher,
+                  ui: UI,
+                  path: str,
+                  is_solution: bool,
+                  executor: Optional[str] = None) -> "SourceFile":
         lang = Language.from_file(path)
         if lang == Language.CPP:
-            return CPP(dispatcher, ui, path, is_solution)
+            return CPP(dispatcher, ui, path, is_solution, executor)
         elif lang == Language.C:
-            return C(dispatcher, ui, path, is_solution)
+            return C(dispatcher, ui, path, is_solution, executor)
         elif lang == Language.PY:
-            return PY(dispatcher, ui, path, is_solution)
+            return PY(dispatcher, ui, path, is_solution, executor)
         elif lang == Language.SH:
-            return SH(dispatcher, ui, path, is_solution)
-        return SourceFile(dispatcher, ui, path, is_solution)
+            return SH(dispatcher, ui, path, is_solution, executor)
+        return SourceFile(dispatcher, ui, path, is_solution, executor)
 
     def __init__(self, dispatcher: Dispatcher, ui: UI, path: str,
-                 is_solution: bool) -> None:
+                 is_solution: bool, executor: Optional[str]) -> None:
         # is_solution is true if the file to compile is a solution to be tested.
         self._path = path
         self._dispatcher = dispatcher
@@ -46,6 +49,7 @@ class SourceFile:
         self._is_solution = is_solution
         self._stderr = None  # type: Optional[FileID]
         self._ui = ui
+        self._executor = executor
 
     def get_language(self) -> Language:
         return Language.from_file(self._path)
@@ -101,6 +105,8 @@ class SourceFile:
         execution.input(self._compiled_name, self.compilation_output)
         for runtime_dep in self._runtime_deps:
             execution.input(runtime_dep[0], runtime_dep[1])
+        if self._executor is not None:
+            execution.set_executor(self._executor)
         # Return the execution to allow doing more complicated things like
         # setting time limits.
         return execution
@@ -133,6 +139,8 @@ class Compiled(SourceFile):
             cache_mode=cache_mode)
         for name, file_id in files_to_pass:
             execution.input(name, file_id)
+        if self._executor is not None:
+            execution.set_executor(self._executor)
         # Set (very large) time and memory limits for compilation.
         execution.cpu_limit(10.0)
         execution.wall_limit(20.0)

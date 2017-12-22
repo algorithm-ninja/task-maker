@@ -113,8 +113,7 @@ class Evaluation:
         return True
 
     def _evaluate_testcase(self, num: int, testcase: Testcase, exclusive: bool,
-                           cache_mode: Execution.CachingMode,
-                           eval_executor: Optional[str]) -> None:
+                           cache_mode: Execution.CachingMode) -> None:
         def callback(event: Event, status: EventStatus) -> bool:
             return self._callback(num, event, status)
 
@@ -125,8 +124,6 @@ class Evaluation:
         execution = self._solution.execute(
             "Evaluation of solution %s on testcase %d" %
             (self.solution_src, num), [], callback, exclusive, cache_mode)
-        if eval_executor is not None:
-            execution.set_executor(eval_executor)
         # CPU time can only be set to an integer
         execution.cpu_limit(self._task.time_limit)
         execution.wall_limit(1.5 * self._task.time_limit)
@@ -179,7 +176,7 @@ class Evaluation:
         self.score = None  # type: Optional[float]
         self._dispatcher = dispatcher
         self._solution = SourceFile.from_file(
-            dispatcher, ui, solution, is_solution=True)
+            dispatcher, ui, solution, is_solution=True, executor=eval_executor)
         self._solution.compile(
             task.graders(self._solution.get_language()), eval_cache_mode)
         self._task = task
@@ -188,8 +185,7 @@ class Evaluation:
         self._subtask_score_info = \
             [SubtaskScoreInfo(self, subtask, ui) for subtask in task.subtasks]
         for num, testcase in enumerate(task.testcases):
-            self._evaluate_testcase(num, testcase, exclusive, eval_cache_mode,
-                                    eval_executor)
+            self._evaluate_testcase(num, testcase, exclusive, eval_cache_mode)
 
     def update_score(self, subtask_num: int, score: float) -> None:
         self.subtask_scores[subtask_num] = score
