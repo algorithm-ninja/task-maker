@@ -21,7 +21,7 @@ build_and_test:
       EOF
     - rm -rf /builddir
     - cd / && mv $CI_PROJECT_DIR /builddir && mkdir $CI_PROJECT_DIR
-    - [ -d /builddir/bazel-cache ] && mv /builddir/bazel-cache $CI_PROJECT_DIR/
+    - if [ -d /builddir/bazel-cache ]; then mv /builddir/bazel-cache $CI_PROJECT_DIR/; fi
 
   variables:
     TEST_TMPDIR: "$CI_PROJECT_DIR/bazel-cache"
