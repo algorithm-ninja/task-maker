@@ -6,19 +6,18 @@
 namespace py = pybind11;
 
 PYBIND11_MODULE(core, m) {
-  auto core =
-      py::class_<core::Core>(m, "Core")
-          .def(py::init<>())
-          .def("load_file", &core::Core::LoadFile,
-               py::return_value_policy::reference_internal)
-          .def("add_execution", &core::Core::AddExecution,
-               py::return_value_policy::reference_internal)
-          .def("set_callback", &core::Core::SetCallback)
-          .def("run", &core::Core::Run,
-               py::call_guard<py::gil_scoped_release>())
-          .def_static("set_num_cores", &core::Core::SetNumCores)
-          .def_static("set_temp_directory", &core::Core::SetTempDirectory)
-          .def_static("set_store_directory", &core::Core::SetStoreDirectory);
+  auto core = py::class_<core::Core>(m, "Core")
+                  .def(py::init<>())
+                  .def("load_file", &core::Core::LoadFile,
+                       py::return_value_policy::reference_internal)
+                  .def("add_execution", &core::Core::AddExecution,
+                       py::return_value_policy::reference_internal)
+                  .def("set_callback", &core::Core::SetCallback)
+                  .def("run", &core::Core::Run,
+                       py::call_guard<py::gil_scoped_release>())
+                  .def("set_num_cores", &core::Core::SetNumCores)
+                  .def("set_temp_directory", &core::Core::SetTempDirectory)
+                  .def("set_store_directory", &core::Core::SetStoreDirectory);
 
   auto task_status =
       py::class_<core::Core::TaskStatus>(core, "TaskStatus")

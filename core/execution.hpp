@@ -72,16 +72,20 @@ class Execution {
 
   bool IsExclusive() const { return exclusive_; }
 
-  Execution(ExecutionCacher* cacher, std::string description,
+  Execution(ExecutionCacher* cacher, std::string store_directory,
+            std::string temp_directory, int num_cores, std::string description,
             std::string executable, std::vector<std::string> args)
-      : description_(std::move(description)),
+      : store_directory_(std::move(store_directory)),
+        temp_directory_(std::move(temp_directory)),
+        num_cores_(num_cores),
+        description_(std::move(description)),
         id_((reinterpret_cast<int64_t>(&next_id_) << 32) | (next_id_++)),
         executable_(std::move(executable)),
         args_(std::move(args)),
-        stdout_(std::unique_ptr<FileID>(
-            new FileID("Standard output for " + description_))),
-        stderr_(std::unique_ptr<FileID>(
-            new FileID("Standard error for " + description_))),
+        stdout_(std::unique_ptr<FileID>(new FileID(
+            store_directory_, "Standard output for " + description_))),
+        stderr_(std::unique_ptr<FileID>(new FileID(
+            store_directory_, "Standard error for " + description_))),
         cacher_(cacher) {
     /*
     fprintf(stderr, "Description: %s\n", description_.c_str());
@@ -92,6 +96,10 @@ class Execution {
     fprintf(stderr, "\n");
     */
   }
+
+  std::string store_directory_;
+  std::string temp_directory_;
+  int num_cores_;
 
   std::string description_;
   int64_t id_;

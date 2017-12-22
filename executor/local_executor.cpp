@@ -1,6 +1,5 @@
 #include "executor/local_executor.hpp"
 #include "util/file.hpp"
-#include "util/flags.hpp"
 
 #include <ctype.h>
 
@@ -25,7 +24,7 @@ proto::Response LocalExecutor::Execute(
   }
 
   sandbox::ExecutionInfo result;
-  util::TempDir tmp(FLAGS_temp_directory);
+  util::TempDir tmp(temp_directory_);
   std::string sandbox_dir = util::File::JoinPath(tmp.Path(), kBoxDir);
   util::File::MakeDirs(sandbox_dir);
 
@@ -160,7 +159,8 @@ void LocalExecutor::PrepareFile(const proto::FileInfo& info,
     }
     name = util::File::JoinPath(kBoxDir, name);
   }
-  std::string source_path = util::File::ProtoSHAToPath(info.hash());
+  std::string source_path =
+      util::File::ProtoSHAToPath(store_directory_, info.hash());
   util::File::Copy(source_path, util::File::JoinPath(tmp, name));
   input_files->push_back(util::File::JoinPath(tmp, name));
 }
@@ -180,15 +180,15 @@ void LocalExecutor::RetrieveFile(const proto::FileInfo& info,
   }
   util::SHA256_t hash = util::File::Hash(util::File::JoinPath(tmp, name));
   proto::FileInfo out_info = info;
-  std::string destination_path = util::File::SHAToPath(hash);
+  std::string destination_path = util::File::SHAToPath(store_directory_, hash);
   util::File::Copy(util::File::JoinPath(tmp, name), destination_path);
-  util::File::SetSHA(hash, &out_info);
+  util::File::SetSHA(store_directory_, hash, &out_info);
   *options->add_output() = std::move(out_info);
 }
 
 void LocalExecutor::MaybeRequestFile(const proto::FileInfo& info,
                                      const RequestFileCallback& file_callback) {
-  std::string path = util::File::ProtoSHAToPath(info.hash());
+  std::string path = util::File::ProtoSHAToPath(store_directory_, info.hash());
   if (util::File::Size(path) >= 0) return;
   const bool overwrite = false;
   const bool exist_ok = false;
@@ -203,16 +203,20 @@ void LocalExecutor::MaybeRequestFile(const proto::FileInfo& info,
 
 void LocalExecutor::GetFile(const proto::SHA256& hash,
                             const util::File::ChunkReceiver& chunk_receiver) {
-  util::File::Read(util::File::ProtoSHAToPath(hash), chunk_receiver);
+  util::File::Read(util::File::ProtoSHAToPath(store_directory_, hash),
+                   chunk_receiver);
 }
 
-LocalExecutor::LocalExecutor() {
-  util::File::MakeDirs(FLAGS_temp_directory);
-  util::File::MakeDirs(FLAGS_store_directory);
+LocalExecutor::LocalExecutor(const std::string& store_directory,
+                             const std::string& temp_directory, int num_cores)
+    : store_directory_(store_directory), temp_directory_(temp_directory) {
+  util::File::MakeDirs(temp_directory_);
+  util::File::MakeDirs(store_directory_);
 
-  if (FLAGS_num_cores == 0) {
-    FLAGS_num_cores = std::thread::hardware_concurrency();
+  if (num_cores == 0) {
+    num_cores = std::thread::hardware_concurrency();
   }
+  ThreadGuard::SetMaxThreads(num_cores);
 }
 
 LocalExecutor::ThreadGuard::ThreadGuard(bool exclusive)
@@ -236,8 +240,12 @@ LocalExecutor::ThreadGuard::~ThreadGuard() {
   CurThreads() = exclusive_ ? 0 : (CurThreads() - 1);
 }
 
+void LocalExecutor::ThreadGuard::SetMaxThreads(int32_t num) {
+  MaxThreads() = num;
+}
+
 int32_t& LocalExecutor::ThreadGuard::MaxThreads() {
-  static int32_t max = FLAGS_num_cores;
+  static int32_t max = 0;
   return max;
 }
 

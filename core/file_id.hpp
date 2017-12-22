@@ -31,13 +31,14 @@ class FileID {
   friend class Core;
   friend class Execution;
 
-  explicit FileID(std::string description)
+  explicit FileID(std::string store_directory, std::string description)
       : description_(std::move(description)),
+        store_directory_(std::move(store_directory)),
         id_((reinterpret_cast<int64_t>(&next_id_) << 32) | (next_id_++)) {
     // fprintf(stderr, "generated id: %lu, next_id_ ptr: %p\n", id_, &next_id_);
   }
-  FileID(std::string description, std::string path)
-      : FileID(std::move(description)) {
+  FileID(std::string store_directory, std::string description, std::string path)
+      : FileID(std::move(store_directory), std::move(description)) {
     path_ = std::move(path);
   }
 
@@ -46,6 +47,7 @@ class FileID {
 
   std::string description_;
   std::string path_;
+  std::string store_directory_;
   int64_t id_;
   util::SHA256_t hash_ = {};
 

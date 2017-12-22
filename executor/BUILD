@@ -21,7 +21,6 @@ cc_library(
     deps = [
         ":executor",
         "//sandbox",
-        "//util:flags",
     ],
 )
 

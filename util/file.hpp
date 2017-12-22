@@ -75,11 +75,14 @@ class File {
   static int64_t Size(const std::string& path);
 
   // Returns the storage path of a file with the given SHA.
-  static std::string SHAToPath(const SHA256_t& hash);
-  static std::string ProtoSHAToPath(const proto::SHA256& hash);
+  static std::string SHAToPath(const std::string& store_directory,
+                               const SHA256_t& hash);
+  static std::string ProtoSHAToPath(const std::string& store_directory,
+                                    const proto::SHA256& hash);
 
   // Sets the SHA and possibly reads a small file.
-  static void SetSHA(const SHA256_t& hash, proto::FileInfo* dest);
+  static void SetSHA(const std::string& store_directory, const SHA256_t& hash,
+                     proto::FileInfo* dest);
 };
 
 class TempDir {

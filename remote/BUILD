@@ -8,7 +8,7 @@ cc_binary(
     srcs = ["server.cpp"],
     deps = [
         "//proto:server_cc",
-        "//util:flags",
+        "//external:gflags",
         "//util:file",
         "//external:glog",
     ] + GRPC_COMPILE_DEPS,
@@ -32,7 +32,7 @@ cc_binary(
         ":common",
         "//executor:local_executor",
         "//proto:server_cc",
-        "//util:flags",
+        "//external:gflags",
         "//util:file",
         "//sandbox:unix",
         "//external:glog",

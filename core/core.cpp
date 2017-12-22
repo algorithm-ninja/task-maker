@@ -61,10 +61,7 @@ bool Core::Run() {
   // Load up cache.
   cacher_.Setup();
 
-  if (FLAGS_num_cores == 0) {
-    FLAGS_num_cores = std::thread::hardware_concurrency();
-  }
-  for (int i = 0; i < FLAGS_num_cores; i++) {
+  for (int i = 0; i < num_cores_; i++) {
     threads.emplace_back(std::bind(&Core::ThreadBody, this));
   }
 

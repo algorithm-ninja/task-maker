@@ -41,7 +41,8 @@ class ExecutionCacher {
 
   void Setup();
   void TearDown();
-  ExecutionCacher() = default;
+  explicit ExecutionCacher(std::string store_directory)
+      : store_directory_(std::move(store_directory)) {}
   ~ExecutionCacher() = default;
   ExecutionCacher(const ExecutionCacher&) = delete;
   ExecutionCacher(ExecutionCacher&&) = delete;
@@ -55,6 +56,7 @@ class ExecutionCacher {
   std::unordered_map<std::string, SingleExecutorCache> cache_;
   std::string path_;
   mutable std::mutex cache_mutex_;
+  std::string store_directory_;
 };
 
 }  // namespace core

@@ -13,10 +13,14 @@
 #include "grpc/grpc.h"
 #include "proto/server.grpc.pb.h"
 #include "remote/common.hpp"
-#include "util/flags.hpp"
 
 DEFINE_string(server, "", "server to connect to");
 DEFINE_string(name, "unnamed_worker", "name that identifies this worker");
+DEFINE_int32(
+    num_cores, 0,
+    "Number of cores to use for the local executor. If unset, autodetect");
+DEFINE_string(store_directory, "files", "Where files should be stored");
+DEFINE_string(temp_directory, "temp", "Where the sandboxes should be created");
 
 void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
   grpc::ClientContext context;
@@ -26,7 +30,8 @@ void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
   proto::Request request;
   while (stream->Read(&request)) {
     LOG(INFO) << "Got work: " << request.executable();
-    std::unique_ptr<executor::Executor> executor{new executor::LocalExecutor()};
+    std::unique_ptr<executor::Executor> executor{new executor::LocalExecutor(
+        FLAGS_store_directory, FLAGS_temp_directory)};
     using namespace std::placeholders;
     proto::Response response;
     try {

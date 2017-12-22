@@ -7,7 +7,6 @@ cc_library(
     hdrs = ["file_id.hpp"],
     deps = [
         "//util:file",
-        "//util:flags",
         "//util:sha256",
     ],
 )
@@ -22,7 +21,6 @@ cc_library(
         "//proto:request_cc",
         "//proto:response_cc",
         "//util:file",
-        "//util:flags",
         "//util:sha256",
     ],
 )
@@ -48,6 +46,5 @@ cc_library(
         ":execution",
         ":execution_cacher",
         ":file_id",
-        "//util:flags",
     ],
 )

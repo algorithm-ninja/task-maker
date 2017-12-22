@@ -26,7 +26,8 @@ class LocalExecutor : public Executor {
   LocalExecutor(LocalExecutor&&) = delete;
   LocalExecutor& operator=(LocalExecutor&&) = delete;
   ~LocalExecutor() override = default;
-  LocalExecutor();
+  LocalExecutor(const std::string& store_directory,
+                const std::string& temp_directory, int num_cores = 0);
 
  private:
   class ThreadGuard {
@@ -37,6 +38,8 @@ class LocalExecutor : public Executor {
     ThreadGuard& operator=(const ThreadGuard&) = delete;
     ThreadGuard(ThreadGuard&&) = delete;
     ThreadGuard& operator=(ThreadGuard&&) = delete;
+
+    static void SetMaxThreads(int32_t num);
 
    private:
     static int32_t& MaxThreads();
@@ -56,6 +59,9 @@ class LocalExecutor : public Executor {
 
   void RetrieveFile(const proto::FileInfo& info, const std::string& tmpdir,
                     proto::Response* options);
+
+  std::string store_directory_;
+  std::string temp_directory_;
 };
 
 }  // namespace executor

@@ -11,14 +11,15 @@
 #include "grpc/grpc.h"
 #include "proto/server.grpc.pb.h"
 #include "util/file.hpp"
-#include "util/flags.hpp"
 
 DEFINE_string(address, "0.0.0.0", "address to listen on");
 DEFINE_int32(port, 7070, "port to listen on");
+DEFINE_string(store_directory, "files", "Where files should be stored");
 
 class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
  public:
-  TaskMakerServerImpl(const std::string& store_dir) {
+  TaskMakerServerImpl(const std::string& store_dir)
+      : store_directory_(store_dir) {
     util::File::MakeDirs(store_dir);
   }
 
@@ -32,7 +33,8 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
       return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
                           "No hash provided");
     }
-    std::string path = util::File::ProtoSHAToPath(contents.hash());
+    std::string path =
+        util::File::ProtoSHAToPath(store_directory_, contents.hash());
     LOG(INFO) << "Receiving file " << path;
     if (util::File::Size(path) >= 0)
       return grpc::Status(grpc::StatusCode::ALREADY_EXISTS, "File exists");
@@ -59,7 +61,7 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
   grpc::Status RetrieveFile(
       grpc::ServerContext* context, const proto::SHA256* hash,
       grpc::ServerWriter<proto::FileContents>* writer) override {
-    std::string path = util::File::ProtoSHAToPath(*hash);
+    std::string path = util::File::ProtoSHAToPath(store_directory_, *hash);
     LOG(INFO) << "Ask for file " << path;
     try {
       util::File::Read(path, [&writer](const proto::FileContents& contents) {
@@ -161,6 +163,7 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
   std::mutex requests_mutex_;
   std::condition_variable request_available_;
   std::queue<PendingRequest> pending_requests_;
+  std::string store_directory_;
 };
 
 int main(int argc, char** argv) {

@@ -1,5 +1,4 @@
 #include "util/file.hpp"
-#include "util/flags.hpp"
 #include "util/sha256.hpp"
 
 #include <stdlib.h>
@@ -242,29 +241,33 @@ TempDir::~TempDir() {
   if (!keep_) File::RemoveTree(path_);
 }
 
-std::string File::SHAToPath(const SHA256_t& hash) {
-  return util::File::JoinPath(FLAGS_store_directory,
-                              util::File::PathForHash(hash));
+std::string File::SHAToPath(const std::string& store_directory,
+                            const SHA256_t& hash) {
+  return util::File::JoinPath(store_directory, util::File::PathForHash(hash));
 }
 
-std::string File::ProtoSHAToPath(const proto::SHA256& hash) {
+std::string File::ProtoSHAToPath(const std::string& store_directory,
+                                 const proto::SHA256& hash) {
   util::SHA256_t extracted_hash;
   ProtoToSHA256(hash, &extracted_hash);
-  return SHAToPath(extracted_hash);
-  return util::File::JoinPath(FLAGS_store_directory,
+  return SHAToPath(store_directory, extracted_hash);
+  return util::File::JoinPath(store_directory,
                               util::File::PathForHash(extracted_hash));
 }
 
-void File::SetSHA(const SHA256_t& hash, proto::FileInfo* dest) {
+void File::SetSHA(const std::string& store_directory, const SHA256_t& hash,
+                  proto::FileInfo* dest) {
   util::SHA256ToProto(hash, dest->mutable_hash());
   dest->clear_contents();
-  if (util::File::Size(SHAToPath(hash)) <= util::kChunkSize) {
-    util::File::Read(SHAToPath(hash), [&dest](const proto::FileContents& bf) {
-      if (dest->contents().chunk().size() != 0) {
-        throw std::runtime_error("Small file with more than one chunk");
-      }
-      *dest->mutable_contents() = bf;
-    });
+  if (util::File::Size(SHAToPath(store_directory, hash)) <= util::kChunkSize) {
+    util::File::Read(
+        SHAToPath(store_directory, hash),
+        [&dest](const proto::FileContents& bf) {
+          if (dest->contents().chunk().size() != 0) {
+            throw std::runtime_error("Small file with more than one chunk");
+          }
+          *dest->mutable_contents() = bf;
+        });
   }
 }
 

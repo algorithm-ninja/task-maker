@@ -9,7 +9,8 @@ std::atomic<int32_t> Execution::next_id_{1};
 FileID* Execution::Output(const std::string& name,
                           const std::string& description) {
   if (!outputs_.count(name)) {
-    outputs_.emplace(name, std::unique_ptr<FileID>(new FileID(description)));
+    outputs_.emplace(name, std::unique_ptr<FileID>(
+                               new FileID(store_directory_, description)));
   }
   return outputs_.at(name).get();
 }
@@ -33,9 +34,10 @@ proto::Response Execution::RunWithCache(executor::Executor* executor,
   cached_ = false;
   try {
     response = executor->Execute(
-        request, [](const proto::SHA256& hash,
-                    const util::File::ChunkReceiver& chunk_receiver) {
-          util::File::Read(util::File::ProtoSHAToPath(hash), chunk_receiver);
+        request, [this](const proto::SHA256& hash,
+                        const util::File::ChunkReceiver& chunk_receiver) {
+          util::File::Read(util::File::ProtoSHAToPath(store_directory_, hash),
+                           chunk_receiver);
         });
     if (response.status() != proto::Status::INTERNAL_ERROR)
       cacher_->Put(request, executor->Id(), response);
@@ -57,7 +59,8 @@ void Execution::Run(
   // TODO(veluca): change this when we implement remote executors.
   std::unique_ptr<executor::Executor> executor;
   if (executor_ == "") {
-    executor.reset(new executor::LocalExecutor());
+    executor.reset(new executor::LocalExecutor(store_directory_,
+                                               temp_directory_, num_cores_));
   } else {
     executor.reset(new executor::RemoteExecutor(executor_));
   }
@@ -69,11 +72,12 @@ void Execution::Run(
   for (const auto& out : outputs_) request.add_output()->set_name(out.first);
 
   // Inputs.
-  auto prepare_input = [&request, &get_hash](int64_t id, const char* name) {
+  auto prepare_input = [&request, &get_hash, this](int64_t id,
+                                                   const char* name) {
     proto::FileInfo* in = request.add_input();
     if (!*name) in->set_type(proto::FileType::STDIN);
     in->set_name(name);
-    util::File::SetSHA(get_hash(id), in);
+    util::File::SetSHA(store_directory_, get_hash(id), in);
   };
   if (stdin_) prepare_input(stdin_, "");
   for (const auto& input : inputs_)
@@ -101,7 +105,7 @@ void Execution::Run(
 
   // Read output files.
   for (const proto::FileInfo& out : response_.output()) {
-    std::string path = util::File::ProtoSHAToPath(out.hash());
+    std::string path = util::File::ProtoSHAToPath(store_directory_, out.hash());
     // skip the file if it already exists
     if (util::File::Size(path) < 0) {
       if (out.has_contents()) {

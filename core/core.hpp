@@ -8,7 +8,6 @@
 
 #include "core/execution.hpp"
 #include "core/file_id.hpp"
-#include "util/flags.hpp"
 
 namespace core {
 
@@ -60,8 +59,8 @@ class Core {
   };
 
   FileID* LoadFile(const std::string& description, const std::string& path) {
-    files_to_load_.push_back(
-        std::unique_ptr<FileID>(new FileID(description, path)));
+    files_to_load_.push_back(std::unique_ptr<FileID>(
+        new FileID(store_directory_, description, path)));
     return files_to_load_.back().get();
   }
 
@@ -69,16 +68,22 @@ class Core {
                           const std::string& executable,
                           const std::vector<std::string>& args) {
     executions_.push_back(std::unique_ptr<Execution>(
-        new Execution(&cacher_, description, executable, args)));
+        new Execution(&cacher_, store_directory_, temp_directory_, num_cores_,
+                      description, executable, args)));
     return executions_.back().get();
   }
 
-  static void SetNumCores(int32_t num_cores) { FLAGS_num_cores = num_cores; }
-  static void SetTempDirectory(const std::string& temp_directory) {
-    FLAGS_temp_directory = temp_directory;
+  void SetNumCores(int32_t num_cores) {
+    num_cores_ = num_cores;
+    if (num_cores_ == 0) {
+      num_cores_ = std::thread::hardware_concurrency();
+    }
   }
-  static void SetStoreDirectory(const std::string& store_directory) {
-    FLAGS_store_directory = store_directory;
+  void SetTempDirectory(const std::string& temp_directory) {
+    temp_directory_ = temp_directory;
+  }
+  void SetStoreDirectory(const std::string& store_directory) {
+    store_directory_ = store_directory;
   }
 
   void SetCallback(const std::function<bool(const TaskStatus& status)>& cb) {
@@ -87,7 +92,11 @@ class Core {
 
   bool Run();
 
-  Core() {
+  Core()
+      : store_directory_("files"),
+        temp_directory_("temp"),
+        num_cores_(std::thread::hardware_concurrency()),
+        cacher_(store_directory_) {
     callback_ = [](const TaskStatus& status) {
       return status.event != TaskStatus::FAILURE;
     };
@@ -105,6 +114,10 @@ class Core {
 
   std::unordered_map<int64_t, util::SHA256_t> known_files_;
   std::mutex file_lock_;
+
+  std::string store_directory_;
+  std::string temp_directory_;
+  int num_cores_;
 
   ExecutionCacher cacher_;
 

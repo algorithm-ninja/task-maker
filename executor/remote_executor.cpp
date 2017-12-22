@@ -1,5 +1,4 @@
 #include "executor/remote_executor.hpp"
-#include "gflags/gflags.h"
 #include "grpc++/client_context.h"
 #include "grpc++/create_channel.h"
 #include "grpc++/security/credentials.h"

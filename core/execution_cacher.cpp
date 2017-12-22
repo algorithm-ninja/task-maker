@@ -6,7 +6,6 @@
 #include "google/protobuf/util/message_differencer.h"
 #include "proto/cache_entry.pb.h"
 #include "util/file.hpp"
-#include "util/flags.hpp"
 #include "util/sha256.hpp"
 
 namespace core {
@@ -70,7 +69,7 @@ bool ExecutionCacher::Get(const proto::Request& request,
     response->CopyFrom(cache_.at(for_executor).at(key_request));
   }
   for (const proto::FileInfo& out : response->output()) {
-    std::string path = util::File::ProtoSHAToPath(out.hash());
+    std::string path = util::File::ProtoSHAToPath(store_directory_, out.hash());
     // Do not use this cached response if the output files cannot be found.
     if (util::File::Size(path) < 0) return false;
   }
@@ -89,8 +88,8 @@ void ExecutionCacher::Put(const proto::Request& request,
 }
 
 void ExecutionCacher::Setup() {
-  util::File::MakeDirs(FLAGS_store_directory);
-  path_ = util::File::JoinPath(FLAGS_store_directory, "cache");
+  util::File::MakeDirs(store_directory_);
+  path_ = util::File::JoinPath(store_directory_, "cache");
   std::ifstream fin(path_);
   if (!fin) return;
   proto::CacheData data;

@@ -1,18 +1,18 @@
 #include "core/file_id.hpp"
 #include "util/file.hpp"
-#include "util/flags.hpp"
 
 namespace core {
 
 std::atomic<int32_t> FileID::next_id_{1};
 
 void FileID::WriteTo(const std::string& path, bool overwrite, bool exist_ok) {
-  util::File::Copy(util::File::SHAToPath(hash_), path, overwrite, exist_ok);
+  util::File::Copy(util::File::SHAToPath(store_directory_, hash_), path,
+                   overwrite, exist_ok);
 }
 
 std::string FileID::Contents(int64_t size_limit) {
   std::string ans;
-  util::File::Read(util::File::SHAToPath(hash_),
+  util::File::Read(util::File::SHAToPath(store_directory_, hash_),
                    [size_limit, &ans](const proto::FileContents& contents) {
                      if (size_limit && (int64_t)ans.size() > size_limit) {
                        throw std::runtime_error("File too big");
@@ -28,8 +28,7 @@ void FileID::Load(
     throw std::logic_error("Invalid call to FileID::Load");
   }
   hash_ = util::File::Hash(path_);
-  util::File::Copy(path_, util::File::JoinPath(FLAGS_store_directory,
-                                               util::File::PathForHash(hash_)));
+  util::File::Copy(path_, util::File::SHAToPath(store_directory_, hash_));
   set_hash(ID(), hash_);
 }
 
