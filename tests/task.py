@@ -8,12 +8,7 @@ import shutil
 import sys
 from argparse import Namespace
 
-# pylint: disable=import-error
-# pylint: disable=unused-import
-from tests import pytest_loader  # type: ignore
-import _pytest.config  # type: ignore
-# pylint: enable=import-error
-# pylint: enable=unused-import
+import _pytest.config  # type:ignore
 
 from python.silent_ui import SilentUI
 from python.italian_format import UIS, run_for_cwd
@@ -189,6 +184,7 @@ def test_solutions() -> None:
     for testcase in wrong_file.testcase_result.values():
         assert testcase.message == "Missing output files"
         assert testcase.score == 0
+
 
 if __name__ == "__main__":
     raise SystemExit(

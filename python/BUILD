@@ -119,7 +119,6 @@ py_library(
         ":print_ui",
         ":silent_ui",
         ":task",
-        "@pyyaml//:pyyaml",
     ],
 )
 

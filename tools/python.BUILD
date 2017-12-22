@@ -1442,6 +1442,124 @@ PYTHON_MODULES = [
     "python_3_6_files/lib/python3.6/lib-dynload/ossaudiodev.cpython-36m-darwin.so",
     "python_3_6_files/lib/python3.6/lib-dynload/xxlimited.cpython-36m-darwin.so",
     "python_3_6_files/lib/python3.6/lib-dynload/_ctypes.cpython-36m-darwin.so",
+]
+
+EXTRA_MODULES = [
+    # pytest
+    "python_3_6_files/lib/python3.6/site-packages/py/_code/assertion.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_code/code.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_code/source.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_code/_assertionnew.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_code/_assertionold.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_code/_py2traceback.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_code/__init__.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_io/capture.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_io/saferepr.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_io/terminalwriter.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_io/__init__.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_log/log.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_log/warning.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_log/__init__.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_path/cacheutil.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_path/common.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_path/local.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_path/svnurl.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_path/svnwc.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_path/__init__.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_process/cmdexec.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_process/forkedfunc.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_process/killproc.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_process/__init__.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/test.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_apipkg.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_builtin.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_error.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_iniconfig.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_std.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/_xmlgen.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/__init__.py",
+    "python_3_6_files/lib/python3.6/site-packages/py/__metainfo.py",
+    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/RECORD",
+    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/INSTALLER",
+    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/DESCRIPTION.rst",
+    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/LICENSE.txt",
+    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/metadata.json",
+    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/top_level.txt",
+    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/WHEEL",
+    "python_3_6_files/lib/python3.6/site-packages/py-1.4.34.dist-info/METADATA",
+    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/RECORD",
+    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/INSTALLER",
+    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/DESCRIPTION.rst",
+    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/LICENSE.txt",
+    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/entry_points.txt",
+    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/metadata.json",
+    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/top_level.txt",
+    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/WHEEL",
+    "python_3_6_files/lib/python3.6/site-packages/pytest-3.2.3.dist-info/METADATA",
+    "python_3_6_files/lib/python3.6/site-packages/pytest.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/vendored_packages/__init__.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/vendored_packages/pluggy.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/_code/source.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/_code/code.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/_code/__init__.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/_code/_py2traceback.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/assertion/truncate.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/assertion/util.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/assertion/rewrite.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/assertion/__init__.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/helpconfig.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/capture.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/outcomes.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/monkeypatch.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/pytester.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/nose.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/python.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/unittest.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/doctest.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/main.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/_version.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/junitxml.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/debugging.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/resultlog.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/setupplan.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/python_api.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/_pluggy.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/freeze_support.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/pastebin.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/setuponly.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/mark.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/_argcomplete.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/compat.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/config.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/runner.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/warnings.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/recwarn.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/__init__.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/hookspec.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/terminal.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/fixtures.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/deprecated.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/tmpdir.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/cacheprovider.py",
+    "python_3_6_files/lib/python3.6/site-packages/_pytest/skipping.py",
+    # PyYAML
+    "python_3_6_files/lib/python3.6/site-packages/yaml/tokens.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/composer.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/nodes.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/loader.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/parser.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/reader.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/cyaml.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/constructor.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/representer.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/serializer.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/emitter.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/events.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/scanner.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/resolver.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/dumper.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/__init__.py",
+    "python_3_6_files/lib/python3.6/site-packages/yaml/error.py",
 
 ]
 
@@ -1458,6 +1576,10 @@ PYTHON_COMPILE_COMMAND = " \
   make install > /dev/null && make distclean > /dev/null && \
   ln -s site-packages $$TGT/lib/python3.6/dist-packages && \
   ln -s python3 $$TGT/bin/python && \
+  export PATH=$$TGT/bin:$$PATH && \
+  export LD_LIBRARY_PATH=$$TGT/lib && \
+  python3 $$TGT/bin/pip3 install pytest==3.2.3 && \
+  python3 $$TGT/bin/pip3 install pyyaml==3.12 && \
   touch $$TGT/lib/libpython3.6m.so.1.0 && \
   touch $$TGT/lib/libpython3.6m.so && \
   touch $$TGT/lib/libpython3.6m.dylib && \
@@ -1482,7 +1604,7 @@ config_setting(
 
 filegroup(
     name = "python_3_6_interpreter",
-    srcs = PYTHON_RUNTIME + PYTHON_MODULES,
+    srcs = PYTHON_RUNTIME + PYTHON_MODULES + EXTRA_MODULES,
 )
 
 genrule(
@@ -1490,7 +1612,7 @@ genrule(
     srcs = glob(
         include = ["Python-3.6.3/**"],
     ),
-    outs = PYTHON_HDRS + PYTHON_RUNTIME + PYTHON_MODULES,
+    outs = PYTHON_HDRS + PYTHON_RUNTIME + PYTHON_MODULES + EXTRA_MODULES,
     cmd = PYTHON_COMPILE_COMMAND,
 )
 

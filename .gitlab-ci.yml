@@ -3,7 +3,6 @@ image: registry.gitlab.com/olimpiadi-informatica/task-maker/runner:v2
 build_and_test:
   stage: build
   before_script:
-    - if [ -f ./cache.tar.gz ]; then tar -xzf ./cache.tar.gz -C / --warning=no-timestamp; fi
     - apt update -yy && apt upgrade -yy
     - |
       cat > $CI_PROJECT_DIR/.bazelrc <<EOF
@@ -27,14 +26,6 @@ build_and_test:
   script:
     - bazel test ...
 
-  after_script:
-    - tar -czf ./cache.tar.gz /tmp/cache
-
-  artifacts:
-    paths:
-      - ./cache.tar.gz
-    expire_in: 1 week
-
   cache:
     paths:
-      - ./cache.tar.gz
+      - /tmp/cache

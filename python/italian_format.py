@@ -6,7 +6,7 @@ import os
 from typing import Dict, List, Any
 from typing import Optional
 
-from external.pyyaml.lib3 import yaml  # pylint: disable=import-error
+import yaml
 
 from bindings import Execution
 from python.curses_ui import CursesUI
