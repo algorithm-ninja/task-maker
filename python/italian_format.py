@@ -3,7 +3,7 @@
 import argparse
 import glob
 import os
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 from typing import Optional
 
 import yaml
@@ -43,10 +43,27 @@ def list_files(patterns: List[str],
     ]
 
 
-def gen_testcases() -> List[Subtask]:
+def load_testcases() -> Tuple[Optional[str], List[Subtask]]:
+    nums = [
+        int(input_file[11:-4])
+        for input_file in glob.glob(os.path.join("input", "input*.txt"))
+    ]
+    if not nums:
+        raise RuntimeError("No generator and no input files found!")
+    testcases = [
+        Testcase(
+            input_file=Input(path=os.path.join("input", "input%d.txt" % num)),
+            output=os.path.join("output", "output%d.txt" % num))
+        for num in sorted(nums)
+    ]
+    return None, [Subtask(100, ScoreMode.SUM, testcases)]
+
+
+def gen_testcases() -> Tuple[Optional[str], List[Subtask]]:
     generator = None  # type: Optional[str]
     validator = None  # type: Optional[str]
     subtasks = []  # type: List[Subtask]
+    official_solution = None  # type: Optional[str]
 
     def create_subtask(testcases: List[Testcase], score: float) -> None:
         if testcases:
@@ -55,11 +72,15 @@ def gen_testcases() -> List[Subtask]:
     for _generator in list_files(["gen/generator.*", "gen/generatore.*"]):
         generator = _generator
     if not generator:
-        raise RuntimeError("No generator found")
+        return load_testcases()
     for _validator in list_files(["gen/validator.*", "gen/valida.*"]):
         validator = _validator
     if not validator:
         raise RuntimeError("No validator found")
+    for solution in list_files(["sol/solution.*", "sol/soluzione.*"]):
+        official_solution = solution
+    if official_solution is None:
+        raise RuntimeError("No official solution found")
 
     current_testcases = []  # type: List[Testcase]
     current_score = 0.0
@@ -85,7 +106,7 @@ def gen_testcases() -> List[Subtask]:
     if len(subtasks) == 1 and subtasks[0].max_score == 0:
         subtasks[0].score_mode = ScoreMode.SUM
         subtasks[0].max_score = 100
-    return subtasks
+    return official_solution, subtasks
 
 
 def detect_yaml() -> str:
@@ -160,10 +181,6 @@ def run_for_cwd(args: argparse.Namespace) -> None:
     try:
         task = create_task(ui, data)
 
-        for solution in list_files(["sol/solution.*", "sol/soluzione.*"]):
-            official_solution = solution
-        if official_solution is None:
-            raise RuntimeError("No official solution found")
         graders = list_files(["sol/grader.*"])
         if args.solutions:
             solutions = [
@@ -177,8 +194,9 @@ def run_for_cwd(args: argparse.Namespace) -> None:
         if checkers:
             checker = checkers[0]
 
-        subtasks = gen_testcases()
-        task.add_solution(official_solution)
+        official_solution, subtasks = gen_testcases()
+        if official_solution:
+            task.add_solution(official_solution)
 
         if checker is not None:
             task.add_checker(checker)
