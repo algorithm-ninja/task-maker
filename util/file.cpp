@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include <fstream>
+#include <system_error>
 
 #if defined(__unix__) || defined(__linux__) || defined(__APPLE__)
 #include <fcntl.h>

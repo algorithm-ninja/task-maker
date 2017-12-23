@@ -23,38 +23,45 @@ class Core {
     Execution* execution_info;
 
     TaskStatus() = delete;
+    TaskStatus(Event event, std::string message, Type type, FileID* file_info,
+               Execution* execution_info)
+        : event(event),
+          message(std::move(message)),
+          type(type),
+          file_info(file_info),
+          execution_info(execution_info) {}
 
    private:
     friend class Core;
     static TaskStatus Start(FileID* file) {
       // fprintf(stderr, "Start: %s\n", file->Description().c_str());
-      return {START, "", FILE_LOAD, file, nullptr};
+      return TaskStatus(START, "", FILE_LOAD, file, nullptr);
     }
     static TaskStatus Start(Execution* execution) {
       // fprintf(stderr, "Start: %s\n", execution->Description().c_str());
-      return {START, "", EXECUTION, nullptr, execution};
+      return TaskStatus(START, "", EXECUTION, nullptr, execution);
     }
     static TaskStatus Busy(Execution* execution) {
       // fprintf(stderr, "Busy: %s\n", execution->Description().c_str());
-      return {BUSY, "", EXECUTION, nullptr, execution};
+      return TaskStatus(BUSY, "", EXECUTION, nullptr, execution);
     }
     static TaskStatus Success(FileID* file) {
       // fprintf(stderr, "Success: %s\n", file->Description().c_str());
-      return {SUCCESS, "", FILE_LOAD, file, nullptr};
+      return TaskStatus(SUCCESS, "", FILE_LOAD, file, nullptr);
     }
     static TaskStatus Success(Execution* execution) {
       // fprintf(stderr, "Success: %s\n", execution->Description().c_str());
-      return {SUCCESS, "", EXECUTION, nullptr, execution};
+      return TaskStatus(SUCCESS, "", EXECUTION, nullptr, execution);
     }
     static TaskStatus Failure(FileID* file, const std::string& msg) {
       // fprintf(stderr, "Failure: %s, %s\n", file->Description().c_str(),
       //        msg.c_str());
-      return {FAILURE, msg, FILE_LOAD, file, nullptr};
+      return TaskStatus(FAILURE, msg, FILE_LOAD, file, nullptr);
     }
     static TaskStatus Failure(Execution* execution, const std::string& msg) {
       // fprintf(stderr, "Failure: %s, %s\n", execution->Description().c_str(),
       //        msg.c_str());
-      return {FAILURE, msg, EXECUTION, nullptr, execution};
+      return TaskStatus(FAILURE, msg, EXECUTION, nullptr, execution);
     }
   };
 

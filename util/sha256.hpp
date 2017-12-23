@@ -11,10 +11,9 @@ namespace util {
 class SHA256_t;
 
 class SHA256 {
-  static const constexpr uint32_t DIGEST_SIZE = (256 / 8);
-  static const constexpr uint32_t SHA224_256_BLOCK_SIZE = (512 / 8);
-
  public:
+  static const constexpr uint32_t DIGEST_SIZE = (256 / 8);
+
   SHA256() : m_block{}, m_h{} { init(); }
   void init();
   void update(const unsigned char* message, unsigned int len);
@@ -22,6 +21,7 @@ class SHA256 {
   void finalize(SHA256_t* digest);
 
  private:
+  static const constexpr uint32_t SHA224_256_BLOCK_SIZE = (512 / 8);
   void transform(const unsigned char* message, unsigned int block_nb);
   unsigned int m_tot_len{0};
   unsigned int m_len{0};
