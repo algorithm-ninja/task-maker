@@ -9,6 +9,7 @@ from bindings import Execution
 from bindings import FileID  # pylint: disable=unused-import
 from python import dependency_finder
 from python import sanitize
+from python.detect_exe import EXEFLAG_NONE, get_exeflags
 from python.dispatcher import Dispatcher
 from python.dispatcher import DispatcherCallback
 from python.dispatcher import Event
@@ -178,10 +179,16 @@ class PY(Compiled):
     def compile(self, graders: List[str],
                 cache_mode: Execution.CachingMode) -> None:
         super().compile(graders, cache_mode)
-        with open(self._path, "rb") as source:
-            if source.read(2) != b"#!":
-                self._compile(graders, cache_mode, "/bin/bash", self.ERROR_CMD)
-                return
+
+        # if the file is not a valid executable, it's a script, so it must have
+        # the shebang
+        if get_exeflags(self._path) == EXEFLAG_NONE:
+            with open(self._path, "rb") as source:
+                if source.read(2) != b"#!":
+                    self._compile(graders, cache_mode, "/bin/bash",
+                                  self.ERROR_CMD)
+                    return
+
         self.compilation_output = self._dispatcher.load_file(
             self._path, self._path, self._callback)
         self._runtime_deps = [(os.path.basename(dep),
