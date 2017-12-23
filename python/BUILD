@@ -122,6 +122,7 @@ py_library(
         ":dispatcher",
         ":evaluation",
         ":generation",
+	":language",
         ":print_ui",
         ":silent_ui",
         ":task",

@@ -26,6 +26,7 @@ class SourceFile:
                   path: str,
                   is_solution: bool,
                   executor: Optional[str] = None) -> "SourceFile":
+        # pylint: disable=too-many-return-statements
         lang = Language.from_file(path)
         if lang == Language.CPP:
             return CPP(dispatcher, ui, path, is_solution, executor)
@@ -35,6 +36,10 @@ class SourceFile:
             return PY(dispatcher, ui, path, is_solution, executor)
         elif lang == Language.SH:
             return SH(dispatcher, ui, path, is_solution, executor)
+        elif lang == Language.PAS:
+            return PAS(dispatcher, ui, path, is_solution, executor)
+        elif lang == Language.RUBY:
+            return RUBY(dispatcher, ui, path, is_solution, executor)
         return SourceFile(dispatcher, ui, path, is_solution, executor)
 
     def __init__(self, dispatcher: Dispatcher, ui: UI, path: str,
@@ -170,6 +175,14 @@ class C(Compiled):
             ["-std=c11", "-O2", "-Wall", "-DEVAL", "-o", self._compiled_name])
 
 
+class PAS(Compiled):
+    def compile(self, graders: List[str],
+                cache_mode: Execution.CachingMode) -> None:
+        self._compile(
+            graders, cache_mode, "/usr/bin/fpc",
+            ["-dEVAL", "-XS", "-O2", "-o%s" % self._compiled_name])
+
+
 class PY(Compiled):
     ERROR_CMD = [
         "-c", "echo 'Missing shebang!\nAdd #!/usr/bin/env python' >&2", "&&",
@@ -199,5 +212,12 @@ class PY(Compiled):
 class SH(PY):
     ERROR_CMD = [
         "-c", "echo 'Missing shebang!\nAdd #!/usr/bin/env bash' >&2", "&&",
+        "false"
+    ]
+
+
+class RUBY(PY):
+    ERROR_CMD = [
+        "-c", "echo 'Missing shebang!\nAdd #!/usr/bin/env ruby' >&2", "&&",
         "false"
     ]
