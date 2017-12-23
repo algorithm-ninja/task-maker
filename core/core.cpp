@@ -59,7 +59,7 @@ bool Core::Run() {
   std::vector<std::thread> threads;
 
   // Load up cache.
-  cacher_.Setup();
+  cacher_->Setup();
 
   for (int i = 0; i < num_cores_; i++) {
     threads.emplace_back(std::bind(&Core::ThreadBody, this));
@@ -68,7 +68,7 @@ bool Core::Run() {
   quitting_ = false;
 
   auto cleanup = [this, &threads]() {
-    cacher_.TearDown();
+    cacher_->TearDown();
     quitting_ = true;
     task_ready_.notify_all();
     for (std::thread& thread : threads) thread.join();

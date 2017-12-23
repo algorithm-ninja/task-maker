@@ -67,9 +67,12 @@ class Core {
   Execution* AddExecution(const std::string& description,
                           const std::string& executable,
                           const std::vector<std::string>& args) {
+    if (!cacher_) {
+      cacher_.reset(new ExecutionCacher(store_directory_));
+    }
     executions_.push_back(std::unique_ptr<Execution>(
-        new Execution(&cacher_, store_directory_, temp_directory_, num_cores_,
-                      description, executable, args)));
+        new Execution(cacher_.get(), store_directory_, temp_directory_,
+                      num_cores_, description, executable, args)));
     return executions_.back().get();
   }
 
@@ -96,7 +99,7 @@ class Core {
       : store_directory_("files"),
         temp_directory_("temp"),
         num_cores_(std::thread::hardware_concurrency()),
-        cacher_(store_directory_) {
+        cacher_(nullptr) {
     callback_ = [](const TaskStatus& status) {
       return status.event != TaskStatus::FAILURE;
     };
@@ -119,7 +122,7 @@ class Core {
   std::string temp_directory_;
   int num_cores_;
 
-  ExecutionCacher cacher_;
+  std::unique_ptr<ExecutionCacher> cacher_;
 
   util::SHA256_t GetFile(int64_t id) {
     std::lock_guard<std::mutex> lck(file_lock_);
