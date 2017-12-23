@@ -42,11 +42,7 @@ class File {
   // or, if path is a directory, creates all the folders.
   static void MakeDirs(const std::string& path);
 
-  // Makes a full copy of the given file.
-  static void DeepCopy(const std::string& from, const std::string& to,
-                       bool overwrite = false, bool exist_ok = true);
-
-  // Copies from -> to, but the files may still share the underlying data.
+  // Copies from -> to.
   static void Copy(const std::string& from, const std::string& to,
                    bool overwrite = false, bool exist_ok = true);
 

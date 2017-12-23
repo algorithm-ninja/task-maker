@@ -118,17 +118,6 @@ namespace sandbox {
 
 static const constexpr size_t kStrErrorBufSize = 2048;
 
-bool Unix::MakeImmutable(const std::string& input_file,
-                         std::string* error_msg) {
-  char buf[kStrErrorBufSize] = {};
-  if (chmod(input_file.c_str(), S_IRUSR) == -1) {
-    *error_msg = "chmod: ";
-    *error_msg += mystrerror(errno, buf, kStrErrorBufSize);
-    return false;
-  }
-  return true;
-}
-
 bool Unix::PrepareForExecution(const std::string& executable,
                                std::string* error_msg) {
   char buf[kStrErrorBufSize] = {};
@@ -287,7 +276,7 @@ void Unix::Child() {
   int count = 0;
   do {
     execv(options_->executable.c_str(), args.data());
-    usleep(100);
+    usleep(1000);
     // We try at most 16 times to avoid livelocks (which should not be possible,
     // but better safe than sorry).
   } while (errno == ETXTBSY && count++ < 16);

@@ -66,10 +66,6 @@ proto::Response LocalExecutor::Execute(
   std::string error_msg;
   std::unique_ptr<sandbox::Sandbox> sb = sandbox::Sandbox::Create();
 
-  for (const std::string& input_file : input_files) {
-    if (!sb->MakeImmutable(input_file, &error_msg))
-      throw std::runtime_error(error_msg);
-  }
   if (loaded_executable &&
       !sb->PrepareForExecution(
           util::File::JoinPath(sandbox_dir, request.executable()),

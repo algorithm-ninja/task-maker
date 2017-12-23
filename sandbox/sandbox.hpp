@@ -65,12 +65,6 @@ class Sandbox {
     return true;
   }
 
-  // Makes the given file not writeable. Returns false on error,
-  // and sets error_msg.
-  virtual bool MakeImmutable(const std::string& file, std::string* error_msg) {
-    return true;
-  }
-
   // Runs the specified command. Returns true if the program was started,
   // and sets fields in info. Otherwise, returns false and sets error_msg.
   // Implementations of this function may not be thread safe.

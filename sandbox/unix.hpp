@@ -9,8 +9,6 @@ class Unix : public Sandbox {
  public:
   bool PrepareForExecution(const std::string& executable,
                            std::string* error_msg) override;
-  bool MakeImmutable(const std::string& input_file,
-                     std::string* error_msg) override;
   bool Execute(const ExecutionOptions& options, ExecutionInfo* info,
                std::string* error_msg) override;
   static Sandbox* Create() { return new Unix(); }

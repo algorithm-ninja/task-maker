@@ -22,15 +22,6 @@ bool MkDir(const std::string& dir) {
 
 bool OsRemove(const std::string& path) { return remove(path.c_str()) == -1; }
 
-bool ShallowCopy(const std::string& from, const std::string& to,
-                 bool exist_ok = true) {
-  if (linkat(AT_FDCWD, from.c_str(), AT_FDCWD, to.c_str(), AT_SYMLINK_FOLLOW) !=
-      -1)
-    return true;
-  if (!exist_ok) return false;
-  return errno == EEXIST;
-}
-
 bool OsRemoveTree(const std::string& path) {
   return nftw(path.c_str(),
               [](const char* fpath, const struct stat* sb, int typeflags,
@@ -178,17 +169,10 @@ void File::MakeDirs(const std::string& path) {
   }
 }
 
-void File::DeepCopy(const std::string& from, const std::string& to,
-                    bool overwrite, bool exist_ok) {
-  using namespace std::placeholders;
-  Write(to, std::bind(Read, from, _1), overwrite, exist_ok);
-}
-
 void File::Copy(const std::string& from, const std::string& to, bool overwrite,
                 bool exist_ok) {
-  if (!ShallowCopy(from, to, !overwrite && exist_ok)) {
-    DeepCopy(from, to, overwrite, exist_ok);
-  }
+  using namespace std::placeholders;
+  Write(to, std::bind(Read, from, _1), overwrite, exist_ok);
 }
 
 void File::Move(const std::string& from, const std::string& to, bool overwrite,
