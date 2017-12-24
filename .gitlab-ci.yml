@@ -1,5 +1,9 @@
 image: registry.gitlab.com/olimpiadi-informatica/task-maker/runner:v2
 
+stages:
+  - build
+  - pack
+
 build_and_test:
   stage: build
   before_script:
@@ -32,3 +36,44 @@ build_and_test:
   cache:
     paths:
       - bazel-cache
+
+pack_ubuntu_14.04:
+  image: ubuntu:14.04
+  stage: pack
+  only:
+    - tags
+  before_script:
+    - apt-get update
+    - apt-get -y install software-properties-common curl build-essential libssl-dev
+    - apt-get -y build-dep python3.4
+    - add-apt-repository -y ppa:webupd8team/java
+    - apt-get update
+    - echo debconf shared/accepted-oracle-license-v1-1 select true | debconf-set-selections
+    - echo debconf shared/accepted-oracle-license-v1-1 seen true | debconf-set-selections
+    - apt-get -y install oracle-java8-installer oracle-java8-set-default
+    - echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8" > /etc/apt/sources.list.d/bazel.list
+    - curl https://bazel.build/bazel-release.pub.gpg | apt-key add -
+    - apt-get update
+    - apt-get -y install bazel
+
+  script:
+    - ./release.sh task_maker_${CI_COMMIT_TAG}_ubuntu.tar.xz
+
+  artifacts:
+    paths:
+      - task_maker_${CI_COMMIT_TAG}_ubuntu.tar.xz
+
+pack_archlinux:
+  image: base/archlinux
+  stage: pack
+  only:
+    - tags
+  before_script:
+    - pacman -Syu --noconfirm jdk8-openjdk bazel gcc make
+
+  script:
+    - ./release.sh task_maker_${CI_COMMIT_TAG}_archlinux.tar.xz
+
+  artifacts:
+    paths:
+      - task_maker_${CI_COMMIT_TAG}_archlinux.tar.xz
