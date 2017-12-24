@@ -57,11 +57,11 @@ pack_ubuntu_14.04:
     - apt-get -y install bazel
 
   script:
-    - ./release.sh task_maker_${CI_COMMIT_TAG}_ubuntu.tar.xz
+    - ./release.sh
 
   artifacts:
     paths:
-      - task_maker_${CI_COMMIT_TAG}_ubuntu.tar.xz
+      - /tmp/task_maker
 
 pack_archlinux:
   image: base/archlinux
@@ -72,8 +72,8 @@ pack_archlinux:
     - pacman -Syu --noconfirm jdk8-openjdk bazel gcc make
 
   script:
-    - ./release.sh task_maker_${CI_COMMIT_TAG}_archlinux.tar.xz
+    - ./release.sh
 
   artifacts:
     paths:
-      - task_maker_${CI_COMMIT_TAG}_archlinux.tar.xz
+      - /tmp/task_maker

@@ -1,19 +1,9 @@
 #!/bin/bash -e
 set -x
 
-DEST=$(pwd)/$1
-[ -z "$1" ] && echo "You need to specify an output file!"
-[ -z "$1" ] && exit 1
-
 cd $(dirname $0)
 
-TEMPDIR=$(mktemp -d)
-
-cleanup() {
-  rm -rf $TEMPDIR
-}
-
-trap cleanup EXIT
+TEMPDIR=/tmp
 
 bazel build -c opt //python:task_maker
 mkdir -p $TEMPDIR/task_maker
@@ -28,6 +18,3 @@ rm -rf task_maker.runfiles/oii_task_maker/external/python_repo/python_3_6_files/
 rm -rf task_maker.runfiles/oii_task_maker/_solib_k8
 find . -name '*.so' | xargs strip -s || true
 find . -type f -print0 | xargs -0 chmod u-w
-
-cd ..
-tar cv task_maker | xz -9e > $DEST
