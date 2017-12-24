@@ -38,7 +38,7 @@ build_and_test:
       - bazel-cache
 
 pack_ubuntu_14.04:
-  image: ubuntu:14.04
+  image: ubuntu:14.04.4
   stage: pack
   only:
     - tags
