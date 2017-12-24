@@ -1,0 +1,56 @@
+syntax = 'proto3';
+
+package proto;
+
+enum Language {
+  INVALID_LANGUAGE = 0;
+  CPP = 1;
+  C = 2;
+  PASCAL = 3;
+  PYTHON = 4;
+  BASH = 5;
+  RUBY = 6;
+}
+
+enum ScoreMode {
+  INVALID_SCORE_MODE = 0;
+  MIN = 1;
+  MAX = 2;
+  SUM = 3;
+}
+
+message SourceFile {
+  string path = 1;
+  repeated string deps = 2;
+  Language language = 3;
+}
+
+message TestCase {
+  SourceFile generator = 1;
+  repeated string args = 2;
+  SourceFile validator = 3;
+  string input_file = 4;
+  string output_file = 5;
+}
+
+message Subtask {
+  ScoreMode score_mode = 1;
+  float max_score = 2;
+  repeated TestCase testcases = 3;
+}
+
+message GraderInfo {
+  Language for_language = 1;
+  repeated string path = 2;
+}
+
+message Task {
+  repeated Subtask subtasks = 1;
+  SourceFile official_solution = 2;
+  repeated GraderInfo grader_info = 3;
+  SourceFile checker = 4;
+  float time_limit = 5;
+  int64 memory_limit_kb = 6;
+  string input_file = 7;
+  string output_file = 8;
+}

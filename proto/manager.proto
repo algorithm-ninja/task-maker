@@ -1,0 +1,46 @@
+syntax = 'proto3';
+
+package proto;
+
+import "proto/task.proto";
+import "proto/event.proto";
+
+message EvaluateTaskRequest {
+  Task task = 1;
+  repeated SourceFile solutions = 2;
+  string store_dir = 3;
+  string temp_dir = 4;
+  string write_inputs_to = 5;
+  string write_outputs_to = 6;
+  string write_checker_to = 7;
+}
+
+message EvaluateTaskResponse {
+  int64 id = 1;
+}
+
+message GetEventsRequest {
+  int64 evaluation_id = 1;
+}
+
+message StopRequest {
+  int64 evaluation_id = 1;
+}
+
+message StopResponse {
+}
+
+message ShutdownRequest {
+  // If true, exit immediately, otherwise wait for evaluations to finish.
+  bool force = 1;
+}
+
+message ShutdownResponse {
+}
+
+service TaskMakerManager {
+  rpc EvaluateTask(EvaluateTaskRequest) returns (EvaluateTaskResponse);
+  rpc GetEvents(GetEventsRequest) returns (stream Event);
+  rpc Stop(StopRequest) returns (StopResponse);
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+}

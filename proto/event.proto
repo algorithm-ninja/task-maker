@@ -1,0 +1,31 @@
+syntax = 'proto3';
+
+package proto;
+
+message FatalError {
+  string msg = 1;
+}
+
+message TaskScore {
+  string solution = 1;
+  float score = 2;
+}
+
+message SubtaskScore {
+  string solution = 1;
+  float score = 2;
+  int64 subtask_id = 3;
+}
+
+// TODO: add
+// - compilation (filename, status, stderr)
+// - evaluation (solution, tc, status, result)
+// - generation status(testcase, status, error)
+
+message Event {
+  oneof event_oneof {
+    FatalError fatal_error = 1;
+    TaskScore task_score = 2;
+    SubtaskScore subtask_score = 3;
+  }
+}

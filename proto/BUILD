@@ -47,6 +47,25 @@ cc_proto_library(
 )
 
 cc_proto_library(
+    name = "task_cc",
+    protos = ["task.proto"],
+)
+
+cc_proto_library(
+    name = "event_cc",
+    protos = ["event.proto"],
+)
+
+cc_proto_library(
+    name = "manager_cc",
+    proto_deps = [
+        ":event_cc",
+        ":task_cc",
+    ],
+    protos = ["manager.proto"],
+)
+
+cc_proto_library(
     name = "server_cc",
     proto_deps = [
         ":file_cc",
