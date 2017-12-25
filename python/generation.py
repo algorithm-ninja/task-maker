@@ -3,8 +3,6 @@
 from typing import Dict  # pylint: disable=unused-import
 from typing import List  # pylint: disable=unused-import
 from typing import Optional
-from bindings import Execution  # pylint: disable=unused-import
-from bindings import FileID  # pylint: disable=unused-import
 from python import sanitize, dependency_finder
 from python.dispatcher import Dispatcher
 from python.dispatcher import Event

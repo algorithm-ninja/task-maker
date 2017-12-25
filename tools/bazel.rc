@@ -1,3 +1,0 @@
-build --python_top //tools:python_3_6
-run --python_top //tools:python_3_6
-test --python_top //tools:python_3_6

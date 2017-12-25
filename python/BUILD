@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-load("//tools:smart_py_binary.bzl", "smart_py_binary")
+load("@python_deps//:requirements.bzl", "requirement")
 
 py_library(
     name = "language",
@@ -20,7 +20,6 @@ py_library(
         ":detect_exe",
         ":language",
         ":ui",
-        "//bindings:task_maker",
     ],
 )
 
@@ -31,7 +30,6 @@ py_library(
         ":language",
         ":source_file",
         ":ui",
-        "//bindings:task_maker",
     ],
 )
 
@@ -40,7 +38,6 @@ py_library(
     srcs = ["dispatcher.py"],
     deps = [
         ":ui",
-        "//bindings:task_maker",
     ],
 )
 
@@ -81,7 +78,6 @@ py_library(
         ":source_file",
         ":task",
         ":ui",
-        "//bindings:task_maker",
     ],
 )
 
@@ -94,7 +90,6 @@ py_library(
         ":source_file",
         ":task",
         ":ui",
-        "//bindings:task_maker",
     ],
 )
 
@@ -122,14 +117,15 @@ py_library(
         ":dispatcher",
         ":evaluation",
         ":generation",
-	":language",
+        ":language",
         ":print_ui",
         ":silent_ui",
         ":task",
+        requirement("PyYAML"),
     ],
 )
 
-smart_py_binary(
+py_binary(
     name = "task_maker",
     srcs = ["task_maker.py"],
     deps = [

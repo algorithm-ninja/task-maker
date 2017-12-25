@@ -2,8 +2,6 @@
 -Ibazel-task-maker/external/googletest/googlemock/include
 -Ibazel-genfiles/external/com_github_gflags_gflags/include/
 -Ibazel-genfiles/external/glog_repo/
--Ibazel-task-maker/external/pybind11/include
--Ibazel-task-maker/external/python3/include/_usr_include_python3.6m/
 -Ibazel-task-maker/external/com_google_grpc/include
 -Ibazel-task-maker/external/glog_repo/src/
 -I.

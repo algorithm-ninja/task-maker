@@ -6,9 +6,6 @@ from typing import Dict  # pylint: disable=unused-import
 from typing import List
 from typing import Optional
 from typing import Union
-from bindings import Core
-from bindings import Execution
-from bindings import FileID
 from python.ui import UI
 
 

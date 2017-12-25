@@ -5,8 +5,6 @@ from typing import List
 from typing import Optional
 from typing import Tuple  # pylint: disable=unused-import
 
-from bindings import Execution
-from bindings import FileID  # pylint: disable=unused-import
 from python import dependency_finder
 from python import sanitize
 from python.detect_exe import EXEFLAG_NONE, get_exeflags
@@ -178,9 +176,9 @@ class C(Compiled):
 class PAS(Compiled):
     def compile(self, graders: List[str],
                 cache_mode: Execution.CachingMode) -> None:
-        self._compile(
-            graders, cache_mode, "/usr/bin/fpc",
-            ["-dEVAL", "-XS", "-O2", "-o%s" % self._compiled_name])
+        self._compile(graders, cache_mode, "/usr/bin/fpc",
+                      ["-dEVAL", "-XS", "-O2",
+                       "-o%s" % self._compiled_name])
 
 
 class PY(Compiled):

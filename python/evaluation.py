@@ -5,7 +5,6 @@ from typing import List
 from typing import Optional  # pylint: disable=unused-import
 from typing import cast
 
-from bindings import Execution
 from python.dispatcher import Dispatcher
 from python.dispatcher import Event
 from python.dispatcher import EventStatus

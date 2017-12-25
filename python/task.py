@@ -9,8 +9,6 @@ from typing import Dict  # pylint: disable=unused-import
 from typing import List
 from typing import Optional
 
-from bindings import Execution
-from bindings import FileID
 from python.language import Language
 from python.source_file import SourceFile  # pylint: disable=unused-import
 from python.ui import UI
@@ -182,14 +180,14 @@ class Task:
                     os.path.join(output_dir, "output%d.txt" % testcase.num),
                     False, False)
         if self.checker_src:
-            checker_dir = os.path.dirname(os.path.join(task_dir,
-                                                       self.checker_src))
+            checker_dir = os.path.dirname(
+                os.path.join(task_dir, self.checker_src))
             checker_name = os.path.splitext(
                 os.path.basename(self.checker_src))[0]
             checker_path = os.path.join(checker_dir, checker_name)
             if self.checker and self.checker.compilation_output:
-                self.checker.compilation_output.write_to(checker_path,
-                                                         True, True)
+                self.checker.compilation_output.write_to(
+                    checker_path, True, True)
 
     @staticmethod
     def do_clean(task_dir: str, temp_dir: str, store_dir: str) -> None:
@@ -197,7 +195,7 @@ class Task:
             path = os.path.join(task_dir, dir_type)
             if not os.path.exists(path):
                 return
-            for file in glob.glob(os.path.join(path, dir_type+"*.txt")):
+            for file in glob.glob(os.path.join(path, dir_type + "*.txt")):
                 os.remove(file)
             try:
                 os.rmdir(path)

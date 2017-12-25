@@ -8,7 +8,6 @@ from typing import Optional
 
 import yaml
 
-from bindings import Execution
 from python.curses_ui import CursesUI
 from python.dispatcher import Dispatcher
 from python.evaluation import Evaluation
@@ -39,8 +38,8 @@ def list_files(patterns: List[str],
              for _file in glob.glob(pattern)]  # type: List[str]
     return [
         res for res in files
-        if res not in exclude and os.path.splitext(res)[1] in
-        Language.valid_extensions()
+        if res not in exclude
+        and os.path.splitext(res)[1] in Language.valid_extensions()
     ]
 
 

@@ -13,13 +13,6 @@ new_git_repository(
     tag = "release-1.8.0",
 )
 
-new_git_repository(
-    name = "pybind11",
-    build_file = "tools/pybind11.BUILD",
-    remote = "https://github.com/pybind/pybind11",
-    tag = "v2.2.1",
-)
-
 git_repository(
     name = "com_github_gflags_gflags",
     remote = "https://github.com/gflags/gflags.git",
@@ -40,18 +33,28 @@ new_git_repository(
     tag = "v0.3.5",
 )
 
-# Rules for internal python
-new_http_archive(
-    name = "python_repo",
-    build_file = "tools/python.BUILD",
-    sha256 = "cda7d967c9a4bfa52337cdf551bcc5cff026b6ac50a8834e568ce4a794ca81da",
-    url = "https://www.python.org/ftp/python/3.6.3/Python-3.6.3.tar.xz",
+# Rules for Python
+git_repository(
+    name = "io_bazel_rules_python",
+    commit = "63cdc8f29b6e6ff517744756cc67cf05577ae724",
+    remote = "https://github.com/bazelbuild/rules_python",
 )
 
-bind(
-    name = "python_3_6_hdr",
-    actual = "@python_repo//:python_3_6_hdr",
+load("@io_bazel_rules_python//python:pip.bzl", "pip_repositories", "pip_import")
+
+pip_repositories()
+
+pip_import(
+    name = "python_deps",
+    requirements = "//tools:requirements.txt",
 )
+
+load(
+    "@python_deps//:requirements.bzl",
+    pip_grpcio_install = "pip_install",
+)
+
+pip_grpcio_install()
 
 bind(
     name = "glog",
