@@ -17,15 +17,64 @@ message SubtaskScore {
   int64 subtask_id = 3;
 }
 
-// TODO: add
-// - compilation (filename, status, stderr)
-// - evaluation (solution, tc, status, result)
-// - generation status(testcase, status, error)
+enum CompilationStatus {
+  WAITING = 0;
+  RUNNING = 1;
+  SUCCESS = 2;
+  FAILURE = 3;
+}
+
+message Compilation {
+  string filename = 1;
+  CompilationStatus status = 2;
+  string stderr = 3;
+}
+
+enum GenerationStatus {
+  WAITING = 0;
+  GENERATING = 1;
+  GENERATED = 2;
+  VALIDATING = 3;
+  VALIDATED = 4;
+  SOLVING = 5;
+  SUCCESS = 6;
+  FAILURE = 7;
+}
+
+message Generation {
+  int64 testcase = 1;
+  GenerationStatus status = 2;
+  string error = 3;
+}
+
+enum EvaluationStatus {
+  WAITING = 0;
+  EXECUTING = 1;
+  EXECUTED = 2;
+  CHECKING = 3;
+  SUCCESS = 4;
+  FAILURE = 5;
+}
+
+message EvaluationResult {
+  float score = 1;
+  string message = 2;
+}
+
+message Evaluation {
+  string solution = 1;
+  int64 testcase = 2;
+  EvaluationStatus status = 3;
+  EvaluationResult result = 4;
+}
 
 message Event {
   oneof event_oneof {
     FatalError fatal_error = 1;
     TaskScore task_score = 2;
     SubtaskScore subtask_score = 3;
+    Compilation compilation = 4;
+    Generation generation = 5;
+    Evaluation evaluation = 6;
   }
 }

@@ -5,6 +5,12 @@ package proto;
 import "proto/task.proto";
 import "proto/event.proto";
 
+enum CacheMode {
+  NOTHING = 0;
+  GENERATION = 1;
+  ALL = 2;
+}
+
 message EvaluateTaskRequest {
   Task task = 1;
   repeated SourceFile solutions = 2;
@@ -13,6 +19,7 @@ message EvaluateTaskRequest {
   string write_inputs_to = 5;
   string write_outputs_to = 6;
   string write_checker_to = 7;
+  CacheMode cache_mode = 8;
 }
 
 message EvaluateTaskResponse {
