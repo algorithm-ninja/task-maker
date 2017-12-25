@@ -4,6 +4,7 @@
 #include <functional>
 #include <string>
 
+#include "core/task_status.hpp"
 #include "util/sha256.hpp"
 
 namespace core {
@@ -15,6 +16,10 @@ class FileID {
  public:
   const std::string& Description() const { return description_; }
   int64_t ID() const { return id_; }
+
+  void SetCallback(const std::function<bool(const TaskStatus& status)>& cb) {
+    callback_ = cb;
+  }
 
   // These methods should be called after Core::Run is done.
   void WriteTo(const std::string& path, bool overwrite = false,
@@ -36,6 +41,9 @@ class FileID {
         store_directory_(std::move(store_directory)),
         id_((reinterpret_cast<int64_t>(&next_id_) << 32) | (next_id_++)) {
     // fprintf(stderr, "generated id: %lu, next_id_ ptr: %p\n", id_, &next_id_);
+    callback_ = [](const TaskStatus& status) {
+      return status.event != TaskStatus::FAILURE;
+    };
   }
   FileID(std::string store_directory, std::string description, std::string path)
       : FileID(std::move(store_directory), std::move(description)) {
@@ -50,6 +58,7 @@ class FileID {
   std::string store_directory_;
   int64_t id_;
   util::SHA256_t hash_ = {};
+  std::function<bool(const TaskStatus&)> callback_;
 
   static std::atomic<int32_t> next_id_;
 };

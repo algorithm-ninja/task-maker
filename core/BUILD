@@ -2,10 +2,17 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "task_status",
+    srcs = [],
+    hdrs = ["task_status.hpp"],
+)
+
+cc_library(
     name = "file_id",
     srcs = ["file_id.cpp"],
     hdrs = ["file_id.hpp"],
     deps = [
+        ":task_status",
         "//util:file",
         "//util:sha256",
     ],
@@ -32,6 +39,7 @@ cc_library(
     deps = [
         ":execution_cacher",
         ":file_id",
+        ":task_status",
         "//executor:local_executor",
         "//executor:remote_executor",
         "//proto:response_cc",
@@ -46,5 +54,6 @@ cc_library(
         ":execution",
         ":execution_cacher",
         ":file_id",
+        ":task_status",
     ],
 )

@@ -7,6 +7,7 @@
 
 #include "core/execution_cacher.hpp"
 #include "core/file_id.hpp"
+#include "core/task_status.hpp"
 #include "executor/executor.hpp"
 #include "proto/response.pb.h"
 
@@ -44,6 +45,10 @@ class Execution {
   void SetExclusive() { exclusive_ = true; }
   void SetCachingMode(CachingMode mode) { caching_mode_ = mode; }
   void SetExecutor(const std::string& executor) { executor_ = executor; }
+
+  void SetCallback(const std::function<bool(const TaskStatus& status)>& cb) {
+    callback_ = cb;
+  }
 
   // To be called after Core::Run().
   bool Success() const { return successful_; }
@@ -87,14 +92,9 @@ class Execution {
         stderr_(std::unique_ptr<FileID>(new FileID(
             store_directory_, "Standard error for " + description_))),
         cacher_(cacher) {
-    /*
-    fprintf(stderr, "Description: %s\n", description_.c_str());
-    fprintf(stderr, "Command: %s", executable_.c_str());
-    for (const std::string& arg : args_) {
-      fprintf(stderr, " %s", arg.c_str());
-    }
-    fprintf(stderr, "\n");
-    */
+    callback_ = [](const TaskStatus& status) {
+      return status.event != TaskStatus::FAILURE;
+    };
   }
 
   std::string store_directory_;
@@ -125,6 +125,8 @@ class Execution {
 
   proto::Response response_;
   proto::Resources resource_limits_;
+
+  std::function<bool(const TaskStatus&)> callback_;
 };
 
 }  // namespace core

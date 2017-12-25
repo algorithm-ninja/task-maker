@@ -30,7 +30,7 @@ void Core::ThreadBody() {
   }
 }
 
-Core::TaskStatus Core::LoadFileTask(FileID* file) {
+TaskStatus Core::LoadFileTask(FileID* file) {
   try {
     using namespace std::placeholders;
     file->Load(std::bind(&Core::SetFile, this, _1, _2));
@@ -40,7 +40,7 @@ Core::TaskStatus Core::LoadFileTask(FileID* file) {
   }
 }
 
-Core::TaskStatus Core::ExecuteTask(Execution* execution) {
+TaskStatus Core::ExecuteTask(Execution* execution) {
   try {
     using namespace std::placeholders;
     execution->Run(std::bind(&Core::GetFile, this, _1),
@@ -94,7 +94,7 @@ bool Core::Run() {
       while (!file_tasks.empty()) {
         FileID* file = file_tasks.front();
         file_tasks.pop();
-        if (!callback_(TaskStatus::Start(file))) return CALLBACK_FALSE;
+        if (!file->callback_(TaskStatus::Start(file))) return CALLBACK_FALSE;
         std::packaged_task<TaskStatus()> task(
             std::bind(&Core::LoadFileTask, this, file));
         waiting_tasks.push(task.get_future());
@@ -115,7 +115,8 @@ bool Core::Run() {
           reenqueued_tasks++;
           continue;
         }
-        if (!callback_(TaskStatus::Start(execution))) return CALLBACK_FALSE;
+        if (!execution->callback_(TaskStatus::Start(execution)))
+          return CALLBACK_FALSE;
         std::packaged_task<TaskStatus()> task(
             std::bind(&Core::ExecuteTask, this, execution));
         waiting_tasks.push(task.get_future());
@@ -153,7 +154,11 @@ bool Core::Run() {
           if (answer.event == TaskStatus::Event::BUSY) {
             execution_tasks.push(answer.execution_info);
           }
-          if (!callback_(answer)) {
+          std::function<bool(const TaskStatus&)> callback =
+              answer.type == TaskStatus::Type::EXECUTION
+                  ? answer.execution_info->callback_
+                  : answer.file_info->callback_;
+          if (!callback(answer)) {
             cleanup();
             return false;
           }

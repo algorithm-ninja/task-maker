@@ -8,63 +8,12 @@
 
 #include "core/execution.hpp"
 #include "core/file_id.hpp"
+#include "core/task_status.hpp"
 
 namespace core {
 
 class Core {
  public:
-  struct TaskStatus {
-    enum Event { START, SUCCESS, BUSY, FAILURE };
-    Event event;
-    std::string message;
-    enum Type { FILE_LOAD, EXECUTION };
-    Type type;
-    FileID* file_info;
-    Execution* execution_info;
-
-    TaskStatus() = delete;
-    TaskStatus(Event event, std::string message, Type type, FileID* file_info,
-               Execution* execution_info)
-        : event(event),
-          message(std::move(message)),
-          type(type),
-          file_info(file_info),
-          execution_info(execution_info) {}
-
-   private:
-    friend class Core;
-    static TaskStatus Start(FileID* file) {
-      // fprintf(stderr, "Start: %s\n", file->Description().c_str());
-      return TaskStatus(START, "", FILE_LOAD, file, nullptr);
-    }
-    static TaskStatus Start(Execution* execution) {
-      // fprintf(stderr, "Start: %s\n", execution->Description().c_str());
-      return TaskStatus(START, "", EXECUTION, nullptr, execution);
-    }
-    static TaskStatus Busy(Execution* execution) {
-      // fprintf(stderr, "Busy: %s\n", execution->Description().c_str());
-      return TaskStatus(BUSY, "", EXECUTION, nullptr, execution);
-    }
-    static TaskStatus Success(FileID* file) {
-      // fprintf(stderr, "Success: %s\n", file->Description().c_str());
-      return TaskStatus(SUCCESS, "", FILE_LOAD, file, nullptr);
-    }
-    static TaskStatus Success(Execution* execution) {
-      // fprintf(stderr, "Success: %s\n", execution->Description().c_str());
-      return TaskStatus(SUCCESS, "", EXECUTION, nullptr, execution);
-    }
-    static TaskStatus Failure(FileID* file, const std::string& msg) {
-      // fprintf(stderr, "Failure: %s, %s\n", file->Description().c_str(),
-      //        msg.c_str());
-      return TaskStatus(FAILURE, msg, FILE_LOAD, file, nullptr);
-    }
-    static TaskStatus Failure(Execution* execution, const std::string& msg) {
-      // fprintf(stderr, "Failure: %s, %s\n", execution->Description().c_str(),
-      //        msg.c_str());
-      return TaskStatus(FAILURE, msg, EXECUTION, nullptr, execution);
-    }
-  };
-
   FileID* LoadFile(const std::string& description, const std::string& path) {
     files_to_load_.push_back(std::unique_ptr<FileID>(
         new FileID(store_directory_, description, path)));
@@ -96,24 +45,15 @@ class Core {
     store_directory_ = store_directory;
   }
 
-  void SetCallback(const std::function<bool(const TaskStatus& status)>& cb) {
-    callback_ = cb;
-  }
-
   bool Run();
 
   Core()
       : store_directory_("files"),
         temp_directory_("temp"),
         num_cores_(std::thread::hardware_concurrency()),
-        cacher_(nullptr) {
-    callback_ = [](const TaskStatus& status) {
-      return status.event != TaskStatus::FAILURE;
-    };
-  }
+        cacher_(nullptr) {}
 
  private:
-  std::function<bool(const TaskStatus&)> callback_;
   std::vector<std::unique_ptr<FileID>> files_to_load_;
   std::vector<std::unique_ptr<Execution>> executions_;
 
