@@ -17,43 +17,34 @@ message SubtaskScore {
   int64 subtask_id = 3;
 }
 
-enum CompilationStatus {
+enum Status {
   WAITING = 0;
   RUNNING = 1;
-  SUCCESS = 2;
-  FAILURE = 3;
+  GENERATING = 2;
+  GENERATED = 3;
+  VALIDATING = 4;
+  VALIDATED = 5;
+  SOLVING = 6;
+  EXECUTING = 7;
+  EXECUTED = 8;
+  CHECKING = 9;
+  SUCCESS = 10;
+  FAILURE = 11;
 }
 
 message Compilation {
   string filename = 1;
-  CompilationStatus status = 2;
+  // WAITING, RUNNING, SUCCESS, FAILURE
+  Status status = 2;
   string stderr = 3;
-}
-
-enum GenerationStatus {
-  WAITING = 0;
-  GENERATING = 1;
-  GENERATED = 2;
-  VALIDATING = 3;
-  VALIDATED = 4;
-  SOLVING = 5;
-  SUCCESS = 6;
-  FAILURE = 7;
 }
 
 message Generation {
   int64 testcase = 1;
-  GenerationStatus status = 2;
+  // WAITING, GENERATING, GENERATED, VALIDATING, VALIDATED, SOLVING, SUCCESS,
+  // FAILURE
+  Status status = 2;
   string error = 3;
-}
-
-enum EvaluationStatus {
-  WAITING = 0;
-  EXECUTING = 1;
-  EXECUTED = 2;
-  CHECKING = 3;
-  SUCCESS = 4;
-  FAILURE = 5;
 }
 
 message EvaluationResult {
@@ -64,7 +55,8 @@ message EvaluationResult {
 message Evaluation {
   string solution = 1;
   int64 testcase = 2;
-  EvaluationStatus status = 3;
+  // WAITING, EXECUTING, EXECUTED, CHECKING, SUCCESS, FAILURE
+  Status status = 3;
   EvaluationResult result = 4;
 }
 
