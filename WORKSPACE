@@ -56,6 +56,27 @@ load(
 
 pip_grpcio_install()
 
+# Rules for absl
+git_repository(
+    name = "com_google_absl",
+    commit = "dedb4eec6cf0addc26cc27b67c270aa5a478fcc5",
+    remote = "https://github.com/abseil/abseil-cpp.git",
+)
+
+# CCTZ (Time-zone framework).
+http_archive(
+    name = "com_googlesource_code_cctz",
+    strip_prefix = "cctz-master",
+    urls = ["https://github.com/google/cctz/archive/master.zip"],
+)
+
+# RE2 regular-expression framework. Used by some unit-tests.
+http_archive(
+    name = "com_googlesource_code_re2",
+    strip_prefix = "re2-master",
+    urls = ["https://github.com/google/re2/archive/master.zip"],
+)
+
 bind(
     name = "glog",
     actual = "@glog_repo//:glog",
