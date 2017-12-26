@@ -34,65 +34,64 @@ class EventQueue {
     Enqueue(std::move(event));
   }
   void CompilationWaiting(const std::string& filename) {
-    Compilation(filename, proto::Status::WAITING);
+    Compilation(filename, proto::EventStatus::WAITING);
   }
   void CompilationRunning(const std::string& filename) {
-    Compilation(filename, proto::Status::RUNNING);
+    Compilation(filename, proto::EventStatus::RUNNING);
   }
-  void CompilationSuccess(const std::string& filename,
-                          const std::string& errors) {
-    Compilation(filename, proto::Status::SUCCESS, errors);
+  void CompilationDone(const std::string& filename, const std::string& errors) {
+    Compilation(filename, proto::EventStatus::DONE, errors);
   }
   void CompilationFailure(const std::string& filename,
                           const std::string& errors) {
-    Compilation(filename, proto::Status::FAILURE, errors);
+    Compilation(filename, proto::EventStatus::FAILURE, errors);
   }
   void GenerationWaiting(int64_t testcase) {
-    Generation(testcase, proto::Status::WAITING);
+    Generation(testcase, proto::EventStatus::WAITING);
   }
   void Generating(int64_t testcase) {
-    Generation(testcase, proto::Status::GENERATING);
+    Generation(testcase, proto::EventStatus::GENERATING);
   }
   void Generated(int64_t testcase) {
-    Generation(testcase, proto::Status::GENERATED);
+    Generation(testcase, proto::EventStatus::GENERATED);
   }
   void Validating(int64_t testcase) {
-    Generation(testcase, proto::Status::VALIDATING);
+    Generation(testcase, proto::EventStatus::VALIDATING);
   }
   void Validated(int64_t testcase) {
-    Generation(testcase, proto::Status::VALIDATED);
+    Generation(testcase, proto::EventStatus::VALIDATED);
   }
   void Solving(int64_t testcase) {
-    Generation(testcase, proto::Status::SOLVING);
+    Generation(testcase, proto::EventStatus::SOLVING);
   }
-  void GenerationSuccess(int64_t testcase) {
-    Generation(testcase, proto::Status::SUCCESS);
+  void GenerationDone(int64_t testcase) {
+    Generation(testcase, proto::EventStatus::DONE);
   }
   void GenerationFailure(int64_t testcase, const std::string& errors) {
-    Generation(testcase, proto::Status::FAILURE, errors);
+    Generation(testcase, proto::EventStatus::FAILURE, errors);
   }
   void EvaluationWaiting(const std::string& solution, int64_t testcase) {
-    Evaluation(solution, testcase, proto::Status::WAITING);
+    Evaluation(solution, testcase, proto::EventStatus::WAITING);
   }
   void Executing(const std::string& solution, int64_t testcase) {
-    Evaluation(solution, testcase, proto::Status::EXECUTING);
+    Evaluation(solution, testcase, proto::EventStatus::EXECUTING);
   }
   void Executed(const std::string& solution, int64_t testcase) {
-    Evaluation(solution, testcase, proto::Status::EXECUTED);
+    Evaluation(solution, testcase, proto::EventStatus::EXECUTED);
   }
   void Checking(const std::string& solution, int64_t testcase) {
-    Evaluation(solution, testcase, proto::Status::CHECKING);
+    Evaluation(solution, testcase, proto::EventStatus::CHECKING);
   }
-  void EvaluationSuccess(const std::string& solution, int64_t testcase,
-                         float score, const std::string& message,
-                         float cpu_time, float wall_time, int64_t memory) {
+  void EvaluationDone(const std::string& solution, int64_t testcase,
+                      float score, const std::string& message, float cpu_time,
+                      float wall_time, int64_t memory) {
     proto::EvaluationResult result;
     result.set_score(score);
     result.set_message(message);
     result.set_cpu_time_used(cpu_time);
     result.set_wall_time_used(wall_time);
     result.set_memory_used_kb(memory);
-    Evaluation(solution, testcase, proto::Status::SUCCESS, std::move(result));
+    Evaluation(solution, testcase, proto::EventStatus::DONE, std::move(result));
   }
   void EvaluationFailure(const std::string& solution, int64_t testcase,
                          const std::string& message, float cpu_time,
@@ -102,7 +101,8 @@ class EventQueue {
     result.set_cpu_time_used(cpu_time);
     result.set_wall_time_used(wall_time);
     result.set_memory_used_kb(memory);
-    Evaluation(solution, testcase, proto::Status::FAILURE, std::move(result));
+    Evaluation(solution, testcase, proto::EventStatus::FAILURE,
+               std::move(result));
   }
   absl::optional<proto::Event> Dequeue();
   void Stop();
@@ -112,7 +112,7 @@ class EventQueue {
   std::queue<proto::Event> queue_ GUARDED_BY(queue_mutex_);
   bool stopped_ GUARDED_BY(queue_mutex_) = false;
   void Enqueue(proto::Event&& event);
-  void Compilation(const std::string& filename, proto::Status status,
+  void Compilation(const std::string& filename, proto::EventStatus status,
                    const std::string& errors = "") {
     proto::Event event;
     auto* sub_event = event.mutable_compilation();
@@ -123,7 +123,7 @@ class EventQueue {
     }
     Enqueue(std::move(event));
   }
-  void Generation(int64_t testcase, proto::Status status,
+  void Generation(int64_t testcase, proto::EventStatus status,
                   const std::string& errors = "") {
     proto::Event event;
     auto* sub_event = event.mutable_generation();
@@ -135,7 +135,7 @@ class EventQueue {
     Enqueue(std::move(event));
   }
   void Evaluation(const std::string& solution, int64_t testcase,
-                  proto::Status status,
+                  proto::EventStatus status,
                   absl::optional<proto::EvaluationResult>&& result = {}) {
     proto::Event event;
     auto* sub_event = event.mutable_evaluation();

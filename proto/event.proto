@@ -17,7 +17,7 @@ message SubtaskScore {
   int64 subtask_id = 3;
 }
 
-enum Status {
+enum EventStatus {
   WAITING = 0;
   RUNNING = 1;
   GENERATING = 2;
@@ -28,22 +28,22 @@ enum Status {
   EXECUTING = 7;
   EXECUTED = 8;
   CHECKING = 9;
-  SUCCESS = 10;
+  DONE = 10;
   FAILURE = 11;
 }
 
 message Compilation {
   string filename = 1;
-  // WAITING, RUNNING, SUCCESS, FAILURE
-  Status status = 2;
+  // WAITING, RUNNING, DONE, FAILURE
+  EventStatus status = 2;
   string stderr = 3;
 }
 
 message Generation {
   int64 testcase = 1;
-  // WAITING, GENERATING, GENERATED, VALIDATING, VALIDATED, SOLVING, SUCCESS,
+  // WAITING, GENERATING, GENERATED, VALIDATING, VALIDATED, SOLVING, DONE,
   // FAILURE
-  Status status = 2;
+  EventStatus status = 2;
   string error = 3;
 }
 
@@ -58,8 +58,8 @@ message EvaluationResult {
 message Evaluation {
   string solution = 1;
   int64 testcase = 2;
-  // WAITING, EXECUTING, EXECUTED, CHECKING, SUCCESS, FAILURE
-  Status status = 3;
+  // WAITING, EXECUTING, EXECUTED, CHECKING, DONE, FAILURE
+  EventStatus status = 3;
   EvaluationResult result = 4;
 }
 
