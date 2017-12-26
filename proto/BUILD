@@ -2,6 +2,7 @@
 package(default_visibility = ["//visibility:public"])
 
 load("@org_pubref_rules_protobuf//cpp:rules.bzl", "cc_proto_library")
+load("@org_pubref_rules_protobuf//python:rules.bzl", "py_proto_library")
 
 cc_proto_library(
     name = "sha256_cc",
@@ -51,8 +52,18 @@ cc_proto_library(
     protos = ["task.proto"],
 )
 
+py_proto_library(
+    name = "task_py",
+    protos = ["task.proto"],
+)
+
 cc_proto_library(
     name = "event_cc",
+    protos = ["event.proto"],
+)
+
+py_proto_library(
+    name = "event_py",
     protos = ["event.proto"],
 )
 
@@ -61,6 +72,15 @@ cc_proto_library(
     proto_deps = [
         ":event_cc",
         ":task_cc",
+    ],
+    protos = ["manager.proto"],
+)
+
+py_proto_library(
+    name = "manager_py",
+    proto_deps = [
+        ":event_py",
+        ":task_py",
     ],
     protos = ["manager.proto"],
 )

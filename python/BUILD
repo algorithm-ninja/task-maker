@@ -5,11 +5,9 @@ load("@python_deps//:requirements.bzl", "requirement")
 py_library(
     name = "language",
     srcs = ["language.py"],
-)
-
-py_library(
-    name = "detect_exe",
-    srcs = ["detect_exe.py"],
+    deps = [
+        "//proto:task_py",
+    ],
 )
 
 py_library(
@@ -17,27 +15,8 @@ py_library(
     srcs = ["source_file.py"],
     deps = [
         ":dependency_finder",
-        ":detect_exe",
         ":language",
-        ":ui",
-    ],
-)
-
-py_library(
-    name = "task",
-    srcs = ["task.py"],
-    deps = [
-        ":language",
-        ":source_file",
-        ":ui",
-    ],
-)
-
-py_library(
-    name = "dispatcher",
-    srcs = ["dispatcher.py"],
-    deps = [
-        ":ui",
+        "//proto:task_py",
     ],
 )
 
@@ -68,36 +47,11 @@ py_library(
 )
 
 py_library(
-    name = "generation",
-    srcs = ["generation.py"],
-    deps = [
-        ":dependency_finder",
-        ":dispatcher",
-        ":language",
-        ":sanitize",
-        ":source_file",
-        ":task",
-        ":ui",
-    ],
-)
-
-py_library(
-    name = "evaluation",
-    srcs = ["evaluation.py"],
-    deps = [
-        ":dispatcher",
-        ":language",
-        ":source_file",
-        ":task",
-        ":ui",
-    ],
-)
-
-py_library(
     name = "dependency_finder",
     srcs = ["dependency_finder.py"],
     deps = [
         ":language",
+        "//proto:task_py",
     ],
 )
 
@@ -113,14 +67,12 @@ py_library(
     name = "italian_format",
     srcs = ["italian_format.py"],
     deps = [
-        ":curses_ui",
-        ":dispatcher",
-        ":evaluation",
-        ":generation",
+        ":dependency_finder",
         ":language",
-        ":print_ui",
-        ":silent_ui",
-        ":task",
+        ":sanitize",
+        ":source_file",
+        "//proto:manager_py",
+        "//proto:task_py",
         requirement("PyYAML"),
     ],
 )
@@ -129,6 +81,9 @@ py_binary(
     name = "task_maker",
     srcs = ["task_maker.py"],
     deps = [
+        ":curses_ui",
         ":italian_format",
+        ":print_ui",
+        ":silent_ui",
     ],
 )

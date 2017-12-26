@@ -2,7 +2,17 @@
 
 import argparse
 import os
-from python.italian_format import run_for_cwd, UIS, CACHES
+
+from python.curses_ui import CursesUI
+from python.italian_format import get_request, CACHES
+from python.print_ui import PrintUI
+from python.silent_ui import SilentUI
+
+UIS = {
+    "curses": CursesUI,
+    "print": PrintUI,
+    "silent": SilentUI
+}
 
 
 def _validate_num_cores(num: str) -> int:
@@ -33,11 +43,6 @@ def main() -> None:
         action="store",
         choices=UIS.keys(),
         default="curses")
-    parser.add_argument(
-        "--exclusive",
-        help="Evaluate the solutions using only one core at time",
-        action="store_true",
-        default=False)
     parser.add_argument(
         "--cache",
         help="Cache policy to use",
@@ -79,7 +84,13 @@ def main() -> None:
     args = parser.parse_args()
 
     os.chdir(args.task_dir)
-    run_for_cwd(args)
+
+    if args.clean:
+        # TODO: implement the clean process on the manager
+        return
+
+    request = get_request(args)
+    print(request)
 
 
 if __name__ == '__main__':

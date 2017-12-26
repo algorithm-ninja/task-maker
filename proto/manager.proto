@@ -20,6 +20,9 @@ message EvaluateTaskRequest {
   string write_outputs_to = 6;
   string write_checker_to = 7;
   CacheMode cache_mode = 8;
+  int32 num_cores = 9;
+  bool dry_run = 10;
+  string evaluate_on = 11;
 }
 
 message EvaluateTaskResponse {

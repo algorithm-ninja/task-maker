@@ -19,9 +19,14 @@ enum ScoreMode {
   SUM = 3;
 }
 
+message Dependency {
+  string name = 1;
+  string path = 2;
+}
+
 message SourceFile {
   string path = 1;
-  repeated string deps = 2;
+  repeated Dependency deps = 2;
   Language language = 3;
 }
 
@@ -41,16 +46,18 @@ message Subtask {
 
 message GraderInfo {
   Language for_language = 1;
-  repeated string path = 2;
+  repeated Dependency files = 2;
 }
 
 message Task {
-  repeated Subtask subtasks = 1;
-  SourceFile official_solution = 2;
-  repeated GraderInfo grader_info = 3;
-  SourceFile checker = 4;
-  float time_limit = 5;
-  int64 memory_limit_kb = 6;
-  string input_file = 7;
-  string output_file = 8;
+  string name = 1;
+  string title = 2;
+  repeated Subtask subtasks = 3;
+  SourceFile official_solution = 4;
+  repeated GraderInfo grader_info = 5;
+  SourceFile checker = 6;
+  float time_limit = 7;
+  int64 memory_limit_kb = 8;
+  string input_file = 9;
+  string output_file = 10;
 }

@@ -7,26 +7,25 @@ from typing import Dict, List, Any, Tuple
 from typing import Optional
 
 import yaml
+from proto.manager_pb2 import ALL, GENERATION, NOTHING  # CacheMode
+from proto.manager_pb2 import EvaluateTaskRequest
+from proto.task_pb2 import Dependency
+from proto.task_pb2 import GraderInfo
+from proto.task_pb2 import SUM, MIN  # ScoreMode
+from proto.task_pb2 import Subtask
+from proto.task_pb2 import Task
+from proto.task_pb2 import TestCase
 
-from python.curses_ui import CursesUI
-from python.dispatcher import Dispatcher
-from python.evaluation import Evaluation
-from python.generation import Generation
-from python.language import Language
-from python.print_ui import PrintUI
-from python.silent_ui import SilentUI
-from python.task import Input
-from python.task import ScoreMode
-from python.task import Subtask
-from python.task import Task
-from python.task import Testcase
-from python.ui import UI
+from python.dependency_finder import find_dependency
+from python.language import grader_from_file, valid_extensions
+from python.sanitize import sanitize_command
+from python.source_file import from_file
 
-UIS = {"print": PrintUI, "curses": CursesUI, "silent": SilentUI}
+# TODO: move this dict into task_maker.py (or somewhere else)
 CACHES = {
-    "all": (Execution.CachingMode.ALWAYS, Execution.CachingMode.SAME_EXECUTOR),
-    "generation": (Execution.CachingMode.ALWAYS, Execution.CachingMode.NEVER),
-    "nothing": (Execution.CachingMode.NEVER, Execution.CachingMode.NEVER)
+    "all": ALL,
+    "generation": GENERATION,
+    "nothing": NOTHING
 }
 
 
@@ -39,7 +38,7 @@ def list_files(patterns: List[str],
     return [
         res for res in files
         if res not in exclude
-        and os.path.splitext(res)[1] in Language.valid_extensions()
+        and os.path.splitext(res)[1] in valid_extensions()
     ]
 
 
@@ -50,13 +49,17 @@ def load_testcases() -> Tuple[Optional[str], List[Subtask]]:
     ]
     if not nums:
         raise RuntimeError("No generator and no input files found!")
-    testcases = [
-        Testcase(
-            input_file=Input(path=os.path.join("input", "input%d.txt" % num)),
-            output=os.path.join("output", "output%d.txt" % num))
-        for num in sorted(nums)
-    ]
-    return None, [Subtask(100, ScoreMode.SUM, testcases)]
+
+    subtask = Subtask()
+    subtask.score_mode = SUM
+    subtask.max_score = 100
+
+    for num in sorted(nums):
+        testcase = TestCase()
+        testcase.input_file = os.path.join("input", "input%d.txt" % num)
+        testcase.output_file = os.path.join("output", "output%d.txt" % num)
+        subtask.testcases.extend([testcase])
+    return None, subtask
 
 
 def gen_testcases() -> Tuple[Optional[str], List[Subtask]]:
@@ -65,9 +68,13 @@ def gen_testcases() -> Tuple[Optional[str], List[Subtask]]:
     subtasks = []  # type: List[Subtask]
     official_solution = None  # type: Optional[str]
 
-    def create_subtask(testcases: List[Testcase], score: float) -> None:
+    def create_subtask(testcases: List[TestCase], score: float) -> None:
         if testcases:
-            subtasks.append(Subtask(score, ScoreMode.MIN, testcases))
+            subtask = Subtask()
+            subtask.score_mode = MIN
+            subtask.max_score = score
+            subtask.testcases.extend(testcases)
+            subtasks.append(subtask)
 
     for _generator in list_files(["gen/generator.*", "gen/generatore.*"]):
         generator = _generator
@@ -82,29 +89,33 @@ def gen_testcases() -> Tuple[Optional[str], List[Subtask]]:
     if official_solution is None:
         raise RuntimeError("No official solution found")
 
-    current_testcases = []  # type: List[Testcase]
+    current_testcases = []  # type: List[TestCase]
     current_score = 0.0
     for line in open("gen/GEN"):
+        testcase = TestCase()
         if line.startswith("#ST: "):
             create_subtask(current_testcases, current_score)
             current_testcases = []
             current_score = float(line.strip()[5:])
             continue
         elif line.startswith("#COPY: "):
-            input_file = line[7:].strip()
-            testcase_input = Input(path=input_file)
+            testcase.input_file = line[7:].strip()
         else:
             line = line.split("#")[0].strip()
             if not line:
                 continue
-            testcase_input = Input(
-                generator=generator, validator=validator, args=line.split())
-        current_testcases.append(Testcase(testcase_input))
+            args = line.split()
+            arg_deps = sanitize_command(args)
+            testcase.generator.CopyFrom(from_file(generator))
+            testcase.generator.deps.extend(arg_deps)
+            testcase.args.extend(args)
+            testcase.validator.CopyFrom(from_file(validator))
+        current_testcases.append(testcase)
 
     create_subtask(current_testcases, current_score)
     # Hack for when subtasks are not specified.
     if len(subtasks) == 1 and subtasks[0].max_score == 0:
-        subtasks[0].score_mode = ScoreMode.SUM
+        subtasks[0].score_mode = SUM
         subtasks[0].max_score = 100
     return official_solution, subtasks
 
@@ -137,101 +148,78 @@ def get_options(data: Dict[str, Any],
     return default
 
 
-def create_task(ui: UI, data: Dict[str, Any]) -> Task:
+def create_task_from_yaml(data: Dict[str, Any]) -> Task:
     name = get_options(data, ["name", "nome_breve"])
     title = get_options(data, ["title", "nome"])
     if name is None:
-        ui.fatal_error("The name is not set in the yaml")
+        raise ValueError("The name is not set in the yaml")
     if title is None:
-        ui.fatal_error("The title is not set in the yaml")
-    ui.set_task_name("%s (%s)" % (title, name))
+        raise ValueError("The title is not set in the yaml")
 
     time_limit = get_options(data, ["time_limit", "timeout"])
     memory_limit = get_options(data, ["memory_limit", "memlimit"]) * 1024
     input_file = get_options(data, ["infile"], "input.txt")
     output_file = get_options(data, ["outfile"], "output.txt")
 
-    task = Task(ui, time_limit, memory_limit)
-    if input_file:
-        task.set_input_file(input_file)
-    if output_file:
-        task.set_output_file(output_file)
+    task = Task()
+    task.name = name
+    task.title = title
+    task.time_limit = time_limit
+    task.memory_limit_kb = memory_limit
+    task.input_file = input_file if input_file else ""
+    task.output_file = output_file if output_file else ""
     return task
 
 
-def run_for_cwd(args: argparse.Namespace) -> None:
-    if args.clean:
-        Task.do_clean(args.task_dir, args.temp_dir, args.store_dir)
-        print("Task directory clean")
-        return
-
-    official_solution = None  # type: Optional[str]
-    solutions = []  # type: List[str]
-    graders = []  # type: List[str]
-    checker = None  # type: Optional[str]
-    subtasks = []  # type: List[Subtask]
-    ui = UI()
+def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
     data = parse_task_yaml()
 
-    if args.ui in UIS:
-        ui = UIS[args.ui]()
+    task = create_task_from_yaml(data)
+
+    graders = list_files(["sol/grader.*"])
+    if args.solutions:
+        solutions = [
+            sol if sol.startswith("sol/") else "sol/" + sol
+            for sol in args.solutions
+        ]
     else:
-        raise RuntimeError("Invalid UI %s" % args.ui)
+        solutions = list_files(
+            ["sol/*"], exclude=graders + ["sol/__init__.py"])
 
-    try:
-        task = create_task(ui, data)
-
-        graders = list_files(["sol/grader.*"])
-        if args.solutions:
-            solutions = [
-                sol if sol.startswith("sol/") else "sol/" + sol
-                for sol in args.solutions
-            ]
-        else:
-            solutions = list_files(
-                ["sol/*"], exclude=graders + ["sol/__init__.py"])
-        checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])
-        if checkers:
-            checker = checkers[0]
-
-        official_solution, subtasks = gen_testcases()
-        if official_solution:
-            task.add_solution(official_solution)
-
-        if checker is not None:
-            task.add_checker(checker)
-        for grader in graders:
-            task.add_grader(grader)
-        for subtask in subtasks:
-            task.add_subtask(subtask)
-
-        cache_mode, eval_cache_mode = CACHES[args.cache]
-        eval_executor = args.evaluate_on
-
-        dispatcher = Dispatcher(ui)
-        if args.num_cores:
-            dispatcher.core.set_num_cores(args.num_cores)
-        if args.temp_dir:
-            dispatcher.core.set_temp_directory(args.temp_dir)
-        if args.store_dir:
-            dispatcher.core.set_store_directory(args.store_dir)
-
-        Generation(dispatcher, ui, task, cache_mode)
-        for solution in solutions:
-            Evaluation(dispatcher, ui, task, solution, args.exclusive,
-                       eval_cache_mode, eval_executor)
-        if not dispatcher.run():
-            raise RuntimeError("Error running task")
-        else:
-            ui.print_final_status()
-    except RuntimeError as exc:
-        msg = str(exc)
-        if msg.startswith("KeyboardInterrupt"):
-            ui.fatal_error("Ctrl-C pressed")
-        else:
-            raise
-
-    if args.dry_run:
-        print("Dry run mode, the task directory has not been touched")
+    checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])
+    if not checkers:
+        checker = None
+    elif len(checkers) == 1:
+        checker = checkers[0]
     else:
-        task.store_results(os.getcwd())
+        raise ValueError("Too many checkers in cor/ folder")
+
+    official_solution, subtasks = gen_testcases()
+    if official_solution:
+        task.official_solution.CopyFrom(from_file(official_solution))
+
+    if checker is not None:
+        task.checker = from_file(checker)
+    for grader in graders:
+        info = GraderInfo()
+        info.for_language = grader_from_file(grader)
+        info.files.extend([Dependency(name=grader, path=grader)] +
+                          find_dependency(grader))
+        task.grader_info.append(info)
+    task.subtasks.extend(subtasks)
+
+    request = EvaluateTaskRequest()
+    request.task.CopyFrom(task)
+    request.solutions.extend(from_file(solution) for solution in solutions)
+    request.store_dir = args.store_dir
+    request.temp_dir = args.temp_dir
+    # TODO change to list of (num, path)
+    request.write_inputs_to = "input/input${num}.txt"
+    request.write_outputs_to = "output/output${num}.txt"
+    request.write_checker_to = "cor/checker"
+    request.cache_mode = CACHES[args.cache]
+    request.num_cores = args.num_cores
+    request.dry_run = args.dry_run
+    if args.evaluate_on:
+        request.evaluate_on = args.evaluate_on
+    return request
