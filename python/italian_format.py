@@ -7,7 +7,6 @@ from typing import Dict, List, Any, Tuple
 from typing import Optional
 
 import yaml
-from proto.manager_pb2 import ALL, GENERATION, NOTHING  # CacheMode
 from proto.manager_pb2 import EvaluateTaskRequest
 from proto.task_pb2 import Dependency
 from proto.task_pb2 import GraderInfo
@@ -20,13 +19,6 @@ from python.dependency_finder import find_dependency
 from python.language import grader_from_file, valid_extensions
 from python.sanitize import sanitize_command
 from python.source_file import from_file
-
-# TODO: move this dict into task_maker.py (or somewhere else)
-CACHES = {
-    "all": ALL,
-    "generation": GENERATION,
-    "nothing": NOTHING
-}
 
 
 def list_files(patterns: List[str],
@@ -207,18 +199,20 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
                           find_dependency(grader))
         task.grader_info.append(info)
     task.subtasks.extend(subtasks)
+    num_testcases = sum(len(subtask.testcases) for subtask in subtasks)
 
     request = EvaluateTaskRequest()
     request.task.CopyFrom(task)
     request.solutions.extend(from_file(solution) for solution in solutions)
     request.store_dir = args.store_dir
     request.temp_dir = args.temp_dir
-    # TODO change to list of (num, path)
-    request.write_inputs_to = "input/input${num}.txt"
-    request.write_outputs_to = "output/output${num}.txt"
+    for testcase in range(num_testcases):
+        request.write_inputs_to[testcase] = "input/input%d.txt" % testcase
+        request.write_outputs_to[testcase] = "output/output%d.txt" % testcase
     request.write_checker_to = "cor/checker"
-    request.cache_mode = CACHES[args.cache]
-    request.num_cores = args.num_cores
+    request.cache_mode = args.cache
+    if request.num_cores:
+        request.num_cores = args.num_cores
     request.dry_run = args.dry_run
     if args.evaluate_on:
         request.evaluate_on = args.evaluate_on

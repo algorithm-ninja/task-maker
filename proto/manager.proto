@@ -16,8 +16,8 @@ message EvaluateTaskRequest {
   repeated SourceFile solutions = 2;
   string store_dir = 3;
   string temp_dir = 4;
-  string write_inputs_to = 5;
-  string write_outputs_to = 6;
+  map<int64,string> write_inputs_to = 5;
+  map<int64,string> write_outputs_to = 6;
   string write_checker_to = 7;
   CacheMode cache_mode = 8;
   int32 num_cores = 9;

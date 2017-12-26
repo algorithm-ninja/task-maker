@@ -3,8 +3,10 @@
 import argparse
 import os
 
+from proto.manager_pb2 import ALL, GENERATION, NOTHING  # CacheMode
+
 from python.curses_ui import CursesUI
-from python.italian_format import get_request, CACHES
+from python.italian_format import get_request
 from python.print_ui import PrintUI
 from python.silent_ui import SilentUI
 
@@ -12,6 +14,12 @@ UIS = {
     "curses": CursesUI,
     "print": PrintUI,
     "silent": SilentUI
+}
+
+CACHES = {
+    "all": ALL,
+    "generation": GENERATION,
+    "nothing": NOTHING
 }
 
 
@@ -23,6 +31,13 @@ def _validate_num_cores(num: str) -> int:
         return int(num)
     except ValueError:
         raise argparse.ArgumentTypeError(error_message)
+
+
+def _validate_cache_mode(mode: str) -> int:
+    try:
+        return CACHES[mode]
+    except ValueError:
+        raise argparse.ArgumentTypeError("Not valid cache mode %s" % mode)
 
 
 def main() -> None:
@@ -48,6 +63,7 @@ def main() -> None:
         help="Cache policy to use",
         action="store",
         choices=CACHES.keys(),
+        type=_validate_cache_mode,
         default="all")
     parser.add_argument(
         "--evaluate-on",
