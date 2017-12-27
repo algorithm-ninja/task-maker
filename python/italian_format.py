@@ -195,9 +195,10 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
     for grader in graders:
         info = GraderInfo()
         info.for_language = grader_from_file(grader)
-        info.files.extend([Dependency(name=grader, path=grader)] +
+        name = os.path.basename(grader)
+        info.files.extend([Dependency(name=name, path=grader)] +
                           find_dependency(grader))
-        task.grader_info.append(info)
+        task.grader_info.extend([info])
     task.subtasks.extend(subtasks)
     num_testcases = sum(len(subtask.testcases) for subtask in subtasks)
 

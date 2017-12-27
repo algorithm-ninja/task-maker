@@ -11,10 +11,16 @@ py_library(
 )
 
 py_library(
+    name = "detect_exe",
+    srcs = ["detect_exe.py"],
+)
+
+py_library(
     name = "source_file",
     srcs = ["source_file.py"],
     deps = [
         ":dependency_finder",
+        ":detect_exe",
         ":language",
         "//proto:task_py",
     ],

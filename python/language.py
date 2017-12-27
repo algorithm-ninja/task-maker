@@ -30,3 +30,7 @@ def from_file(path: str) -> int:
 
 def grader_from_file(path: str) -> int:
     return from_file(path)
+
+
+def need_compilation(language: int) -> bool:
+    return language in [CPP, C, PASCAL]
