@@ -4,6 +4,7 @@
 #include <vector>
 #include "core/core.hpp"
 #include "core/execution.hpp"
+#include "core/task_status.hpp"
 #include "manager/event_queue.hpp"
 #include "proto/task.pb.h"
 

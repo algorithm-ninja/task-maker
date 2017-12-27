@@ -50,6 +50,27 @@ CompiledSourceFile::CompiledSourceFile(
   compilation_ = core->AddExecution(
       "Compilation of " + source.path(), compiler, args);
 
+  compilation_->SetCallback([queue](const core::TaskStatus& status) -> bool {
+    if (status.type == core::TaskStatus::FILE_LOAD)
+      return true;
+
+    if (status.event == core::TaskStatus::START) {
+      queue->CompilationRunning(source.path());
+      return true;
+    }
+    if (status.event == core::TaskStatus::SUCCESS) {
+      queue->CompilationDone(source.path(), status.message + "\n"
+        + status.execution_info->Stderr()->Contents(1024*1024));
+      return true;
+    }
+    if (status.event == core::TaskStatus::FAILURE) {
+      queue->CompilationFailure(source.path(), status.message + "\n"
+          + status.execution_info->Stderr()->Contents(1024*1024));
+      return !fatal_failures_;
+    }
+    return true;
+  });
+
   for (auto dep : source.deps())
     compilation_->Input(dep.name(), core->LoadFile(dep.name(), dep.path()));
   for (auto dep : grader.files())
