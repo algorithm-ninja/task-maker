@@ -20,6 +20,7 @@ cc_library(
         "//core",
         "//core:execution",
         "//proto:task_cc",
+        "@com_google_absl//absl/types:optional",
     ],
 )
 
