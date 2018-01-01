@@ -42,6 +42,7 @@ message TestCase {
 message Subtask {
   ScoreMode score_mode = 1;
   float max_score = 2;
+  // TODO this should be a map
   repeated TestCase testcases = 3;
 }
 
@@ -53,6 +54,7 @@ message GraderInfo {
 message Task {
   string name = 1;
   string title = 2;
+  // TODO this should be a map
   repeated Subtask subtasks = 3;
   SourceFile official_solution = 4;
   repeated GraderInfo grader_info = 5;

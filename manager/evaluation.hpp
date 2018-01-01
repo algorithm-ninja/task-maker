@@ -12,11 +12,33 @@ namespace manager {
 
 class Evaluation {
  public:
-  Evaluation(EventQueue* queue, core::Core* core, const Generation& generation,
+  Evaluation(EventQueue* queue, core::Core* core, Generation* generation,
              const proto::Task& task, bool exclusive,
              proto::CacheMode cache_mode, const std::string& executor);
 
   void Evaluate(SourceFile* solution);
+
+ private:
+  struct EvaluationStatus {
+    std::map<int64_t, float> subtask_scores;
+    std::map<int64_t, float> testcase_scores;
+    float task_score;
+  };
+
+  EventQueue* queue_;
+  core::Core* core_;
+  Generation* generation_;
+  proto::Task task_;
+  bool exclusive_;
+  proto::CacheMode cache_mode_;
+  std::string executor_;
+  std::map<std::string, EvaluationStatus> status_;
+  std::map<int64_t, std::vector<int64_t>> testcases_of_subtask;
+
+  void evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
+                          SourceFile* solution);
+  void update_score_(const std::string& name, int64_t subtask_num,
+                     int64_t testcase_num, float score);
 };
 
 }  // namespace manager

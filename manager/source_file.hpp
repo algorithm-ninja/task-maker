@@ -21,6 +21,8 @@ class SourceFile {
                                    const std::vector<std::string>& args) = 0;
   virtual void WriteTo(const std::string& path, bool overwrite,
                        bool exist_ok) = 0;
+  const std::string& Name() { return name_; }
+
   virtual ~SourceFile() = default;
   SourceFile(const SourceFile&) = delete;
   SourceFile(SourceFile&&) = delete;
@@ -28,18 +30,23 @@ class SourceFile {
   SourceFile& operator=(SourceFile&&) = delete;
 
  protected:
-  SourceFile(core::Core* core, EventQueue* queue, bool fatal_failures)
-      : core_(core), queue_(queue), fatal_failures_(fatal_failures){};
+  SourceFile(core::Core* core, EventQueue* queue, std::string name,
+             bool fatal_failures)
+      : core_(core),
+        queue_(queue),
+        name_(std::move(name)),
+        fatal_failures_(fatal_failures){};
 
   core::Core* core_;
   EventQueue* queue_;
+  std::string name_;
   bool fatal_failures_;
 };
 
 class CompiledSourceFile : public SourceFile {
  public:
   CompiledSourceFile(EventQueue* queue, core::Core* core,
-                     const proto::SourceFile& source,
+                     const proto::SourceFile& source, const std::string& name,
                      const absl::optional<proto::GraderInfo>& grader,
                      bool fatal_failures = false);
 
@@ -60,7 +67,7 @@ class NotCompiledSourceFile : public SourceFile {
  public:
   NotCompiledSourceFile(EventQueue* queue, core::Core* core,
                         const proto::SourceFile& source,
-                        bool fatal_failures = false);
+                        const std::string& name, bool fatal_failures = false);
 
   core::Execution* execute(const std::string& description,
                            const std::vector<std::string>& args) override;

@@ -6,22 +6,27 @@ namespace manager {
 std::unique_ptr<SourceFile> SourceFile::FromProto(
     EventQueue* queue, core::Core* core, const proto::SourceFile& source,
     const absl::optional<proto::GraderInfo>& grader, bool fatal_failures) {
+  // the name of the source file is mainly used in the evaluation process, it
+  // will be sent to the queue. Maybe we want to send the absolute path?
+  std::string name =
+      source.path().substr(source.path().find_last_of("/\\") + 1);
   switch (source.language()) {
     case proto::CPP:
     case proto::C:
     case proto::PASCAL:
-      return absl::make_unique<CompiledSourceFile>(queue, core, source, grader,
-                                                   fatal_failures);
+      return absl::make_unique<CompiledSourceFile>(
+          queue, core, source, std::move(name), grader, fatal_failures);
     default:
-      return absl::make_unique<NotCompiledSourceFile>(queue, core, source,
-                                                      fatal_failures);
+      return absl::make_unique<NotCompiledSourceFile>(
+          queue, core, source, std::move(name), fatal_failures);
   }
 }
 
 CompiledSourceFile::CompiledSourceFile(
     EventQueue* queue, core::Core* core, const proto::SourceFile& source,
-    const absl::optional<proto::GraderInfo>& grader, bool fatal_failures)
-    : SourceFile(core, queue, fatal_failures) {
+    const std::string& name, const absl::optional<proto::GraderInfo>& grader,
+    bool fatal_failures)
+    : SourceFile(core, queue, name, fatal_failures) {
   std::string compiler;
   std::vector<std::string> args;
 
@@ -95,8 +100,9 @@ core::Execution* CompiledSourceFile::execute(
 NotCompiledSourceFile::NotCompiledSourceFile(EventQueue* queue,
                                              core::Core* core,
                                              const proto::SourceFile& source,
+                                             const std::string& name,
                                              bool fatal_failures)
-    : SourceFile(core, queue, fatal_failures) {
+    : SourceFile(core, queue, name, fatal_failures) {
   core_ = core;
   queue_ = queue;
   for (auto dep : source.deps())
