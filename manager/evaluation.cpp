@@ -3,16 +3,15 @@
 namespace manager {
 
 Evaluation::Evaluation(EventQueue* queue, core::Core* core,
-                       Generation* generation, const proto::Task& task,
+                       const Generation& generation, const proto::Task& task,
                        bool exclusive, proto::CacheMode cache_mode,
-                       const std::string& executor) {
+                       const std::string& executor)
+    : generation_(generation) {
   queue_ = queue;
   core_ = core;
   task_ = task;
-  generation_ = generation;
   exclusive_ = exclusive;
   cache_mode_ = cache_mode;
-  exclusive_ = exclusive;
 
   int64_t subtask_num = 0;
   int64_t testcase_num = 0;
@@ -62,9 +61,9 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
   if (!executor_.empty()) execution->SetExecutor(executor_);
   // setup solution i/o
   if (task_.input_file().empty())
-    execution->Stdin(generation_->GetInput(testcase_num));
+    execution->Stdin(generation_.GetInput(testcase_num));
   else
-    execution->Input(task_.input_file(), generation_->GetInput(testcase_num));
+    execution->Input(task_.input_file(), generation_.GetInput(testcase_num));
   core::FileID* output;
   if (task_.output_file().empty())
     output = execution->Stdout();
@@ -93,10 +92,10 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
 
   core::Execution* checker;
   if (task_.has_checker()) {
-    checker = generation_->GetChecker()->execute(
+    checker = generation_.GetChecker()->execute(
         "Checking solution " + name + " for testcase " + s_testcase_num,
         {"input", "output", "contestant_output"});
-    checker->Input("input", generation_->GetInput(testcase_num));
+    checker->Input("input", generation_.GetInput(testcase_num));
   } else {
     // TODO(veluca): replace this with our own utility?
     checker = core_->AddExecution(
@@ -104,7 +103,7 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
         // TODO getting the real path of diff is hard (which command)
         "/usr/bin/diff", {"-w", "output", "contestant_output"});
   }
-  checker->Input("output", generation_->GetOutput(testcase_num));
+  checker->Input("output", generation_.GetOutput(testcase_num));
   checker->Input("contestant_output", output);
   checker->CpuLimit(10 * task_.time_limit());
   checker->MemoryLimit(10 * task_.memory_limit_kb());

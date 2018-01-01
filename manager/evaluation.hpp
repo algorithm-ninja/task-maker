@@ -12,7 +12,7 @@ namespace manager {
 
 class Evaluation {
  public:
-  Evaluation(EventQueue* queue, core::Core* core, Generation* generation,
+  Evaluation(EventQueue* queue, core::Core* core, const Generation& generation,
              const proto::Task& task, bool exclusive,
              proto::CacheMode cache_mode, const std::string& executor);
 
@@ -27,7 +27,7 @@ class Evaluation {
 
   EventQueue* queue_;
   core::Core* core_;
-  Generation* generation_;
+  const Generation& generation_;
   proto::Task task_;
   bool exclusive_;
   proto::CacheMode cache_mode_;
