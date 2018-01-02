@@ -55,6 +55,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--ui",
         help="UI to use (%s)" % ("|".join(UIS.keys())),
+        choices=UIS.keys(),
         action="store",
         default="curses")
     parser.add_argument(

@@ -61,6 +61,7 @@ message Evaluation {
   // WAITING, EXECUTING, EXECUTED, CHECKING, DONE, FAILURE
   EventStatus status = 3;
   EvaluationResult result = 4;
+  // TODO missing error field
 }
 
 message Event {

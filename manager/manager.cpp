@@ -50,24 +50,32 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
       info.evaluation->Evaluate(info.source_files[source.path()].get());
     }
 
-    // TODO maybe we want a queue and run a core at a time?
+    // TODO maybe we want a queue and run a core at a time? Yes we do
     proto::EvaluateTaskRequest req;
     req.CopyFrom(*request);
     info.running_thread = std::thread([this, req, current_id] {
       auto& info = running_[current_id];
       LOG(INFO) << "Starting new core for request " << current_id;
-      if (info.core->Run()) {
-        LOG(INFO) << "The core for request " << current_id << " has succeeded";
-        info.queue->Stop();
-        if (req.dry_run()) return;
-        if (req.task().has_checker() && !req.write_checker_to().empty())
-          info.generation->WriteChecker(req);
-        info.generation->WriteInputs(req);
-        info.generation->WriteOutputs(req);
-      } else {
-        // TODO manage the core failure
-        info.queue->FatalError("The core failed!");
-        LOG(WARNING) << "The core for request " << current_id << " has failed";
+      try {
+        if (info.core->Run()) {
+          LOG(INFO) << "The core for request " << current_id
+                    << " has succeeded";
+          info.queue->Stop();
+          if (req.dry_run()) return;
+          if (req.task().has_checker() && !req.write_checker_to().empty())
+            info.generation->WriteChecker(req);
+          info.generation->WriteInputs(req);
+          info.generation->WriteOutputs(req);
+        } else {
+          // TODO manage the core failure
+          info.queue->FatalError("The core failed!");
+          LOG(WARNING) << "The core for request " << current_id
+                       << " has failed";
+        }
+      } catch (const std::exception& ex) {
+        LOG(WARNING) << "The core for request " << current_id
+                     << " has failed with an excetpion: " << ex.what();
+        info.queue->FatalError(std::string("The core failed! ") + ex.what());
       }
     });
 

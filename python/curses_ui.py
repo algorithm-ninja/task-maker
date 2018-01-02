@@ -6,11 +6,10 @@ import threading
 from typing import List
 from typing import Optional
 
+from proto.event_pb2 import EventStatus, EvaluationResult, WAITING, RUNNING, \
+    FAILURE, GENERATING, GENERATED, VALIDATING, VALIDATED, SOLVING, DONE
+
 from python.silent_ui import SilentUI, SolutionStatus
-from python.ui import CompilationStatus
-from python.ui import EvaluationResult
-from python.ui import EvaluationStatus
-from python.ui import GenerationStatus
 
 
 class Printer:
@@ -109,34 +108,35 @@ class CursesPrinter(Printer):
 
 
 class CursesUI(SilentUI):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, solutions: List[str]) -> None:
+        super().__init__(solutions)
         self._done = False
         self._failure = None  # type: Optional[str]
         self._max_sol_len = 13
-        self._ui_thread = threading.Thread(
-            target=curses.wrapper, args=(self._ui, ))
+        self._ui_thread = threading.Thread(target=curses.wrapper,
+                                           args=(self._ui,))
         self._ui_thread.start()
 
     def set_compilation_status(self,
                                file_name: str,
-                               is_solution: bool,
-                               status: CompilationStatus,
+                               status: EventStatus,
                                warnings: Optional[str] = None) -> None:
-        super().set_compilation_status(file_name, is_solution, status, warnings)
+        super().set_compilation_status(file_name, status, warnings)
         self._max_sol_len = max(self._max_sol_len, len(file_name))
 
     # pylint: disable=no-self-use
-    def _print_compilation_status(self, status: CompilationStatus,
+    def _print_compilation_status(self, status: EventStatus,
                                   loading: str, printer: Printer) -> None:
-        if status == CompilationStatus.WAITING:
+        if status == WAITING:
             printer.text("...")
-        elif status == CompilationStatus.RUNNING:
+        elif status == RUNNING:
             printer.bold(loading)
-        elif status == CompilationStatus.SUCCESS:
+        elif status == DONE:
             printer.green("OK")
-        elif status == CompilationStatus.FAILURE:
+        elif status == FAILURE:
             printer.red("FAILURE")
+        else:
+            printer.red(EventStatus.Name(status))
         printer.text("\n")
 
     # pylint: enable=no-self-use
@@ -153,25 +153,25 @@ class CursesUI(SilentUI):
             if subtask > 0:
                 printer.text("|")
             for testcase in self._subtask_testcases[subtask]:
-                status = self._generation_status[testcase]
-                if status == GenerationStatus.WAITING:
+                status = self._generation_status.get(testcase, -1)
+                if status == WAITING:
                     printer.text(".")
-                elif status == GenerationStatus.GENERATING:
-                    printer.text("g")
-                elif status == GenerationStatus.GENERATED:
+                elif status == GENERATING:
+                    printer.blue("g")
+                elif status == GENERATED:
                     printer.text("G")
-                elif status == GenerationStatus.VALIDATING:
-                    printer.text("v")
-                elif status == GenerationStatus.VALIDATED:
+                elif status == VALIDATING:
+                    printer.blue("v")
+                elif status == VALIDATED:
                     printer.text("V")
-                elif status == GenerationStatus.SOLVING:
-                    printer.text("s")
-                elif status == GenerationStatus.SUCCESS:
+                elif status == SOLVING:
+                    printer.blue("s")
+                elif status == DONE:
                     printer.green("S")
-                elif status == GenerationStatus.FAILURE:
+                elif status == FAILURE:
                     printer.red("F")
                 else:
-                    printer.red("?")
+                    printer.text(".")
 
     def _print_subtasks_scores(self, status: SolutionStatus, loading: str,
                                printer: Printer) -> None:
@@ -189,12 +189,12 @@ class CursesUI(SilentUI):
         for subtask in self._subtask_max_scores:
             testcases = self._subtask_testcases[subtask]
             if all(tc not in status.testcase_status
-                   or status.testcase_status[tc] == EvaluationStatus.WAITING
+                   or status.testcase_status[tc] == WAITING
                    for tc in testcases):
                 printer.text(" % 4s" % "...")
             elif subtask in status.subtask_scores:
-                if self._subtask_max_scores[subtask] == status.subtask_scores[
-                        subtask]:
+                if self._subtask_max_scores[subtask] == \
+                        status.subtask_scores[subtask]:
                     printer.bold(" % 4.f" % status.subtask_scores[subtask])
                 else:
                     printer.text(" % 4.f" % status.subtask_scores[subtask])
@@ -241,17 +241,14 @@ class CursesUI(SilentUI):
                 printer.bold("% 4.f " % max_score)
             printer.text("\n")
 
-            for sol in sorted(self._solutions):
+            for sol in sorted(self.solutions):
                 printer.text("%{}s: ".format(self._max_sol_len) % sol)
                 if sol not in self._compilation_status or \
-                                self._compilation_status[sol] == \
-                                CompilationStatus.WAITING:
+                                self._compilation_status[sol] == WAITING:
                     printer.text("....")
-                elif self._compilation_status[
-                        sol] == CompilationStatus.RUNNING:
+                elif self._compilation_status[sol] == RUNNING:
                     printer.bold("  " + loading + " ")
-                elif self._compilation_status[
-                        sol] == CompilationStatus.SUCCESS:
+                elif self._compilation_status[sol] == DONE:
                     printer.green(" OK ")
                     printer.text(
                         " % 3d/%d  " %
@@ -289,7 +286,7 @@ class CursesUI(SilentUI):
         printer.blue("Compilation\n")
         self._print_compilation(self._other_compilations, "?", printer)
         printer.text("\n")
-        self._print_compilation(self._solutions, "?", printer)
+        self._print_compilation(self.solutions, "?", printer)
         printer.text("\n")
 
         printer.blue("Solutions\n")
@@ -304,15 +301,15 @@ class CursesUI(SilentUI):
             else:
                 printer.red("[%.2f] " % tc_status.score, bold=False)
             printer.text("[")
-            if tc_status.cpu_time >= max_time * 0.9:
-                printer.bold("%5.3fs" % tc_status.cpu_time)
+            if tc_status.cpu_time_used >= max_time * 0.9:
+                printer.bold("%5.3fs" % tc_status.cpu_time_used)
             else:
-                printer.text("%5.3fs" % tc_status.cpu_time)
+                printer.text("%5.3fs" % tc_status.cpu_time_used)
             printer.text(" |")
-            if tc_status.memory >= max_mem * 0.9:
-                printer.bold("%5.1fMiB" % (tc_status.memory / 1024))
+            if tc_status.memory_used_kb >= max_mem * 0.9:
+                printer.bold("%5.1fMiB" % (tc_status.memory_used_kb / 1024))
             else:
-                printer.text("%5.1fMiB" % (tc_status.memory / 1024))
+                printer.text("%5.1fMiB" % (tc_status.memory_used_kb / 1024))
             printer.text("] %s" % tc_status.message)
             printer.right("[%s]" % sol)
 
@@ -345,9 +342,9 @@ class CursesUI(SilentUI):
                                  (num + 1, status.subtask_scores[num],
                                   self._subtask_max_scores[num]))
 
-                max_time = max(status.testcase_result[testcase].cpu_time
+                max_time = max(status.testcase_result[testcase].cpu_time_used
                                for testcase in subtask)
-                max_mem = max(status.testcase_result[testcase].memory
+                max_mem = max(status.testcase_result[testcase].memory_used_kb
                               for testcase in subtask)
                 for testcase in subtask:
                     tc_status = status.testcase_result[testcase]
@@ -361,7 +358,7 @@ class CursesUI(SilentUI):
             printer.bold("% 4.f " % max_score)
         printer.text("\n")
 
-        for sol in sorted(self._solutions):
+        for sol in sorted(self.solutions):
             printer.text("%{}s:  ".format(self._max_sol_len) % sol)
             self._print_subtasks_scores(self._solution_status[sol], "?",
                                         printer)

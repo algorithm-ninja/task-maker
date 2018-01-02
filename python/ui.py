@@ -1,50 +1,40 @@
 #!/usr/bin/env python3
 
-from enum import Enum
 from typing import List
 from typing import Optional
 
-
-class CompilationStatus(Enum):
-    WAITING = 0
-    RUNNING = 1
-    SUCCESS = 2
-    FAILURE = 3
-
-
-class GenerationStatus(Enum):
-    WAITING = 0
-    GENERATING = 1
-    GENERATED = 2
-    VALIDATING = 3
-    VALIDATED = 4
-    SOLVING = 5
-    SUCCESS = 6
-    FAILURE = 7
-
-
-class EvaluationStatus(Enum):
-    WAITING = 0
-    EXECUTING = 1
-    EXECUTED = 2
-    CHECKING = 3
-    SUCCESS = 4
-    FAILURE = 5
-
-
-class EvaluationResult:
-    def __init__(self, score: float, message: str, cpu_time: float,
-                 wall_time: float, memory: int) -> None:
-        self.score = score
-        self.message = message
-        self.cpu_time = cpu_time
-        self.wall_time = wall_time
-        self.memory = memory
+from proto.event_pb2 import Event, EventStatus, EvaluationResult
 
 
 class UI:
-    def __init__(self) -> None:
+    def __init__(self, solutions: List[str]) -> None:
         self.task_name = ""
+        self.solutions = solutions
+
+    def from_event(self, event: Event) -> None:
+        event_type = event.WhichOneof("event_oneof")
+        if event_type == "fatal_error":
+            self.fatal_error(event.fatal_error.msg)
+        elif event_type == "task_score":
+            self.set_task_score(event.task_score.solution,
+                                event.task_score.score)
+        elif event_type == "subtask_score":
+            self.set_subtask_score(event.subtask_score.subtask_id,
+                                   event.subtask_score.solution,
+                                   event.subtask_score.score)
+        elif event_type == "compilation":
+            compilation = event.compilation
+            self.set_compilation_status(compilation.filename,
+                                        compilation.status, compilation.stderr)
+        elif event_type == "generation":
+            generation = event.generation
+            self.set_generation_status(generation.testcase, generation.status,
+                                       generation.error)
+        elif event_type == "evaluation":
+            evaluation = event.evaluation
+            # TODO missing error field
+            self.set_evaluation_status(evaluation.testcase, evaluation.solution,
+                                       evaluation.status, evaluation.result)
 
     def set_task_name(self, task_name: str) -> None:
         self.task_name = task_name
@@ -61,21 +51,20 @@ class UI:
 
     def set_compilation_status(self,
                                file_name: str,
-                               is_solution: bool,
-                               status: CompilationStatus,
+                               status: EventStatus,
                                warnings: Optional[str] = None) -> None:
         raise NotImplementedError("Please subclass this class")
 
     def set_generation_status(self,
                               testcase_num: int,
-                              status: GenerationStatus,
+                              status: EventStatus,
                               stderr: Optional[str] = None) -> None:
         raise NotImplementedError("Please subclass this class")
 
     def set_evaluation_status(self,
                               testcase_num: int,
                               solution_name: str,
-                              status: EvaluationStatus,
+                              status: EventStatus,
                               result: Optional[EvaluationResult] = None,
                               error: Optional[str] = None) -> None:
         raise NotImplementedError("Please subclass this class")

@@ -13,7 +13,7 @@ void generate_input(
   if (!testcase.input_file().empty()) {
     inputs_[testcase_num] = core->LoadFile(
         "Static input " + std::to_string(testcase_num), testcase.input_file());
-    // TODO(edomora97) do I have to interact with the queue? how?
+    queue->GenerationDone(testcase_num);
   } else if (testcase.has_generator() && testcase.has_validator()) {
     const std::string& generator = testcase.generator().path();
     const std::string& validator = testcase.validator().path();

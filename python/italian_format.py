@@ -191,7 +191,7 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
         task.official_solution.CopyFrom(from_file(official_solution))
 
     if checker is not None:
-        task.checker = from_file(checker)
+        task.checker.CopyFrom(from_file(checker))
     for grader in graders:
         info = GraderInfo()
         info.for_language = grader_from_file(grader)

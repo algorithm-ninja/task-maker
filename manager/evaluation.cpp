@@ -28,12 +28,10 @@ void Evaluation::Evaluate(SourceFile* solution) {
   int64_t subtask_num = 0;
   int64_t testcase_num = 0;
   std::string name = solution->Name();
-  status_[name].task_score = 0.0;
+  status_[name].task_score = -1;  // assuming you cannot make negative points
 
   for (auto subtask : task_.subtasks()) {
-    status_[name].subtask_scores[subtask_num] = 0.0;
     for (auto testcase : subtask.testcases()) {
-      status_[name].testcase_scores[testcase_num] = 0.0;
       evaluate_testcase_(subtask_num, testcase_num, solution);
       testcase_num++;
     }
@@ -197,10 +195,15 @@ void Evaluation::update_score_(const std::string& name, int64_t subtask_num,
                               std::to_string(subtask_num));
   }
   for (int64_t testcase : testcases_of_subtask[subtask_num])
-    st_score = acc(st_score, status.testcase_scores[testcase]);
-  if (st_score != status.subtask_scores[subtask_num])
+    if (status.testcase_scores.count(testcase) > 0)
+      st_score = acc(st_score, status.testcase_scores[testcase]);
+  st_score *= task_.subtasks(subtask_num).max_score();
+
+  if (status.subtask_scores.count(subtask_num) == 0 ||
+      st_score != status.subtask_scores[subtask_num])
     queue_->SubtaskTaskScore(name, st_score, subtask_num);
   status.subtask_scores[subtask_num] = st_score;
+
   float task_score = 0;
   for (auto subtask : status.subtask_scores) task_score += subtask.second;
   if (task_score != status.task_score) queue_->TaskScore(name, task_score);

@@ -79,19 +79,19 @@ def test_solution_files() -> None:
     assert "generatore.cpp" in test_data._other_compilations
     assert "valida.py" in test_data._other_compilations
 
-    assert len(test_data._solutions) == 12
-    assert "bash.sh" in test_data._solutions
-    assert "bash_no_shebang.sh" in test_data._solutions
-    assert "float_error.cpp" in test_data._solutions
-    assert "mle.cpp" in test_data._solutions
-    assert "no_shebang.py" in test_data._solutions
-    assert "nonzero.cpp" in test_data._solutions
-    assert "not_compile.cpp" in test_data._solutions
-    assert "sigsegv.cpp" in test_data._solutions
-    assert "soluzione.py" in test_data._solutions
-    assert "tle.cpp" in test_data._solutions
-    assert "wa.cpp" in test_data._solutions
-    assert "wrong_file.cpp" in test_data._solutions
+    assert len(test_data.solutions) == 12
+    assert "bash.sh" in test_data.solutions
+    assert "bash_no_shebang.sh" in test_data.solutions
+    assert "float_error.cpp" in test_data.solutions
+    assert "mle.cpp" in test_data.solutions
+    assert "no_shebang.py" in test_data.solutions
+    assert "nonzero.cpp" in test_data.solutions
+    assert "not_compile.cpp" in test_data.solutions
+    assert "sigsegv.cpp" in test_data.solutions
+    assert "soluzione.py" in test_data.solutions
+    assert "tle.cpp" in test_data.solutions
+    assert "wa.cpp" in test_data.solutions
+    assert "wrong_file.cpp" in test_data.solutions
 
 
 def test_compilation_status() -> None:

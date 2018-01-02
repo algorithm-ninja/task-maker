@@ -7,7 +7,7 @@ from proto import manager_pb2_grpc
 from proto.manager_pb2 import GetEventsRequest
 
 from python.absolutize import absolutize_request
-from python.args import get_parser
+from python.args import get_parser, UIS
 from python.italian_format import get_request
 
 
@@ -27,9 +27,21 @@ def main() -> None:
     request = get_request(args)
     absolutize_request(request)
 
+    ui = UIS[args.ui]([os.path.basename(sol.path) for sol in request.solutions])
+    ui.set_task_name(os.path.basename(args.task_dir))
+    ui.set_time_limit(request.task.time_limit)
+    ui.set_memory_limit(request.task.memory_limit_kb)
+
+    last_testcase = 0
+    for subtask_num, subtask in enumerate(request.task.subtasks):
+        testcases = range(last_testcase, last_testcase + len(subtask.testcases))
+        last_testcase += len(subtask.testcases)
+        ui.set_subtask_info(subtask_num, subtask.max_score, testcases)
+
     response = manager.EvaluateTask(request)
     for event in manager.GetEvents(GetEventsRequest(evaluation_id=response.id)):
-        print("event:", event)
+        ui.from_event(event)
+    ui.print_final_status()
 
 
 if __name__ == '__main__':

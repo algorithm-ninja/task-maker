@@ -3,31 +3,31 @@ import os.path
 from typing import List, Optional
 from typing import Dict  # pylint: disable=unused-import
 
-from python.ui import UI, CompilationStatus, GenerationStatus, \
-    EvaluationStatus, EvaluationResult
+from proto.event_pb2 import EvaluationResult, EventStatus
+
+from python.ui import UI
 
 
 class SolutionStatus:
     def __init__(self) -> None:
         self.testcase_errors = dict()  # type: Dict[int, str]
         self.testcase_result = dict()  # type: Dict[int, EvaluationResult]
-        self.testcase_status = dict()  # type: Dict[int, EvaluationStatus]
+        self.testcase_status = dict()  # type: Dict[int, EventStatus]
         self.subtask_scores = dict()  # type: Dict[int, float]
         self.score = None  # type: Optional[float]
         self.compiled = False
 
 
 class SilentUI(UI):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, solutions: List[str]) -> None:
+        super().__init__(solutions)
         self._num_testcases = 0
         self._subtask_max_scores = dict()  # type: Dict[int, float]
         self._subtask_testcases = dict()  # type: Dict[int, List[int]]
-        self._solutions = []  # type: List[str]
         self._other_compilations = []  # type: List[str]
-        self._compilation_status = dict()  # type: Dict[str, CompilationStatus]
+        self._compilation_status = dict()  # type: Dict[str, EventStatus]
         self._compilation_errors = dict()  # type: Dict[str, str]
-        self._generation_status = dict()  # type: Dict[int, GenerationStatus]
+        self._generation_status = dict()  # type: Dict[int, EventStatus]
         self._generation_errors = dict()  # type: Dict[int, str]
         self._time_limit = 0.0
         self._memory_limit = 0.0
@@ -47,12 +47,10 @@ class SilentUI(UI):
 
     def set_compilation_status(self,
                                file_name: str,
-                               is_solution: bool,
-                               status: CompilationStatus,
+                               status: EventStatus,
                                warnings: Optional[str] = None) -> None:
+        is_solution = file_name in self.solutions
         if is_solution:
-            if file_name not in self._solutions:
-                self._solutions.append(file_name)
             if file_name not in self._solution_status:
                 self._solution_status[file_name] = SolutionStatus()
         else:
@@ -64,16 +62,16 @@ class SilentUI(UI):
 
     def set_generation_status(self,
                               testcase_num: int,
-                              status: GenerationStatus,
+                              status: EventStatus,
                               stderr: Optional[str] = None) -> None:
         self._generation_status[testcase_num] = status
-        if stderr is not None:
+        if stderr:
             self._generation_errors[testcase_num] = stderr
 
     def set_evaluation_status(self,
                               testcase_num: int,
                               solution_name: str,
-                              status: EvaluationStatus,
+                              status: EventStatus,
                               result: Optional[EvaluationResult] = None,
                               error: Optional[str] = None) -> None:
         solution_name = os.path.basename(solution_name)
@@ -91,8 +89,7 @@ class SilentUI(UI):
         solution_name = os.path.basename(solution_name)
         if solution_name not in self._solution_status:
             raise RuntimeError("Something weird happened")
-        self._solution_status[solution_name].subtask_scores[
-            subtask_num] = score
+        self._solution_status[solution_name].subtask_scores[subtask_num] = score
 
     def set_task_score(self, solution_name: str, score: float) -> None:
         solution_name = os.path.basename(solution_name)

@@ -60,7 +60,7 @@ CompiledSourceFile::CompiledSourceFile(
       [this, queue, source](const core::TaskStatus& status) -> bool {
         if (status.event == core::TaskStatus::FAILURE) {
           queue->CompilationFailure(
-              source.path(),
+              name_,
               status.message + "\n" +
                   status.execution_info->Stderr()->Contents(1024 * 1024));
           return !fatal_failures_;
@@ -68,12 +68,11 @@ CompiledSourceFile::CompiledSourceFile(
         if (status.type == core::TaskStatus::FILE_LOAD) return true;
 
         if (status.event == core::TaskStatus::START)
-          queue->CompilationRunning(source.path());
+          queue->CompilationRunning(name_);
         if (status.event == core::TaskStatus::SUCCESS)
           queue->CompilationDone(
-              source.path(),
-              status.message + "\n" +
-                  status.execution_info->Stderr()->Contents(1024 * 1024));
+              name_,
+              status.execution_info->Stderr()->Contents(1024 * 1024));
         return true;
       });
 
@@ -86,7 +85,7 @@ CompiledSourceFile::CompiledSourceFile(
 
   compiled_ =
       compilation_->Output("compiled", "Compiled file of " + source.path());
-  queue->CompilationWaiting(source.path());
+  queue->CompilationWaiting(name_);
 }
 
 core::Execution* CompiledSourceFile::execute(

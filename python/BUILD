@@ -29,12 +29,18 @@ py_library(
 py_library(
     name = "ui",
     srcs = ["ui.py"],
+    deps = [
+        "//proto:event_py",
+    ],
 )
 
 py_library(
     name = "silent_ui",
     srcs = ["silent_ui.py"],
-    deps = [":ui"],
+    deps = [
+        ":ui",
+        "//proto:event_py",
+    ],
 )
 
 py_library(
@@ -43,13 +49,17 @@ py_library(
     deps = [
         ":silent_ui",
         ":ui",
+        "//proto:event_py",
     ],
 )
 
 py_library(
     name = "print_ui",
     srcs = ["print_ui.py"],
-    deps = [":ui"],
+    deps = [
+        ":ui",
+        "//proto:event_py",
+    ],
 )
 
 py_library(
@@ -87,11 +97,11 @@ py_library(
     name = "args",
     srcs = ["args.py"],
     deps = [
-        "//proto:manager_py",
         ":curses_ui",
         ":print_ui",
         ":silent_ui",
-    ]
+        "//proto:manager_py",
+    ],
 )
 
 py_library(
@@ -100,7 +110,7 @@ py_library(
     deps = [
         "//proto:manager_py",
         "//proto:task_py",
-    ]
+    ],
 )
 
 py_binary(

@@ -3,16 +3,15 @@
 from typing import Dict  # pylint: disable=unused-import
 from typing import List
 from typing import Optional
-from python.ui import CompilationStatus
-from python.ui import EvaluationResult
-from python.ui import EvaluationStatus
-from python.ui import GenerationStatus
+
+from proto.event_pb2 import EvaluationResult, EventStatus, DONE
+
 from python.ui import UI
 
 
 class PrintUI(UI):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, solutions: List[str]) -> None:
+        super().__init__(solutions)
         self._subtasks_scores = dict()  # type: Dict[str, Dict[int, float]]
         self._scores = dict()  # type: Dict[str, float]
 
@@ -29,38 +28,40 @@ class PrintUI(UI):
 
     def set_compilation_status(self,
                                file_name: str,
-                               is_solution: bool,
-                               status: CompilationStatus,
+                               status: EventStatus,
                                warnings: Optional[str] = None) -> None:
+        is_solution = file_name in self.solutions
         print("%sStatus of the compilation of %s is %s" %
-              ("[sol] " if is_solution else "", file_name, status))
+              ("[sol] " if is_solution else "", file_name,
+               EventStatus.Name(status)))
         if warnings:
             print("Compiler output:", warnings, sep="\n")
 
     def set_generation_status(self,
                               testcase_num: int,
-                              status: GenerationStatus,
+                              status: EventStatus,
                               stderr: Optional[str] = None) -> None:
-        print("Status of the generation of testcase %d is %s" % (testcase_num,
-                                                                 status))
+        print("Status of the generation of testcase %d is %s"
+              % (testcase_num, EventStatus.Name(status)))
         if stderr:
             print("Errors:", stderr, sep="\n")
 
     def set_evaluation_status(self,
                               testcase_num: int,
                               solution_name: str,
-                              status: EvaluationStatus,
+                              status: EventStatus,
                               result: Optional[EvaluationResult] = None,
                               error: Optional[str] = None) -> None:
         print("Status of the evaluation of solution %s on testcase %d: %s" %
-              (solution_name, testcase_num, status))
+              (solution_name, testcase_num, EventStatus.Name(status)))
         if error:
             print("Errors:", error, sep="\n")
-        if result:
+        if status == DONE:
             print("Outcome:", result.message)
             print("Score:", result.score)
             print("Resource usage: %.2f cpu, %.2f wall time, %.2f MB memory" %
-                  (result.cpu_time, result.wall_time, result.memory / 1024))
+                  (result.cpu_time_used, result.wall_time_used,
+                   result.memory_used_kb / 1024))
 
     def set_subtask_score(self, subtask_num: int, solution_name: str,
                           score: float) -> None:
@@ -75,7 +76,7 @@ class PrintUI(UI):
         print("Solution %s has a score of %.2f" % (solution_name, score))
 
     def print_final_status(self) -> None:
-        max_sol_name = max(map(len, self._scores.keys()))
+        max_sol_name = max(map(len, self.solutions))
         for solution_name in self._scores:
             print("Solution %-{0}s has a score of %6.2f".format(max_sol_name) %
                   (solution_name, self._scores[solution_name]))
