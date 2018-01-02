@@ -1,11 +1,11 @@
-syntax = 'proto3';
+syntax = "proto3";
 
 package proto;
 
-import 'proto/file.proto';
-import 'proto/request.proto';
-import 'proto/response.proto';
-import 'proto/sha256.proto';
+import "proto/file.proto";
+import "proto/request.proto";
+import "proto/response.proto";
+import "proto/sha256.proto";
 
 message SendFileResponse {}
 

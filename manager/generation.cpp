@@ -210,7 +210,7 @@ void Generation::WriteOutputs(const proto::EvaluateTaskRequest& request) {
 void Generation::WriteChecker(const proto::EvaluateTaskRequest& request) {
   if (!checker_) throw std::logic_error("There is not checker to write");
   if (request.write_checker_to().empty())
-    throw std::range_error("write_chcker_to not provided");
+    throw std::range_error("write_checker_to not provided");
   checker_.get()->WriteTo(request.write_checker_to(), true, true);
 }
 }  // namespace manager

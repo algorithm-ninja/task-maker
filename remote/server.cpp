@@ -1,6 +1,5 @@
 #include <future>
 #include <queue>
-#include <string>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -8,7 +7,6 @@
 #include "grpc++/server.h"
 #include "grpc++/server_builder.h"
 #include "grpc++/server_context.h"
-#include "grpc/grpc.h"
 #include "proto/server.grpc.pb.h"
 #include "util/file.hpp"
 

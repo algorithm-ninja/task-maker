@@ -1,11 +1,14 @@
 package(default_visibility = ["//visibility:public"])
 
+load("@org_pubref_rules_protobuf//cpp:rules.bzl", "GRPC_COMPILE_DEPS")
+
 cc_library(
     name = "event_queue",
     srcs = ["event_queue.cpp"],
     hdrs = ["event_queue.hpp"],
     deps = [
         "//proto:event_cc",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
     ],
@@ -52,4 +55,19 @@ cc_library(
         "//proto:manager_cc",
         "//proto:task_cc",
     ],
+)
+
+cc_binary(
+    name = "manager",
+    srcs = ["manager.cpp"],
+    deps = [
+        "//core:core",
+        ":evaluation",
+        ":event_queue",
+        "//proto:manager_cc",
+        "//external:gflags",
+        "//external:glog",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/memory",
+    ] + GRPC_COMPILE_DEPS,
 )

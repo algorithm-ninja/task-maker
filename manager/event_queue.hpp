@@ -106,6 +106,7 @@ class EventQueue {
   }
   absl::optional<proto::Event> Dequeue();
   void Stop();
+  bool IsStopped() { return stopped_; }
 
  private:
   absl::Mutex queue_mutex_;

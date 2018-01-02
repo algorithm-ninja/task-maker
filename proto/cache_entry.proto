@@ -1,9 +1,9 @@
-syntax = 'proto3';
+syntax = "proto3";
 
 package proto;
 
-import 'proto/request.proto';
-import 'proto/response.proto';
+import "proto/request.proto";
+import "proto/response.proto";
 
 message CacheEntry {
   string executor = 1;

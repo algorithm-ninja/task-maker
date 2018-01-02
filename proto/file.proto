@@ -1,8 +1,8 @@
-syntax = 'proto3';
+syntax = "proto3";
 
 package proto;
 
-import 'proto/sha256.proto';
+import "proto/sha256.proto";
 
 enum FileType {
   REGULAR_FILE = 0;
