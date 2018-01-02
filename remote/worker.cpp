@@ -7,10 +7,7 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "grpc++/channel.h"
-#include "grpc++/client_context.h"
 #include "grpc++/create_channel.h"
-#include "grpc++/security/credentials.h"
-#include "grpc/grpc.h"
 #include "proto/server.grpc.pb.h"
 #include "remote/common.hpp"
 

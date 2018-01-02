@@ -51,17 +51,21 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     }
 
     // TODO maybe we want a queue and run a core at a time?
-    info.running_thread = std::thread([&info, request] {
+    info.running_thread = std::thread([&info, request, current_id] {
+      LOG(INFO) << "Starting new core for request " << current_id;
       if (info.core->Run()) {
+        LOG(INFO) << "The core for request " << current_id << " has succeeded";
         info.queue->Stop();
         if (request->dry_run()) return;
-        if (request->task().has_checker() && !request->write_checker_to().empty())
+        if (request->task().has_checker() &&
+            !request->write_checker_to().empty())
           info.generation->WriteChecker(*request);
         info.generation->WriteInputs(*request);
         info.generation->WriteOutputs(*request);
       } else {
         // TODO manage the core failure
         info.queue->FatalError("The core failed!");
+        LOG(WARNING) << "The core for request " << current_id << " has failed";
       }
     });
 
@@ -82,17 +86,23 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 
     // if the queue is empty and stopped we can safely remove the request
     if (queue->IsStopped()) running_.erase(running_id);
+    LOG(INFO) << "Deallocated request " << running_id;
     return grpc::Status::OK;
   }
   grpc::Status Stop(grpc::ServerContext* context,
                     const proto::StopRequest* request,
                     proto::StopResponse* response) override {
+    int64_t request_id = request->evaluation_id();
+    LOG(WARNING) << "Requesting to stop request " << request_id;
     // TODO we need core.Stop() and/or core.Kill()
     return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "TODO");
   }
   grpc::Status Shutdown(grpc::ServerContext* context,
                         const proto::ShutdownRequest* request,
                         proto::ShutdownResponse* response) override {
+    LOG(WARNING) << "Requesting to shutdown the server";
+    if (request->force())
+      LOG(WARNING) << " -- FORCING SHUTDOWN --";
     // TODO eventually kill the core/thread
     // TODO we need core.Stop() and/or core.Kill()
     for (auto& kw : running_) kw.second.running_thread.join();
@@ -131,6 +141,6 @@ int main(int argc, char** argv) {
   builder.RegisterService(&service);
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   service.RegisterServer(server.get());
-  std::cout << "Server listening on " << server_address << std::endl;
+  LOG(INFO) << "Server listening on " << server_address;
   server->Wait();
 }
