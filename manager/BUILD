@@ -62,6 +62,7 @@ cc_binary(
     srcs = ["manager.cpp"],
     deps = [
         "//core:core",
+        "//sandbox:unix",
         ":evaluation",
         ":event_queue",
         "//proto:manager_cc",

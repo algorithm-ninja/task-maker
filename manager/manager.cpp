@@ -51,17 +51,19 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     }
 
     // TODO maybe we want a queue and run a core at a time?
-    info.running_thread = std::thread([&info, request, current_id] {
+    proto::EvaluateTaskRequest req;
+    req.CopyFrom(*request);
+    info.running_thread = std::thread([this, req, current_id] {
+      auto& info = running_[current_id];
       LOG(INFO) << "Starting new core for request " << current_id;
       if (info.core->Run()) {
         LOG(INFO) << "The core for request " << current_id << " has succeeded";
         info.queue->Stop();
-        if (request->dry_run()) return;
-        if (request->task().has_checker() &&
-            !request->write_checker_to().empty())
-          info.generation->WriteChecker(*request);
-        info.generation->WriteInputs(*request);
-        info.generation->WriteOutputs(*request);
+        if (req.dry_run()) return;
+        if (req.task().has_checker() && !req.write_checker_to().empty())
+          info.generation->WriteChecker(req);
+        info.generation->WriteInputs(req);
+        info.generation->WriteOutputs(req);
       } else {
         // TODO manage the core failure
         info.queue->FatalError("The core failed!");
@@ -85,7 +87,10 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     while (event = queue->Dequeue()) writer->Write(*event);
 
     // if the queue is empty and stopped we can safely remove the request
-    if (queue->IsStopped()) running_.erase(running_id);
+    if (queue->IsStopped()) {
+      running_[running_id].running_thread.join();
+      running_.erase(running_id);
+    }
     LOG(INFO) << "Deallocated request " << running_id;
     return grpc::Status::OK;
   }

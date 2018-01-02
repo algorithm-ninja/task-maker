@@ -74,6 +74,7 @@ cc_proto_library(
         ":task_cc",
     ],
     protos = ["manager.proto"],
+    with_grpc = True,
 )
 
 py_proto_library(
@@ -83,6 +84,7 @@ py_proto_library(
         ":task_py",
     ],
     protos = ["manager.proto"],
+    with_grpc = True,
 )
 
 cc_proto_library(

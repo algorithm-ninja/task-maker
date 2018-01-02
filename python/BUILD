@@ -83,13 +83,33 @@ py_library(
     ],
 )
 
+py_library(
+    name = "args",
+    srcs = ["args.py"],
+    deps = [
+        "//proto:manager_py",
+        ":curses_ui",
+        ":print_ui",
+        ":silent_ui",
+    ]
+)
+
+py_library(
+    name = "absolutize",
+    srcs = ["absolutize.py"],
+    deps = [
+        "//proto:manager_py",
+        "//proto:task_py",
+    ]
+)
+
 py_binary(
     name = "task_maker",
     srcs = ["task_maker.py"],
     deps = [
-        ":curses_ui",
+        ":absolutize",
+        ":args",
         ":italian_format",
-        ":print_ui",
-        ":silent_ui",
+        requirement("grpcio"),
     ],
 )
