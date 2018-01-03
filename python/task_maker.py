@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
 import os
+import signal
+from typing import Any
 
 import grpc
 from proto import manager_pb2_grpc
-from proto.manager_pb2 import GetEventsRequest
+from proto.manager_pb2 import GetEventsRequest, StopRequest
 
 from python.absolutize import absolutize_request
 from python.args import get_parser, UIS
@@ -39,6 +41,13 @@ def main() -> None:
         ui.set_subtask_info(subtask_num, subtask.max_score, testcases)
 
     response = manager.EvaluateTask(request)
+
+    def stop_server(signum: int, _: Any) -> None:
+        manager.Stop(StopRequest(evaluation_id=response.id))
+        ui.fatal_error("Aborted with sig%d" % signum)
+    signal.signal(signal.SIGINT, stop_server)
+    signal.signal(signal.SIGTERM, stop_server)
+
     for event in manager.GetEvents(GetEventsRequest(evaluation_id=response.id)):
         ui.from_event(event)
     ui.print_final_status()

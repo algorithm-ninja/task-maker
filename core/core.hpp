@@ -47,6 +47,8 @@ class Core {
 
   bool Run();
 
+  void Stop() { quitting_ = true; }
+
   Core()
       : store_directory_("files"),
         temp_directory_("temp"),

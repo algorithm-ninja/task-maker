@@ -142,7 +142,7 @@ bool Core::Run() {
         break;
     }
 
-    while (should_enqueue) {
+    while (should_enqueue && !quitting_) {
       size_t queue_size = waiting_tasks.size();
       for (size_t _ = 0; _ < queue_size; _++) {
         std::future<TaskStatus> answer_future =

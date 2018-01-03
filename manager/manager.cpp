@@ -53,9 +53,13 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
                     const proto::StopRequest* request,
                     proto::StopResponse* response) override {
     int64_t request_id = request->evaluation_id();
+    if (running_.count(request_id) == 0)
+      return grpc::Status(grpc::StatusCode::NOT_FOUND, "No such id");
+
     LOG(WARNING) << "Requesting to stop request " << request_id;
-    // TODO we need core.Stop() and/or core.Kill()
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "TODO");
+    running_[request_id].core->Stop();
+    running_[request_id].queue->Stop();
+    return grpc::Status::OK;
   }
   grpc::Status Shutdown(grpc::ServerContext* context,
                         const proto::ShutdownRequest* request,
