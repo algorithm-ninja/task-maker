@@ -19,67 +19,13 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
   grpc::Status EvaluateTask(grpc::ServerContext* context,
                             const proto::EvaluateTaskRequest* request,
                             proto::EvaluateTaskResponse* response) override {
-    std::unique_lock<std::mutex> lck(requests_mutex_);
+    // TODO(edomora97) push an event to the queue when the lock is blocked
+    requests_mutex_.lock();
     int64_t current_id = evaluation_id_counter_++;
-    EvaluationInfo info{};
-    info.core = absl::make_unique<core::Core>();
-    info.core->SetStoreDirectory(request->store_dir());
-    info.core->SetTempDirectory(request->temp_dir());
-    info.core->SetNumCores(request->num_cores());
-
-    info.queue = absl::make_unique<manager::EventQueue>();
-
-    info.generation = absl::make_unique<manager::Generation>(
-        info.queue.get(), info.core.get(), request->task(),
-        request->cache_mode(), request->evaluate_on());
-
-    info.evaluation = absl::make_unique<manager::Evaluation>(
-        info.queue.get(), info.core.get(), *info.generation, request->task(),
-        request->exclusive(), request->cache_mode(), request->evaluate_on());
-
-    std::map<proto::Language, proto::GraderInfo> graders;
-    for (proto::GraderInfo grader : request->task().grader_info())
-      graders[grader.for_language()] = grader;
-
-    for (proto::SourceFile source : request->solutions()) {
-      absl::optional<proto::GraderInfo> grader;
-      if (graders.count(source.language()) == 1)
-        grader = graders[source.language()];
-      info.source_files[source.path()] = manager::SourceFile::FromProto(
-          info.queue.get(), info.core.get(), source, grader, false);
-      info.evaluation->Evaluate(info.source_files[source.path()].get());
-    }
-
-    // TODO maybe we want a queue and run a core at a time? Yes we do
-    proto::EvaluateTaskRequest req;
-    req.CopyFrom(*request);
-    info.running_thread = std::thread([this, req, current_id] {
-      auto& info = running_[current_id];
-      LOG(INFO) << "Starting new core for request " << current_id;
-      try {
-        if (info.core->Run()) {
-          LOG(INFO) << "The core for request " << current_id
-                    << " has succeeded";
-          info.queue->Stop();
-          if (req.dry_run()) return;
-          if (req.task().has_checker() && !req.write_checker_to().empty())
-            info.generation->WriteChecker(req);
-          info.generation->WriteInputs(req);
-          info.generation->WriteOutputs(req);
-        } else {
-          // TODO manage the core failure
-          info.queue->FatalError("The core failed!");
-          LOG(WARNING) << "The core for request " << current_id
-                       << " has failed";
-        }
-      } catch (const std::exception& ex) {
-        LOG(WARNING) << "The core for request " << current_id
-                     << " has failed with an excetpion: " << ex.what();
-        info.queue->FatalError(std::string("The core failed! ") + ex.what());
-      }
-    });
+    EvaluationInfo info = setup_request(*request);
 
     running_[current_id] = std::move(info);
+    run_core(*request, current_id);
     response->set_id(current_id);
     return grpc::Status::OK;
   }
@@ -92,13 +38,14 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 
     manager::EventQueue* queue = running_[running_id].queue.get();
     absl::optional<proto::Event> event;
-    while (event = queue->Dequeue()) writer->Write(*event);
+    while ((event = queue->Dequeue())) writer->Write(*event);
 
     // if the queue is empty and stopped we can safely remove the request
     if (queue->IsStopped()) {
       running_[running_id].running_thread.join();
       running_.erase(running_id);
     }
+    requests_mutex_.unlock();
     LOG(INFO) << "Deallocated request " << running_id;
     return grpc::Status::OK;
   }
@@ -114,8 +61,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
                         const proto::ShutdownRequest* request,
                         proto::ShutdownResponse* response) override {
     LOG(WARNING) << "Requesting to shutdown the server";
-    if (request->force())
-      LOG(WARNING) << " -- FORCING SHUTDOWN --";
+    if (request->force()) LOG(WARNING) << " -- FORCING SHUTDOWN --";
     // TODO eventually kill the core/thread
     // TODO we need core.Stop() and/or core.Kill()
     for (auto& kw : running_) kw.second.running_thread.join();
@@ -140,6 +86,71 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
   std::map<int64_t, EvaluationInfo> running_{};
   int64_t evaluation_id_counter_ = 0;
   std::mutex requests_mutex_;
+
+  EvaluationInfo setup_request(proto::EvaluateTaskRequest request) {
+    EvaluationInfo info{};
+    info.core = absl::make_unique<core::Core>();
+    info.core->SetStoreDirectory(request.store_dir());
+    info.core->SetTempDirectory(request.temp_dir());
+    info.core->SetNumCores(request.num_cores());
+
+    info.queue = absl::make_unique<manager::EventQueue>();
+
+    info.generation = absl::make_unique<manager::Generation>(
+        info.queue.get(), info.core.get(), request.task(), request.cache_mode(),
+        request.evaluate_on());
+
+    info.evaluation = absl::make_unique<manager::Evaluation>(
+        info.queue.get(), info.core.get(), *info.generation, request.task(),
+        request.exclusive(), request.cache_mode(), request.evaluate_on());
+
+    std::map<proto::Language, proto::GraderInfo> graders;
+    for (proto::GraderInfo grader : request.task().grader_info())
+      graders[grader.for_language()] = grader;
+
+    for (proto::SourceFile source : request.solutions()) {
+      absl::optional<proto::GraderInfo> grader;
+      if (graders.count(source.language()) == 1)
+        grader = graders[source.language()];
+      info.source_files[source.path()] = manager::SourceFile::FromProto(
+          info.queue.get(), info.core.get(), source, grader, false);
+      info.evaluation->Evaluate(info.source_files[source.path()].get());
+    }
+
+    return info;
+  }
+
+  void run_core(proto::EvaluateTaskRequest request, int64_t current_id) {
+    EvaluationInfo& info = running_[current_id];
+    info.running_thread = std::thread([this, request, current_id] {
+      EvaluationInfo& info = running_[current_id];
+      LOG(INFO) << "Starting new core for request " << current_id;
+      try {
+        if (info.core->Run()) {
+          LOG(INFO) << "The core for request " << current_id
+                    << " has succeeded";
+          info.queue->Stop();
+          if (request.dry_run()) {
+            LOG(INFO) << "Dry-run mode, inputs/outputs/checker not saved";
+            return;
+          }
+          if (request.task().has_checker() &&
+              !request.write_checker_to().empty())
+            info.generation->WriteChecker(request);
+          info.generation->WriteInputs(request);
+          info.generation->WriteOutputs(request);
+        } else {
+          info.queue->FatalError("The core failed!");
+          LOG(WARNING) << "The core for request " << current_id
+                       << " has failed";
+        }
+      } catch (const std::exception& ex) {
+        LOG(WARNING) << "The core for request " << current_id
+                     << " has failed with an excetpion: " << ex.what();
+        info.queue->FatalError(std::string("The core failed! ") + ex.what());
+      }
+    });
+  }
 };
 
 int main(int argc, char** argv) {

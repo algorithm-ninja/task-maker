@@ -110,9 +110,9 @@ class CursesPrinter(Printer):
 class CursesUI(SilentUI):
     def __init__(self, solutions: List[str]) -> None:
         super().__init__(solutions)
+        self._max_sol_len = max(map(len, solutions))
         self._done = False
         self._failure = None  # type: Optional[str]
-        self._max_sol_len = 13
         self._ui_thread = threading.Thread(target=curses.wrapper,
                                            args=(self._ui,))
         self._ui_thread.start()

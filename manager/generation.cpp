@@ -13,7 +13,7 @@ void generate_input(
   if (!testcase.input_file().empty()) {
     inputs_[testcase_num] = core->LoadFile(
         "Static input " + std::to_string(testcase_num), testcase.input_file());
-    queue->GenerationDone(testcase_num);
+    queue->Validated(testcase_num);
   } else if (testcase.has_generator() && testcase.has_validator()) {
     const std::string& generator = testcase.generator().path();
     const std::string& validator = testcase.validator().path();
@@ -93,6 +93,7 @@ void generate_output(const proto::TestCase& testcase, int64_t testcase_num,
     outputs_[testcase_num] =
         core->LoadFile("Static output " + std::to_string(testcase_num),
                        testcase.output_file());
+    queue->GenerationDone(testcase_num);
   } else if (solution_) {
     core::Execution* sol = solution_.get()->execute(
         "Generation of output " + std::to_string(testcase_num), {});
