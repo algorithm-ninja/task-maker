@@ -64,11 +64,19 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
   grpc::Status Shutdown(grpc::ServerContext* context,
                         const proto::ShutdownRequest* request,
                         proto::ShutdownResponse* response) override {
-    LOG(WARNING) << "Requesting to shutdown the server";
-    if (request->force()) LOG(WARNING) << " -- FORCING SHUTDOWN --";
     // TODO eventually kill the core/thread
-    // TODO we need core.Stop() and/or core.Kill()
-    for (auto& kw : running_) kw.second.running_thread.join();
+    // FIXME it doesn't work :(
+    LOG(WARNING) << "Requesting to shutdown the server";
+    if (request->force()) {
+      LOG(WARNING) << " -- FORCING SHUTDOWN --";
+      for (auto& kw : running_) {
+        kw.second.core->Stop();
+        kw.second.queue->Stop();
+      }
+    }
+    for (auto& kw : running_) {
+      kw.second.running_thread.join();
+    }
     server_->Shutdown();
     return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "TODO");
   }
