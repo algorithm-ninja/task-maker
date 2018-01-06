@@ -22,6 +22,7 @@ cc_library(
         ":event_queue",
         "//core",
         "//core:execution",
+        "//external:glog",
         "//proto:task_cc",
         "@com_google_absl//absl/types:optional",
     ],

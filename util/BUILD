@@ -13,6 +13,7 @@ cc_library(
     hdrs = ["file.hpp"],
     deps = [
         ":sha256",
+        "//external:glog",
         "//proto:file_cc",
         "//proto:sha256_cc",
     ],

@@ -43,45 +43,6 @@ class SourceFile {
   bool fatal_failures_;
 };
 
-class CompiledSourceFile : public SourceFile {
- public:
-  CompiledSourceFile(EventQueue* queue, core::Core* core,
-                     const proto::SourceFile& source, const std::string& name,
-                     const absl::optional<proto::GraderInfo>& grader,
-                     bool fatal_failures = false);
-
-  core::Execution* execute(const std::string& description,
-                           const std::vector<std::string>& args) override;
-
-  void WriteTo(const std::string& path, bool overwrite,
-               bool exist_ok) override {
-    compiled_->WriteTo(path, overwrite, exist_ok);
-  }
-
- protected:
-  core::Execution* compilation_;
-  core::FileID* compiled_;
-};
-
-class NotCompiledSourceFile : public SourceFile {
- public:
-  NotCompiledSourceFile(EventQueue* queue, core::Core* core,
-                        const proto::SourceFile& source,
-                        const std::string& name, bool fatal_failures = false);
-
-  core::Execution* execute(const std::string& description,
-                           const std::vector<std::string>& args) override;
-
-  void WriteTo(const std::string& path, bool overwrite,
-               bool exist_ok) override {
-    program_->WriteTo(path, overwrite, exist_ok);
-  }
-
- protected:
-  std::vector<core::FileID*> runtime_deps_;
-  core::FileID* program_;
-};
-
 }  // namespace manager
 
 #endif

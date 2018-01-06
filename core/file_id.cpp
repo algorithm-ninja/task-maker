@@ -1,4 +1,5 @@
 #include "core/file_id.hpp"
+#include "glog/logging.h"
 #include "util/file.hpp"
 
 namespace core {
@@ -28,6 +29,7 @@ void FileID::Load(
     throw std::logic_error("Invalid call to FileID::Load");
   }
   hash_ = util::File::Hash(path_);
+  LOG(INFO) << "Loading file " << path_ << " into hash " << hash_.Hex();
   util::File::Copy(path_, util::File::SHAToPath(store_directory_, hash_));
   set_hash(ID(), hash_);
 }

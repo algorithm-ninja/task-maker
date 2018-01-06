@@ -1,6 +1,50 @@
 #include "manager/source_file.hpp"
+#include "glog/logging.h"
 
 namespace manager {
+
+namespace {
+
+class CompiledSourceFile : public SourceFile {
+ public:
+  CompiledSourceFile(EventQueue* queue, core::Core* core,
+                     const proto::SourceFile& source, const std::string& name,
+                     const absl::optional<proto::GraderInfo>& grader,
+                     bool fatal_failures = false);
+
+  core::Execution* execute(const std::string& description,
+                           const std::vector<std::string>& args) override;
+
+  void WriteTo(const std::string& path, bool overwrite,
+               bool exist_ok) override {
+    compiled_->WriteTo(path, overwrite, exist_ok);
+  }
+
+ protected:
+  core::Execution* compilation_;
+  core::FileID* compiled_;
+};
+
+class NotCompiledSourceFile : public SourceFile {
+ public:
+  NotCompiledSourceFile(EventQueue* queue, core::Core* core,
+                        const proto::SourceFile& source,
+                        const std::string& name, bool fatal_failures = false);
+
+  core::Execution* execute(const std::string& description,
+                           const std::vector<std::string>& args) override;
+
+  void WriteTo(const std::string& path, bool overwrite,
+               bool exist_ok) override {
+    program_->WriteTo(path, overwrite, exist_ok);
+  }
+
+ protected:
+  std::vector<core::FileID*> runtime_deps_;
+  core::FileID* program_;
+};
+
+}  // namespace
 
 // static
 std::unique_ptr<SourceFile> SourceFile::FromProto(
@@ -30,25 +74,25 @@ CompiledSourceFile::CompiledSourceFile(
   std::string compiler;
   std::vector<std::string> args;
 
+  core::FileID* input_file =
+      core->LoadFile("Source file for " + name, source.path());
+
   switch (source.language()) {
     case proto::CPP:
       compiler = "/usr/bin/g++";
-      args = {"-O2", "-std=c++14", "-DEVAL",     "-Wall",
-              "-o",  "compiled",   source.path()};
+      args = {"-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", "compiled", name};
       break;
     case proto::C:
       compiler = "/usr/bin/gcc";
-      args = {"-O2", "-std=c11", "-DEVAL",     "-Wall",
-              "-o",  "compiled", source.path()};
+      args = {"-O2", "-std=c11", "-DEVAL", "-Wall", "-o", "compiled", name};
       break;
     case proto::PASCAL:
       compiler = "/usr/bin/fpc";
-      args = {"-dEVAL", "-XS", "-O2", "-ocompiled", source.path()};
+      args = {"-dEVAL", "-XS", "-O2", "-ocompiled", name};
       break;
     default:
-      throw std::domain_error("Cannot compiled " + source.path() +
-                              " because "
-                              "unknown compilation command");
+      throw std::domain_error("Cannot compile " + source.path() +
+                              ": unknown language");
   }
   if (grader) {
     for (auto dep : grader->files()) args.push_back(dep.name());
@@ -56,25 +100,25 @@ CompiledSourceFile::CompiledSourceFile(
   compilation_ =
       core->AddExecution("Compilation of " + source.path(), compiler, args);
 
-  compilation_->SetCallback(
-      [this, queue, source](const core::TaskStatus& status) -> bool {
-        if (status.event == core::TaskStatus::FAILURE) {
-          queue->CompilationFailure(
-              name_,
-              status.message + "\n" +
-                  status.execution_info->Stderr()->Contents(1024 * 1024));
-          return !fatal_failures_;
-        }
-        if (status.type == core::TaskStatus::FILE_LOAD) return true;
+  compilation_->Input(name, input_file);
 
-        if (status.event == core::TaskStatus::START)
-          queue->CompilationRunning(name_);
-        if (status.event == core::TaskStatus::SUCCESS)
-          queue->CompilationDone(
-              name_,
-              status.execution_info->Stderr()->Contents(1024 * 1024));
-        return true;
-      });
+  compilation_->SetCallback([this, queue,
+                             source](const core::TaskStatus& status) -> bool {
+    if (status.event == core::TaskStatus::FAILURE) {
+      queue->CompilationFailure(
+          name_, status.message + "\n" +
+                     status.execution_info->Stderr()->Contents(1024 * 1024));
+      return !fatal_failures_;
+    }
+    if (status.type == core::TaskStatus::FILE_LOAD) return true;
+
+    if (status.event == core::TaskStatus::START)
+      queue->CompilationRunning(name_);
+    if (status.event == core::TaskStatus::SUCCESS)
+      queue->CompilationDone(
+          name_, status.execution_info->Stderr()->Contents(1024 * 1024));
+    return true;
+  });
 
   for (auto dep : source.deps())
     compilation_->Input(dep.name(), core->LoadFile(dep.name(), dep.path()));

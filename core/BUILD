@@ -13,6 +13,7 @@ cc_library(
     hdrs = ["file_id.hpp"],
     deps = [
         ":task_status",
+        "//external:glog",
         "//util:file",
         "//util:sha256",
     ],

@@ -20,6 +20,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
                             const proto::EvaluateTaskRequest* request,
                             proto::EvaluateTaskResponse* response) override {
     // TODO(edomora97) push an event to the queue when the lock is blocked
+    // TODO(veluca93): change this to something sane.
     requests_mutex_.lock();
     int64_t current_id = evaluation_id_counter_++;
     EvaluationInfo info = setup_request(*request);
@@ -38,7 +39,9 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 
     manager::EventQueue* queue = running_[running_id].queue.get();
     absl::optional<proto::Event> event;
-    while ((event = queue->Dequeue())) writer->Write(*event);
+    while ((event = queue->Dequeue())) {
+      writer->Write(*event);
+    }
 
     // if the queue is empty and stopped we can safely remove the request
     if (queue->IsStopped()) {

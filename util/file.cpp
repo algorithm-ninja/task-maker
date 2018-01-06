@@ -1,4 +1,5 @@
 #include "util/file.hpp"
+#include "glog/logging.h"
 #include "util/sha256.hpp"
 
 #include <stdlib.h>

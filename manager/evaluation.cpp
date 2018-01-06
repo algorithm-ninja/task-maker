@@ -1,4 +1,5 @@
 #include "manager/evaluation.hpp"
+#include "glog/logging.h"
 
 namespace manager {
 
@@ -25,6 +26,7 @@ Evaluation::Evaluation(EventQueue* queue, core::Core* core,
 }
 
 void Evaluation::Evaluate(SourceFile* solution) {
+  LOG(INFO) << "Evaluating " << solution->Name();
   int64_t subtask_num = 0;
   int64_t testcase_num = 0;
   std::string name = solution->Name();
