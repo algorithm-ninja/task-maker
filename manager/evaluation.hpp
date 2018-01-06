@@ -37,8 +37,8 @@ class Evaluation {
 
   void evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
                           SourceFile* solution);
-  void update_score_(const std::string& name, int64_t subtask_num,
-                     int64_t testcase_num, float score);
+  void UpdateScore(const std::string &name, int64_t subtask_num,
+                   int64_t testcase_num, float score);
 };
 
 }  // namespace manager

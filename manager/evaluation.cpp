@@ -46,8 +46,6 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
   std::string name = solution->Name();
   std::string s_testcase_num = std::to_string(testcase_num);
 
-  bool do_check = true;
-
   core::Execution* execution = solution->execute(
       "Evaluation of " + name + " on testcase " + s_testcase_num, {});
   execution->CpuLimit(task_.time_limit());
@@ -70,22 +68,26 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
   else
     output = execution->Output(task_.output_file());
   execution->SetCallback([this, name, testcase_num,
-                          &do_check](const core::TaskStatus& status) -> bool {
+                          subtask_num](const core::TaskStatus& status) -> bool {
     if (status.type == core::TaskStatus::FILE_LOAD)
       return !(status.event == core::TaskStatus::FAILURE);
     if (status.event == core::TaskStatus::START)
       queue_->Executing(name, testcase_num);
-    if (status.event == core::TaskStatus::SUCCESS)
-      queue_->Executed(name, testcase_num);
-    if (status.event == core::TaskStatus::FAILURE) {
+    if (status.event == core::TaskStatus::SUCCESS) {
       auto exec = status.execution_info;
-      queue_->EvaluationFailure(
-          name, testcase_num,
-          exec->Message() + "\n" + exec->Stderr()->Contents(1024 * 1024),
-          exec->CpuTime(), exec->WallTime(), exec->Memory());
-      // do not run the checker if the program crashes (not sure if this makes
-      // sense)
-      do_check = false;
+      if (exec->Success()) {
+        queue_->Executed(name, testcase_num);
+      } else {
+        queue_->EvaluationDone(name, testcase_num, 0.0, exec->Message(),
+                               exec->CpuTime(), exec->WallTime(),
+                               exec->Memory());
+        UpdateScore(name, subtask_num, testcase_num, 0.0);
+      }
+    }
+    if (status.event == core::TaskStatus::FAILURE) {
+      queue_->FatalError(status.message + ": " +
+                         status.execution_info->Message());
+      return false;
     }
     return true;
   });
@@ -113,9 +115,7 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
     execution->SetCachingMode(core::Execution::NEVER);
   if (!executor_.empty()) checker->SetExecutor(executor_);
   checker->SetCallback([this, name, subtask_num, testcase_num, checker,
-                        execution,
-                        do_check](const core::TaskStatus& status) -> bool {
-    if (!do_check) return false;
+                        execution](const core::TaskStatus& status) -> bool {
     if (status.type == core::TaskStatus::FILE_LOAD)
       return !(status.event == core::TaskStatus::FAILURE);
     if (status.event == core::TaskStatus::START)
@@ -124,20 +124,19 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
     if (!task_.has_checker()) {
       // without the checker diff is used to check and it exits with (1) if the
       // files differ.
-      if (status.event == core::TaskStatus::SUCCESS) {
+      if (status.execution_info->Success()) {
         queue_->EvaluationDone(name, testcase_num, 1.0f, "Output is correct",
                                execution->CpuTime(), execution->WallTime(),
                                execution->Memory());
-        update_score_(name, subtask_num, testcase_num, 1.0);
-      }
-      if (status.event == core::TaskStatus::FAILURE) {
+        UpdateScore(name, subtask_num, testcase_num, 1.0);
+      } else {
         queue_->EvaluationDone(name, testcase_num, 0.0f,
                                "Output is not correct", execution->CpuTime(),
                                execution->WallTime(), execution->Memory());
-        update_score_(name, subtask_num, testcase_num, 0.0);
+        UpdateScore(name, subtask_num, testcase_num, 0.0);
       }
     } else {
-      if (status.event == core::TaskStatus::SUCCESS) {
+      if (status.execution_info->Success()) {
         std::string out = checker->Stdout()->Contents(1024 * 1024);
         std::string err = checker->Stderr()->Contents(1024 * 1024);
         try {
@@ -147,7 +146,7 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
           queue_->EvaluationDone(name, testcase_num, score, err,
                                  execution->CpuTime(), execution->WallTime(),
                                  execution->Memory());
-          update_score_(name, subtask_num, testcase_num, score);
+          UpdateScore(name, subtask_num, testcase_num, score);
         } catch (const std::invalid_argument& ex) {
           queue_->EvaluationFailure(name, testcase_num, "checker failed",
                                     execution->CpuTime(), execution->WallTime(),
@@ -157,8 +156,7 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
                              "\n" + "The stderr was: " + err);
           return false;
         }
-      }
-      if (status.event == core::TaskStatus::FAILURE) {
+      } else {
         std::string checker_error = checker->Stderr()->Contents(1024 * 1024);
         queue_->EvaluationFailure(
             name, testcase_num, checker->Message() + "\n" + checker_error,
@@ -172,13 +170,13 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
 
   queue_->EvaluationWaiting(name, testcase_num);
 }
-void Evaluation::update_score_(const std::string& name, int64_t subtask_num,
-                               int64_t testcase_num, float score) {
+void Evaluation::UpdateScore(const std::string& name, int64_t subtask_num,
+                             int64_t testcase_num, float score) {
   Evaluation::EvaluationStatus& status = status_[name];
   proto::ScoreMode score_mode = task_.subtasks(subtask_num).score_mode();
   status.testcase_scores[testcase_num] = score;
-  float st_score;
-  std::function<float(float, float)> acc;
+  float st_score = 0;
+  std::function<float(float, float)> acc = nullptr;
   switch (score_mode) {
     case proto::MIN:
       st_score = 1.0;
@@ -200,9 +198,11 @@ void Evaluation::update_score_(const std::string& name, int64_t subtask_num,
     if (status.testcase_scores.count(testcase) > 0)
       st_score = acc(st_score, status.testcase_scores[testcase]);
   st_score *= task_.subtasks(subtask_num).max_score();
+  if (score_mode == proto::SUM)
+    st_score /= testcases_of_subtask[subtask_num].size();
 
   if (status.subtask_scores.count(subtask_num) == 0 ||
-      st_score != status.subtask_scores[subtask_num])
+      st_score != status.subtask_scores.at(subtask_num))
     queue_->SubtaskTaskScore(name, st_score, subtask_num);
   status.subtask_scores[subtask_num] = st_score;
 
