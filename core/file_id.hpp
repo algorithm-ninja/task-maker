@@ -4,6 +4,7 @@
 #include <functional>
 #include <string>
 
+#include "absl/synchronization/mutex.h"
 #include "core/task_status.hpp"
 #include "util/sha256.hpp"
 
@@ -53,11 +54,14 @@ class FileID {
   void Load(
       const std::function<void(int64_t, const util::SHA256_t&)>& set_hash);
 
+  void SetHash(const proto::SHA256& hash);
+
   std::string description_;
   std::string path_;
   std::string store_directory_;
   int64_t id_;
-  util::SHA256_t hash_ = {};
+  absl::Mutex hash_mutex_;
+  util::SHA256_t hash_ GUARDED_BY(hash_mutex_) = {};
   std::function<bool(const TaskStatus&)> callback_;
 
   static std::atomic<int32_t> next_id_;

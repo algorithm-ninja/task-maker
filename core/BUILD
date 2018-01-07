@@ -16,6 +16,7 @@ cc_library(
         "//external:glog",
         "//util:file",
         "//util:sha256",
+        "@com_google_absl//absl/synchronization",
     ],
 )
 

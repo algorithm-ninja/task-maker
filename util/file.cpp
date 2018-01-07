@@ -137,7 +137,9 @@ namespace util {
 void File::Read(const std::string& path,
                 const File::ChunkReceiver& chunk_receiver) {
   int err = OsRead(path, chunk_receiver);
-  if (err) throw std::system_error(err, std::system_category(), "Read " + path);
+  if (err) {
+    throw std::system_error(err, std::system_category(), "Read " + path);
+  }
 }
 
 void File::Write(const std::string& path, const ChunkProducer& chunk_producer,

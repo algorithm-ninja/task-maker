@@ -13,7 +13,12 @@ void FileID::WriteTo(const std::string& path, bool overwrite, bool exist_ok) {
 
 std::string FileID::Contents(int64_t size_limit) {
   std::string ans;
-  util::File::Read(util::File::SHAToPath(store_directory_, hash_),
+  std::string source_path;
+  {
+    absl::MutexLock lck(&hash_mutex_);
+    source_path = util::File::SHAToPath(store_directory_, hash_);
+  }
+  util::File::Read(source_path,
                    [size_limit, &ans](const proto::FileContents& contents) {
                      if (size_limit && (int64_t)ans.size() > size_limit) {
                        throw std::runtime_error("File too big");
@@ -28,10 +33,18 @@ void FileID::Load(
   if (path_.size() == 0) {
     throw std::logic_error("Invalid call to FileID::Load");
   }
-  hash_ = util::File::Hash(path_);
-  LOG(INFO) << "Loading file " << path_ << " into hash " << hash_.Hex();
-  util::File::Copy(path_, util::File::SHAToPath(store_directory_, hash_));
+  {
+    absl::MutexLock lck(&hash_mutex_);
+    hash_ = util::File::Hash(path_);
+    LOG(INFO) << "Loading file " << path_ << " into hash " << hash_.Hex();
+    util::File::Copy(path_, util::File::SHAToPath(store_directory_, hash_));
+  }
   set_hash(ID(), hash_);
+}
+
+void FileID::SetHash(const proto::SHA256& proto) {
+  absl::MutexLock lck(&hash_mutex_);
+  util::ProtoToSHA256(proto, &hash_);
 }
 
 }  // namespace core

@@ -122,15 +122,15 @@ void Execution::Run(
     util::ProtoToSHA256(out.hash(), &extracted_hash);
     int64_t id = 0;
     if (out.type() == proto::FileType::STDOUT) {
-      util::ProtoToSHA256(out.hash(), &stdout_->hash_);
+      stdout_->SetHash(out.hash());
       id = stdout_->ID();
     } else if (out.type() == proto::FileType::STDERR) {
-      util::ProtoToSHA256(out.hash(), &stderr_->hash_);
+      stderr_->SetHash(out.hash());
       id = stderr_->ID();
     } else {
       if (outputs_.count(out.name()) == 0)
         throw std::logic_error("Unrequested output");
-      util::ProtoToSHA256(out.hash(), &outputs_.at(out.name())->hash_);
+      outputs_.at(out.name())->SetHash(out.hash());
       id = outputs_.at(out.name())->ID();
     }
     if (successful_) set_hash(id, extracted_hash);

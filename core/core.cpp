@@ -3,6 +3,7 @@
 #include <thread>
 
 #include "executor/local_executor.hpp"
+#include "glog/logging.h"
 
 namespace {
 enum EnqueueStatus {
@@ -41,6 +42,7 @@ TaskStatus Core::LoadFileTask(FileID* file) {
 }
 
 TaskStatus Core::ExecuteTask(Execution* execution) {
+  LOG(INFO) << execution->Description();
   try {
     using namespace std::placeholders;
     execution->Run(std::bind(&Core::GetFile, this, _1),
