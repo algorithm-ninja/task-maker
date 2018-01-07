@@ -33,8 +33,9 @@ class UI:
         elif event_type == "evaluation":
             evaluation = event.evaluation
             # TODO missing error field
+            res = evaluation.result if evaluation.HasField("result") else None
             self.set_evaluation_status(evaluation.testcase, evaluation.solution,
-                                       evaluation.status, evaluation.result)
+                                       evaluation.status, res)
 
     def set_task_name(self, task_name: str) -> None:
         self.task_name = task_name
