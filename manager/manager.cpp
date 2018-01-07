@@ -11,7 +11,6 @@
 #include "manager/evaluation.hpp"
 #include "proto/manager.grpc.pb.h"
 
-DEFINE_string(address, "0.0.0.0", "adress to listen on");
 DEFINE_int32(port, 7071, "port to listen on");
 
 class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
@@ -174,7 +173,7 @@ int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
   google::InstallFailureSignalHandler();
 
-  std::string server_address = FLAGS_address + ":" + std::to_string(FLAGS_port);
+  std::string server_address = "127.0.0.1:" + std::to_string(FLAGS_port);
   TaskMakerManagerImpl service;
   grpc::ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());

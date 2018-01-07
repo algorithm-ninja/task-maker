@@ -116,10 +116,12 @@ py_library(
 py_binary(
     name = "task_maker",
     srcs = ["task_maker.py"],
+    data = ["//manager"],
     deps = [
         ":absolutize",
         ":args",
         ":italian_format",
         requirement("grpcio"),
+        requirement("python-daemon"),
     ],
 )

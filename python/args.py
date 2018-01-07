@@ -9,18 +9,9 @@ from python.curses_ui import CursesUI
 from python.print_ui import PrintUI
 from python.silent_ui import SilentUI
 
+UIS = {"curses": CursesUI, "print": PrintUI, "silent": SilentUI}
 
-UIS = {
-    "curses": CursesUI,
-    "print": PrintUI,
-    "silent": SilentUI
-}
-
-CACHES = {
-    "all": ALL,
-    "generation": GENERATION,
-    "nothing": NOTHING
-}
+CACHES = {"all": ALL, "generation": GENERATION, "nothing": NOTHING}
 
 
 def _validate_num_cores(num: str) -> int:
@@ -70,10 +61,11 @@ def get_parser() -> argparse.ArgumentParser:
         help="Where evaluations should be run",
         default=None)
     parser.add_argument(
-        "--manager-addr",
+        "--manager-port",
         action="store",
-        help="address:port of the manager",
-        default="localhost:7071")
+        help="port of the manager",
+        default=7071,
+        type=int)
     parser.add_argument(
         "--dry-run",
         help="Execute everything but do not touch the task directory",
