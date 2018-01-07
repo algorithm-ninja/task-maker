@@ -7,7 +7,7 @@ stages:
 build_and_test:
   stage: build
   before_script:
-    - apt update -yy && apt upgrade -yy
+    - apt-get update -yy && apt-get upgrade -yy python3-wheel python3-virtualenv
     - |
       cat > $CI_PROJECT_DIR/.bazelrc <<EOF
       # This is from Bazel's former travis setup, to avoid blowing up the RAM usage.
@@ -26,6 +26,8 @@ build_and_test:
     - rm -rf /builddir
     - cd / && mv $CI_PROJECT_DIR /builddir && mkdir $CI_PROJECT_DIR
     - if [ -d /builddir/bazel-cache ]; then mv /builddir/bazel-cache $CI_PROJECT_DIR/; fi
+    - virtualenv -p /usr/bin/python3 /venv
+    - source /venv/bin/activate
 
   variables:
     TEST_TMPDIR: "$CI_PROJECT_DIR/bazel-cache"
