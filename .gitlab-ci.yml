@@ -7,7 +7,7 @@ stages:
 build_and_test:
   stage: build
   before_script:
-    - apt-get update -yy && apt-get upgrade -yy python3-wheel python3-virtualenv
+    - apt-get update -yy && apt-get upgrade -yy python3-wheel python3-virtualenv virtualenv
     - |
       cat > $CI_PROJECT_DIR/.bazelrc <<EOF
       # This is from Bazel's former travis setup, to avoid blowing up the RAM usage.
