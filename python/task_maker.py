@@ -60,7 +60,7 @@ def main() -> None:
 
     ui = UIS[args.ui](
         [os.path.basename(sol.path) for sol in request.solutions])
-    ui.set_task_name(os.path.basename(args.task_dir))
+    ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))
     ui.set_time_limit(request.task.time_limit)
     ui.set_memory_limit(request.task.memory_limit_kb)
 
