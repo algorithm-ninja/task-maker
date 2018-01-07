@@ -26,6 +26,8 @@ def absolutize_testcase(testcase: TestCase) -> None:
         testcase.input_file = absolutize_path(testcase.input_file)
     if testcase.output_file:
         testcase.output_file = absolutize_path(testcase.output_file)
+    for dep in testcase.extra_deps:
+        dep.path = absolutize_path(dep.path)
 
 
 def absolutize_subtask(subtask: Subtask) -> None:

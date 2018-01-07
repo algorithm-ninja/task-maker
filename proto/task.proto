@@ -33,10 +33,10 @@ message SourceFile {
 message TestCase {
   SourceFile generator = 1;
   repeated string args = 2;
-  // TODO(edomora97): add generator runtime dependencies (--fastify)
-  SourceFile validator = 3;
-  string input_file = 4;
-  string output_file = 5;
+  repeated Dependency extra_deps = 3;
+  SourceFile validator = 4;
+  string input_file = 5;
+  string output_file = 6;
 }
 
 message Subtask {

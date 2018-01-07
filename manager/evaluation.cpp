@@ -175,6 +175,9 @@ void Evaluation::UpdateScore(const std::string& name, int64_t subtask_num,
   Evaluation::EvaluationStatus& status = status_[name];
   proto::ScoreMode score_mode = task_.subtasks(subtask_num).score_mode();
   status.testcase_scores[testcase_num] = score;
+  for (int64_t testcase : testcases_of_subtask[subtask_num])
+    if (status.testcase_scores.count(testcase) == 0)
+      return;
   float st_score = 0;
   std::function<float(float, float)> acc = nullptr;
   switch (score_mode) {

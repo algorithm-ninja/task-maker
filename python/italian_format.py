@@ -99,8 +99,8 @@ def gen_testcases() -> Tuple[Optional[str], List[Subtask]]:
             args = line.split()
             arg_deps = sanitize_command(args)
             testcase.generator.CopyFrom(from_file(generator))
-            testcase.generator.deps.extend(arg_deps)
             testcase.args.extend(args)
+            testcase.extra_deps.extend(arg_deps)
             testcase.validator.CopyFrom(from_file(validator))
         current_testcases.append(testcase)
 

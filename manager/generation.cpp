@@ -38,7 +38,13 @@ void generate_input(
             queue->Generated(testcase_num);
           return true;
         });
-    // TODO(edomora97): add runtime dependencies
+    for (proto::Dependency dep : testcase.extra_deps()) {
+      core::FileID* file_id =
+          core->LoadFile("Testcase " + std::to_string(testcase_num) +
+                             " dependency " + dep.name(),
+                         dep.path());
+      gen->Input(dep.name(), file_id);
+    }
     if (!executor.empty()) gen->SetExecutor(executor);
     if (cache_mode == proto::GENERATION || cache_mode == proto::ALL)
       gen->SetCachingMode(core::Execution::CachingMode::ALWAYS);
