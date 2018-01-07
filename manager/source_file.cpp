@@ -114,9 +114,15 @@ CompiledSourceFile::CompiledSourceFile(
 
     if (status.event == core::TaskStatus::START)
       queue->CompilationRunning(name_);
-    if (status.event == core::TaskStatus::SUCCESS)
-      queue->CompilationDone(
-          name_, status.execution_info->Stderr()->Contents(1024 * 1024));
+    if (status.event == core::TaskStatus::SUCCESS) {
+      if (status.execution_info->Success())
+        queue->CompilationDone(
+            name_, status.execution_info->Stderr()->Contents(1024 * 1024));
+      else
+        queue->CompilationFailure(
+            name_, status.message + "\n" +
+                status.execution_info->Stderr()->Contents(1024 * 1024));
+    }
     return true;
   });
 
