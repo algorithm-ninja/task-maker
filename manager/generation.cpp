@@ -135,8 +135,19 @@ void generate_output(const proto::TestCase& testcase, int64_t testcase_num,
           if (status.type == core::TaskStatus::FILE_LOAD) return true;
           if (status.event == core::TaskStatus::START)
             queue->Solving(testcase_num);
-          if (status.event == core::TaskStatus::SUCCESS)
-            queue->GenerationDone(testcase_num);
+          if (status.event == core::TaskStatus::SUCCESS) {
+            auto exec = status.execution_info;
+            if (exec->Success()) {
+              queue->GenerationDone(testcase_num);
+            } else {
+              queue->GenerationFailure(
+                testcase_num,
+                status.message + "\n" +
+                    status.execution_info->Stderr()->Contents(1024 * 1024));
+              return false;
+            }
+          }
+
           return true;
         });
     if (!executor.empty()) sol->SetExecutor(executor);
