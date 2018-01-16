@@ -110,9 +110,9 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
   checker->CpuLimit(10 * task_.time_limit());
   checker->MemoryLimit(10 * task_.memory_limit_kb());
   if (cache_mode_ == proto::ALL)
-    execution->SetCachingMode(core::Execution::ALWAYS);
+    checker->SetCachingMode(core::Execution::ALWAYS);
   else
-    execution->SetCachingMode(core::Execution::NEVER);
+    checker->SetCachingMode(core::Execution::NEVER);
   if (!executor_.empty()) checker->SetExecutor(executor_);
   checker->SetCallback([this, name, subtask_num, testcase_num, checker,
                         execution](const core::TaskStatus& status) -> bool {

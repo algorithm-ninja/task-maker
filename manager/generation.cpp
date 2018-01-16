@@ -34,8 +34,18 @@ void generate_input(
           if (status.type == core::TaskStatus::FILE_LOAD) return true;
           if (status.event == core::TaskStatus::START)
             queue->Generating(testcase_num);
-          if (status.event == core::TaskStatus::SUCCESS)
-            queue->Generated(testcase_num);
+          if (status.event == core::TaskStatus::SUCCESS) {
+            auto exec = status.execution_info;
+            if (exec->Success()) {
+              queue->Generated(testcase_num);
+            } else {
+              queue->GenerationFailure(
+                testcase_num,
+                status.message + "\n" +
+                    status.execution_info->Stderr()->Contents(1024 * 1024));
+              return false;
+            }
+          }
           return true;
         });
     for (proto::Dependency dep : testcase.extra_deps()) {
@@ -68,8 +78,18 @@ void generate_input(
           if (status.type == core::TaskStatus::FILE_LOAD) return true;
           if (status.event == core::TaskStatus::START)
             queue->Validating(testcase_num);
-          if (status.event == core::TaskStatus::SUCCESS)
-            queue->Validated(testcase_num);
+          if (status.event == core::TaskStatus::SUCCESS) {
+            auto exec = status.execution_info;
+            if (exec->Success()) {
+              queue->Validated(testcase_num);
+            } else {
+              queue->GenerationFailure(
+                testcase_num,
+                status.message + "\n" +
+                    status.execution_info->Stderr()->Contents(1024 * 1024));
+              return false;
+            }
+          }
           return true;
         });
     if (!executor.empty()) val->SetExecutor(executor);
