@@ -158,11 +158,13 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
           info.queue->FatalError("The core failed!");
           LOG(WARNING) << "The core for request " << current_id
                        << " has failed";
+          info.queue->Stop();
         }
       } catch (const std::exception& ex) {
         LOG(WARNING) << "The core for request " << current_id
                      << " has failed with an excetpion: " << ex.what();
         info.queue->FatalError(std::string("The core failed! ") + ex.what());
+        info.queue->Stop();
       }
     });
   }
