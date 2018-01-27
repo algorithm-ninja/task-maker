@@ -137,6 +137,9 @@ def get_options(data: Dict[str, Any],
     for name in names:
         if name in data:
             return data[name]
+    if not default:
+        raise ValueError("Non optional field %s missing from task.yaml"
+                         % "|".join(names))
     return default
 
 
@@ -165,6 +168,8 @@ def create_task_from_yaml(data: Dict[str, Any]) -> Task:
 
 def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
     data = parse_task_yaml()
+    if not data:
+        raise RuntimeError("The task.yaml is not valid")
 
     task = create_task_from_yaml(data)
 
