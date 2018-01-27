@@ -23,6 +23,6 @@ def from_file(path: str) -> SourceFile:
     source_file.language = python.language.from_file(path)
     if not python.language.need_compilation(source_file.language):
         if not is_executable(source_file.path):
-            raise ValueError("The file %s is not and executable. "
+            raise ValueError("The file %s is not an executable. "
                              "Please check the shebang (#!)" % path)
     return source_file
