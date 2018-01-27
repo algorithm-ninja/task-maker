@@ -14,7 +14,7 @@ from proto.manager_pb2 import GetEventsRequest, StopRequest
 
 from python.absolutize import absolutize_request
 from python.args import get_parser, UIS
-from python.italian_format import get_request
+from python.italian_format import get_request, clean
 
 
 def manager_process(pipe: Any, manager: str, port: int) -> None:
@@ -52,7 +52,7 @@ def main() -> None:
     os.chdir(args.task_dir)
 
     if args.clean:
-        # TODO: implement the clean process on the manager
+        clean()
         return
 
     request = get_request(args)
@@ -89,7 +89,7 @@ def main() -> None:
             if attempt == max_attempts - 1:
                 raise
             del channel
-            time.sleep(0.1)
+            time.sleep(0.5)
 
     def stop_server(signum: int, _: Any) -> None:
         manager.Stop(StopRequest(evaluation_id=response.id))

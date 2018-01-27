@@ -218,3 +218,26 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
     if args.evaluate_on:
         request.evaluate_on = args.evaluate_on
     return request
+
+
+def clean():
+    def remove_dir(path: str) -> None:
+        if not os.path.exists(path):
+            return
+        for file in glob.glob(os.path.join(path, "*.txt")):
+            os.remove(file)
+        try:
+            os.rmdir(path)
+        except OSError:
+            print("Directory %s not empty, kept non-txt files" % path)
+
+    def remove_file(path: str) -> None:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+    remove_dir("input")
+    remove_dir("output")
+    remove_file(os.path.join("cor", "checker"))
+    remove_file(os.path.join("cor", "correttore"))
