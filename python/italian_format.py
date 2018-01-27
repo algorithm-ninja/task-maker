@@ -51,7 +51,7 @@ def load_testcases() -> Tuple[Optional[str], List[Subtask]]:
         testcase.input_file = os.path.join("input", "input%d.txt" % num)
         testcase.output_file = os.path.join("output", "output%d.txt" % num)
         subtask.testcases.extend([testcase])
-    return None, subtask
+    return None, [subtask]
 
 
 def gen_testcases() -> Tuple[Optional[str], List[Subtask]]:
