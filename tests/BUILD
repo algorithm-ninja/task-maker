@@ -11,7 +11,9 @@ py_test(
     flaky = True,
     deps = [
         requirement("pytest"),
-        "//python:italian_format",
+        "//proto:event_py",
+        "//python:args",
         "//python:silent_ui",
+        "//python:task_maker",
     ],
 )

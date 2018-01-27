@@ -75,8 +75,8 @@ def main() -> None:
     max_attempts = 100
     for attempt in range(max_attempts):
         try:
-            channel = grpc.insecure_channel("localhost:" + str(
-                args.manager_port))
+            channel = grpc.insecure_channel(
+                "localhost:" + str(args.manager_port))
             manager = manager_pb2_grpc.TaskMakerManagerStub(channel)
             response = manager.EvaluateTask(request)
             break

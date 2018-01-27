@@ -40,9 +40,9 @@ void generate_input(
               queue->Generated(testcase_num);
             } else {
               queue->GenerationFailure(
-                testcase_num,
-                status.message + "\n" +
-                    status.execution_info->Stderr()->Contents(1024 * 1024));
+                  testcase_num,
+                  status.message + "\n" +
+                      status.execution_info->Stderr()->Contents(1024 * 1024));
               return false;
             }
           }
@@ -84,9 +84,9 @@ void generate_input(
               queue->Validated(testcase_num);
             } else {
               queue->GenerationFailure(
-                testcase_num,
-                status.message + "\n" +
-                    status.execution_info->Stderr()->Contents(1024 * 1024));
+                  testcase_num,
+                  status.message + "\n" +
+                      status.execution_info->Stderr()->Contents(1024 * 1024));
               return false;
             }
           }
@@ -141,9 +141,9 @@ void generate_output(const proto::TestCase& testcase, int64_t testcase_num,
               queue->GenerationDone(testcase_num);
             } else {
               queue->GenerationFailure(
-                testcase_num,
-                status.message + "\n" +
-                    status.execution_info->Stderr()->Contents(1024 * 1024));
+                  testcase_num,
+                  status.message + "\n" +
+                      status.execution_info->Stderr()->Contents(1024 * 1024));
               return false;
             }
           }
@@ -193,24 +193,22 @@ Generation::Generation(EventQueue* queue, core::Core* core,
   if (task.has_checker())
     checker_ = SourceFile::FromProto(queue, core, task.checker(), {}, true);
 
-  std::map<std::string, std::unique_ptr<SourceFile>> source_cache;
-
   int64_t testcase_num = 0;
   int64_t subtask_num = 0;
   for (auto subtask : task.subtasks()) {
     for (auto testcase : subtask.testcases()) {
       // compile generator/validator
       if (testcase.has_generator())
-        if (source_cache.count(testcase.generator().path()) == 0)
-          source_cache[testcase.generator().path()] = SourceFile::FromProto(
+        if (source_cache_.count(testcase.generator().path()) == 0)
+          source_cache_[testcase.generator().path()] = SourceFile::FromProto(
               queue, core, testcase.generator(), {}, true);
       if (testcase.has_validator())
-        if (source_cache.count(testcase.validator().path()) == 0)
-          source_cache[testcase.validator().path()] = SourceFile::FromProto(
+        if (source_cache_.count(testcase.validator().path()) == 0)
+          source_cache_[testcase.validator().path()] = SourceFile::FromProto(
               queue, core, testcase.validator(), {}, true);
 
       generate_input(testcase, testcase_num, subtask_num, core, queue,
-                     source_cache, cache_mode, executor, inputs_, validation_);
+                     source_cache_, cache_mode, executor, inputs_, validation_);
 
       generate_output(testcase, testcase_num, core, queue, solution_,
                       cache_mode, executor, task, inputs_, outputs_,

@@ -89,7 +89,8 @@ class SilentUI(UI):
         solution_name = os.path.basename(solution_name)
         if solution_name not in self._solution_status:
             raise RuntimeError("Something weird happened")
-        self._solution_status[solution_name].subtask_scores[subtask_num] = score
+        self._solution_status[solution_name].subtask_scores[
+            subtask_num] = score
 
     def set_task_score(self, solution_name: str, score: float) -> None:
         solution_name = os.path.basename(solution_name)

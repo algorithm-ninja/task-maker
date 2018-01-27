@@ -36,6 +36,7 @@ class Generation {
   std::map<int64_t, core::FileID*> inputs_;
   std::map<int64_t, core::FileID*> outputs_;
   std::map<int64_t, core::FileID*> validation_;
+  std::map<std::string, std::unique_ptr<SourceFile>> source_cache_;
 
   proto::Task task_;
 };

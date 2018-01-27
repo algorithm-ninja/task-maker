@@ -75,20 +75,20 @@ CompiledSourceFile::CompiledSourceFile(
   std::vector<std::string> args;
 
   core::FileID* input_file =
-      core->LoadFile("Source file for " + name, source.path());
+      core->LoadFile("Source file for " + name_, source.path());
 
   switch (source.language()) {
     case proto::CPP:
       compiler = "/usr/bin/g++";
-      args = {"-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", "compiled", name};
+      args = {"-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", "compiled", name_};
       break;
     case proto::C:
       compiler = "/usr/bin/gcc";
-      args = {"-O2", "-std=c11", "-DEVAL", "-Wall", "-o", "compiled", name};
+      args = {"-O2", "-std=c11", "-DEVAL", "-Wall", "-o", "compiled", name_};
       break;
     case proto::PASCAL:
       compiler = "/usr/bin/fpc";
-      args = {"-dEVAL", "-XS", "-O2", "-ocompiled", name};
+      args = {"-dEVAL", "-XS", "-O2", "-ocompiled", name_};
       break;
     default:
       throw std::domain_error("Cannot compile " + source.path() +
@@ -100,15 +100,18 @@ CompiledSourceFile::CompiledSourceFile(
   compilation_ =
       core->AddExecution("Compilation of " + source.path(), compiler, args);
 
-  compilation_->Input(name, input_file);
+  compilation_->Input(name_, input_file);
 
-  compilation_->SetCallback([this, queue,
-                             source](const core::TaskStatus& status) -> bool {
+  compilation_->SetCallback([this, queue, source,
+                             name](const core::TaskStatus& status) -> bool {
+    if (status.event != core::TaskStatus::START) {
+      std::cerr << "done! name: " << name << std::endl;
+    }
     if (status.event == core::TaskStatus::FAILURE) {
       queue->CompilationFailure(
           name_, status.message + "\n" +
                      status.execution_info->Stderr()->Contents(1024 * 1024));
-      return !fatal_failures_;
+      return false;
     }
     if (status.type == core::TaskStatus::FILE_LOAD) return true;
 
@@ -118,10 +121,12 @@ CompiledSourceFile::CompiledSourceFile(
       if (status.execution_info->Success())
         queue->CompilationDone(
             name_, status.execution_info->Stderr()->Contents(1024 * 1024));
-      else
+      else {
         queue->CompilationFailure(
             name_, status.message + "\n" +
-                status.execution_info->Stderr()->Contents(1024 * 1024));
+                       status.execution_info->Stderr()->Contents(1024 * 1024));
+        return !fatal_failures_;
+      }
     }
     return true;
   });
@@ -157,6 +162,17 @@ NotCompiledSourceFile::NotCompiledSourceFile(EventQueue* queue,
   for (auto dep : source.deps())
     runtime_deps_.push_back(core->LoadFile(dep.name(), dep.path()));
   program_ = core->LoadFile(source.path(), source.path());
+  program_->SetCallback(
+      [this, queue, source](const core::TaskStatus& status) -> bool {
+        if (status.event == core::TaskStatus::FAILURE) {
+          queue->CompilationFailure(name_, "Error loading file");
+          return false;
+        }
+        if (status.event == core::TaskStatus::SUCCESS)
+          queue->CompilationDone(name_, "");
+        return true;
+      });
+  queue->CompilationWaiting(name_);
 }
 
 core::Execution* NotCompiledSourceFile::execute(
