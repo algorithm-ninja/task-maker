@@ -31,13 +31,17 @@ bool OsRemoveTree(const std::string& path) {
               64, FTW_DEPTH | FTW_PHYS | FTW_MOUNT) != -1;
 }
 
+static const size_t max_path_len = 1 << 15;
 std::string OsTempDir(const std::string& path) {
   std::string tmp = util::File::JoinPath(path, "XXXXXX");
-  std::unique_ptr<char[]> data{strdup(tmp.c_str())};
-  if (mkdtemp(data.get()) == nullptr) {
+  CHECK_LT(tmp.size(), max_path_len);
+  char data[max_path_len];
+  data[0] = 0;
+  strncat(data, tmp.c_str(), max_path_len);
+  if (mkdtemp(data) == nullptr) {
     return "";
   }
-  return data.get();
+  return data;
 }
 
 int OsTempFile(const std::string& path, std::string* tmp) {
@@ -52,9 +56,11 @@ int OsTempFile(const std::string& path, std::string* tmp) {
   } while (true);
 #else
   *tmp = path + ".XXXXXX";
-  std::unique_ptr<char[]> data{strdup(tmp->c_str())};
-  int fd = mkostemp(data.get(), O_CLOEXEC);
-  *tmp = data.get();
+  char data[max_path_len];
+  data[0] = 0;
+  strncat(data, tmp->c_str(), max_path_len);
+  int fd = mkostemp(data, O_CLOEXEC);
+  *tmp = data;
   return fd;
 #endif
 }

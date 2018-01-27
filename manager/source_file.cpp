@@ -104,9 +104,6 @@ CompiledSourceFile::CompiledSourceFile(
 
   compilation_->SetCallback([this, queue, source,
                              name](const core::TaskStatus& status) -> bool {
-    if (status.event != core::TaskStatus::START) {
-      std::cerr << "done! name: " << name << std::endl;
-    }
     if (status.event == core::TaskStatus::FAILURE) {
       queue->CompilationFailure(
           name_, status.message + "\n" +
