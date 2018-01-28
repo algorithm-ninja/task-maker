@@ -14,30 +14,22 @@ Evaluation::Evaluation(EventQueue* queue, core::Core* core,
   exclusive_ = exclusive;
   cache_mode_ = cache_mode;
 
-  int64_t subtask_num = 0;
-  int64_t testcase_num = 0;
   for (auto subtask : task.subtasks()) {
-    for (auto testcase : subtask.testcases()) {
-      testcases_of_subtask[subtask_num].push_back(testcase_num);
-      testcase_num++;
+    for (auto testcase : subtask.second.testcases()) {
+      testcases_of_subtask[subtask.first].push_back(testcase.first);
     }
-    subtask_num++;
   }
 }
 
 void Evaluation::Evaluate(SourceFile* solution) {
   LOG(INFO) << "Evaluating " << solution->Name();
-  int64_t subtask_num = 0;
-  int64_t testcase_num = 0;
   std::string name = solution->Name();
   status_[name].task_score = -1;  // assuming you cannot make negative points
 
   for (auto subtask : task_.subtasks()) {
-    for (auto testcase : subtask.testcases()) {
-      evaluate_testcase_(subtask_num, testcase_num, solution);
-      testcase_num++;
+    for (auto testcase : subtask.second.testcases()) {
+      evaluate_testcase_(subtask.first, testcase.first, solution);
     }
-    subtask_num++;
   }
 }
 
@@ -173,7 +165,7 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
 void Evaluation::UpdateScore(const std::string& name, int64_t subtask_num,
                              int64_t testcase_num, float score) {
   Evaluation::EvaluationStatus& status = status_[name];
-  proto::ScoreMode score_mode = task_.subtasks(subtask_num).score_mode();
+  proto::ScoreMode score_mode = task_.subtasks().at(subtask_num).score_mode();
   status.testcase_scores[testcase_num] = score;
   for (int64_t testcase : testcases_of_subtask[subtask_num])
     if (status.testcase_scores.count(testcase) == 0)
@@ -200,7 +192,7 @@ void Evaluation::UpdateScore(const std::string& name, int64_t subtask_num,
   for (int64_t testcase : testcases_of_subtask[subtask_num])
     if (status.testcase_scores.count(testcase) > 0)
       st_score = acc(st_score, status.testcase_scores[testcase]);
-  st_score *= task_.subtasks(subtask_num).max_score();
+  st_score *= task_.subtasks().at(subtask_num).max_score();
   if (score_mode == proto::SUM)
     st_score /= testcases_of_subtask[subtask_num].size();
 

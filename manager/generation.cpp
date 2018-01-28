@@ -193,10 +193,9 @@ Generation::Generation(EventQueue* queue, core::Core* core,
   if (task.has_checker())
     checker_ = SourceFile::FromProto(queue, core, task.checker(), {}, true);
 
-  int64_t testcase_num = 0;
-  int64_t subtask_num = 0;
   for (auto subtask : task.subtasks()) {
-    for (auto testcase : subtask.testcases()) {
+    for (auto testcase_kv : subtask.second.testcases()) {
+      auto testcase = testcase_kv.second;
       // compile generator/validator
       if (testcase.has_generator())
         if (source_cache_.count(testcase.generator().path()) == 0)
@@ -207,16 +206,14 @@ Generation::Generation(EventQueue* queue, core::Core* core,
           source_cache_[testcase.validator().path()] = SourceFile::FromProto(
               queue, core, testcase.validator(), {}, true);
 
-      generate_input(testcase, testcase_num, subtask_num, core, queue,
+      generate_input(testcase, testcase_kv.first, subtask.first, core, queue,
                      source_cache_, cache_mode, executor, inputs_, validation_);
 
-      generate_output(testcase, testcase_num, core, queue, solution_,
+      generate_output(testcase, testcase_kv.first, core, queue, solution_,
                       cache_mode, executor, task, inputs_, outputs_,
                       validation_);
 
-      ++testcase_num;
     }
-    ++subtask_num;
   }
 }
 
