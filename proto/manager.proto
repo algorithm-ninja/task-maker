@@ -23,7 +23,6 @@ message EvaluateTaskRequest {
   int32 num_cores = 9;
   bool dry_run = 10;
   string evaluate_on = 11;
-  // TODO the python does not set this
   bool exclusive = 12;
 }
 
