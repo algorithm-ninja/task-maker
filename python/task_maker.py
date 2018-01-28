@@ -65,11 +65,10 @@ def main() -> None:
     ui.set_memory_limit(request.task.memory_limit_kb)
 
     last_testcase = 0
-    for subtask_num, subtask in enumerate(request.task.subtasks):
-        testcases = range(last_testcase,
-                          last_testcase + len(subtask.testcases))
+    for subtask_num, subtask in request.task.subtasks.items():
         last_testcase += len(subtask.testcases)
-        ui.set_subtask_info(subtask_num, subtask.max_score, testcases)
+        ui.set_subtask_info(subtask_num, subtask.max_score,
+                            subtask.testcases.keys())
 
     manager_spawned = False
     max_attempts = 100

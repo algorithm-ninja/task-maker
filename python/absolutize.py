@@ -31,7 +31,7 @@ def absolutize_testcase(testcase: TestCase) -> None:
 
 
 def absolutize_subtask(subtask: Subtask) -> None:
-    for testcase in subtask.testcases:
+    for testcase in subtask.testcases.values():
         absolutize_testcase(testcase)
 
 
@@ -41,7 +41,7 @@ def absolutize_grader_info(info: GraderInfo) -> None:
 
 
 def absolutize_task(task: Task) -> None:
-    for subtask in task.subtasks:
+    for subtask in task.subtasks.values():
         absolutize_subtask(subtask)
     if task.HasField("official_solution"):
         absolutize_source_file(task.official_solution)

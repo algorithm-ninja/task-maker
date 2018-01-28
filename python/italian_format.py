@@ -34,7 +34,7 @@ def list_files(patterns: List[str],
     ]
 
 
-def load_testcases() -> Tuple[Optional[str], List[Subtask]]:
+def load_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
     nums = [
         int(input_file[11:-4])
         for input_file in glob.glob(os.path.join("input", "input*.txt"))
@@ -51,22 +51,24 @@ def load_testcases() -> Tuple[Optional[str], List[Subtask]]:
         testcase.input_file = os.path.join("input", "input%d.txt" % num)
         testcase.output_file = os.path.join("output", "output%d.txt" % num)
         subtask.testcases.extend([testcase])
-    return None, [subtask]
+    return None, {0: subtask}
 
 
-def gen_testcases() -> Tuple[Optional[str], List[Subtask]]:
+def gen_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
     generator = None  # type: Optional[str]
     validator = None  # type: Optional[str]
-    subtasks = []  # type: List[Subtask]
+    subtasks = {}  # type: Dict[int, Subtask]
     official_solution = None  # type: Optional[str]
 
-    def create_subtask(testcases: List[TestCase], score: float) -> None:
+    def create_subtask(subtask_num: int, testcases: Dict[int, TestCase],
+                       score: float) -> None:
         if testcases:
             subtask = Subtask()
             subtask.score_mode = MIN
             subtask.max_score = score
-            subtask.testcases.extend(testcases)
-            subtasks.append(subtask)
+            for testcase_num, testcase in testcases.items():
+                subtask.testcases[testcase_num].CopyFrom(testcase)
+            subtasks[subtask_num] = subtask
 
     for _generator in list_files(["gen/generator.*", "gen/generatore.*"]):
         generator = _generator
@@ -81,13 +83,16 @@ def gen_testcases() -> Tuple[Optional[str], List[Subtask]]:
     if official_solution is None:
         raise RuntimeError("No official solution found")
 
-    current_testcases = []  # type: List[TestCase]
+    current_testcases = {}  # type: Dict[int, TestCase]
+    subtask_num = -1  # the first #ST line will skip a subtask!
+    testcase_num = 0
     current_score = 0.0
     for line in open("gen/GEN"):
         testcase = TestCase()
         if line.startswith("#ST: "):
-            create_subtask(current_testcases, current_score)
-            current_testcases = []
+            create_subtask(subtask_num, current_testcases, current_score)
+            subtask_num += 1
+            current_testcases = {}
             current_score = float(line.strip()[5:])
             continue
         elif line.startswith("#COPY: "):
@@ -102,9 +107,13 @@ def gen_testcases() -> Tuple[Optional[str], List[Subtask]]:
             testcase.args.extend(args)
             testcase.extra_deps.extend(arg_deps)
             testcase.validator.CopyFrom(from_file(validator))
-        current_testcases.append(testcase)
+        current_testcases[testcase_num] = testcase
+        testcase_num += 1
 
-    create_subtask(current_testcases, current_score)
+    # if the task has no subtasks, the starting number should be 0
+    if subtask_num == -1:
+        subtask_num = 0
+    create_subtask(subtask_num, current_testcases, current_score)
     # Hack for when subtasks are not specified.
     if len(subtasks) == 1 and subtasks[0].max_score == 0:
         subtasks[0].score_mode = SUM
@@ -204,8 +213,9 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
         info.files.extend([Dependency(name=name, path=grader)] +
                           find_dependency(grader))
         task.grader_info.extend([info])
-    task.subtasks.extend(subtasks)
-    num_testcases = sum(len(subtask.testcases) for subtask in subtasks)
+    for subtask_num, subtask in subtasks.items():
+        task.subtasks[subtask_num].CopyFrom(subtask)
+    num_testcases = sum(len(subtask.testcases) for subtask in subtasks.values())
 
     request = EvaluateTaskRequest()
     request.task.CopyFrom(task)

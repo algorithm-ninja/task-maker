@@ -46,8 +46,6 @@ main()
 assert TestingUI.inst
 test_data = TestingUI.inst  # type: TestingUI
 
-#os.system("killall manager")
-
 # pylint: disable=protected-access
 
 
