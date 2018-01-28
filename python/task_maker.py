@@ -68,7 +68,7 @@ def main() -> None:
     for subtask_num, subtask in request.task.subtasks.items():
         last_testcase += len(subtask.testcases)
         ui.set_subtask_info(subtask_num, subtask.max_score,
-                            subtask.testcases.keys())
+                            sorted(subtask.testcases.keys()))
 
     manager_spawned = False
     max_attempts = 100
