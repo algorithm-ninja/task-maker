@@ -332,7 +332,7 @@ class CursesUI(SilentUI):
             if status.score is None:
                 continue
 
-            for num, subtask in self._subtask_testcases.items():
+            for num, subtask in sorted(self._subtask_testcases.items()):
                 if status.subtask_scores[num] == self._subtask_max_scores[num]:
                     printer.bold("Subtask #%d: %.2f/%.2f\n" %
                                  (num + 1, status.subtask_scores[num],
@@ -346,7 +346,7 @@ class CursesUI(SilentUI):
                                for testcase in subtask)
                 max_mem = max(status.testcase_result[testcase].memory_used_kb
                               for testcase in subtask)
-                for testcase in subtask:
+                for testcase in sorted(subtask):
                     tc_status = status.testcase_result[testcase]
                     print_testcase(sol, testcase, tc_status, max_time, max_mem)
 
