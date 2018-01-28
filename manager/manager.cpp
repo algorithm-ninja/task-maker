@@ -37,8 +37,14 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     LOG(INFO) << "Cleaning task directories:\n"
               << "\t" << request->store_dir() << "\n"
               << "\t" << request->temp_dir();
-    util::File::RemoveTree(request->store_dir());
-    util::File::RemoveTree(request->temp_dir());
+    try {
+        util::File::RemoveTree(request->store_dir());
+    } catch (std::system_error) {
+    }
+    try {
+        util::File::RemoveTree(request->temp_dir());
+    } catch (std::system_error) {
+    }
     return grpc::Status::OK;
   }
   grpc::Status GetEvents(grpc::ServerContext* context,

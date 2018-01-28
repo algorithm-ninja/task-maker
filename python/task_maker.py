@@ -45,14 +45,16 @@ def spawn_manager(port: int) -> None:
     proc.join()
 
 
-def get_manager(args):
+def get_manager(args, func):
     manager_spawned = False
     max_attempts = 100
     for attempt in range(max_attempts):
         try:
             channel = grpc.insecure_channel(
                 "localhost:" + str(args.manager_port))
-            return manager_pb2_grpc.TaskMakerManagerStub(channel)
+            manager = manager_pb2_grpc.TaskMakerManagerStub(channel)
+            func(manager)
+            return
         except grpc._channel._Rendezvous as e:
             if e.code() != grpc.StatusCode.UNAVAILABLE:
                 raise
@@ -76,8 +78,7 @@ def main() -> None:
         request = CleanTaskRequest()
         request.store_dir = os.path.abspath(args.store_dir)
         request.temp_dir = os.path.abspath(args.temp_dir)
-        manager = get_manager(args)
-        manager.CleanTask(request)
+        get_manager(args, lambda manager: manager.CleanTask(request))
         return
 
     request = get_request(args)
@@ -95,20 +96,22 @@ def main() -> None:
         ui.set_subtask_info(subtask_num, subtask.max_score,
                             sorted(subtask.testcases.keys()))
 
-    manager = get_manager(args)
-    response = manager.EvaluateTask(request)
+    def evaluate_task(manager):
+        response = manager.EvaluateTask(request)
 
-    def stop_server(signum: int, _: Any) -> None:
-        manager.Stop(StopRequest(evaluation_id=response.id))
-        ui.fatal_error("Aborted with sig%d" % signum)
+        def stop_server(signum: int, _: Any) -> None:
+            manager.Stop(StopRequest(evaluation_id=response.id))
+            ui.fatal_error("Aborted with sig%d" % signum)
 
-    signal.signal(signal.SIGINT, stop_server)
-    signal.signal(signal.SIGTERM, stop_server)
+        signal.signal(signal.SIGINT, stop_server)
+        signal.signal(signal.SIGTERM, stop_server)
 
-    for event in manager.GetEvents(
-            GetEventsRequest(evaluation_id=response.id)):
-        ui.from_event(event)
-    ui.print_final_status()
+        for event in manager.GetEvents(
+                GetEventsRequest(evaluation_id=response.id)):
+            ui.from_event(event)
+        ui.print_final_status()
+
+    get_manager(args, evaluate_task)
 
 
 if __name__ == '__main__':
