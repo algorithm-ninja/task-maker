@@ -66,6 +66,7 @@ cc_binary(
         "//sandbox:unix",
         ":evaluation",
         ":event_queue",
+        "//util:file",
         "//proto:manager_cc",
         "//external:gflags",
         "//external:glog",

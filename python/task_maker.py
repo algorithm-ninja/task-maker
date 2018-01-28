@@ -10,7 +10,7 @@ from typing import Any
 import daemon
 import grpc
 from proto import manager_pb2_grpc
-from proto.manager_pb2 import GetEventsRequest, StopRequest
+from proto.manager_pb2 import GetEventsRequest, StopRequest, CleanTaskRequest
 
 from python.absolutize import absolutize_request
 from python.args import get_parser, UIS
@@ -45,6 +45,26 @@ def spawn_manager(port: int) -> None:
     proc.join()
 
 
+def get_manager(args):
+    manager_spawned = False
+    max_attempts = 100
+    for attempt in range(max_attempts):
+        try:
+            channel = grpc.insecure_channel(
+                "localhost:" + str(args.manager_port))
+            return manager_pb2_grpc.TaskMakerManagerStub(channel)
+        except grpc._channel._Rendezvous as e:
+            if e.code() != grpc.StatusCode.UNAVAILABLE:
+                raise
+            if not manager_spawned:
+                spawn_manager(args.manager_port)
+                manager_spawned = True
+            if attempt == max_attempts - 1:
+                raise
+            del channel
+            time.sleep(0.5)
+
+
 def main() -> None:
     parser = get_parser()
     args = parser.parse_args()
@@ -53,6 +73,11 @@ def main() -> None:
 
     if args.clean:
         clean()
+        request = CleanTaskRequest()
+        request.store_dir = os.path.abspath(args.store_dir)
+        request.temp_dir = os.path.abspath(args.temp_dir)
+        manager = get_manager(args)
+        manager.CleanTask(request)
         return
 
     request = get_request(args)
@@ -70,25 +95,8 @@ def main() -> None:
         ui.set_subtask_info(subtask_num, subtask.max_score,
                             sorted(subtask.testcases.keys()))
 
-    manager_spawned = False
-    max_attempts = 100
-    for attempt in range(max_attempts):
-        try:
-            channel = grpc.insecure_channel(
-                "localhost:" + str(args.manager_port))
-            manager = manager_pb2_grpc.TaskMakerManagerStub(channel)
-            response = manager.EvaluateTask(request)
-            break
-        except grpc._channel._Rendezvous as e:
-            if e.code() != grpc.StatusCode.UNAVAILABLE:
-                raise
-            if not manager_spawned:
-                spawn_manager(args.manager_port)
-                manager_spawned = True
-            if attempt == max_attempts - 1:
-                raise
-            del channel
-            time.sleep(0.5)
+    manager = get_manager(args)
+    response = manager.EvaluateTask(request)
 
     def stop_server(signum: int, _: Any) -> None:
         manager.Stop(StopRequest(evaluation_id=response.id))

@@ -30,6 +30,14 @@ message EvaluateTaskResponse {
   int64 id = 1;
 }
 
+message CleanTaskRequest {
+  string store_dir = 1;
+  string temp_dir = 2;
+}
+
+message CleanTaskResponse {
+}
+
 message GetEventsRequest {
   int64 evaluation_id = 1;
 }
@@ -51,6 +59,7 @@ message ShutdownResponse {
 
 service TaskMakerManager {
   rpc EvaluateTask(EvaluateTaskRequest) returns (EvaluateTaskResponse);
+  rpc CleanTask(CleanTaskRequest) returns (CleanTaskResponse);
   rpc GetEvents(GetEventsRequest) returns (stream Event);
   rpc Stop(StopRequest) returns (StopResponse);
   rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);

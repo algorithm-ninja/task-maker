@@ -10,6 +10,7 @@
 #include "grpc++/server_context.h"
 #include "manager/evaluation.hpp"
 #include "proto/manager.grpc.pb.h"
+#include "util/file.hpp"
 
 DEFINE_int32(port, 7071, "port to listen on");
 
@@ -28,6 +29,16 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     running_[current_id] = std::move(info);
     run_core(*request, current_id);
     response->set_id(current_id);
+    return grpc::Status::OK;
+  }
+  grpc::Status CleanTask(grpc::ServerContext* context,
+                         const proto::CleanTaskRequest* request,
+                         proto::CleanTaskResponse* response) override {
+    LOG(INFO) << "Cleaning task directories:\n"
+              << "\t" << request->store_dir() << "\n"
+              << "\t" << request->temp_dir();
+    util::File::RemoveTree(request->store_dir());
+    util::File::RemoveTree(request->temp_dir());
     return grpc::Status::OK;
   }
   grpc::Status GetEvents(grpc::ServerContext* context,
