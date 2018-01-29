@@ -76,7 +76,7 @@ def test_solution_files() -> None:
     assert "mle.cpp" in test_data.solutions
     assert "nonzero.cpp" in test_data.solutions
     assert "not_compile.cpp" in test_data.solutions
-    assert "sigsegv.cpp" in test_data.solutions
+    assert "sigsegv.c" in test_data.solutions
     assert "soluzione.py" in test_data.solutions
     assert "tle.cpp" in test_data.solutions
     assert "wa.cpp" in test_data.solutions
@@ -132,7 +132,7 @@ def test_solutions() -> None:
         assert testcase.message == "Non-zero return code"
         assert testcase.score == 0
 
-    sigsegv = test_data._solution_status["sigsegv.cpp"]
+    sigsegv = test_data._solution_status["sigsegv.c"]
     assert sigsegv.score == 0
     for testcase in sigsegv.testcase_result.values():
         assert testcase.message == "Segmentation fault"
