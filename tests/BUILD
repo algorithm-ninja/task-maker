@@ -49,3 +49,15 @@ py_test(
         ":test"
     ],
 )
+
+py_test(
+    name = "with_bugged_sol",
+    size = "medium",
+    timeout = "short",
+    srcs = ["with_bugged_sol.py"],
+    data = glob(["task_with_bugged_sol/**"]),
+    flaky = True,
+    deps = [
+        ":test"
+    ],
+)
