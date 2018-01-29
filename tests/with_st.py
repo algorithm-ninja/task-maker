@@ -3,54 +3,17 @@
 # we use the global scope, so pylint considers every variable as a constant
 # pylint: disable=invalid-name
 
-import os.path
-import shutil
-import sys
-from typing import List
-
-import _pytest.config  # type:ignore
-
-from python.silent_ui import SilentUI
-from python.args import UIS
-from python.task_maker import main
 from proto.event_pb2 import FAILURE, DONE
 
+from tests.test import run_tests, TestingUI
 
-class TestingUI(SilentUI):
-    inst = None
-
-    def __init__(self, solutions: List[str]) -> None:
-        super().__init__(solutions)
-        TestingUI.inst = self
-
-    def fatal_error(self, msg: str) -> None:
-        print("FATAL ERROR", msg, file=sys.stderr)
-
-
-# inject the testing UI to the valid UIs
-UIS["testing"] = TestingUI
-
-orig_task_dir = os.path.join(os.path.dirname(__file__), "test_task")
-task_dir = os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), "test_task")
-if os.path.exists(task_dir):
-    shutil.rmtree(task_dir)
-shutil.copytree(orig_task_dir, task_dir)
-
-os.chdir(task_dir)
-
-sys.argv = [
-    sys.argv[0], "--ui=testing", "--cache=nothing", "--task-dir=" + task_dir
-]
-
-main()
-assert TestingUI.inst
-test_data = TestingUI.inst  # type: TestingUI
 
 # pylint: disable=protected-access
 
 
 def test_task_details() -> None:
-    assert test_data.task_name == "Testing task-maker (test_task)"
+    test_data = TestingUI.inst
+    assert test_data.task_name == "Testing task-maker (with_st)"
     assert test_data._time_limit == 1
     assert test_data._memory_limit == 65536
     assert test_data._num_testcases == 6
@@ -66,6 +29,7 @@ def test_task_details() -> None:
 
 
 def test_solution_files() -> None:
+    test_data = TestingUI.inst
     assert len(test_data._other_compilations) == 2
     assert "generatore.cpp" in test_data._other_compilations
     assert "valida.py" in test_data._other_compilations
@@ -84,6 +48,7 @@ def test_solution_files() -> None:
 
 
 def test_compilation_status() -> None:
+    test_data = TestingUI.inst
     assert "not_compile.cpp" in test_data._compilation_errors
     for sol, comp_status in test_data._compilation_status.items():
         if sol == "not_compile.cpp":
@@ -95,19 +60,21 @@ def test_compilation_status() -> None:
 
 
 def test_generation() -> None:
+    test_data = TestingUI.inst
     assert not test_data._generation_errors
     for gen_status in test_data._generation_status.values():
         assert gen_status == DONE
 
 
 def test_solutions() -> None:
+    test_data = TestingUI.inst
     soluzione = test_data._solution_status["soluzione.py"]
     assert soluzione.score == 100
     for testcase in soluzione.testcase_result.values():
         assert testcase.message == "Output is correct"
         assert testcase.score == 1
 
-    bash = test_data._solution_status["soluzione.py"]
+    bash = test_data._solution_status["bash.sh"]
     assert bash.score == 100
     for testcase in bash.testcase_result.values():
         assert testcase.message == "Output is correct"
@@ -122,7 +89,10 @@ def test_solutions() -> None:
     mle = test_data._solution_status["mle.cpp"]
     assert mle.score == 0
     for testcase in mle.testcase_result.values():
-        assert testcase.message == "Memory limit exceeded"
+        # in my machine the program is aborted hitting the memory limit
+        # (it throws a std::bad_alloc)
+        assert testcase.message == "Memory limit exceeded" or \
+            testcase.message == "Aborted"
         assert testcase.score == 0
         assert testcase.memory_used_kb > 60000
 
@@ -166,6 +136,4 @@ def test_solutions() -> None:
 
 
 if __name__ == "__main__":
-    raise SystemExit(
-        _pytest.config.main(
-            [__file__, "--override-ini=python_classes=IDontWantThis"]))
+    run_tests("with_st", __file__)

@@ -1,4 +1,4 @@
-name: test_task
+name: with_st
 title: Testing task-maker
 time_limit: 1
 memory_limit: 64
