@@ -10,13 +10,14 @@
 #include "proto/server.grpc.pb.h"
 #include "util/file.hpp"
 
-DEFINE_string(address, "0.0.0.0", "address to listen on");
-DEFINE_int32(port, 7070, "port to listen on");
-DEFINE_string(store_directory, "files", "Where files should be stored");
+DEFINE_string(address, "0.0.0.0", "address to listen on");  // NOLINT
+DEFINE_int32(port, 7070, "port to listen on");              // NOLINT
+DEFINE_string(store_directory, "files",                     // NOLINT
+              "Where files should be stored");
 
 class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
  public:
-  TaskMakerServerImpl(const std::string& store_dir)
+  explicit TaskMakerServerImpl(const std::string& store_dir)
       : store_directory_(store_dir) {
     util::File::MakeDirs(store_dir);
   }
@@ -166,7 +167,7 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  google::InitGoogleLogging(argv[0]);
+  google::InitGoogleLogging(argv[0]);  // NOLINT
   google::InstallFailureSignalHandler();
   std::string server_address = FLAGS_address + ":" + std::to_string(FLAGS_port);
   TaskMakerServerImpl service(FLAGS_store_directory);

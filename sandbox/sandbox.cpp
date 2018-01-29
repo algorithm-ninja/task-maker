@@ -5,7 +5,7 @@
 namespace sandbox {
 
 Sandbox::store_t* Sandbox::Boxes_() {
-  static store_t* boxes = new store_t;
+  static auto boxes = new store_t;
   return boxes;
 }
 

@@ -23,7 +23,7 @@ bool Echo::Execute(const ExecutionOptions& options, ExecutionInfo* info,
 }
 
 namespace {
-Sandbox::Register<Echo> r;
+Sandbox::Register<Echo> r;  // NOLINT
 }  // namespace
 
 }  // namespace sandbox

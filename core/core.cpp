@@ -13,7 +13,7 @@ enum EnqueueStatus {
   NO_TASK,
   NO_READY_TASK
 };
-}
+}  // namespace
 
 namespace core {
 
@@ -33,7 +33,8 @@ void Core::ThreadBody() {
 
 TaskStatus Core::LoadFileTask(FileID* file) {
   try {
-    using namespace std::placeholders;
+    using std::placeholders::_1;
+    using std::placeholders::_2;
     file->Load(std::bind(&Core::SetFile, this, _1, _2));
     return TaskStatus::Success(file);
   } catch (const std::exception& exc) {
@@ -44,7 +45,8 @@ TaskStatus Core::LoadFileTask(FileID* file) {
 TaskStatus Core::ExecuteTask(Execution* execution) {
   LOG(INFO) << execution->Description();
   try {
-    using namespace std::placeholders;
+    using std::placeholders::_1;
+    using std::placeholders::_2;
     execution->Run(std::bind(&Core::GetFile, this, _1),
                    std::bind(&Core::SetFile, this, _1, _2));
     return TaskStatus::Success(execution);
@@ -58,14 +60,13 @@ TaskStatus Core::ExecuteTask(Execution* execution) {
 bool Core::Run() {
   // TODO(veluca): detect dependency cycles.
   // TODO(veluca): think about how to automatically resize the thread pool.
-  std::vector<std::thread> threads;
 
   // Load up cache.
   cacher_->Setup();
 
-  for (int i = 0; i < num_cores_; i++) {
-    threads.emplace_back(std::bind(&Core::ThreadBody, this));
-  }
+  std::vector<std::thread> threads(num_cores_);
+  for (int i = 0; i < num_cores_; i++)
+    threads[i] = std::thread(std::bind(&Core::ThreadBody, this));
 
   quitting_ = false;
 

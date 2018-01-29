@@ -95,7 +95,7 @@ CompiledSourceFile::CompiledSourceFile(
                               ": unknown language");
   }
   if (grader) {
-    for (auto dep : grader->files()) args.push_back(dep.name());
+    for (const auto& dep : grader->files()) args.push_back(dep.name());
   }
   compilation_ =
       core->AddExecution("Compilation of " + source.path(), compiler, args);
@@ -128,10 +128,10 @@ CompiledSourceFile::CompiledSourceFile(
     return true;
   });
 
-  for (auto dep : source.deps())
+  for (const auto& dep : source.deps())
     compilation_->Input(dep.name(), core->LoadFile(dep.name(), dep.path()));
   if (grader) {
-    for (auto dep : grader->files())
+    for (const auto& dep : grader->files())
       compilation_->Input(dep.name(), core->LoadFile(dep.name(), dep.path()));
   }
 
@@ -156,7 +156,7 @@ NotCompiledSourceFile::NotCompiledSourceFile(EventQueue* queue,
     : SourceFile(core, queue, name, fatal_failures) {
   core_ = core;
   queue_ = queue;
-  for (auto dep : source.deps())
+  for (const auto& dep : source.deps())
     runtime_deps_.push_back(core->LoadFile(dep.name(), dep.path()));
   program_ = core->LoadFile(source.path(), source.path());
   program_->SetCallback(

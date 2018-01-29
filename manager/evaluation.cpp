@@ -94,7 +94,7 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
     // TODO(veluca): replace this with our own utility?
     checker = core_->AddExecution(
         "Checking solution " + name + " for testcase " + s_testcase_num,
-        // TODO getting the real path of diff is hard (which command)
+        // TODO(edomora97) getting the real path of diff is hard (which command)
         "/usr/bin/diff", {"-w", "output", "contestant_output"});
   }
   checker->Input("output", generation_.GetOutput(testcase_num));
@@ -168,8 +168,7 @@ void Evaluation::UpdateScore(const std::string& name, int64_t subtask_num,
   proto::ScoreMode score_mode = task_.subtasks().at(subtask_num).score_mode();
   status.testcase_scores[testcase_num] = score;
   for (int64_t testcase : testcases_of_subtask[subtask_num])
-    if (status.testcase_scores.count(testcase) == 0)
-      return;
+    if (status.testcase_scores.count(testcase) == 0) return;
   float st_score = 0;
   std::function<float(float, float)> acc = nullptr;
   switch (score_mode) {

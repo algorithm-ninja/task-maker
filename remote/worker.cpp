@@ -11,13 +11,16 @@
 #include "proto/server.grpc.pb.h"
 #include "remote/common.hpp"
 
-DEFINE_string(server, "", "server to connect to");
-DEFINE_string(name, "unnamed_worker", "name that identifies this worker");
-DEFINE_int32(
+DEFINE_string(server, "", "server to connect to");  // NOLINT
+DEFINE_string(name, "unnamed_worker",               // NOLINT
+              "name that identifies this worker");
+DEFINE_int32(                                       // NOLINT
     num_cores, 0,
     "Number of cores to use for the local executor. If unset, autodetect");
-DEFINE_string(store_directory, "files", "Where files should be stored");
-DEFINE_string(temp_directory, "temp", "Where the sandboxes should be created");
+DEFINE_string(store_directory, "files",             // NOLINT
+              "Where files should be stored");
+DEFINE_string(temp_directory, "temp",               // NOLINT
+              "Where the sandboxes should be created");
 
 void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
   grpc::ClientContext context;
@@ -29,7 +32,6 @@ void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
     LOG(INFO) << "Got work: " << request.executable();
     std::unique_ptr<executor::Executor> executor{new executor::LocalExecutor(
         FLAGS_store_directory, FLAGS_temp_directory)};
-    using namespace std::placeholders;
     proto::Response response;
     try {
       response = executor->Execute(
@@ -44,6 +46,8 @@ void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
       response.set_error_message(e.what());
     }
     for (const proto::FileInfo& info : response.output()) {
+      using std::placeholders::_1;
+      using std::placeholders::_2;
       if (info.has_contents()) continue;  // Small file
       LOG(INFO) << "Sending file " << info.hash().DebugString();
       remote::SendFile(
@@ -80,16 +84,17 @@ void worker(const std::string& server, const std::string& name) {
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  google::InitGoogleLogging(argv[0]);
+  google::InitGoogleLogging(argv[0]);  // NOLINT
   google::InstallFailureSignalHandler();
   CHECK_NE(FLAGS_server, "") << "You need to specify a server!";
-  std::vector<std::thread> worker_threads;
-  if (FLAGS_num_cores == 0) {
+
+  if (FLAGS_num_cores == 0)
     FLAGS_num_cores = std::thread::hardware_concurrency();
-  }
+
+  std::vector<std::thread> worker_threads(FLAGS_num_cores);
   for (int i = 0; i < FLAGS_num_cores; i++) {
-    worker_threads.emplace_back(worker, FLAGS_server,
-                                FLAGS_name + "_thread" + std::to_string(i));
+    worker_threads[i] = std::thread(worker, FLAGS_server,
+                                    FLAGS_name + "_thread" + std::to_string(i));
   }
   for (int i = 0; i < FLAGS_num_cores; i++) {
     worker_threads[i].join();

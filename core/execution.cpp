@@ -8,7 +8,7 @@ std::atomic<int32_t> Execution::next_id_{1};
 
 FileID* Execution::Output(const std::string& name,
                           const std::string& description) {
-  if (!outputs_.count(name)) {
+  if (outputs_.count(name) == 0) {
     outputs_.emplace(name, std::unique_ptr<FileID>(
                                new FileID(store_directory_, description)));
   }
@@ -17,7 +17,7 @@ FileID* Execution::Output(const std::string& name,
 
 std::vector<int64_t> Execution::Deps() const {
   std::vector<int64_t> result;
-  if (stdin_) result.push_back(stdin_);
+  if (stdin_ != 0) result.push_back(stdin_);
   for (const auto& in : inputs_) result.push_back(in.second);
   return result;
 }
@@ -58,7 +58,7 @@ void Execution::Run(
     const std::function<void(int64_t, const util::SHA256_t&)>& set_hash) {
   // TODO(veluca): change this when we implement remote executors.
   std::unique_ptr<executor::Executor> executor;
-  if (executor_ == "") {
+  if (executor_.empty()) {
     executor.reset(new executor::LocalExecutor(store_directory_,
                                                temp_directory_, num_cores_));
   } else {
@@ -75,11 +75,11 @@ void Execution::Run(
   auto prepare_input = [&request, &get_hash, this](int64_t id,
                                                    const char* name) {
     proto::FileInfo* in = request.add_input();
-    if (!*name) in->set_type(proto::FileType::STDIN);
+    if (*name == 0) in->set_type(proto::FileType::STDIN);
     in->set_name(name);
     util::File::SetSHA(store_directory_, get_hash(id), in);
   };
-  if (stdin_) prepare_input(stdin_, "");
+  if (stdin_ != 0) prepare_input(stdin_, "");
   for (const auto& input : inputs_)
     prepare_input(input.second, input.first.c_str());
 
@@ -113,7 +113,7 @@ void Execution::Run(
       } else {
         if (cached_)
           throw std::runtime_error("Cached request with missing output");
-        using namespace std::placeholders;
+        using std::placeholders::_1;
         util::File::Write(path, std::bind(&executor::Executor::GetFile,
                                           executor.get(), out.hash(), _1));
       }

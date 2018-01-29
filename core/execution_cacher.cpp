@@ -64,8 +64,8 @@ bool ExecutionCacher::Get(const proto::Request& request,
   for (auto& input : *key_request.mutable_input()) input.clear_contents();
   {
     std::lock_guard<std::mutex> lck(cache_mutex_);
-    if (!cache_.count(for_executor)) return false;
-    if (!cache_.at(for_executor).count(key_request)) return false;
+    if (cache_.count(for_executor) == 0) return false;
+    if (cache_.at(for_executor).count(key_request) == 0) return false;
     response->CopyFrom(cache_.at(for_executor).at(key_request));
   }
   for (const proto::FileInfo& out : response->output()) {

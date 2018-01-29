@@ -1,14 +1,14 @@
 #include "executor/local_executor.hpp"
 #include "util/file.hpp"
 
-#include <ctype.h>
+#include <cctype>
 
 #include <algorithm>
 #include <thread>
 
 namespace {
 bool IsIllegalChar(char c) {
-  return !isalnum(c) && c != '.' && c != '-' && c != '_';
+  return isalnum(c) == 0 && c != '.' && c != '-' && c != '_';
 }
 }  // namespace
 
@@ -16,7 +16,7 @@ namespace executor {
 
 proto::Response LocalExecutor::Execute(
     const proto::Request& request, const RequestFileCallback& file_callback) {
-  if (request.fifo_size()) {
+  if (request.fifo_size() != 0) {
     throw std::logic_error("FIFOs are not implemented yet");
   }
   for (const auto& input : request.input()) {
@@ -94,25 +94,25 @@ proto::Response LocalExecutor::Execute(
   // Termination status.
   response.set_status_code(result.status_code);
   response.set_signal(result.signal);
-  if (request.resource_limit().memory() &&
+  if (request.resource_limit().memory() != 0 &&
       response.resource_usage().memory() >= request.resource_limit().memory()) {
     response.set_status(proto::Status::MEMORY_LIMIT);
     response.set_error_message("Memory limit exceeded");
-  } else if (request.resource_limit().cpu_time() &&
+  } else if (request.resource_limit().cpu_time() != 0 &&
              response.resource_usage().sys_time() +
                      response.resource_usage().cpu_time() >=
                  request.resource_limit().cpu_time()) {
     response.set_status(proto::Status::TIME_LIMIT);
     response.set_error_message("CPU limit exceeded");
-  } else if (request.resource_limit().wall_time() &&
+  } else if (request.resource_limit().wall_time() != 0 &&
              response.resource_usage().wall_time() >=
                  request.resource_limit().wall_time()) {
     response.set_status(proto::Status::TIME_LIMIT);
     response.set_error_message("Wall limit exceeded");
-  } else if (response.signal()) {
+  } else if (response.signal() != 0) {
     response.set_status(proto::Status::SIGNAL);
     response.set_error_message(result.message);
-  } else if (response.status_code()) {
+  } else if (response.status_code() != 0) {
     response.set_status(proto::Status::NONZERO);
     response.set_error_message(result.message);
   } else {
@@ -142,13 +142,13 @@ proto::Response LocalExecutor::Execute(
 }
 
 void LocalExecutor::PrepareFile(const proto::FileInfo& info,
-                                const std::string& tmp,
+                                const std::string& tmpdir,
                                 sandbox::ExecutionOptions* options,
                                 std::vector<std::string>* input_files) {
   std::string name = info.name();
   if (info.type() == proto::FileType::STDIN) {
     name = "stdin";
-    options->stdin_file = util::File::JoinPath(tmp, name);
+    options->stdin_file = util::File::JoinPath(tmpdir, name);
   } else {
     if (std::find_if(name.begin(), name.end(), IsIllegalChar) != name.end()) {
       throw std::runtime_error("Invalid file name: " + name);
@@ -157,27 +157,28 @@ void LocalExecutor::PrepareFile(const proto::FileInfo& info,
   }
   std::string source_path =
       util::File::ProtoSHAToPath(store_directory_, info.hash());
-  util::File::Copy(source_path, util::File::JoinPath(tmp, name));
-  input_files->push_back(util::File::JoinPath(tmp, name));
+  util::File::Copy(source_path, util::File::JoinPath(tmpdir, name));
+  input_files->push_back(util::File::JoinPath(tmpdir, name));
 }
 
 void LocalExecutor::RetrieveFile(const proto::FileInfo& info,
-                                 const std::string& tmp,
+                                 const std::string& tmpdir,
                                  proto::Response* options) {
   std::string name = info.name();
   if (info.type() == proto::FileType::STDOUT ||
       info.type() == proto::FileType::STDERR) {
-    name = info.type() == proto::FileType::STDOUT ? "stdout" : "stderr";
+    name =
+        info.type() == proto::FileType::STDOUT ? "stdout" : "stderr";  // NOLINT
   } else {
     if (std::find_if(name.begin(), name.end(), IsIllegalChar) != name.end()) {
       throw std::runtime_error("Invalid file name");
     }
     name = util::File::JoinPath(kBoxDir, name);
   }
-  util::SHA256_t hash = util::File::Hash(util::File::JoinPath(tmp, name));
+  util::SHA256_t hash = util::File::Hash(util::File::JoinPath(tmpdir, name));
   proto::FileInfo out_info = info;
   std::string destination_path = util::File::SHAToPath(store_directory_, hash);
-  util::File::Copy(util::File::JoinPath(tmp, name), destination_path);
+  util::File::Copy(util::File::JoinPath(tmpdir, name), destination_path);
   util::File::SetSHA(store_directory_, hash, &out_info);
   *options->add_output() = std::move(out_info);
 }
@@ -191,7 +192,7 @@ void LocalExecutor::MaybeRequestFile(const proto::FileInfo& info,
   if (info.has_contents()) {
     util::File::Write(path, info.contents(), overwrite, exist_ok);
   } else {
-    using namespace std::placeholders;
+    using std::placeholders::_1;
     util::File::Write(path, std::bind(file_callback, info.hash(), _1),
                       overwrite, exist_ok);
   }
@@ -203,9 +204,10 @@ void LocalExecutor::GetFile(const proto::SHA256& hash,
                    chunk_receiver);
 }
 
-LocalExecutor::LocalExecutor(const std::string& store_directory,
-                             const std::string& temp_directory, int num_cores)
-    : store_directory_(store_directory), temp_directory_(temp_directory) {
+LocalExecutor::LocalExecutor(std::string store_directory,
+                             std::string temp_directory, int num_cores)
+    : store_directory_(std::move(store_directory)),
+      temp_directory_(std::move(temp_directory)) {
   util::File::MakeDirs(temp_directory_);
   util::File::MakeDirs(store_directory_);
 

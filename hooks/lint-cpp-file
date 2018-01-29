@@ -1,0 +1,17 @@
+#!/bin/bash -e
+
+INCLUDES=$(cat .syntastic_cpp_config)
+EXCLUDE_CHECKS="-misc-unused-parameters,-llvm-header-guard,-cppcoreguidelines-pro-type-reinterpret-cast,-modernize-make-unique,-readability-braces-around-statements,-google-readability-braces-around-statements"
+
+check_file_clang() {
+  file="${1}"
+  echo "====> clang-tiding $file"
+  # TODO: add -quiet as soon as it is supported
+  clang-tidy --checks=*,${EXCLUDE_CHECKS} \
+    --warnings-as-errors=*,${EXCLUDE_CHECKS} ${1} \
+    -- -std=c++11 ${INCLUDES}
+}
+
+for file in $@; do
+    check_file_clang "$file"
+done

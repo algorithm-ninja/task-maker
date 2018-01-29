@@ -2,7 +2,7 @@
 #include "glog/logging.h"
 #include "util/sha256.hpp"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <fstream>
 #include <system_error>
@@ -15,7 +15,7 @@
 
 namespace {
 
-static const constexpr char* kPathSeparators = "/";
+const constexpr char* kPathSeparators = "/";
 
 bool MkDir(const std::string& dir) {
   return mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IXOTH) != -1 ||
@@ -31,17 +31,16 @@ bool OsRemoveTree(const std::string& path) {
               64, FTW_DEPTH | FTW_PHYS | FTW_MOUNT) != -1;
 }
 
-static const size_t max_path_len = 1 << 15;
+const size_t max_path_len = 1 << 15;
 std::string OsTempDir(const std::string& path) {
   std::string tmp = util::File::JoinPath(path, "XXXXXX");
   CHECK_LT(tmp.size(), max_path_len);
-  char data[max_path_len];
+  char data[max_path_len + 1];
   data[0] = 0;
-  strncat(data, tmp.c_str(), max_path_len);
-  if (mkdtemp(data) == nullptr) {
+  strncat(data, tmp.c_str(), max_path_len);  // NOLINT
+  if (mkdtemp(data) == nullptr)              // NOLINT
     return "";
-  }
-  return data;
+  return data;  // NOLINT
 }
 
 int OsTempFile(const std::string& path, std::string* tmp) {
@@ -58,9 +57,9 @@ int OsTempFile(const std::string& path, std::string* tmp) {
   *tmp = path + ".XXXXXX";
   char data[max_path_len];
   data[0] = 0;
-  strncat(data, tmp->c_str(), max_path_len);
-  int fd = mkostemp(data, O_CLOEXEC);
-  *tmp = data;
+  strncat(data, tmp->c_str(), max_path_len);  // NOLINT
+  int fd = mkostemp(data, O_CLOEXEC);         // NOLINT
+  *tmp = data;                                // NOLINT
   return fd;
 #endif
 }
@@ -83,16 +82,16 @@ int OsAtomicMove(const std::string& src, const std::string& dst,
 
 int OsRead(const std::string& path,
            const util::File::ChunkReceiver& chunk_receiver) {
-  int fd = open(path.c_str(), O_CLOEXEC | O_RDONLY);
+  int fd = open(path.c_str(), O_CLOEXEC | O_RDONLY);  // NOLINT
   if (fd == -1) return errno;
   char buf[util::kChunkSize] = {};
   ssize_t amount;
   proto::FileContents contents;
   try {
-    while ((amount = read(fd, buf, util::kChunkSize))) {
+    while ((amount = read(fd, buf, util::kChunkSize))) {  // NOLINT
       if (amount == -1 && errno == EINTR) continue;
       if (amount == -1) break;
-      contents.set_chunk(buf, amount);
+      contents.set_chunk(buf, amount);  // NOLINT
       chunk_receiver(contents);
     }
   } catch (...) {
@@ -117,8 +116,8 @@ int OsWrite(const std::string& path,
     chunk_producer([&fd, &temp_file](const proto::FileContents& chunk) {
       size_t pos = 0;
       while (pos < chunk.chunk().size()) {
-        ssize_t written =
-            write(fd, chunk.chunk().c_str() + pos, chunk.chunk().size() - pos);
+        ssize_t written = write(fd, chunk.chunk().c_str() + pos,
+                                chunk.chunk().size() - pos);  // NOLINT
         if (written == -1 && errno == EINTR) continue;
         if (written == -1) {
           throw std::system_error(errno, std::system_category(),
@@ -143,9 +142,8 @@ namespace util {
 void File::Read(const std::string& path,
                 const File::ChunkReceiver& chunk_receiver) {
   int err = OsRead(path, chunk_receiver);
-  if (err) {
+  if (err != 0)
     throw std::system_error(err, std::system_category(), "Read " + path);
-  }
 }
 
 void File::Write(const std::string& path, const ChunkProducer& chunk_producer,
@@ -156,13 +154,14 @@ void File::Write(const std::string& path, const ChunkProducer& chunk_producer,
     throw std::system_error(EEXIST, std::system_category(), "Write " + path);
   }
   int err = OsWrite(path, chunk_producer, overwrite, exist_ok);
-  if (err) throw std::system_error(err, std::system_category(), path);
+  if (err != 0) throw std::system_error(err, std::system_category(), path);
 }
 
 SHA256_t File::Hash(const std::string& path) {
   SHA256 hasher;
   Read(path, [&hasher](const proto::FileContents& chunk) {
-    hasher.update((unsigned char*)chunk.chunk().c_str(), chunk.chunk().size());
+    hasher.update(reinterpret_cast<const unsigned char*>(chunk.chunk().data()),
+                  chunk.chunk().size());
   });
   SHA256_t digest;
   hasher.finalize(&digest);
@@ -181,13 +180,13 @@ void File::MakeDirs(const std::string& path) {
 
 void File::Copy(const std::string& from, const std::string& to, bool overwrite,
                 bool exist_ok) {
-  using namespace std::placeholders;
+  using std::placeholders::_1;
   Write(to, std::bind(Read, from, _1), overwrite, exist_ok);
 }
 
 void File::Move(const std::string& from, const std::string& to, bool overwrite,
                 bool exist_ok) {
-  if (!OsAtomicMove(from, to, overwrite, exist_ok)) {
+  if (OsAtomicMove(from, to, overwrite, exist_ok) == 0) {
     Copy(from, to, overwrite, exist_ok);
     Remove(from);
   }
@@ -210,8 +209,8 @@ std::string File::PathForHash(const SHA256_t& hash) {
 
 std::string File::JoinPath(const std::string& first,
                            const std::string& second) {
-  if (strchr(kPathSeparators, second[0])) return second;
-  return first + kPathSeparators[0] + second;
+  if (strchr(kPathSeparators, second[0]) != nullptr) return second;
+  return first + kPathSeparators[0] + second;  // NOLINT
 }
 
 std::string File::BaseDir(const std::string& path) {
@@ -226,7 +225,7 @@ int64_t File::Size(const std::string& path) {
 
 TempDir::TempDir(const std::string& base) {
   path_ = OsTempDir(base);
-  if (path_ == "")
+  if (path_.empty())
     throw std::system_error(errno, std::system_category(), "mkdtemp");
 }
 void TempDir::Keep() { keep_ = true; }
@@ -257,7 +256,7 @@ void File::SetSHA(const std::string& store_directory, const SHA256_t& hash,
     util::File::Read(
         SHAToPath(store_directory, hash),
         [&dest](const proto::FileContents& bf) {
-          if (dest->contents().chunk().size() != 0) {
+          if (dest->contents().chunk().empty()) {
             throw std::runtime_error("Small file with more than one chunk");
           }
           *dest->mutable_contents() = bf;

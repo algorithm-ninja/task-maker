@@ -3,7 +3,7 @@
 namespace remote {
 
 void SetupContext(grpc::ClientContext* context, const std::string& name) {
-  if (name != "") context->AddMetadata("name", name);
+  if (!name.empty()) context->AddMetadata("name", name);
 }
 
 void SendFile(proto::TaskMakerServer::Stub* stub, const proto::SHA256& hash,
@@ -40,7 +40,7 @@ void RetrieveFile(proto::TaskMakerServer::Stub* stub, const proto::SHA256& hash,
     chunk_receiver(contents);
   }
   grpc::Status status = reader->Finish();
-  if (!status.ok() && status.error_code()) {
+  if (!status.ok() && status.error_code() != 0) {
     throw std::runtime_error(status.error_message());
   }
 }

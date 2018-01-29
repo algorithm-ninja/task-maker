@@ -12,7 +12,7 @@
 #include "proto/manager.grpc.pb.h"
 #include "util/file.hpp"
 
-DEFINE_int32(port, 7071, "port to listen on");
+DEFINE_int32(port, 7071, "port to listen on");  // NOLINT
 
 class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
  public:
@@ -38,12 +38,12 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
               << "\t" << request->store_dir() << "\n"
               << "\t" << request->temp_dir();
     try {
-        util::File::RemoveTree(request->store_dir());
-    } catch (std::system_error) {
+      util::File::RemoveTree(request->store_dir());
+    } catch (const std::system_error&) {
     }
     try {
-        util::File::RemoveTree(request->temp_dir());
-    } catch (std::system_error) {
+      util::File::RemoveTree(request->temp_dir());
+    } catch (const std::system_error&) {
     }
     return grpc::Status::OK;
   }
@@ -84,7 +84,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
   grpc::Status Shutdown(grpc::ServerContext* context,
                         const proto::ShutdownRequest* request,
                         proto::ShutdownResponse* response) override {
-    // TODO eventually kill the core/thread
+    // TODO(edomora97) eventually kill the core/thread
     // FIXME it doesn't work :(
     LOG(WARNING) << "Requesting to shutdown the server";
     if (request->force()) {
@@ -119,7 +119,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
   int64_t evaluation_id_counter_ = 0;
   std::mutex requests_mutex_;
 
-  EvaluationInfo setup_request(proto::EvaluateTaskRequest request) {
+  EvaluationInfo setup_request(const proto::EvaluateTaskRequest& request) {
     EvaluationInfo info{};
     info.core = absl::make_unique<core::Core>();
     info.core->SetStoreDirectory(request.store_dir());
@@ -137,10 +137,10 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
         request.exclusive(), request.cache_mode(), request.evaluate_on());
 
     std::map<proto::Language, proto::GraderInfo> graders;
-    for (proto::GraderInfo grader : request.task().grader_info())
+    for (const proto::GraderInfo& grader : request.task().grader_info())
       graders[grader.for_language()] = grader;
 
-    for (proto::SourceFile source : request.solutions()) {
+    for (const proto::SourceFile& source : request.solutions()) {
       absl::optional<proto::GraderInfo> grader;
       if (graders.count(source.language()) == 1)
         grader = graders[source.language()];
@@ -152,7 +152,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     return info;
   }
 
-  void run_core(proto::EvaluateTaskRequest request, int64_t current_id) {
+  void run_core(const proto::EvaluateTaskRequest& request, int64_t current_id) {
     EvaluationInfo& info = running_[current_id];
     info.running_thread = std::thread([this, request, current_id] {
       EvaluationInfo& info = running_[current_id];
@@ -189,7 +189,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  google::InitGoogleLogging(argv[0]);
+  google::InitGoogleLogging(argv[0]);  // NOLINT
   google::InstallFailureSignalHandler();
 
   std::string server_address = "127.0.0.1:" + std::to_string(FLAGS_port);

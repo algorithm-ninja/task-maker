@@ -26,8 +26,8 @@ class LocalExecutor : public Executor {
   LocalExecutor(LocalExecutor&&) = delete;
   LocalExecutor& operator=(LocalExecutor&&) = delete;
   ~LocalExecutor() override = default;
-  LocalExecutor(const std::string& store_directory,
-                const std::string& temp_directory, int num_cores = 0);
+  LocalExecutor(std::string store_directory, std::string temp_directory,
+                int num_cores = 0);
 
  private:
   class ThreadGuard {
