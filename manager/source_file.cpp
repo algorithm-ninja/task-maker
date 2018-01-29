@@ -79,11 +79,11 @@ CompiledSourceFile::CompiledSourceFile(
 
   switch (source.language()) {
     case proto::CPP:
-      compiler = "/usr/bin/g++";
+      compiler = "/usr/bin/c++";
       args = {"-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", "compiled", name_};
       break;
     case proto::C:
-      compiler = "/usr/bin/gcc";
+      compiler = "/usr/bin/cc";
       args = {"-O2", "-std=c11", "-DEVAL", "-Wall", "-o", "compiled", name_};
       break;
     case proto::PASCAL:
