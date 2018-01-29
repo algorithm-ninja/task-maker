@@ -54,8 +54,13 @@ def load_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
     return None, {0: subtask}
 
 
+def get_generator() -> Optional[str]:
+    for generator in list_files(["gen/generator.*", "gen/generatore.*"]):
+        return generator
+    return None
+
+
 def gen_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
-    generator = None  # type: Optional[str]
     validator = None  # type: Optional[str]
     subtasks = {}  # type: Dict[int, Subtask]
     official_solution = None  # type: Optional[str]
@@ -70,8 +75,7 @@ def gen_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
                 subtask.testcases[testcase_num].CopyFrom(testcase)
             subtasks[subtask_num] = subtask
 
-    for _generator in list_files(["gen/generator.*", "gen/generatore.*"]):
-        generator = _generator
+    generator = get_generator()
     if not generator:
         return load_testcases()
     for _validator in list_files(["gen/validator.*", "gen/valida.*"]):
@@ -252,7 +256,8 @@ def clean():
         except OSError:
             pass
 
-    remove_dir("input")
-    remove_dir("output")
+    if get_generator():
+        remove_dir("input")
+        remove_dir("output")
     remove_file(os.path.join("cor", "checker"))
     remove_file(os.path.join("cor", "correttore"))
