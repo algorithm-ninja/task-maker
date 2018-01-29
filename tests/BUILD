@@ -37,3 +37,15 @@ py_test(
         ":test"
     ],
 )
+
+py_test(
+    name = "with_bugged_gen",
+    size = "medium",
+    timeout = "short",
+    srcs = ["with_bugged_gen.py"],
+    data = glob(["task_with_bugged_gen/**"]),
+    flaky = True,
+    deps = [
+        ":test"
+    ],
+)
