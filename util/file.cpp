@@ -116,8 +116,8 @@ int OsWrite(const std::string& path,
     chunk_producer([&fd, &temp_file](const proto::FileContents& chunk) {
       size_t pos = 0;
       while (pos < chunk.chunk().size()) {
-        ssize_t written = write(fd, chunk.chunk().c_str() + pos,
-                                chunk.chunk().size() - pos);  // NOLINT
+        ssize_t written = write(fd, chunk.chunk().c_str() + pos,  // NOLINT
+                                chunk.chunk().size() - pos);
         if (written == -1 && errno == EINTR) continue;
         if (written == -1) {
           throw std::system_error(errno, std::system_category(),
@@ -256,7 +256,7 @@ void File::SetSHA(const std::string& store_directory, const SHA256_t& hash,
     util::File::Read(
         SHAToPath(store_directory, hash),
         [&dest](const proto::FileContents& bf) {
-          if (dest->contents().chunk().empty()) {
+          if (!dest->contents().chunk().empty()) {
             throw std::runtime_error("Small file with more than one chunk");
           }
           *dest->mutable_contents() = bf;
