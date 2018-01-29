@@ -61,3 +61,15 @@ py_test(
         ":test"
     ],
 )
+
+py_test(
+    name = "with_stdin",
+    size = "medium",
+    timeout = "short",
+    srcs = ["with_stdin.py"],
+    data = glob(["task_with_stdin/**"]),
+    flaky = True,
+    deps = [
+        ":test"
+    ],
+)
