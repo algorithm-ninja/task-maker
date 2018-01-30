@@ -68,6 +68,7 @@ class TestInterface:
         self.generator_name = None  # type: Optional[str]
         self.validator_name = None  # type: Optional[str]
         self.generation_errors = None  # type: Optional[str]
+        self.fatal_error = False  # type: bool
         self.name = name
         self.desc = desc
         self.timelimit = timelimit
@@ -90,6 +91,9 @@ class TestInterface:
     def set_generation_errors(self, errors: str):
         self.generation_errors = errors
 
+    def set_fatal_error(self):
+        self.fatal_error = True
+
     def run_checks(self, ui: TestingUI):
         assert ui.task_name == "%s (%s)" % (self.desc, self.name)
         assert ui._time_limit == self.timelimit
@@ -111,3 +115,8 @@ class TestInterface:
 
         for sol in self.solutions:
             sol.check_solution(ui)
+
+        if self.fatal_error:
+            assert ui.fatal_errors
+        else:
+            assert not ui.fatal_errors
