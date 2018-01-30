@@ -24,6 +24,7 @@ message EvaluateTaskRequest {
   bool dry_run = 10;
   string evaluate_on = 11;
   bool exclusive = 12;
+  bool keep_sandbox = 13;
 }
 
 message EvaluateTaskResponse {

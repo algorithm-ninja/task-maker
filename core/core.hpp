@@ -22,13 +22,15 @@ class Core {
 
   Execution* AddExecution(const std::string& description,
                           const std::string& executable,
-                          const std::vector<std::string>& args) {
+                          const std::vector<std::string>& args,
+                          bool keep_sandbox) {
     if (!cacher_) {
       cacher_.reset(new ExecutionCacher(store_directory_));
     }
     executions_.push_back(std::unique_ptr<Execution>(
         new Execution(cacher_.get(), store_directory_, temp_directory_,
-                      num_cores_, description, executable, args)));
+                      num_cores_, description, executable, args,
+                      keep_sandbox)));
     return executions_.back().get();
   }
 

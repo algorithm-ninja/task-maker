@@ -68,6 +68,7 @@ void Execution::Run(
   // Command and args.
   proto::Request request;
   request.set_executable(executable_);
+  request.set_keep_sandbox(keep_sandbox_);
   for (const std::string& arg : args_) *request.add_arg() = arg;
   for (const auto& out : outputs_) request.add_output()->set_name(out.first);
 

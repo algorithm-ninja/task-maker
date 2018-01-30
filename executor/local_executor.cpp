@@ -1,9 +1,12 @@
 #include "executor/local_executor.hpp"
+#include "absl/strings/str_join.h"
+#include "glog/logging.h"
 #include "util/file.hpp"
 
 #include <cctype>
 
 #include <algorithm>
+#include <fstream>
 #include <thread>
 
 namespace {
@@ -25,6 +28,22 @@ proto::Response LocalExecutor::Execute(
 
   sandbox::ExecutionInfo result;
   util::TempDir tmp(temp_directory_);
+
+  std::string cmdline = request.executable();
+  if (!request.arg().empty())
+    for (const std::string& arg : request.arg())
+      cmdline += " '" + arg + "'";
+
+  if (request.keep_sandbox()) {
+    tmp.Keep();
+    std::ofstream cmdline_file(util::File::JoinPath(tmp.Path(), "command.txt"));
+    cmdline_file << cmdline << std::endl;
+  }
+
+  VLOG(1) << "Executing: " << "\n"
+          << "\tCommand:        " << cmdline << "\n"
+          << "\tInside sandbox: " << tmp.Path();
+
   std::string sandbox_dir = util::File::JoinPath(tmp.Path(), kBoxDir);
   util::File::MakeDirs(sandbox_dir);
 

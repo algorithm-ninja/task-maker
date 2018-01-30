@@ -129,11 +129,12 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 
     info.generation = absl::make_unique<manager::Generation>(
         info.queue.get(), info.core.get(), request.task(), request.cache_mode(),
-        request.evaluate_on());
+        request.evaluate_on(), request.keep_sandbox());
 
     info.evaluation = absl::make_unique<manager::Evaluation>(
         info.queue.get(), info.core.get(), *info.generation, request.task(),
-        request.exclusive(), request.cache_mode(), request.evaluate_on());
+        request.exclusive(), request.cache_mode(), request.evaluate_on(),
+        request.keep_sandbox());
 
     std::map<proto::Language, proto::GraderInfo> graders;
     for (const proto::GraderInfo& grader : request.task().grader_info())
@@ -144,7 +145,8 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
       if (graders.count(source.language()) == 1)
         grader = graders[source.language()];
       info.source_files[source.path()] = manager::SourceFile::FromProto(
-          info.queue.get(), info.core.get(), source, grader, false);
+          info.queue.get(), info.core.get(), source, grader, false,
+          request.keep_sandbox());
       info.evaluation->Evaluate(info.source_files[source.path()].get());
     }
 

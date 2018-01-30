@@ -11,10 +11,11 @@ class CompiledSourceFile : public SourceFile {
   CompiledSourceFile(EventQueue* queue, core::Core* core,
                      const proto::SourceFile& source, const std::string& name,
                      const absl::optional<proto::GraderInfo>& grader,
-                     bool fatal_failures = false);
+                     bool fatal_failures, bool keep_sandbox);
 
   core::Execution* execute(const std::string& description,
-                           const std::vector<std::string>& args) override;
+                           const std::vector<std::string>& args,
+                           bool keep_sandbox) override;
 
   void WriteTo(const std::string& path, bool overwrite,
                bool exist_ok) override {
@@ -30,10 +31,11 @@ class NotCompiledSourceFile : public SourceFile {
  public:
   NotCompiledSourceFile(EventQueue* queue, core::Core* core,
                         const proto::SourceFile& source,
-                        const std::string& name, bool fatal_failures = false);
+                        const std::string& name, bool fatal_failures);
 
   core::Execution* execute(const std::string& description,
-                           const std::vector<std::string>& args) override;
+                           const std::vector<std::string>& args,
+                           bool keep_sandbox) override;
 
   void WriteTo(const std::string& path, bool overwrite,
                bool exist_ok) override {
@@ -50,7 +52,8 @@ class NotCompiledSourceFile : public SourceFile {
 // static
 std::unique_ptr<SourceFile> SourceFile::FromProto(
     EventQueue* queue, core::Core* core, const proto::SourceFile& source,
-    const absl::optional<proto::GraderInfo>& grader, bool fatal_failures) {
+    const absl::optional<proto::GraderInfo>& grader, bool fatal_failures,
+    bool keep_sandbox) {
   // the name of the source file is mainly used in the evaluation process, it
   // will be sent to the queue. Maybe we want to send the absolute path?
   std::string name =
@@ -60,7 +63,8 @@ std::unique_ptr<SourceFile> SourceFile::FromProto(
     case proto::C:
     case proto::PASCAL:
       return absl::make_unique<CompiledSourceFile>(
-          queue, core, source, std::move(name), grader, fatal_failures);
+          queue, core, source, std::move(name), grader, fatal_failures,
+          keep_sandbox);
     default:
       return absl::make_unique<NotCompiledSourceFile>(
           queue, core, source, std::move(name), fatal_failures);
@@ -70,7 +74,7 @@ std::unique_ptr<SourceFile> SourceFile::FromProto(
 CompiledSourceFile::CompiledSourceFile(
     EventQueue* queue, core::Core* core, const proto::SourceFile& source,
     const std::string& name, const absl::optional<proto::GraderInfo>& grader,
-    bool fatal_failures)
+    bool fatal_failures, bool keep_sandbox)
     : SourceFile(core, queue, name, fatal_failures) {
   std::string compiler;
   std::vector<std::string> args;
@@ -99,7 +103,8 @@ CompiledSourceFile::CompiledSourceFile(
     for (const auto& dep : grader->files()) args.push_back(dep.name());
   }
   compilation_ =
-      core->AddExecution("Compilation of " + source.path(), compiler, args);
+      core->AddExecution("Compilation of " + source.path(), compiler, args,
+                         keep_sandbox);
 
   compilation_->Input(name_, input_file);
   compiled_ =
@@ -145,9 +150,10 @@ CompiledSourceFile::CompiledSourceFile(
 }
 
 core::Execution* CompiledSourceFile::execute(
-    const std::string& description, const std::vector<std::string>& args) {
+    const std::string& description, const std::vector<std::string>& args,
+    bool keep_sandbox) {
   core::Execution* execution =
-      core_->AddExecution(description, "program", args);
+      core_->AddExecution(description, "program", args, keep_sandbox);
   execution->Input("program", compiled_);
   return execution;
 }
@@ -182,9 +188,10 @@ NotCompiledSourceFile::NotCompiledSourceFile(EventQueue* queue,
 }
 
 core::Execution* NotCompiledSourceFile::execute(
-    const std::string& description, const std::vector<std::string>& args) {
+    const std::string& description, const std::vector<std::string>& args,
+    bool keep_sandbox) {
   core::Execution* execution =
-      core_->AddExecution(description, "program", args);
+      core_->AddExecution(description, "program", args, keep_sandbox);
   execution->Input("program", program_);
   for (auto dep : runtime_deps_) execution->Input(dep->Description(), dep);
   return execution;

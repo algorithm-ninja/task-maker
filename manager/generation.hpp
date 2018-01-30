@@ -14,7 +14,8 @@ namespace manager {
 class Generation {
  public:
   Generation(EventQueue* queue, core::Core* core, const proto::Task& task,
-             proto::CacheMode cache_mode, const std::string& executor);
+             proto::CacheMode cache_mode, const std::string& executor,
+             bool keep_sandbox);
 
   core::FileID* GetInput(int64_t testcase_id) const {
     return inputs_.at(testcase_id);

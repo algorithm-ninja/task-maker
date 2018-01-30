@@ -21,6 +21,8 @@ cc_library(
     deps = [
         ":executor",
         "//sandbox",
+        "//external:glog",
+        "@com_google_absl//absl/strings",
     ],
 )
 

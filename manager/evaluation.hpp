@@ -14,7 +14,8 @@ class Evaluation {
  public:
   Evaluation(EventQueue* queue, core::Core* core, const Generation& generation,
              const proto::Task& task, bool exclusive,
-             proto::CacheMode cache_mode, const std::string& executor);
+             proto::CacheMode cache_mode, const std::string& executor,
+             bool keep_sandbox);
 
   void Evaluate(SourceFile* solution);
 
@@ -32,6 +33,7 @@ class Evaluation {
   bool exclusive_;
   proto::CacheMode cache_mode_;
   std::string executor_;
+  bool keep_sandbox_;
   std::map<std::string, EvaluationStatus> status_;
   std::map<int64_t, std::vector<int64_t>> testcases_of_subtask;
 

@@ -93,6 +93,11 @@ def get_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False)
     parser.add_argument(
+        "--keep-sandbox",
+        help="Do not drop the sandbox folder",
+        action="store_true",
+        default=False)
+    parser.add_argument(
         "--clean",
         help="Clear the task directory and exit",
         action="store_true",

@@ -79,7 +79,8 @@ class Execution {
 
   Execution(ExecutionCacher* cacher, std::string store_directory,
             std::string temp_directory, int num_cores, std::string description,
-            std::string executable, std::vector<std::string> args)
+            std::string executable, std::vector<std::string> args,
+            bool keep_sandbox)
       : store_directory_(std::move(store_directory)),
         temp_directory_(std::move(temp_directory)),
         num_cores_(num_cores),
@@ -87,6 +88,7 @@ class Execution {
         id_((reinterpret_cast<int64_t>(&next_id_) << 32) | (next_id_++)),
         executable_(std::move(executable)),
         args_(std::move(args)),
+        keep_sandbox_(keep_sandbox),
         stdout_(std::unique_ptr<FileID>(new FileID(
             store_directory_, "Standard output for " + description_))),
         stderr_(std::unique_ptr<FileID>(new FileID(
@@ -107,6 +109,7 @@ class Execution {
 
   std::string executable_;
   std::vector<std::string> args_;
+  bool keep_sandbox_;
   std::unordered_map<std::string, int64_t> inputs_;
   std::unordered_map<std::string, std::unique_ptr<FileID>> outputs_;
 

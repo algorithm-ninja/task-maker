@@ -16,9 +16,10 @@ class SourceFile {
   static std::unique_ptr<SourceFile> FromProto(
       EventQueue* queue, core::Core* core, const proto::SourceFile& source,
       const absl::optional<proto::GraderInfo>& grader,
-      bool fatal_failures = false);
+      bool fatal_failures, bool keep_sandbox);
   virtual core::Execution* execute(const std::string& description,
-                                   const std::vector<std::string>& args) = 0;
+                                   const std::vector<std::string>& args,
+                                   bool keep_sandbox) = 0;
   virtual void WriteTo(const std::string& path, bool overwrite,
                        bool exist_ok) = 0;
   const std::string& Name() { return name_; }

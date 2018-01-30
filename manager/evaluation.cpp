@@ -6,14 +6,14 @@ namespace manager {
 Evaluation::Evaluation(EventQueue* queue, core::Core* core,
                        const Generation& generation, const proto::Task& task,
                        bool exclusive, proto::CacheMode cache_mode,
-                       const std::string& executor)
-    : generation_(generation) {
-  queue_ = queue;
-  core_ = core;
-  task_ = task;
-  exclusive_ = exclusive;
-  cache_mode_ = cache_mode;
-
+                       const std::string& executor, bool keep_sandbox)
+    : queue_(queue),
+      core_(core),
+      generation_(generation),
+      task_(task),
+      exclusive_(exclusive),
+      cache_mode_(cache_mode),
+      keep_sandbox_(keep_sandbox) {
   for (auto subtask : task.subtasks()) {
     for (auto testcase : subtask.second.testcases()) {
       testcases_of_subtask[subtask.first].push_back(testcase.first);
@@ -39,7 +39,8 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
   std::string s_testcase_num = std::to_string(testcase_num);
 
   core::Execution* execution = solution->execute(
-      "Evaluation of " + name + " on testcase " + s_testcase_num, {});
+      "Evaluation of " + name + " on testcase " + s_testcase_num, {},
+      keep_sandbox_);
   execution->CpuLimit(task_.time_limit());
   execution->WallLimit(task_.time_limit() * 1.5f);
   execution->MemoryLimit(task_.memory_limit_kb());
@@ -88,14 +89,14 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
   if (task_.has_checker()) {
     checker = generation_.GetChecker()->execute(
         "Checking solution " + name + " for testcase " + s_testcase_num,
-        {"input", "output", "contestant_output"});
+        {"input", "output", "contestant_output"}, keep_sandbox_);
     checker->Input("input", generation_.GetInput(testcase_num));
   } else {
     // TODO(veluca): replace this with our own utility?
     checker = core_->AddExecution(
         "Checking solution " + name + " for testcase " + s_testcase_num,
         // TODO(edomora97) getting the real path of diff is hard (which command)
-        "/usr/bin/diff", {"-w", "output", "contestant_output"});
+        "/usr/bin/diff", {"-w", "output", "contestant_output"}, keep_sandbox_);
   }
   checker->Input("output", generation_.GetOutput(testcase_num));
   checker->Input("contestant_output", output);
