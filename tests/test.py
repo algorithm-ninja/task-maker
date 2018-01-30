@@ -4,7 +4,7 @@ import shutil
 import sys
 from typing import List
 
-import _pytest.config  # type:ignore
+import pytest
 
 from python.args import UIS
 from python.silent_ui import SilentUI
@@ -43,6 +43,7 @@ def run_tests(task_name, file):
 
     main()
     raise SystemExit(
-        _pytest.config.main(
-            [file, "--override-ini=python_classes=IDontWantThis"]))
+        pytest.main([
+            os.path.join(os.path.dirname(__file__), "utils.py"),
+            file, "--override-ini=python_classes=XXXX", "--verbose", "--color=yes", "--showlocals"]))
 

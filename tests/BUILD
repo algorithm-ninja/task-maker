@@ -4,7 +4,7 @@ load("@python_deps//:requirements.bzl", "requirement")
 
 py_library(
     name = "test",
-    srcs = ["test.py"],
+    srcs = ["test.py", "utils.py"],
     deps = [
         requirement("pytest"),
         "//proto:event_py",
