@@ -128,10 +128,10 @@ proto::Response LocalExecutor::Execute(
   for (const proto::FileInfo& info : request.output()) {
     try {
       RetrieveFile(info, tmp.Path(), &response);
-    } catch (std::system_error& exc) {
+    } catch (const std::system_error& exc) {
       if (exc.code().value() !=
           static_cast<int>(std::errc::no_such_file_or_directory))
-        throw exc;
+        throw;
       if (response.status() == proto::Status::SUCCESS) {
         response.set_status(proto::Status::MISSING_FILES);
         response.set_error_message("Missing output files");

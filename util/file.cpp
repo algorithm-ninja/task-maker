@@ -84,10 +84,10 @@ int OsRead(const std::string& path,
            const util::File::ChunkReceiver& chunk_receiver) {
   int fd = open(path.c_str(), O_CLOEXEC | O_RDONLY);  // NOLINT
   if (fd == -1) return errno;
-  char buf[util::kChunkSize] = {};
   ssize_t amount;
   proto::FileContents contents;
   try {
+    char buf[util::kChunkSize] = {};
     while ((amount = read(fd, buf, util::kChunkSize))) {  // NOLINT
       if (amount == -1 && errno == EINTR) continue;
       if (amount == -1) break;
@@ -244,8 +244,6 @@ std::string File::ProtoSHAToPath(const std::string& store_directory,
   util::SHA256_t extracted_hash;
   ProtoToSHA256(hash, &extracted_hash);
   return SHAToPath(store_directory, extracted_hash);
-  return util::File::JoinPath(store_directory,
-                              util::File::PathForHash(extracted_hash));
 }
 
 void File::SetSHA(const std::string& store_directory, const SHA256_t& hash,

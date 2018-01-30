@@ -1,13 +1,5 @@
 #include "sandbox/unix.hpp"
 
-#include <fcntl.h>
-#include <spawn.h>
-#include <sys/resource.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
 #include <atomic>
 #include <cerrno>
 #include <chrono>
@@ -16,7 +8,15 @@
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
+#include <spawn.h>
+#include <sys/resource.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <thread>
+#include <unistd.h>
 
 namespace {
 char* mystrerror(int err, char* buf, size_t buf_size) {
@@ -45,7 +45,7 @@ int GetProcessMemoryUsageFromProc(pid_t pid, int64_t* memory_usage_kb) {
   } while (cur > 0);
   close(fd);
   if (sscanf(buf, "%" SCNd64, memory_usage_kb) != 1) {  // NOLINT
-    fprintf(stderr, "Unable to get memory usage from /proc: %s",
+    fprintf(stderr, "Unable to get memory usage from /proc: %s",  // NOLINT
             buf);  // NOLINT
     exit(1);
   }
@@ -124,9 +124,9 @@ static const constexpr size_t kStrErrorBufSize = 2048;
 
 bool Unix::PrepareForExecution(const std::string& executable,
                                std::string* error_msg) {
-  char buf[kStrErrorBufSize] = {};
   if (chmod(executable.c_str(), S_IRUSR | S_IXUSR) == -1) {
     *error_msg = "chmod: ";
+    char buf[kStrErrorBufSize] = {};
     *error_msg += mystrerror(errno, buf, kStrErrorBufSize);  // NOLINT
     return false;
   }
@@ -159,10 +159,10 @@ bool Unix::Setup(std::string* error_msg) {
 }
 
 bool Unix::DoFork(std::string* error_msg) {
-  char buf[kStrErrorBufSize] = {};
   int fork_result = fork();
   if (fork_result == -1) {
     *error_msg = "fork: ";
+    char buf[kStrErrorBufSize] = {};
     *error_msg += mystrerror(errno, buf, kStrErrorBufSize);  // NOLINT
     return false;
   }
