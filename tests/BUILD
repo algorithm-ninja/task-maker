@@ -73,3 +73,15 @@ py_test(
         ":test"
     ],
 )
+
+py_test(
+    name = "with_checker",
+    size = "medium",
+    timeout = "short",
+    srcs = ["with_checker.py"],
+    data = glob(["task_with_checker/**"]),
+    flaky = True,
+    deps = [
+        ":test"
+    ],
+)
