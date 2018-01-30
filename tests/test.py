@@ -17,8 +17,10 @@ class TestingUI(SilentUI):
     def __init__(self, solutions: List[str]) -> None:
         super().__init__(solutions)
         TestingUI.inst = self
+        self.fatal_errors = []  # type: List[str]
 
     def fatal_error(self, msg: str) -> None:
+        self.fatal_errors.append(msg)
         print("FATAL ERROR", msg, file=sys.stderr)
 
 
