@@ -110,8 +110,10 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
                         execution](const core::TaskStatus& status) -> bool {
     if (status.type == core::TaskStatus::FILE_LOAD)
       return !(status.event == core::TaskStatus::FAILURE);
-    if (status.event == core::TaskStatus::START)
+    if (status.event == core::TaskStatus::START) {
       queue_->Checking(name, testcase_num);
+      return true;
+    }
 
     if (!task_.has_checker()) {
       // without the checker diff is used to check and it exits with (1) if the

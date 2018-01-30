@@ -21,7 +21,6 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
                             proto::EvaluateTaskResponse* response) override {
     // TODO(edomora97) push an event to the queue when the lock is blocked
     // TODO(veluca93): change this to something sane.
-    LOG(INFO) << request->DebugString();
     requests_mutex_.lock();
     int64_t current_id = evaluation_id_counter_++;
     EvaluationInfo info = setup_request(*request);
