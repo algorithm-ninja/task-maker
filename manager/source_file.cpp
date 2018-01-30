@@ -1,5 +1,6 @@
 #include "manager/source_file.hpp"
 #include "glog/logging.h"
+#include "util/which.hpp"
 #include <sys/stat.h>
 
 namespace manager {
@@ -84,20 +85,25 @@ CompiledSourceFile::CompiledSourceFile(
 
   switch (source.language()) {
     case proto::CPP:
-      compiler = "/usr/bin/c++";
+      compiler = util::which("c++");
       args = {"-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", "compiled", name_};
       break;
     case proto::C:
-      compiler = "/usr/bin/cc";
+      compiler = util::which("cc");
       args = {"-O2", "-std=c11", "-DEVAL", "-Wall", "-o", "compiled", name_};
       break;
     case proto::PASCAL:
-      compiler = "/usr/bin/fpc";
+      compiler = util::which("fpc");
       args = {"-dEVAL", "-XS", "-O2", "-ocompiled", name_};
       break;
     default:
       throw std::domain_error("Cannot compile " + source.path() +
                               ": unknown language");
+  }
+  if (compiler.empty()) {
+    throw std::domain_error(
+        "Cannot compile " + source.path() + ": compiler for " +
+        proto::Language_Name(source.language()) + " not found");
   }
   if (grader) {
     for (const auto& dep : grader->files()) args.push_back(dep.name());

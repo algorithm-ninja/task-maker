@@ -18,3 +18,13 @@ cc_library(
         "//proto:sha256_cc",
     ],
 )
+
+cc_library(
+    name = "which",
+    srcs = ["which.cpp"],
+    hdrs = ["which.hpp"],
+    deps = [
+        ":file",
+        "@com_google_absl//absl/strings",
+    ],
+)

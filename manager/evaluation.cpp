@@ -1,5 +1,6 @@
 #include "manager/evaluation.hpp"
 #include "glog/logging.h"
+#include "util/which.hpp"
 
 namespace manager {
 
@@ -95,8 +96,8 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
     // TODO(veluca): replace this with our own utility?
     checker = core_->AddExecution(
         "Checking solution " + name + " for testcase " + s_testcase_num,
-        // TODO(edomora97) getting the real path of diff is hard (which command)
-        "/usr/bin/diff", {"-w", "output", "contestant_output"}, keep_sandbox_);
+        util::which("diff"), {"-w", "output", "contestant_output"},
+        keep_sandbox_);
   }
   checker->Input("output", generation_.GetOutput(testcase_num));
   checker->Input("contestant_output", output);
