@@ -25,10 +25,7 @@ void generate_input(
     gen->SetCallback(
         [queue, testcase_num](const core::TaskStatus& status) -> bool {
           if (status.event == core::TaskStatus::FAILURE) {
-            queue->GenerationFailure(
-                testcase_num,
-                status.message + "\n" +
-                    status.execution_info->Stderr()->Contents(1024 * 1024));
+            queue->GenerationFailure(testcase_num, status.message);
             return false;
           }
           if (status.type == core::TaskStatus::FILE_LOAD) return true;
@@ -69,10 +66,7 @@ void generate_input(
     val->SetCallback(
         [queue, testcase_num](const core::TaskStatus& status) -> bool {
           if (status.event == core::TaskStatus::FAILURE) {
-            queue->GenerationFailure(
-                testcase_num,
-                status.message + "\n" +
-                    status.execution_info->Stderr()->Contents(1024 * 1024));
+            queue->GenerationFailure(testcase_num, status.message);
             return false;
           }
           if (status.type == core::TaskStatus::FILE_LOAD) return true;
@@ -126,10 +120,7 @@ void generate_output(const proto::TestCase& testcase, int64_t testcase_num,
     sol->SetCallback(
         [queue, testcase_num](const core::TaskStatus& status) -> bool {
           if (status.event == core::TaskStatus::FAILURE) {
-            queue->GenerationFailure(
-                testcase_num,
-                status.message + "\n" +
-                    status.execution_info->Stderr()->Contents(1024 * 1024));
+            queue->GenerationFailure(testcase_num, status.message);
             return false;
           }
           if (status.type == core::TaskStatus::FILE_LOAD) return true;

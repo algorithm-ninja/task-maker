@@ -114,6 +114,11 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
       queue_->Checking(name, testcase_num);
       return true;
     }
+    if (status.event == core::TaskStatus::FAILURE) {
+      queue_->FatalError(status.message + ": " +
+                         status.execution_info->Message());
+      return true;
+    }
 
     if (!task_.has_checker()) {
       // without the checker diff is used to check and it exits with (1) if the

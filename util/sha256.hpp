@@ -33,6 +33,13 @@ class SHA256 {
 class SHA256_t : public std::array<uint8_t, SHA256::DIGEST_SIZE> {
  public:
   std::string Hex() const;
+
+  bool isZero() const {
+    for (const auto block : *this)
+      if (block != 0)
+        return false;
+    return true;
+  }
 };
 
 void SHA256ToProto(const SHA256_t& in, proto::SHA256* out);

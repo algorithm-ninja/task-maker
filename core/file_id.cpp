@@ -16,6 +16,7 @@ std::string FileID::Contents(int64_t size_limit) {
   std::string source_path;
   {
     absl::MutexLock lck(&hash_mutex_);
+    CHECK(!hash_.isZero());
     source_path = util::File::SHAToPath(store_directory_, hash_);
   }
   util::File::Read(
