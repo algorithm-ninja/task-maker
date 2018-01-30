@@ -97,3 +97,15 @@ py_test(
         ":test"
     ],
 )
+
+py_test(
+    name = "without_gen",
+    size = "medium",
+    timeout = "short",
+    srcs = ["without_gen.py"],
+    data = glob(["task_without_gen/**"]),
+    flaky = True,
+    deps = [
+        ":test"
+    ],
+)

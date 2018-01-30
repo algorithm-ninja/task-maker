@@ -50,7 +50,7 @@ def load_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
         testcase = TestCase()
         testcase.input_file = os.path.join("input", "input%d.txt" % num)
         testcase.output_file = os.path.join("output", "output%d.txt" % num)
-        subtask.testcases.extend([testcase])
+        subtask.testcases[num].CopyFrom(testcase)
     return None, {0: subtask}
 
 
