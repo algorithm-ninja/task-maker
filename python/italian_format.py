@@ -30,7 +30,7 @@ def list_files(patterns: List[str],
     return [
         res for res in files
         if res not in exclude
-        and os.path.splitext(res)[1] in valid_extensions()
+           and os.path.splitext(res)[1] in valid_extensions()
     ]
 
 
@@ -60,7 +60,8 @@ def get_generator() -> Optional[str]:
     return None
 
 
-def gen_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
+def gen_testcases(copy_compiled: bool) -> Tuple[
+    Optional[str], Dict[int, Subtask]]:
     validator = None  # type: Optional[str]
     subtasks = {}  # type: Dict[int, Subtask]
     official_solution = None  # type: Optional[str]
@@ -107,10 +108,12 @@ def gen_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
                 continue
             args = line.split()
             arg_deps = sanitize_command(args)
-            testcase.generator.CopyFrom(from_file(generator))
+            testcase.generator.CopyFrom(
+                from_file(generator, copy_compiled and "bin/generator"))
             testcase.args.extend(args)
             testcase.extra_deps.extend(arg_deps)
-            testcase.validator.CopyFrom(from_file(validator))
+            testcase.validator.CopyFrom(
+                from_file(validator, copy_compiled and "bin/validator"))
         current_testcases[testcase_num] = testcase
         testcase_num += 1
 
@@ -180,6 +183,7 @@ def create_task_from_yaml(data: Dict[str, Any]) -> Task:
 
 
 def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
+    copy_compiled = args.copy_exe
     data = parse_task_yaml()
     if not data:
         raise RuntimeError("The task.yaml is not valid")
@@ -204,12 +208,15 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
     else:
         raise ValueError("Too many checkers in cor/ folder")
 
-    official_solution, subtasks = gen_testcases()
+    official_solution, subtasks = gen_testcases(copy_compiled)
     if official_solution:
-        task.official_solution.CopyFrom(from_file(official_solution))
+        task.official_solution.CopyFrom(
+            from_file(official_solution,
+                      copy_compiled and "bin/official_solution"))
 
     if checker is not None:
-        task.checker.CopyFrom(from_file(checker))
+        task.checker.CopyFrom(
+            from_file(checker, copy_compiled and "bin/checker"))
     for grader in graders:
         info = GraderInfo()
         info.for_language = grader_from_file(grader)
@@ -223,7 +230,10 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
 
     request = EvaluateTaskRequest()
     request.task.CopyFrom(task)
-    request.solutions.extend(from_file(solution) for solution in solutions)
+    for solution in solutions:
+        bin_file = copy_compiled and "bin/" + \
+                   os.path.splitext(os.path.basename(solution))[0]
+        request.solutions.extend([from_file(solution, bin_file)])
     request.store_dir = args.store_dir
     request.temp_dir = args.temp_dir
     for testcase in range(num_testcases):
@@ -240,15 +250,15 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
 
 
 def clean():
-    def remove_dir(path: str) -> None:
+    def remove_dir(path: str, pattern) -> None:
         if not os.path.exists(path):
             return
-        for file in glob.glob(os.path.join(path, "*.txt")):
+        for file in glob.glob(os.path.join(path, pattern)):
             os.remove(file)
         try:
             os.rmdir(path)
         except OSError:
-            print("Directory %s not empty, kept non-txt files" % path)
+            print("Directory %s not empty, kept non-%s files" % (path, pattern))
 
     def remove_file(path: str) -> None:
         try:
@@ -257,7 +267,8 @@ def clean():
             pass
 
     if get_generator():
-        remove_dir("input")
-        remove_dir("output")
+        remove_dir("input", "*.txt")
+        remove_dir("output", "*.txt")
+    remove_dir("bin", "*")
     remove_file(os.path.join("cor", "checker"))
     remove_file(os.path.join("cor", "correttore"))

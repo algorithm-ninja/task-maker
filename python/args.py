@@ -88,6 +88,11 @@ def get_parser() -> argparse.ArgumentParser:
         action="store",
         default="files")
     parser.add_argument(
+        "--copy-exe",
+        help="Copy executable files in bin/ folder",
+        action="store_true",
+        default=False)
+    parser.add_argument(
         "--clean",
         help="Clear the task directory and exit",
         action="store_true",

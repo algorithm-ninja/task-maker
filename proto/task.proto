@@ -28,6 +28,7 @@ message SourceFile {
   string path = 1;
   repeated Dependency deps = 2;
   Language language = 3;
+  string write_bin_to = 4;
 }
 
 message TestCase {

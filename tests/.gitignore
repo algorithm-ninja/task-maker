@@ -1,0 +1,8 @@
+files/
+temp/
+input/
+output/
+bin/
+
+!task_without_gen/input
+!task_without_gen/output

@@ -1,5 +1,6 @@
 #include "manager/source_file.hpp"
 #include "glog/logging.h"
+#include <sys/stat.h>
 
 namespace manager {
 
@@ -101,6 +102,9 @@ CompiledSourceFile::CompiledSourceFile(
       core->AddExecution("Compilation of " + source.path(), compiler, args);
 
   compilation_->Input(name_, input_file);
+  compiled_ =
+      compilation_->Output("compiled", "Compiled file of " + source.path());
+  queue->CompilationWaiting(name_);
 
   compilation_->SetCallback([this, queue, source,
                              name](const core::TaskStatus& status) -> bool {
@@ -115,10 +119,14 @@ CompiledSourceFile::CompiledSourceFile(
     if (status.event == core::TaskStatus::START)
       queue->CompilationRunning(name_);
     if (status.event == core::TaskStatus::SUCCESS) {
-      if (status.execution_info->Success())
+      if (status.execution_info->Success()) {
         queue->CompilationDone(
             name_, status.execution_info->Stderr()->Contents(1024 * 1024));
-      else {
+        if (!source.write_bin_to().empty()) {
+          compiled_->WriteTo(source.write_bin_to());
+          chmod(source.write_bin_to().c_str(), S_IRUSR | S_IWUSR | S_IXUSR);
+        }
+      } else {
         queue->CompilationFailure(
             name_, status.message + "\n" +
                        status.execution_info->Stderr()->Contents(1024 * 1024));
@@ -134,10 +142,6 @@ CompiledSourceFile::CompiledSourceFile(
     for (const auto& dep : grader->files())
       compilation_->Input(dep.name(), core->LoadFile(dep.name(), dep.path()));
   }
-
-  compiled_ =
-      compilation_->Output("compiled", "Compiled file of " + source.path());
-  queue->CompilationWaiting(name_);
 }
 
 core::Execution* CompiledSourceFile::execute(
@@ -165,8 +169,13 @@ NotCompiledSourceFile::NotCompiledSourceFile(EventQueue* queue,
           queue->CompilationFailure(name_, "Error loading file");
           return false;
         }
-        if (status.event == core::TaskStatus::SUCCESS)
+        if (status.event == core::TaskStatus::SUCCESS) {
           queue->CompilationDone(name_, "");
+          if (!source.write_bin_to().empty()) {
+            program_->WriteTo(source.write_bin_to());
+            chmod(source.write_bin_to().c_str(), S_IRUSR | S_IWUSR | S_IXUSR);
+          }
+        }
         return true;
       });
   queue->CompilationWaiting(name_);

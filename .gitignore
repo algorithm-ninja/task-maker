@@ -4,3 +4,5 @@ temp/
 files/
 __pycache__/
 .mypy_cache/
+*.pyc
+*pyo
