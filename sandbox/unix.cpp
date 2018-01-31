@@ -71,17 +71,22 @@ int GetProcessMemoryUsage(pid_t pid, int64_t* memory_usage_kb) {
   if (ret != 0) return ret;
   ret = posix_spawn_file_actions_addclose(&actions, pipe_fds[1]);
   if (ret != 0) return ret;
-  std::vector<std::unique_ptr<char[]>> args;
-  std::vector<char*> args_list;
-  auto add_arg = [&args, &args_list](const char* a) {
-    args.emplace_back(strdup(a));
-    args_list.push_back(args.back().get());
+  std::vector<std::vector<char>> args;
+  auto add_arg = [&args](std::string s) {
+    std::vector<char> arg(s.size()+1);
+    std::copy(s.begin(), s.end(), arg.begin());
+    arg.back() = '\0';
+    args.push_back(std::move(arg));
   };
   add_arg("ps");
   add_arg("-o");
   add_arg("vsz=");
-  add_arg(std::to_string(pid).c_str());
-  args_list.push_back(nullptr);
+  add_arg(std::to_string(pid));
+
+  std::vector<char*> args_list(args.size()+1);
+  for (size_t i = 0; i < args.size(); i++)
+    args_list[i] = args[i].data();
+  args_list.back() = nullptr;
 
   char** environ = {nullptr};
 
