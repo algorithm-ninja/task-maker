@@ -7,13 +7,14 @@ namespace manager {
 Evaluation::Evaluation(EventQueue* queue, core::Core* core,
                        const Generation& generation, const proto::Task& task,
                        bool exclusive, proto::CacheMode cache_mode,
-                       const std::string& executor, bool keep_sandbox)
+                       std::string executor, bool keep_sandbox)
     : queue_(queue),
       core_(core),
       generation_(generation),
       task_(task),
       exclusive_(exclusive),
       cache_mode_(cache_mode),
+      executor_(std::move(executor)),
       keep_sandbox_(keep_sandbox) {
   for (auto subtask : task.subtasks()) {
     for (auto testcase : subtask.second.testcases()) {

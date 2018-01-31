@@ -22,9 +22,9 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
     util::File::MakeDirs(store_dir);
   }
 
-  grpc::Status SendFile(grpc::ServerContext* context,
+  grpc::Status SendFile(grpc::ServerContext* /*context*/,
                         grpc::ServerReader<proto::FileContents>* reader,
-                        proto::SendFileResponse* response) override {
+                        proto::SendFileResponse* /*response*/) override {
     proto::FileContents contents;
     reader->Read(&contents);
     if (!contents.has_hash()) {
@@ -58,7 +58,7 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
   }
 
   grpc::Status RetrieveFile(
-      grpc::ServerContext* context, const proto::SHA256* hash,
+      grpc::ServerContext* /*context*/, const proto::SHA256* hash,
       grpc::ServerWriter<proto::FileContents>* writer) override {
     std::string path = util::File::ProtoSHAToPath(store_directory_, *hash);
     LOG(INFO) << "Ask for file " << path;
@@ -80,7 +80,7 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
     }
   }
 
-  grpc::Status Execute(grpc::ServerContext* context,
+  grpc::Status Execute(grpc::ServerContext* /*context*/,
                        const proto::Request* request,
                        proto::Response* response) override {
     for (int i = 0; i < max_attempts; i++) {

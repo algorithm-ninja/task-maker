@@ -16,7 +16,7 @@ DEFINE_int32(port, 7071, "port to listen on");  // NOLINT
 
 class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
  public:
-  grpc::Status EvaluateTask(grpc::ServerContext* context,
+  grpc::Status EvaluateTask(grpc::ServerContext* /*context*/,
                             const proto::EvaluateTaskRequest* request,
                             proto::EvaluateTaskResponse* response) override {
     // TODO(edomora97) push an event to the queue when the lock is blocked
@@ -30,9 +30,9 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     response->set_id(current_id);
     return grpc::Status::OK;
   }
-  grpc::Status CleanTask(grpc::ServerContext* context,
+  grpc::Status CleanTask(grpc::ServerContext* /*context*/,
                          const proto::CleanTaskRequest* request,
-                         proto::CleanTaskResponse* response) override {
+                         proto::CleanTaskResponse* /*response*/) override {
     LOG(INFO) << "Cleaning task directories:\n"
               << "\t" << request->store_dir() << "\n"
               << "\t" << request->temp_dir();
@@ -46,7 +46,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     }
     return grpc::Status::OK;
   }
-  grpc::Status GetEvents(grpc::ServerContext* context,
+  grpc::Status GetEvents(grpc::ServerContext* /*context*/,
                          const proto::GetEventsRequest* request,
                          grpc::ServerWriter<proto::Event>* writer) override {
     int64_t running_id = request->evaluation_id();
@@ -68,9 +68,9 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     LOG(INFO) << "Deallocated request " << running_id;
     return grpc::Status::OK;
   }
-  grpc::Status Stop(grpc::ServerContext* context,
+  grpc::Status Stop(grpc::ServerContext* /*context*/,
                     const proto::StopRequest* request,
-                    proto::StopResponse* response) override {
+                    proto::StopResponse* /*response*/) override {
     int64_t request_id = request->evaluation_id();
     if (running_.count(request_id) == 0)
       return grpc::Status(grpc::StatusCode::NOT_FOUND, "No such id");
@@ -80,9 +80,9 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     running_[request_id].queue->Stop();
     return grpc::Status::OK;
   }
-  grpc::Status Shutdown(grpc::ServerContext* context,
+  grpc::Status Shutdown(grpc::ServerContext* /*context*/,
                         const proto::ShutdownRequest* request,
-                        proto::ShutdownResponse* response) override {
+                        proto::ShutdownResponse* /*response*/) override {
     // TODO(edomora97) eventually kill the core/thread
     // FIXME it doesn't work :(
     LOG(WARNING) << "Requesting to shutdown the server";

@@ -14,7 +14,7 @@ class Evaluation {
  public:
   Evaluation(EventQueue* queue, core::Core* core, const Generation& generation,
              const proto::Task& task, bool exclusive,
-             proto::CacheMode cache_mode, const std::string& executor,
+             proto::CacheMode cache_mode, std::string executor,
              bool keep_sandbox);
 
   void Evaluate(SourceFile* solution);

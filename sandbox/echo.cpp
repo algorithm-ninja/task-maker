@@ -5,7 +5,7 @@
 namespace sandbox {
 
 bool Echo::Execute(const ExecutionOptions& options, ExecutionInfo* info,
-                   std::string* error_msg) {
+                   std::string* /*error_msg*/) {
   std::cout << "[FAKE] Executing ";
   std::cout << options.executable;
   for (const std::string& arg : options.args) {
