@@ -10,7 +10,7 @@ from typing import Any
 import daemon
 import grpc
 from proto import manager_pb2_grpc
-from proto.manager_pb2 import GetEventsRequest, StopRequest, CleanTaskRequest
+from proto.manager_pb2 import StopRequest, CleanTaskRequest
 
 from python.absolutize import absolutize_request
 from python.args import get_parser, UIS
@@ -97,17 +97,22 @@ def main() -> None:
                             sorted(subtask.testcases.keys()))
 
     def evaluate_task(manager):
-        response = manager.EvaluateTask(request)
+        eval_id = None
 
         def stop_server(signum: int, _: Any) -> None:
-            manager.Stop(StopRequest(evaluation_id=response.id))
+            if eval_id:
+                manager.Stop(StopRequest(evaluation_id=eval_id))
             ui.fatal_error("Aborted with sig%d" % signum)
 
         signal.signal(signal.SIGINT, stop_server)
         signal.signal(signal.SIGTERM, stop_server)
 
-        for event in manager.GetEvents(
-                GetEventsRequest(evaluation_id=response.id)):
+        for event in manager.EvaluateTask(request):
+            event_type = event.WhichOneof("event_oneof")
+            if event_type == "evaluation_started":
+                eval_id = event.evaluation_started.id
+            elif event_type == "evaluation_ended":
+                eval_id = None
             ui.from_event(event)
         ui.print_final_status()
 

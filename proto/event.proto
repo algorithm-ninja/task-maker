@@ -63,13 +63,23 @@ message Evaluation {
   EvaluationResult result = 4;
 }
 
+message EvaluationStarted {
+  int64 id = 1;
+}
+
+message EvaluationEnded {
+  int64 id = 1;
+}
+
 message Event {
   oneof event_oneof {
-    FatalError fatal_error = 1;
-    TaskScore task_score = 2;
-    SubtaskScore subtask_score = 3;
-    Compilation compilation = 4;
-    Generation generation = 5;
-    Evaluation evaluation = 6;
+    EvaluationStarted evaluation_started = 1;
+    FatalError fatal_error = 2;
+    TaskScore task_score = 3;
+    SubtaskScore subtask_score = 4;
+    Compilation compilation = 5;
+    Generation generation = 6;
+    Evaluation evaluation = 7;
+    EvaluationEnded evaluation_ended = 8;
   }
 }

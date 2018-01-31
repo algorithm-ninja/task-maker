@@ -18,16 +18,38 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
  public:
   grpc::Status EvaluateTask(grpc::ServerContext* /*context*/,
                             const proto::EvaluateTaskRequest* request,
-                            proto::EvaluateTaskResponse* response) override {
-    // TODO(edomora97) push an event to the queue when the lock is blocked
-    // TODO(veluca93): change this to something sane.
-    requests_mutex_.lock();
+                            grpc::ServerWriter<proto::Event>* writer) override {
+    std::lock_guard<std::mutex> lck(requests_mutex_);
+
     int64_t current_id = evaluation_id_counter_++;
     EvaluationInfo info = setup_request(*request);
 
     running_[current_id] = std::move(info);
     run_core(*request, current_id);
-    response->set_id(current_id);
+
+    manager::EventQueue* queue = running_[current_id].queue.get();
+    absl::optional<proto::Event> event;
+    {
+      proto::Event eval_started_event;
+      auto* sub_event = eval_started_event.mutable_evaluation_started();
+      sub_event->set_id(current_id);
+      writer->Write(eval_started_event);
+    }
+    while ((event = queue->Dequeue())) {
+      writer->Write(*event);
+    }
+    {
+      proto::Event eval_ended_event;
+      auto* sub_event = eval_ended_event.mutable_evaluation_ended();
+      sub_event->set_id(current_id);
+      writer->Write(eval_ended_event);
+    }
+
+    // if the queue is empty and stopped we can safely remove the request
+    CHECK(queue->IsStopped()) << "Core exited but the queue is not stopped";
+    running_[current_id].running_thread.join();
+    running_.erase(current_id);
+    LOG(INFO) << "Deallocated request " << current_id;
     return grpc::Status::OK;
   }
   grpc::Status CleanTask(grpc::ServerContext* /*context*/,
@@ -44,28 +66,6 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
       util::File::RemoveTree(request->temp_dir());
     } catch (const std::system_error&) {
     }
-    return grpc::Status::OK;
-  }
-  grpc::Status GetEvents(grpc::ServerContext* /*context*/,
-                         const proto::GetEventsRequest* request,
-                         grpc::ServerWriter<proto::Event>* writer) override {
-    int64_t running_id = request->evaluation_id();
-    if (running_.count(running_id) == 0)
-      return grpc::Status(grpc::StatusCode::NOT_FOUND, "No such id");
-
-    manager::EventQueue* queue = running_[running_id].queue.get();
-    absl::optional<proto::Event> event;
-    while ((event = queue->Dequeue())) {
-      writer->Write(*event);
-    }
-
-    // if the queue is empty and stopped we can safely remove the request
-    if (queue->IsStopped()) {
-      running_[running_id].running_thread.join();
-      running_.erase(running_id);
-    }
-    requests_mutex_.unlock();
-    LOG(INFO) << "Deallocated request " << running_id;
     return grpc::Status::OK;
   }
   grpc::Status Stop(grpc::ServerContext* /*context*/,
@@ -114,7 +114,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
   };
 
   grpc::Server* server_ = nullptr;
-  std::map<int64_t, EvaluationInfo> running_{};
+  std::map<int64_t, EvaluationInfo> running_ GUARDED_BY(requests_mutex_);
   int64_t evaluation_id_counter_ = 0;
   std::mutex requests_mutex_;
 

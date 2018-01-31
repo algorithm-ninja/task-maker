@@ -27,20 +27,12 @@ message EvaluateTaskRequest {
   bool keep_sandbox = 13;
 }
 
-message EvaluateTaskResponse {
-  int64 id = 1;
-}
-
 message CleanTaskRequest {
   string store_dir = 1;
   string temp_dir = 2;
 }
 
 message CleanTaskResponse {
-}
-
-message GetEventsRequest {
-  int64 evaluation_id = 1;
 }
 
 message StopRequest {
@@ -59,9 +51,8 @@ message ShutdownResponse {
 }
 
 service TaskMakerManager {
-  rpc EvaluateTask(EvaluateTaskRequest) returns (EvaluateTaskResponse);
+  rpc EvaluateTask(EvaluateTaskRequest) returns (stream Event);
   rpc CleanTask(CleanTaskRequest) returns (CleanTaskResponse);
-  rpc GetEvents(GetEventsRequest) returns (stream Event);
   rpc Stop(StopRequest) returns (StopResponse);
   rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
 }
