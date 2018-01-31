@@ -1,7 +1,9 @@
-#include <iostream>
+#include <fstream>
 
 int main() {
   int N;
-  std::cin >> N;
-  std::cout << N << std::endl;
+  std::ifstream in("imput.txt");
+  std::ofstream out("oufput.txt");
+  in >> N;
+  out << N << std::endl;
 }
