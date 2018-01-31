@@ -1,4 +1,5 @@
 #include "sandbox/unix.hpp"
+#include "glog/logging.h"
 
 #include <atomic>
 #include <cerrno>
@@ -187,8 +188,8 @@ void Unix::Child() {
     strncat(buf, ": ", 2);                // NOLINT
     strncat(buf, err, kStrErrorBufSize);  // NOLINT
     int len = strlen(buf);                // NOLINT
-    write(pipe_fds_[1], &len, sizeof(len));
-    write(pipe_fds_[1], buf, len);  // NOLINT
+    CHECK(write(pipe_fds_[1], &len, sizeof(len)) == sizeof(len));
+    CHECK(write(pipe_fds_[1], buf, len) == len);  // NOLINT
     close(pipe_fds_[1]);
     _Exit(1);
   };
@@ -303,7 +304,7 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
   int error_len = 0;
   if (read(pipe_fds_[0], &error_len, sizeof(error_len)) == sizeof(error_len)) {
     char error[PIPE_BUF] = {};
-    read(pipe_fds_[0], error, error_len);  // NOLINT
+    CHECK(read(pipe_fds_[0], error, error_len) == error_len);  // NOLINT
     *error_msg = error;                    // NOLINT
     return false;
   }

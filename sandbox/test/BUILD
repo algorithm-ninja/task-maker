@@ -29,4 +29,7 @@ cc_binary(
 cc_binary(
     name = "copy_int",
     srcs = ["copy_int.cpp"],
+    deps = [
+        "//external:glog",
+    ],
 )

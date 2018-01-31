@@ -12,7 +12,10 @@ cc_library(
     name = "unix",
     srcs = ["unix.cpp"],
     hdrs = ["unix.hpp"],
-    deps = [":sandbox"],
+    deps = [
+        ":sandbox",
+        "//external:glog"
+    ],
     alwayslink = 1,
 )
 
