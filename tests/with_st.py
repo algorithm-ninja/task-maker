@@ -15,6 +15,8 @@ def test_task():
     interface.add_solution("float_error.cpp", 0, [0, 0, 0],
                            [(0, "Floating point exception")] * 6)
     interface.add_solution("mle.cpp", 0, [0, 0, 0])
+    interface.add_solution("noop.py", 0, [0, 0, 0],
+                           [(0, "Missing output files")] * 6)
     interface.add_solution("nonzero.cpp", 0, [0, 0, 0],
                            [(0, "Non-zero return code")] * 6)
     interface.add_solution("sigsegv.c", 0, [0, 0, 0],
