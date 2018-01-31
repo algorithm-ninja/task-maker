@@ -47,5 +47,9 @@ def run_tests(task_name, file):
     raise SystemExit(
         pytest.main([
             os.path.join(os.path.dirname(__file__), "utils.py"),
-            file, "--override-ini=python_classes=XXXX", "--verbose", "--color=yes", "--showlocals"]))
+            file,
+            "--override-ini=python_classes=XXXX",
+            "--verbose",
+            "--color=yes"
+        ]))
 
