@@ -32,10 +32,12 @@ class UI:
                                        generation.error)
         elif event_type == "evaluation":
             evaluation = event.evaluation
-            # TODO missing error field
             res = evaluation.result if evaluation.HasField("result") else None
             self.set_evaluation_status(evaluation.testcase, evaluation.solution,
                                        evaluation.status, res)
+
+        elif event_type == "running_tasks":
+            self.set_running_tasks(event.running_tasks.task)
 
     def set_task_name(self, task_name: str) -> None:
         self.task_name = task_name
@@ -75,6 +77,9 @@ class UI:
         raise NotImplementedError("Please subclass this class")
 
     def set_task_score(self, solution_name: str, score: float) -> None:
+        raise NotImplementedError("Please subclass this class")
+
+    def set_running_tasks(self, tasks):
         raise NotImplementedError("Please subclass this class")
 
     def print_final_status(self) -> None:

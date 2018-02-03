@@ -259,6 +259,10 @@ class CursesUI(SilentUI):
                 else:
                     printer.red("FAIL")
                 printer.text("\n")
+            printer.text("\n")
+            printer.blue("Running tasks:\n")
+            for task in self._running_tasks:
+                printer.text("  " + task + "\n")
             try:
                 pressed_key = stdscr.getkey()
                 if pressed_key == "KEY_UP":

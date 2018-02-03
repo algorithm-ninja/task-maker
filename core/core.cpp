@@ -78,7 +78,6 @@ bool Core::Run() {
   };
 
   try {
-    std::queue<std::future<TaskStatus>> waiting_tasks;
     std::queue<FileID*> file_tasks;
     for (const auto& file : files_to_load_) file_tasks.push(file.get());
     std::queue<Execution*> execution_tasks;
@@ -91,18 +90,21 @@ bool Core::Run() {
       task_ready_.notify_all();
     };
 
-    auto add_tasks = [&waiting_tasks, &file_tasks, &execution_tasks, &add_task,
-                      &threads, this]() {
-      if (waiting_tasks.size() >= threads.size()) return QUEUE_FULL;
+    auto add_tasks = [&file_tasks, &execution_tasks, &add_task, &threads,
+                      this]() {
+      if (waiting_tasks_.size() >= threads.size()) return QUEUE_FULL;
       while (!file_tasks.empty()) {
         FileID* file = file_tasks.front();
         file_tasks.pop();
         if (!file->callback_(TaskStatus::Start(file))) return CALLBACK_FALSE;
         std::packaged_task<TaskStatus()> task(
             std::bind(&Core::LoadFileTask, this, file));
-        waiting_tasks.push(task.get_future());
+        {
+          std::lock_guard<std::mutex> lck(running_tasks_lock_);
+          waiting_tasks_.emplace(file, task.get_future());
+        }
         add_task(std::move(task));
-        if (waiting_tasks.size() >= threads.size()) return QUEUE_FULL;
+        if (waiting_tasks_.size() >= threads.size()) return QUEUE_FULL;
       }
       size_t reenqueued_tasks = 0;
       while (reenqueued_tasks < execution_tasks.size() &&
@@ -122,11 +124,14 @@ bool Core::Run() {
           return CALLBACK_FALSE;
         std::packaged_task<TaskStatus()> task(
             std::bind(&Core::ExecuteTask, this, execution));
-        waiting_tasks.push(task.get_future());
+        {
+          std::lock_guard<std::mutex> lck(running_tasks_lock_);
+          waiting_tasks_.emplace(execution, task.get_future());
+        }
         add_task(std::move(task));
-        if (waiting_tasks.size() >= threads.size()) return QUEUE_FULL;
+        if (waiting_tasks_.size() >= threads.size()) return QUEUE_FULL;
       }
-      if (!waiting_tasks.empty()) return NO_READY_TASK;
+      if (!waiting_tasks_.empty()) return NO_READY_TASK;
       return execution_tasks.empty() ? NO_TASK : LEFTOVERS;
     };
 
@@ -146,27 +151,29 @@ bool Core::Run() {
     }
 
     while (should_enqueue && !quitting_) {
-      size_t queue_size = waiting_tasks.size();
-      for (size_t _ = 0; _ < queue_size; _++) {
-        std::future<TaskStatus> answer_future =
-            std::move(waiting_tasks.front());
-        waiting_tasks.pop();
-        if (answer_future.wait_for(std::chrono::microseconds(100)) ==
-            std::future_status::ready) {
-          TaskStatus answer = answer_future.get();
-          if (answer.event == TaskStatus::Event::BUSY) {
-            execution_tasks.push(answer.execution_info);
+      {
+        std::lock_guard<std::mutex> lck(running_tasks_lock_);
+        size_t queue_size = waiting_tasks_.size();
+        for (size_t _ = 0; _ < queue_size; _++) {
+          WaitingTask waiting_task = std::move(waiting_tasks_.front());
+          waiting_tasks_.pop();
+          if (waiting_task.future.wait_for(std::chrono::microseconds(100)) ==
+              std::future_status::ready) {
+            TaskStatus answer = waiting_task.future.get();
+            if (answer.event == TaskStatus::Event::BUSY) {
+              execution_tasks.push(answer.execution_info);
+            }
+            std::function<bool(const TaskStatus&)> callback =
+                answer.type == TaskStatus::Type::EXECUTION
+                    ? answer.execution_info->callback_
+                    : answer.file_info->callback_;
+            if (!callback(answer)) {
+              cleanup();
+              return false;
+            }
+          } else {
+            waiting_tasks_.push(std::move(waiting_task));
           }
-          std::function<bool(const TaskStatus&)> callback =
-              answer.type == TaskStatus::Type::EXECUTION
-                  ? answer.execution_info->callback_
-                  : answer.file_info->callback_;
-          if (!callback(answer)) {
-            cleanup();
-            return false;
-          }
-        } else {
-          waiting_tasks.push(std::move(answer_future));
         }
       }
       switch (add_tasks()) {
@@ -188,6 +195,22 @@ bool Core::Run() {
   }
   cleanup();
   return true;
+}
+
+std::vector<std::string> Core::RunningTasks() const {
+  std::lock_guard<std::mutex> lck(running_tasks_lock_);
+  std::vector<std::string> tasks;
+  size_t queue_size = waiting_tasks_.size();
+  for (size_t _ = 0; _ < queue_size; _++) {
+    WaitingTask task = std::move(waiting_tasks_.front());
+    waiting_tasks_.pop();
+    if (task.type == WaitingTask::EXECUTION)
+      tasks.push_back("Executing " + task.execution_info->Description());
+    else
+      tasks.push_back("Loading " + task.file_info->Description());
+    waiting_tasks_.push(std::move(task));
+  }
+  return tasks;
 }
 
 }  // namespace core

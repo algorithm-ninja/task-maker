@@ -9,6 +9,7 @@
 #include "core/execution.hpp"
 #include "core/file_id.hpp"
 #include "core/task_status.hpp"
+#include "core/waiting_task.hpp"
 
 namespace core {
 
@@ -27,10 +28,9 @@ class Core {
     if (!cacher_) {
       cacher_.reset(new ExecutionCacher(store_directory_));
     }
-    executions_.push_back(std::unique_ptr<Execution>(
-        new Execution(cacher_.get(), store_directory_, temp_directory_,
-                      num_cores_, description, executable, args,
-                      keep_sandbox)));
+    executions_.push_back(std::unique_ptr<Execution>(new Execution(
+        cacher_.get(), store_directory_, temp_directory_, num_cores_,
+        description, executable, args, keep_sandbox)));
     return executions_.back().get();
   }
 
@@ -51,6 +51,8 @@ class Core {
 
   void Stop() { quitting_ = true; }
 
+  std::vector<std::string> RunningTasks() const;
+
   Core()
       : store_directory_("files"),
         temp_directory_("temp"),
@@ -58,6 +60,8 @@ class Core {
         cacher_(nullptr) {}
 
  private:
+  mutable std::queue<WaitingTask> waiting_tasks_
+      GUARDED_BY(running_tasks_lock_);
   std::vector<std::unique_ptr<FileID>> files_to_load_;
   std::vector<std::unique_ptr<Execution>> executions_;
 
@@ -68,6 +72,7 @@ class Core {
 
   std::unordered_map<int64_t, util::SHA256_t> known_files_;
   std::mutex file_lock_;
+  mutable std::mutex running_tasks_lock_;
 
   std::string store_directory_;
   std::string temp_directory_;

@@ -75,6 +75,10 @@ class PrintUI(UI):
         self._scores[solution_name] = score
         print("Solution %s has a score of %.2f" % (solution_name, score))
 
+    def set_running_tasks(self, tasks):
+        self._running_tasks = tasks
+        print("Running tasks:\n  %s" % "\n  ".join(tasks))
+
     def print_final_status(self) -> None:
         max_sol_name = max(map(len, self.solutions))
         for solution_name in self._scores:

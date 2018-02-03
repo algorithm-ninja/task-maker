@@ -71,6 +71,10 @@ message EvaluationEnded {
   int64 id = 1;
 }
 
+message RunningTasks {
+  repeated string task = 1;
+}
+
 message Event {
   oneof event_oneof {
     EvaluationStarted evaluation_started = 1;
@@ -81,5 +85,6 @@ message Event {
     Generation generation = 6;
     Evaluation evaluation = 7;
     EvaluationEnded evaluation_ended = 8;
+    RunningTasks running_tasks = 9;
   }
 }

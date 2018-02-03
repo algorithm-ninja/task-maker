@@ -11,8 +11,13 @@
 #include "manager/evaluation.hpp"
 #include "proto/manager.grpc.pb.h"
 #include "util/file.hpp"
+#include <condition_variable>
 
 DEFINE_int32(port, 7071, "port to listen on");  // NOLINT
+
+namespace {
+const auto RUNNING_TASK_POLL_INTERVAL = std::chrono::seconds(1);  // NOLINT
+}  // namespace
 
 class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
  public:
@@ -29,21 +34,60 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 
     manager::EventQueue* queue = running_[current_id].queue.get();
     absl::optional<proto::Event> event;
+
+    std::mutex writer_mutex;
+    // send EvaluationStarted event
     {
+      std::lock_guard<std::mutex> lock(writer_mutex);
       proto::Event eval_started_event;
       auto* sub_event = eval_started_event.mutable_evaluation_started();
       sub_event->set_id(current_id);
       writer->Write(eval_started_event);
     }
+    // running is true while the core has not finished, this is synchronized for
+    // the poller thread
+    bool running = true;
+    std::condition_variable running_cv;
+    std::mutex running_mutex;
+
+    // every RUNNING_TASK_POLL_INTERVAL get the list of running tasks from the
+    // core
+    std::thread poller([&running, &running_cv, &running_mutex, queue,
+                        current_id, writer, &writer_mutex, this] {
+      std::unique_lock<std::mutex> lck(running_mutex);
+      while (running) {
+        core::Core* core = running_[current_id].core.get();
+        std::vector<std::string> tasks = core->RunningTasks();
+        proto::Event event;
+        auto* sub_event = event.mutable_running_tasks();
+        for (const std::string& task : tasks) sub_event->add_task(task);
+        {
+          std::lock_guard<std::mutex> lock(writer_mutex);
+          writer->Write(event);
+        }
+        running_cv.wait_for(lck, RUNNING_TASK_POLL_INTERVAL);
+      }
+    });
+    // forward all the events from the event queue
     while ((event = queue->Dequeue())) {
+      std::lock_guard<std::mutex> lock(writer_mutex);
       writer->Write(*event);
     }
+    // send EvaluationEnded event
     {
+      std::lock_guard<std::mutex> lock(writer_mutex);
       proto::Event eval_ended_event;
       auto* sub_event = eval_ended_event.mutable_evaluation_ended();
       sub_event->set_id(current_id);
       writer->Write(eval_ended_event);
     }
+    // stop the poller thread
+    {
+      std::lock_guard<std::mutex> lock(running_mutex);
+      running = false;
+    }
+    running_cv.notify_all();
+    poller.join();
 
     // if the queue is empty and stopped we can safely remove the request
     CHECK(queue->IsStopped()) << "Core exited but the queue is not stopped";
