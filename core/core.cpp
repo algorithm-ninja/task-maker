@@ -1,9 +1,7 @@
 #include "core/core.hpp"
-
-#include <thread>
-
 #include "executor/local_executor.hpp"
 #include "glog/logging.h"
+#include <thread>
 
 namespace {
 enum EnqueueStatus {
@@ -92,7 +90,7 @@ bool Core::Run() {
 
     auto add_tasks = [&file_tasks, &execution_tasks, &add_task, &threads,
                       this]() {
-      if (waiting_tasks_.size() >= threads.size()) return QUEUE_FULL;
+      if (running_tasks_.size() >= threads.size()) return QUEUE_FULL;
       while (!file_tasks.empty()) {
         FileID* file = file_tasks.front();
         file_tasks.pop();
@@ -101,10 +99,10 @@ bool Core::Run() {
             std::bind(&Core::LoadFileTask, this, file));
         {
           std::lock_guard<std::mutex> lck(running_tasks_lock_);
-          waiting_tasks_.emplace(file, task.get_future());
+          running_tasks_.emplace(file, task.get_future());
         }
         add_task(std::move(task));
-        if (waiting_tasks_.size() >= threads.size()) return QUEUE_FULL;
+        if (running_tasks_.size() >= threads.size()) return QUEUE_FULL;
       }
       size_t reenqueued_tasks = 0;
       while (reenqueued_tasks < execution_tasks.size() &&
@@ -126,12 +124,12 @@ bool Core::Run() {
             std::bind(&Core::ExecuteTask, this, execution));
         {
           std::lock_guard<std::mutex> lck(running_tasks_lock_);
-          waiting_tasks_.emplace(execution, task.get_future());
+          running_tasks_.emplace(execution, task.get_future());
         }
         add_task(std::move(task));
-        if (waiting_tasks_.size() >= threads.size()) return QUEUE_FULL;
+        if (running_tasks_.size() >= threads.size()) return QUEUE_FULL;
       }
-      if (!waiting_tasks_.empty()) return NO_READY_TASK;
+      if (!running_tasks_.empty()) return NO_READY_TASK;
       return execution_tasks.empty() ? NO_TASK : LEFTOVERS;
     };
 
@@ -153,13 +151,13 @@ bool Core::Run() {
     while (should_enqueue && !quitting_) {
       {
         std::lock_guard<std::mutex> lck(running_tasks_lock_);
-        size_t queue_size = waiting_tasks_.size();
+        size_t queue_size = running_tasks_.size();
         for (size_t _ = 0; _ < queue_size; _++) {
-          WaitingTask waiting_task = std::move(waiting_tasks_.front());
-          waiting_tasks_.pop();
-          if (waiting_task.future.wait_for(std::chrono::microseconds(100)) ==
+          RunningTask running_task = std::move(running_tasks_.front());
+          running_tasks_.pop();
+          if (running_task.future.wait_for(std::chrono::microseconds(100)) ==
               std::future_status::ready) {
-            TaskStatus answer = waiting_task.future.get();
+            TaskStatus answer = running_task.future.get();
             if (answer.event == TaskStatus::Event::BUSY) {
               execution_tasks.push(answer.execution_info);
             }
@@ -172,7 +170,7 @@ bool Core::Run() {
               return false;
             }
           } else {
-            waiting_tasks_.push(std::move(waiting_task));
+            running_tasks_.push(std::move(running_task));
           }
         }
       }
@@ -197,18 +195,15 @@ bool Core::Run() {
   return true;
 }
 
-std::vector<std::string> Core::RunningTasks() const {
+std::vector<RunningTaskInfo> Core::RunningTasks() const {
   std::lock_guard<std::mutex> lck(running_tasks_lock_);
-  std::vector<std::string> tasks;
-  size_t queue_size = waiting_tasks_.size();
+  std::vector<RunningTaskInfo> tasks;
+  size_t queue_size = running_tasks_.size();
   for (size_t _ = 0; _ < queue_size; _++) {
-    WaitingTask task = std::move(waiting_tasks_.front());
-    waiting_tasks_.pop();
-    if (task.type == WaitingTask::EXECUTION)
-      tasks.push_back("Executing " + task.execution_info->Description());
-    else
-      tasks.push_back("Loading " + task.file_info->Description());
-    waiting_tasks_.push(std::move(task));
+    RunningTask task = std::move(running_tasks_.front());
+    running_tasks_.pop();
+    tasks.push_back(task.info);
+    running_tasks_.push(std::move(task));
   }
   return tasks;
 }

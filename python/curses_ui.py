@@ -56,19 +56,19 @@ class StdoutPrinter(Printer):
     def red(self, what: str, bold: bool = True) -> None:
         print(
             self.red_fmt + (self.bold_fmt
-                            if bold else "") + what + self.reset_fmt,
+            if bold else "") + what + self.reset_fmt,
             end="")
 
     def green(self, what: str, bold: bool = True) -> None:
         print(
             self.green_fmt + (self.bold_fmt
-                              if bold else "") + what + self.reset_fmt,
+            if bold else "") + what + self.reset_fmt,
             end="")
 
     def blue(self, what: str, bold: bool = True) -> None:
         print(
             self.blue_fmt + (self.bold_fmt
-                             if bold else "") + what + self.reset_fmt,
+            if bold else "") + what + self.reset_fmt,
             end="")
 
     def bold(self, what: str, bold: bool = True) -> None:
@@ -97,11 +97,11 @@ class CursesPrinter(Printer):
 
     def green(self, what: str, bold: bool = True) -> None:
         self.stdscr.addstr(what, self.green_fmt | (self.bold_fmt
-                                                   if bold else 0))
+        if bold else 0))
 
     def blue(self, what: str, bold: bool = True) -> None:
         self.stdscr.addstr(what, self.blue_fmt | (self.bold_fmt
-                                                  if bold else 0))
+        if bold else 0))
 
     def bold(self, what: str, bold: bool = True) -> None:
         self.stdscr.addstr(what, self.bold_fmt)
@@ -244,7 +244,7 @@ class CursesUI(SilentUI):
             for sol in sorted(self.solutions):
                 printer.text("%{}s: ".format(self._max_sol_len) % sol)
                 if sol not in self._compilation_status or \
-                                self._compilation_status[sol] == WAITING:
+                        self._compilation_status[sol] == WAITING:
                     printer.text("....")
                 elif self._compilation_status[sol] == RUNNING:
                     printer.bold("  " + loading + " ")
@@ -262,7 +262,8 @@ class CursesUI(SilentUI):
             printer.text("\n")
             printer.blue("Running tasks:\n")
             for task in self._running_tasks:
-                printer.text("  " + task + "\n")
+                printer.text(
+                    "  %s -- %ds\n" % (task.description, task.duration))
             try:
                 pressed_key = stdscr.getkey()
                 if pressed_key == "KEY_UP":

@@ -8,8 +8,8 @@
 
 #include "core/execution.hpp"
 #include "core/file_id.hpp"
+#include "core/running_task.hpp"
 #include "core/task_status.hpp"
-#include "core/waiting_task.hpp"
 
 namespace core {
 
@@ -51,7 +51,7 @@ class Core {
 
   void Stop() { quitting_ = true; }
 
-  std::vector<std::string> RunningTasks() const;
+  std::vector<RunningTaskInfo> RunningTasks() const;
 
   Core()
       : store_directory_("files"),
@@ -60,7 +60,7 @@ class Core {
         cacher_(nullptr) {}
 
  private:
-  mutable std::queue<WaitingTask> waiting_tasks_
+  mutable std::queue<RunningTask> running_tasks_
       GUARDED_BY(running_tasks_lock_);
   std::vector<std::unique_ptr<FileID>> files_to_load_;
   std::vector<std::unique_ptr<Execution>> executions_;

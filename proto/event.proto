@@ -71,8 +71,13 @@ message EvaluationEnded {
   int64 id = 1;
 }
 
+message RunningTaskInfo {
+  string description = 1;
+  float duration = 2;
+}
+
 message RunningTasks {
-  repeated string task = 1;
+  repeated RunningTaskInfo task = 1;
 }
 
 message Event {

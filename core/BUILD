@@ -8,9 +8,9 @@ cc_library(
 )
 
 cc_library(
-    name = "waiting_task",
+    name = "running_task",
     srcs = [],
-    hdrs = ["waiting_task.hpp"],
+    hdrs = ["running_task.hpp"],
     deps = [
         ":execution",
         ":file_id",
@@ -67,6 +67,6 @@ cc_library(
         ":execution_cacher",
         ":file_id",
         ":task_status",
-        ":waiting_task",
+        ":running_task",
     ],
 )

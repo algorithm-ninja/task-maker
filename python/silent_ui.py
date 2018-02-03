@@ -3,7 +3,7 @@ import os.path
 from typing import List, Optional
 from typing import Dict  # pylint: disable=unused-import
 
-from proto.event_pb2 import EvaluationResult, EventStatus
+from proto.event_pb2 import EvaluationResult, EventStatus, RunningTaskInfo
 
 from python.ui import UI
 
@@ -32,7 +32,7 @@ class SilentUI(UI):
         self._time_limit = 0.0
         self._memory_limit = 0.0
         self._solution_status = dict()  # type: Dict[str, SolutionStatus]
-        self._running_tasks = list()  # type: List[str]
+        self._running_tasks = list()  # type: List[RunningTaskInfo]
 
     def set_time_limit(self, time_limit: float) -> None:
         self._time_limit = time_limit
@@ -99,7 +99,7 @@ class SilentUI(UI):
             raise RuntimeError("Something weird happened")
         self._solution_status[solution_name].score = score
 
-    def set_running_tasks(self, tasks):
+    def set_running_tasks(self, tasks: List[RunningTaskInfo]):
         self._running_tasks = tasks
 
     def print_final_status(self) -> None:

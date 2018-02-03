@@ -57,10 +57,16 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
       std::unique_lock<std::mutex> lck(running_mutex);
       while (running) {
         core::Core* core = running_[current_id].core.get();
-        std::vector<std::string> tasks = core->RunningTasks();
+        std::vector<core::RunningTaskInfo> tasks = core->RunningTasks();
         proto::Event event;
         auto* sub_event = event.mutable_running_tasks();
-        for (const std::string& task : tasks) sub_event->add_task(task);
+        auto now = std::chrono::system_clock::now();
+        for (const core::RunningTaskInfo& task : tasks) {
+          auto* event_task = sub_event->add_task();
+          std::chrono::duration<float> duration = now - task.started;
+          event_task->set_description(task.description);
+          event_task->set_duration(duration.count());
+        }
         {
           std::lock_guard<std::mutex> lock(writer_mutex);
           writer->Write(event);

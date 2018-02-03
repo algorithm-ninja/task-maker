@@ -77,7 +77,8 @@ class PrintUI(UI):
 
     def set_running_tasks(self, tasks):
         self._running_tasks = tasks
-        print("Running tasks:\n  %s" % "\n  ".join(tasks))
+        print("Running tasks:\n  %s" % "\n  ".join(
+            "%s -- %ds" % (task.description, task.duration) for task in tasks))
 
     def print_final_status(self) -> None:
         max_sol_name = max(map(len, self.solutions))
