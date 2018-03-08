@@ -45,26 +45,25 @@ def spawn_manager(port: int) -> None:
     proc.join()
 
 
-def get_manager(args, func):
+def get_manager(args):
     manager_spawned = False
-    max_attempts = 100
+    max_attempts = 10
+    connect_timeout = 1
     for attempt in range(max_attempts):
+        channel = grpc.insecure_channel(
+            "localhost:" + str(args.manager_port))
+        ready_future = grpc.channel_ready_future(channel)
         try:
-            channel = grpc.insecure_channel(
-                "localhost:" + str(args.manager_port))
-            manager = manager_pb2_grpc.TaskMakerManagerStub(channel)
-            func(manager)
-            return
-        except grpc._channel._Rendezvous as e:
-            if e.code() != grpc.StatusCode.UNAVAILABLE:
-                raise
+            ready_future.result(timeout=connect_timeout)
+        except grpc.FutureTimeoutError:
+            print("Spawning manager...")
             if not manager_spawned:
                 spawn_manager(args.manager_port)
                 manager_spawned = True
-            if attempt == max_attempts - 1:
-                raise
-            del channel
             time.sleep(0.5)
+        else:
+            return manager_pb2_grpc.TaskMakerManagerStub(channel)
+    raise RuntimeError("Failed to spawn the manager")
 
 
 def main() -> None:
@@ -78,11 +77,14 @@ def main() -> None:
         request = CleanTaskRequest()
         request.store_dir = os.path.abspath(args.store_dir)
         request.temp_dir = os.path.abspath(args.temp_dir)
-        get_manager(args, lambda manager: manager.CleanTask(request))
+        manager = get_manager(args)
+        manager.CleanTask(request)
         return
 
     request = get_request(args)
     absolutize_request(request)
+
+    manager = get_manager(args)
 
     ui = UIS[args.ui](
         [os.path.basename(sol.path) for sol in request.solutions])
@@ -96,27 +98,25 @@ def main() -> None:
         ui.set_subtask_info(subtask_num, subtask.max_score,
                             sorted(subtask.testcases.keys()))
 
-    def evaluate_task(manager):
-        eval_id = None
+    eval_id = None
 
-        def stop_server(signum: int, _: Any) -> None:
-            if eval_id:
-                manager.Stop(StopRequest(evaluation_id=eval_id))
-            ui.fatal_error("Aborted with sig%d" % signum)
+    def stop_server(signum: int, _: Any) -> None:
+        if eval_id:
+            ui.stop("Waiting the manager to complete the last job")
+            manager.Stop(StopRequest(evaluation_id=eval_id))
+        ui.fatal_error("Aborted with sig%d" % signum)
 
-        signal.signal(signal.SIGINT, stop_server)
-        signal.signal(signal.SIGTERM, stop_server)
+    signal.signal(signal.SIGINT, stop_server)
+    signal.signal(signal.SIGTERM, stop_server)
 
-        for event in manager.EvaluateTask(request):
-            event_type = event.WhichOneof("event_oneof")
-            if event_type == "evaluation_started":
-                eval_id = event.evaluation_started.id
-            elif event_type == "evaluation_ended":
-                eval_id = None
-            ui.from_event(event)
-        ui.print_final_status()
-
-    get_manager(args, evaluate_task)
+    for event in manager.EvaluateTask(request):
+        event_type = event.WhichOneof("event_oneof")
+        if event_type == "evaluation_started":
+            eval_id = event.evaluation_started.id
+        elif event_type == "evaluation_ended":
+            eval_id = None
+        ui.from_event(event)
+    ui.print_final_status()
 
 
 if __name__ == '__main__':

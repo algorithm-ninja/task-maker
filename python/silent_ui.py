@@ -107,3 +107,6 @@ class SilentUI(UI):
 
     def fatal_error(self, msg: str) -> None:
         print("FATAL ERROR: %s" % msg)
+
+    def stop(self, msg: str) -> None:
+        print(msg)

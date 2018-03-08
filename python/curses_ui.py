@@ -112,6 +112,7 @@ class CursesUI(SilentUI):
         super().__init__(solutions)
         self._max_sol_len = max(map(len, solutions))
         self._done = False
+        self._stopped = False
         self._failure = None  # type: Optional[str]
         self._ui_thread = threading.Thread(target=curses.wrapper,
                                            args=(self._ui,))
@@ -217,7 +218,7 @@ class CursesUI(SilentUI):
         pos_x, pos_y = 0, 0
         max_y, max_x = stdscr.getmaxyx()
 
-        while not self._done and self._failure is None:
+        while not self._done and not self._stopped and self._failure is None:
             cur_loading_char = (cur_loading_char + 1) % len(loading_chars)
             loading = loading_chars[cur_loading_char]
             pad.clear()
@@ -281,6 +282,8 @@ class CursesUI(SilentUI):
 
             pad.refresh(pos_y, pos_x, 0, 0, max_y - 1, max_x - 1)
         curses.endwin()
+        if self._stopped:
+            print(self._stopped)
 
     def print_final_status(self) -> None:
         self._done = True
@@ -389,4 +392,6 @@ class CursesUI(SilentUI):
             self._failure = msg
         else:
             self._failure += "\n" + msg
-        self.print_final_status()
+
+    def stop(self, msg: str) -> None:
+        self._stopped = msg

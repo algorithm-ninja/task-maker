@@ -87,3 +87,6 @@ class UI:
 
     def fatal_error(self, msg: str) -> None:
         raise NotImplementedError("Please subclass this class")
+
+    def stop(self, msg: str) -> None:
+        raise NotImplementedError("Please subclass this class")
