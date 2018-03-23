@@ -120,9 +120,7 @@ CompiledSourceFile::CompiledSourceFile(
   compilation_->SetCallback([this, queue, source,
                              name](const core::TaskStatus& status) -> bool {
     if (status.event == core::TaskStatus::FAILURE) {
-      queue->CompilationFailure(
-          name_, status.message + "\n" +
-                     status.execution_info->Stderr()->Contents(1024 * 1024));
+      queue->CompilationFailure(name_, status.message);
       return false;
     }
     if (status.type == core::TaskStatus::FILE_LOAD) return true;

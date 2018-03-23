@@ -11,7 +11,7 @@
 
 namespace {
 bool IsIllegalChar(char c) {
-  return isalnum(c) == 0 && c != '.' && c != '-' && c != '_';
+  return c == '/' or c == '\0';
 }
 }  // namespace
 
