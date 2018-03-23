@@ -144,16 +144,16 @@ class CursesUI(SilentUI):
 
     def _print_compilation(self, sources: List[str], loading: str,
                            printer: Printer) -> None:
-        for comp in sources:
+        for comp in sorted(sources):
             printer.text("%{}s: ".format(self._max_sol_len) % comp)
             self._print_compilation_status(self._compilation_status[comp],
                                            loading, printer)
 
     def _print_generation_status(self, printer: Printer) -> None:
-        for subtask in self._subtask_testcases:
+        for subtask in sorted(self._subtask_testcases):
             if subtask > 0:
                 printer.text("|")
-            for testcase in self._subtask_testcases[subtask]:
+            for testcase in sorted(self._subtask_testcases[subtask]):
                 status = self._generation_status.get(testcase, -1)
                 if status == WAITING:
                     printer.text(".")
@@ -187,7 +187,7 @@ class CursesUI(SilentUI):
         else:
             printer.bold("% 4s" % loading)
 
-        for subtask in self._subtask_max_scores:
+        for subtask in sorted(self._subtask_max_scores):
             testcases = self._subtask_testcases[subtask]
             if all(tc not in status.testcase_status
                    or status.testcase_status[tc] == WAITING
@@ -341,6 +341,10 @@ class CursesUI(SilentUI):
                 continue
 
             for num, subtask in sorted(self._subtask_testcases.items()):
+                if num not in status.subtask_scores:
+                    printer.text("Subtask #%d: " % (num + 1))
+                    printer.red("skipped\n")
+                    continue
                 if status.subtask_scores[num] == self._subtask_max_scores[num]:
                     printer.bold("Subtask #%d: %.2f/%.2f\n" %
                                  (num + 1, status.subtask_scores[num],
@@ -355,6 +359,10 @@ class CursesUI(SilentUI):
                 max_mem = max(status.testcase_result[testcase].memory_used_kb
                               for testcase in subtask)
                 for testcase in sorted(subtask):
+                    if testcase not in status.testcase_result:
+                        printer.text("%3d) " % testcase)
+                        printer.red("skipped\n")
+                        continue
                     tc_status = status.testcase_result[testcase]
                     print_testcase(sol, testcase, tc_status, max_time, max_mem)
 
@@ -362,7 +370,7 @@ class CursesUI(SilentUI):
 
         printer.blue("Scores")
         printer.bold("%s total" % (" " * (self._max_sol_len - 4)))
-        for max_score in self._subtask_max_scores.values():
+        for num, max_score in sorted(self._subtask_max_scores.items()):
             printer.bold("% 4.f " % max_score)
         printer.text("\n")
 
@@ -386,6 +394,7 @@ class CursesUI(SilentUI):
             printer.red("Fatal error\n")
             printer.red(self._failure)
             printer.text("\n")
+            return
 
     def fatal_error(self, msg: str) -> None:
         if not self._failure:
