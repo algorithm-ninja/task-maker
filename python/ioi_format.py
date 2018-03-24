@@ -15,6 +15,7 @@ from proto.task_pb2 import Subtask
 from proto.task_pb2 import Task
 from proto.task_pb2 import TestCase
 
+from python.absolutize import absolutize_request
 from python.dependency_finder import find_dependency
 from python.language import grader_from_file, valid_extensions
 from python.sanitize import sanitize_command
@@ -247,6 +248,7 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
     request.dry_run = args.dry_run
     if args.evaluate_on:
         request.evaluate_on = args.evaluate_on
+    absolutize_request(request)
     return request
 
 

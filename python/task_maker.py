@@ -9,12 +9,11 @@ from typing import Any
 
 import daemon
 import grpc
-from proto import manager_pb2_grpc
 from proto.manager_pb2 import StopRequest, CleanTaskRequest
 
-from python.absolutize import absolutize_request
+from proto import manager_pb2_grpc
+from python import ioi_format
 from python.args import get_parser, UIS
-from python.italian_format import get_request, clean
 
 
 def manager_process(pipe: Any, manager: str, port: int) -> None:
@@ -66,6 +65,15 @@ def get_manager(args):
     raise RuntimeError("Failed to spawn the manager")
 
 
+def ioi_format_clean(args):
+    ioi_format.clean()
+    request = CleanTaskRequest()
+    request.store_dir = os.path.abspath(args.store_dir)
+    request.temp_dir = os.path.abspath(args.temp_dir)
+    manager = get_manager(args)
+    manager.CleanTask(request)
+
+
 def main() -> None:
     parser = get_parser()
     args = parser.parse_args()
@@ -73,30 +81,41 @@ def main() -> None:
     os.chdir(args.task_dir)
 
     if args.clean:
-        clean()
-        request = CleanTaskRequest()
-        request.store_dir = os.path.abspath(args.store_dir)
-        request.temp_dir = os.path.abspath(args.temp_dir)
-        manager = get_manager(args)
-        manager.CleanTask(request)
+        if args.format == "ioi":
+            ioi_format_clean(args)
+        elif args.format == "terry":
+            raise NotImplementedError("Clean not implemented yet for terry")
+        else:
+            raise ValueError("Format %s not supported" % args.format)
         return
 
-    request = get_request(args)
-    absolutize_request(request)
+    if args.format == "ioi":
+        request = ioi_format.get_request(args)
+    elif args.format == "terry":
+        raise NotImplementedError("get_request not implemented yet")
+    else:
+        raise ValueError("Format %s not supported" % args.format)
 
     manager = get_manager(args)
 
+    # TODO pass to the constructor if the task is terry like
     ui = UIS[args.ui](
         [os.path.basename(sol.path) for sol in request.solutions])
-    ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))
-    ui.set_time_limit(request.task.time_limit)
-    ui.set_memory_limit(request.task.memory_limit_kb)
 
-    last_testcase = 0
-    for subtask_num, subtask in request.task.subtasks.items():
-        last_testcase += len(subtask.testcases)
-        ui.set_subtask_info(subtask_num, subtask.max_score,
-                            sorted(subtask.testcases.keys()))
+    if args.format == "ioi":
+        ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))
+        ui.set_time_limit(request.task.time_limit)
+        ui.set_memory_limit(request.task.memory_limit_kb)
+
+        last_testcase = 0
+        for subtask_num, subtask in request.task.subtasks.items():
+            last_testcase += len(subtask.testcases)
+            ui.set_subtask_info(subtask_num, subtask.max_score,
+                                sorted(subtask.testcases.keys()))
+    elif args.format == "terry":
+        raise NotImplementedError("get_request not implemented yet")
+    else:
+        raise ValueError("Format %s not supported" % args.format)
 
     eval_id = None
 

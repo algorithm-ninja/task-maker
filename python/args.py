@@ -102,5 +102,11 @@ def get_parser() -> argparse.ArgumentParser:
         help="Clear the task directory and exit",
         action="store_true",
         default=False)
+    parser.add_argument(
+        "--format",
+        help="Format of the task (ioi|terry)",
+        choices=["ioi", "'terry"],
+        action="store",
+        default="ioi")
 
     return parser

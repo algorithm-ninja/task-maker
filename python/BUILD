@@ -80,8 +80,8 @@ py_library(
 )
 
 py_library(
-    name = "italian_format",
-    srcs = ["italian_format.py"],
+    name = "ioi_format",
+    srcs = ["ioi_format.py"],
     deps = [
         ":dependency_finder",
         ":language",
@@ -120,7 +120,7 @@ py_binary(
     deps = [
         ":absolutize",
         ":args",
-        ":italian_format",
+        ":ioi_format",
         requirement("grpcio"),
         requirement("python-daemon"),
     ],
