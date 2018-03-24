@@ -36,7 +36,7 @@ py_library(
 
 py_library(
     name = "silent_ui",
-    srcs = ["silent_ui.py"],
+    srcs = ["uis/silent_ui.py"],
     deps = [
         ":ui",
         "//proto:event_py",
@@ -45,7 +45,7 @@ py_library(
 
 py_library(
     name = "curses_ui",
-    srcs = ["curses_ui.py"],
+    srcs = ["uis/curses_ui.py"],
     deps = [
         ":silent_ui",
         ":ui",
@@ -55,7 +55,7 @@ py_library(
 
 py_library(
     name = "print_ui",
-    srcs = ["print_ui.py"],
+    srcs = ["uis/print_ui.py"],
     deps = [
         ":ui",
         "//proto:event_py",
@@ -82,6 +82,21 @@ py_library(
 py_library(
     name = "ioi_format",
     srcs = ["ioi_format.py"],
+    deps = [
+        ":absolutize",
+        ":dependency_finder",
+        ":language",
+        ":sanitize",
+        ":source_file",
+        "//proto:manager_py",
+        "//proto:task_py",
+        requirement("PyYAML"),
+    ],
+)
+
+py_library(
+    name = "terry_format",
+    srcs = ["terry_format.py"],
     deps = [
         ":dependency_finder",
         ":language",
@@ -118,9 +133,9 @@ py_binary(
     srcs = ["task_maker.py"],
     data = ["//manager"],
     deps = [
-        ":absolutize",
         ":args",
         ":ioi_format",
+        ":terry_format",
         requirement("grpcio"),
         requirement("python-daemon"),
     ],

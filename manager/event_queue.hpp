@@ -107,8 +107,9 @@ class EventQueue {
   void TerryChecking(const std::string& solution) {
     TerryCheck(solution, proto::EventStatus::CHECKING);
   }
-  void TerryChecked(const std::string& solution) {
-    TerryCheck(solution, proto::EventStatus::DONE);
+  void TerryChecked(const std::string& solution,
+                    proto::TerryEvaluationResult result) {
+    TerryCheck(solution, proto::EventStatus::DONE, "", std::move(result));
   }
   void TerryCheckingFailure(const std::string& solution,
                             const std::string& errors) {
@@ -203,12 +204,14 @@ class EventQueue {
     Enqueue(std::move(event));
   }
   void TerryCheck(const std::string& solution, proto::EventStatus status,
-                  const std::string& errors = "") {
+                  const std::string& errors = "",
+                  absl::optional<proto::TerryEvaluationResult>&& result = {}) {
     proto::Event event;
     auto* sub_event = event.mutable_terry_check();
     sub_event->set_solution(solution);
     sub_event->set_status(status);
     if (!errors.empty()) sub_event->set_errors(errors);
+    if (result.has_value()) sub_event->mutable_result()->Swap(&result.value());
     Enqueue(std::move(event));
   }
 };

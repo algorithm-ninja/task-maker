@@ -18,6 +18,7 @@ def is_executable(path: str) -> bool:
     return False
 
 
+# TODO(edomora97): source file architecture
 def from_file(path: str, write_to: Optional[str]=None) -> SourceFile:
     source_file = SourceFile()
     source_file.path = path

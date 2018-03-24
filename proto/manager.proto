@@ -32,14 +32,11 @@ message EvaluateTerryTaskRequest {
   repeated SourceFile solutions = 2;
   string store_dir = 3;
   string temp_dir = 4;
-  string write_generator_to = 5;
-  string write_validator_to = 6;
-  string write_checker_to = 7;
-  CacheMode cache_mode = 8;
-  int32 num_cores = 9;
-  bool dry_run = 10;
-  string evaluate_on = 11;
-  bool keep_sandbox = 12;
+  CacheMode cache_mode = 5;
+  int32 num_cores = 6;
+  bool dry_run = 7;
+  string evaluate_on = 8;
+  bool keep_sandbox = 9;
 }
 
 message CleanTaskRequest {

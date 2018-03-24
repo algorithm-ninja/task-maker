@@ -1,7 +1,6 @@
 #include "core/core.hpp"
 #include "executor/local_executor.hpp"
 #include "glog/logging.h"
-#include <thread>
 
 namespace {
 enum EnqueueStatus {
@@ -118,8 +117,11 @@ bool Core::Run() {
           reenqueued_tasks++;
           continue;
         }
-        if (!execution->callback_(TaskStatus::Start(execution)))
+        if (!execution->callback_(TaskStatus::Start(execution))) {
+          LOG(ERROR) << "Task failed: " << execution->Description()
+                     << " [EXECUTION]";
           return CALLBACK_FALSE;
+        }
         std::packaged_task<TaskStatus()> task(
             std::bind(&Core::ExecuteTask, this, execution));
         {
@@ -167,6 +169,12 @@ bool Core::Run() {
                     : answer.file_info->callback_;
             if (!callback(answer)) {
               cleanup();
+              if (running_task.info.type == core::RunningTaskInfo::FILE_LOAD)
+                LOG(ERROR) << "Failed to load "
+                           << running_task.info.description;
+              else
+                LOG(ERROR) << "Failed to execute "
+                           << running_task.info.description;
               return false;
             }
           } else {

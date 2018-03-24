@@ -9,7 +9,7 @@ from typing import Optional
 from proto.event_pb2 import EventStatus, EvaluationResult, WAITING, RUNNING, \
     FAILURE, GENERATING, GENERATED, VALIDATING, VALIDATED, SOLVING, DONE
 
-from python.silent_ui import SilentUI, SolutionStatus
+from python.uis.silent_ui import SilentUI, SolutionStatus
 
 
 class Printer:
@@ -108,8 +108,8 @@ class CursesPrinter(Printer):
 
 
 class CursesUI(SilentUI):
-    def __init__(self, solutions: List[str]) -> None:
-        super().__init__(solutions)
+    def __init__(self, solutions: List[str], format: str) -> None:
+        super().__init__(solutions, format)
         self._max_sol_len = max(map(len, solutions))
         self._done = False
         self._stopped = False

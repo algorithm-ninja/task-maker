@@ -77,6 +77,14 @@ http_archive(
     urls = ["https://github.com/google/re2/archive/master.zip"],
 )
 
+new_http_archive(
+    name = "json_archive",
+    build_file = "tools/json.BUILD",
+    urls = ["https://github.com/nlohmann/json/releases/download/v3.1.1/include.zip"],
+    sha256 = "fde771d4b9e4f222965c00758a2bdd627d04fb7b59e09b7f3d1965abdc848505",
+    strip_prefix = "include",
+)
+
 bind(
     name = "glog",
     actual = "@glog_repo//:glog",
@@ -90,6 +98,11 @@ bind(
 bind(
     name = "gflags_nothreads",
     actual = "@com_github_gflags_gflags//:gflags_nothreads",
+)
+
+bind(
+    name = "json",
+    actual = "@json_archive//:json"
 )
 
 load("@org_pubref_rules_protobuf//cpp:rules.bzl", "cpp_proto_repositories")

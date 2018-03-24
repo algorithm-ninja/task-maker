@@ -12,7 +12,7 @@ import grpc
 from proto.manager_pb2 import StopRequest, CleanTaskRequest
 
 from proto import manager_pb2_grpc
-from python import ioi_format
+from python import ioi_format, terry_format
 from python.args import get_parser, UIS
 
 
@@ -92,7 +92,7 @@ def main() -> None:
     if args.format == "ioi":
         request = ioi_format.get_request(args)
     elif args.format == "terry":
-        raise NotImplementedError("get_request not implemented yet")
+        request = terry_format.get_request(args)
     else:
         raise ValueError("Format %s not supported" % args.format)
 
@@ -100,7 +100,7 @@ def main() -> None:
 
     # TODO pass to the constructor if the task is terry like
     ui = UIS[args.ui](
-        [os.path.basename(sol.path) for sol in request.solutions])
+        [os.path.basename(sol.path) for sol in request.solutions], args.format)
 
     if args.format == "ioi":
         ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))
@@ -113,7 +113,7 @@ def main() -> None:
             ui.set_subtask_info(subtask_num, subtask.max_score,
                                 sorted(subtask.testcases.keys()))
     elif args.format == "terry":
-        raise NotImplementedError("get_request not implemented yet")
+        ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))
     else:
         raise ValueError("Format %s not supported" % args.format)
 
@@ -128,7 +128,14 @@ def main() -> None:
     signal.signal(signal.SIGINT, stop_server)
     signal.signal(signal.SIGTERM, stop_server)
 
-    for event in manager.EvaluateTask(request):
+    if args.format == "ioi":
+        events = manager.EvaluateTask(request)
+    elif args.format == "terry":
+        events = manager.EvaluateTerryTask(request)
+    else:
+        raise NotImplementedError("Format %s not supported" % args.format)
+
+    for event in events:
         event_type = event.WhichOneof("event_oneof")
         if event_type == "evaluation_started":
             eval_id = event.evaluation_started.id

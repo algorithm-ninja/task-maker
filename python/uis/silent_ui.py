@@ -3,7 +3,8 @@ import os.path
 from typing import List, Optional
 from typing import Dict  # pylint: disable=unused-import
 
-from proto.event_pb2 import EvaluationResult, EventStatus, RunningTaskInfo
+from proto.event_pb2 import EvaluationResult, TerryEvaluationResult, \
+    EventStatus, RunningTaskInfo
 
 from python.ui import UI
 
@@ -19,8 +20,8 @@ class SolutionStatus:
 
 
 class SilentUI(UI):
-    def __init__(self, solutions: List[str]) -> None:
-        super().__init__(solutions)
+    def __init__(self, solutions: List[str], format: str) -> None:
+        super().__init__(solutions, format)
         self._num_testcases = 0
         self._subtask_max_scores = dict()  # type: Dict[int, float]
         self._subtask_testcases = dict()  # type: Dict[int, List[int]]
@@ -69,6 +70,12 @@ class SilentUI(UI):
         if stderr:
             self._generation_errors[testcase_num] = stderr
 
+    def set_terry_generation_status(self,
+                                    solution: str,
+                                    status: EventStatus,
+                                    stderr: Optional[str] = None):
+        raise NotImplementedError()
+
     def set_evaluation_status(self,
                               testcase_num: int,
                               solution_name: str,
@@ -84,6 +91,19 @@ class SilentUI(UI):
             sol_status.testcase_errors[testcase_num] = error
         if result:
             sol_status.testcase_result[testcase_num] = result
+
+    def set_terry_evaluation_status(self,
+                                    solution: str,
+                                    status: EventStatus,
+                                    error: Optional[str] = None):
+        raise NotImplementedError()
+
+    def set_terry_check_status(self,
+                               solution: str,
+                               status: EventStatus,
+                               error: Optional[str] = None,
+                               result: Optional[TerryEvaluationResult] = None):
+        raise NotImplementedError()
 
     def set_subtask_score(self, subtask_num: int, solution_name: str,
                           score: float) -> None:

@@ -1,5 +1,6 @@
 #include "manager/terry_evaluation.hpp"
 #include "glog/logging.h"
+#include "nlohmann/json.hpp"
 
 namespace manager {
 TerryEvaluation::TerryEvaluation(EventQueue* queue, core::Core* core,
@@ -43,6 +44,11 @@ void TerryEvaluation::Evaluate(SourceFile* solution) {
         return false;
       }
     }
+    if (status.event == core::TaskStatus::FAILURE) {
+      queue_->FatalError(status.message + ": " +
+                         status.execution_info->Message());
+      return false;
+    }
     return true;
   });
 
@@ -72,6 +78,11 @@ void TerryEvaluation::Evaluate(SourceFile* solution) {
           return false;
         }
       }
+      if (status.event == core::TaskStatus::FAILURE) {
+        queue_->FatalError(status.message + ": " +
+                           status.execution_info->Message());
+        return false;
+      }
       return true;
     });
   }
@@ -97,8 +108,12 @@ void TerryEvaluation::Evaluate(SourceFile* solution) {
         queue_->TerryEvaluationFailure(
             name,
             status.message + "\n" + exec->Stderr()->Contents(1024 * 1024));
-        return false;
       }
+    }
+    if (status.event == core::TaskStatus::FAILURE) {
+      queue_->FatalError(status.message + ": " +
+                         status.execution_info->Message());
+      return false;
     }
     return true;
   });
@@ -113,23 +128,34 @@ void TerryEvaluation::Evaluate(SourceFile* solution) {
   else
     checker->SetCachingMode(core::Execution::CachingMode::NEVER);
   checker->SetExecutor(executor_);
-  checker->SetCallback([this, name](const core::TaskStatus& status) -> bool {
-    if (status.type == core::TaskStatus::FILE_LOAD)
-      return !(status.event == core::TaskStatus::FAILURE);
-    if (status.event == core::TaskStatus::START) queue_->TerryChecking(name);
-    if (status.event == core::TaskStatus::SUCCESS) {
-      auto exec = status.execution_info;
-      if (exec->Success()) {
-        queue_->TerryChecked(name);
-        // TODO(edomora97) parse checker stdout
-      } else {
-        queue_->TerryCheckingFailure(
-            name,
-            status.message + "\n" + exec->Stderr()->Contents(1024 * 1024));
-        return false;
-      }
-    }
-    return true;
-  });
+  core::FileID* checker_results = checker->Stdout();
+  checker->SetCallback(
+      [this, name, checker_results](const core::TaskStatus& status) -> bool {
+        if (status.type == core::TaskStatus::FILE_LOAD)
+          return !(status.event == core::TaskStatus::FAILURE);
+        if (status.event == core::TaskStatus::START)
+          queue_->TerryChecking(name);
+        if (status.event == core::TaskStatus::SUCCESS) {
+          auto exec = status.execution_info;
+          if (exec->Success()) {
+            auto checker_json =
+                nlohmann::json::parse(checker_results->Contents(1024 * 1024));
+            proto::TerryEvaluationResult result;
+            result.set_score(checker_json["score"]);
+            queue_->TerryChecked(name, std::move(result));
+          } else {
+            queue_->TerryCheckingFailure(
+                name,
+                status.message + "\n" + exec->Stderr()->Contents(1024 * 1024));
+            return false;
+          }
+        }
+        if (status.event == core::TaskStatus::FAILURE) {
+          queue_->FatalError(status.message + ": " +
+                             status.execution_info->Message());
+          return false;
+        }
+        return true;
+      });
 }
 }  // namespace manager

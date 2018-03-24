@@ -99,6 +99,7 @@ cc_library(
         ":evaluation",
         ":terry_generation",
         "//external:glog",
+        "//external:json",
         "//proto:manager_cc",
         "//proto:task_cc",
     ],

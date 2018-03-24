@@ -234,13 +234,6 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
             LOG(INFO) << "Dry-run mode, compiled files not saved";
             return;
           }
-          auto* generation =
-              reinterpret_cast<manager::TerryGeneration*>(
-                  info.generation.get());
-          generation->WriteGenerator(request);
-          generation->WriteChecker(request);
-          if (request.task().has_validator())
-            generation->WriteValidator(request);
         } else {
           info.queue->FatalError("The core failed");
           LOG(WARNING) << "The core for request " << current_id

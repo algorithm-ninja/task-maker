@@ -17,10 +17,6 @@ class TerryGeneration : public Generation {
   SourceFile* GetValidator() { return validator_.get(); }
   SourceFile* GetChecker() { return checker_.get(); }
 
-  void WriteGenerator(const proto::EvaluateTerryTaskRequest& request);
-  void WriteValidator(const proto::EvaluateTerryTaskRequest& request);
-  void WriteChecker(const proto::EvaluateTerryTaskRequest& request);
-
  private:
   std::unique_ptr<SourceFile> generator_;
   std::unique_ptr<SourceFile> validator_;

@@ -4,14 +4,15 @@ from typing import Dict  # pylint: disable=unused-import
 from typing import List
 from typing import Optional
 
-from proto.event_pb2 import EvaluationResult, EventStatus, DONE
+from proto.event_pb2 import EvaluationResult, TerryEvaluationResult, \
+    EventStatus, DONE
 
 from python.ui import UI
 
 
 class PrintUI(UI):
-    def __init__(self, solutions: List[str]) -> None:
-        super().__init__(solutions)
+    def __init__(self, solutions: List[str], format: str) -> None:
+        super().__init__(solutions, format)
         self._subtasks_scores = dict()  # type: Dict[str, Dict[int, float]]
         self._scores = dict()  # type: Dict[str, float]
 
@@ -46,6 +47,15 @@ class PrintUI(UI):
         if stderr:
             print("Errors:", stderr, sep="\n")
 
+    def set_terry_generation_status(self,
+                                    solution: str,
+                                    status: EventStatus,
+                                    stderr: Optional[str] = None):
+        print("Status of the generation of input for %s is %s"
+              % (solution, EventStatus.Name(status)))
+        if stderr:
+            print("Errors:", stderr, sep="\n")
+
     def set_evaluation_status(self,
                               testcase_num: int,
                               solution_name: str,
@@ -62,6 +72,27 @@ class PrintUI(UI):
             print("Resource usage: %.2f cpu, %.2f wall time, %.2f MB memory" %
                   (result.cpu_time_used, result.wall_time_used,
                    result.memory_used_kb / 1024))
+
+    def set_terry_evaluation_status(self,
+                                    solution: str,
+                                    status: EventStatus,
+                                    error: Optional[str] = None):
+        print("Status of the evaluation of solution %s is %s"
+              % (solution, EventStatus.Name(status)))
+        if error:
+            print("Errors:", error, sep="\n")
+
+    def set_terry_check_status(self,
+                               solution: str,
+                               status: EventStatus,
+                               error: Optional[str] = None,
+                               result: Optional[TerryEvaluationResult] = None):
+        print("Status of the checking of solution %s is %s"
+              % (solution, EventStatus.Name(status)))
+        if error:
+            print("Errors:", error, sep="\n")
+        if result is not None:
+            print("Result:", result)
 
     def set_subtask_score(self, subtask_num: int, solution_name: str,
                           score: float) -> None:

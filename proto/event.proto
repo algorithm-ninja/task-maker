@@ -77,11 +77,17 @@ message TerryEvaluation {
   string errors = 3;
 }
 
+message TerryEvaluationResult {
+  // TODO(edomora97) add more info about execution/checking
+  float score = 1;
+}
+
 message TerryCheck {
   string solution = 1;
   // WAITING, CHECKING, DONE, FAILURE
   EventStatus status = 2;
   string errors = 3;
+  TerryEvaluationResult result = 4;
 }
 
 message EvaluationStarted {

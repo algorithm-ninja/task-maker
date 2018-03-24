@@ -7,7 +7,7 @@ from typing import List
 import pytest
 
 from python.args import UIS
-from python.silent_ui import SilentUI
+from python.uis.silent_ui import SilentUI
 from python.task_maker import main
 
 

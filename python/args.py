@@ -5,9 +5,9 @@ import os.path
 
 from proto.manager_pb2 import ALL, GENERATION, NOTHING
 
-from python.curses_ui import CursesUI
-from python.print_ui import PrintUI
-from python.silent_ui import SilentUI
+from python.uis.curses_ui import CursesUI
+from python.uis.print_ui import PrintUI
+from python.uis.silent_ui import SilentUI
 
 UIS = {"curses": CursesUI, "print": PrintUI, "silent": SilentUI}
 
@@ -98,6 +98,11 @@ def get_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False)
     parser.add_argument(
+        "--arch",
+        help="Architecture to target the executables",
+        action="store",
+        default=None)
+    parser.add_argument(
         "--clean",
         help="Clear the task directory and exit",
         action="store_true",
@@ -105,7 +110,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--format",
         help="Format of the task (ioi|terry)",
-        choices=["ioi", "'terry"],
+        choices=["ioi", "terry"],
         action="store",
         default="ioi")
 
