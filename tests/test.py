@@ -14,8 +14,8 @@ from python.task_maker import main
 class TestingUI(SilentUI):
     inst = None
 
-    def __init__(self, solutions: List[str]) -> None:
-        super().__init__(solutions)
+    def __init__(self, solutions: List[str], format: str) -> None:
+        super().__init__(solutions, format)
         TestingUI.inst = self
         self.fatal_errors = []  # type: List[str]
 
