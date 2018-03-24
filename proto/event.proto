@@ -47,6 +47,13 @@ message Generation {
   string error = 3;
 }
 
+message TerryGeneration {
+  string solution = 1;
+  // WAITING, GENERATING, GENERATED, VALIDATING, VALIDATED, FAILURE
+  EventStatus status = 2;
+  string error = 3;
+}
+
 message EvaluationResult {
   float score = 1;
   string message = 2;
@@ -61,6 +68,20 @@ message Evaluation {
   // WAITING, EXECUTING, EXECUTED, CHECKING, DONE, FAILURE
   EventStatus status = 3;
   EvaluationResult result = 4;
+}
+
+message TerryEvaluation {
+  string solution = 1;
+  // WAITING, EXECUTING, EXECUTED, FAILURE
+  EventStatus status = 2;
+  string errors = 3;
+}
+
+message TerryCheck {
+  string solution = 1;
+  // WAITING, CHECKING, DONE, FAILURE
+  EventStatus status = 2;
+  string errors = 3;
 }
 
 message EvaluationStarted {
@@ -88,8 +109,11 @@ message Event {
     SubtaskScore subtask_score = 4;
     Compilation compilation = 5;
     Generation generation = 6;
-    Evaluation evaluation = 7;
-    EvaluationEnded evaluation_ended = 8;
-    RunningTasks running_tasks = 9;
+    TerryGeneration terry_generation = 7;
+    Evaluation evaluation = 8;
+    TerryEvaluation terry_evaluation = 9;
+    TerryCheck terry_check = 10;
+    EvaluationEnded evaluation_ended = 11;
+    RunningTasks running_tasks = 12;
   }
 }

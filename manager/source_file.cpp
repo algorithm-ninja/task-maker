@@ -1,7 +1,8 @@
+#include <sys/stat.h>
+
 #include "manager/source_file.hpp"
 #include "glog/logging.h"
 #include "util/which.hpp"
-#include <sys/stat.h>
 
 namespace manager {
 
@@ -83,6 +84,7 @@ CompiledSourceFile::CompiledSourceFile(
   core::FileID* input_file =
       core->LoadFile("Source file for " + name_, source.path());
 
+  // TODO(edomora97) source.arch() to target specific architectures
   switch (source.language()) {
     case proto::CPP:
       compiler = util::which("c++");
@@ -108,9 +110,8 @@ CompiledSourceFile::CompiledSourceFile(
   if (grader) {
     for (const auto& dep : grader->files()) args.push_back(dep.name());
   }
-  compilation_ =
-      core->AddExecution("Compilation of " + source.path(), compiler, args,
-                         keep_sandbox);
+  compilation_ = core->AddExecution("Compilation of " + source.path(), compiler,
+                                    args, keep_sandbox);
 
   compilation_->Input(name_, input_file);
   compiled_ =

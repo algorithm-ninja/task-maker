@@ -63,3 +63,11 @@ message Task {
   string input_file = 9;
   string output_file = 10;
 }
+
+message TerryTask {
+  string name = 1;
+  string title = 2;
+  SourceFile generator = 3;
+  SourceFile validator = 4;
+  SourceFile checker = 5;
+}
