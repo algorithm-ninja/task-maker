@@ -12,6 +12,7 @@ class CompiledSourceFile : public SourceFile {
  public:
   CompiledSourceFile(EventQueue* queue, core::Core* core,
                      const proto::SourceFile& source, const std::string& name,
+                     const std::string& exe_name,
                      const absl::optional<proto::GraderInfo>& grader,
                      bool fatal_failures, bool keep_sandbox);
 
@@ -33,7 +34,8 @@ class NotCompiledSourceFile : public SourceFile {
  public:
   NotCompiledSourceFile(EventQueue* queue, core::Core* core,
                         const proto::SourceFile& source,
-                        const std::string& name, bool fatal_failures);
+                        const std::string& name, const std::string& exe_name,
+                        bool fatal_failures);
 
   core::Execution* execute(const std::string& description,
                            const std::vector<std::string>& args,
@@ -60,24 +62,27 @@ std::unique_ptr<SourceFile> SourceFile::FromProto(
   // will be sent to the queue. Maybe we want to send the absolute path?
   std::string name =
       source.path().substr(source.path().find_last_of("/\\") + 1);
+  std::string exe_name = name.substr(0, name.find_last_of('.'));
   switch (source.language()) {
     case proto::CPP:
     case proto::C:
     case proto::PASCAL:
       return absl::make_unique<CompiledSourceFile>(
-          queue, core, source, std::move(name), grader, fatal_failures,
-          keep_sandbox);
+          queue, core, source, std::move(name), std::move(exe_name), grader,
+          fatal_failures, keep_sandbox);
     default:
       return absl::make_unique<NotCompiledSourceFile>(
-          queue, core, source, std::move(name), fatal_failures);
+          queue, core, source, std::move(name), std::move(exe_name),
+          fatal_failures);
   }
 }
 
 CompiledSourceFile::CompiledSourceFile(
     EventQueue* queue, core::Core* core, const proto::SourceFile& source,
-    const std::string& name, const absl::optional<proto::GraderInfo>& grader,
-    bool fatal_failures, bool keep_sandbox)
-    : SourceFile(core, queue, name, fatal_failures) {
+    const std::string& name, const std::string& exe_name,
+    const absl::optional<proto::GraderInfo>& grader, bool fatal_failures,
+    bool keep_sandbox)
+    : SourceFile(core, queue, name, exe_name, fatal_failures) {
   std::string compiler;
   std::vector<std::string> args;
 
@@ -87,7 +92,7 @@ CompiledSourceFile::CompiledSourceFile(
   switch (source.language()) {
     case proto::CPP:
       compiler = util::which("c++");
-      args = {"-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", "compiled", name_};
+      args = {"-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", exe_name, name_};
       switch (source.target_arch()) {
         case proto::Arch::I686:
           args.emplace_back("-m32");
@@ -98,7 +103,7 @@ CompiledSourceFile::CompiledSourceFile(
       break;
     case proto::C:
       compiler = util::which("cc");
-      args = {"-O2", "-std=c11", "-DEVAL", "-Wall", "-o", "compiled", name_};
+      args = {"-O2", "-std=c11", "-DEVAL", "-Wall", "-o", exe_name, name_};
       switch (source.target_arch()) {
         case proto::Arch::I686:
           args.emplace_back("-m32");
@@ -109,7 +114,7 @@ CompiledSourceFile::CompiledSourceFile(
       break;
     case proto::PASCAL:
       compiler = util::which("fpc");
-      args = {"-dEVAL", "-XS", "-O2", "-ocompiled", name_};
+      args = {"-dEVAL", "-XS", "-O2", "-o" + exe_name, name_};
       if (source.target_arch() != proto::Arch::DEFAULT)
         throw std::domain_error(
             "Cannot target a Pascal executable to a specific architecture yet");
@@ -131,7 +136,7 @@ CompiledSourceFile::CompiledSourceFile(
 
   compilation_->Input(name_, input_file);
   compiled_ =
-      compilation_->Output("compiled", "Compiled file of " + source.path());
+      compilation_->Output(exe_name, "Compiled file of " + source.path());
   queue->CompilationWaiting(name_);
 
   compilation_->SetCallback([this, queue, source,
@@ -175,17 +180,15 @@ core::Execution* CompiledSourceFile::execute(
     const std::string& description, const std::vector<std::string>& args,
     bool keep_sandbox) {
   core::Execution* execution =
-      core_->AddExecution(description, "program", args, keep_sandbox);
-  execution->Input("program", compiled_);
+      core_->AddExecution(description, exe_name_, args, keep_sandbox);
+  execution->Input(exe_name_, compiled_);
   return execution;
 }
 
-NotCompiledSourceFile::NotCompiledSourceFile(EventQueue* queue,
-                                             core::Core* core,
-                                             const proto::SourceFile& source,
-                                             const std::string& name,
-                                             bool fatal_failures)
-    : SourceFile(core, queue, name, fatal_failures) {
+NotCompiledSourceFile::NotCompiledSourceFile(
+    EventQueue* queue, core::Core* core, const proto::SourceFile& source,
+    const std::string& name, const std::string& exe_name, bool fatal_failures)
+    : SourceFile(core, queue, name, exe_name, fatal_failures) {
   core_ = core;
   queue_ = queue;
   for (const auto& dep : source.deps())
@@ -213,8 +216,8 @@ core::Execution* NotCompiledSourceFile::execute(
     const std::string& description, const std::vector<std::string>& args,
     bool keep_sandbox) {
   core::Execution* execution =
-      core_->AddExecution(description, "program", args, keep_sandbox);
-  execution->Input("program", program_);
+      core_->AddExecution(description, exe_name_, args, keep_sandbox);
+  execution->Input(exe_name_, program_);
   for (auto dep : runtime_deps_) execution->Input(dep->Description(), dep);
   return execution;
 }
