@@ -1,7 +1,7 @@
 #include <sys/stat.h>
 
-#include "manager/source_file.hpp"
 #include "glog/logging.h"
+#include "manager/source_file.hpp"
 #include "util/which.hpp"
 
 namespace manager {
@@ -84,19 +84,35 @@ CompiledSourceFile::CompiledSourceFile(
   core::FileID* input_file =
       core->LoadFile("Source file for " + name_, source.path());
 
-  // TODO(edomora97) source.arch() to target specific architectures
   switch (source.language()) {
     case proto::CPP:
       compiler = util::which("c++");
       args = {"-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", "compiled", name_};
+      switch (source.target_arch()) {
+        case proto::Arch::I686:
+          args.emplace_back("-m32");
+          break;
+        default:
+          break;
+      }
       break;
     case proto::C:
       compiler = util::which("cc");
       args = {"-O2", "-std=c11", "-DEVAL", "-Wall", "-o", "compiled", name_};
+      switch (source.target_arch()) {
+        case proto::Arch::I686:
+          args.emplace_back("-m32");
+          break;
+        default:
+          break;
+      }
       break;
     case proto::PASCAL:
       compiler = util::which("fpc");
       args = {"-dEVAL", "-XS", "-O2", "-ocompiled", name_};
+      if (source.target_arch() != proto::Arch::DEFAULT)
+        throw std::domain_error(
+            "Cannot target a Pascal executable to a specific architecture yet");
       break;
     default:
       throw std::domain_error("Cannot compile " + source.path() +
@@ -135,6 +151,7 @@ CompiledSourceFile::CompiledSourceFile(
         if (!source.write_bin_to().empty()) {
           compiled_->WriteTo(source.write_bin_to());
           chmod(source.write_bin_to().c_str(), S_IRUSR | S_IWUSR | S_IXUSR);
+          LOG(INFO) << "Compiled program copied to " << source.write_bin_to();
         }
       } else {
         queue->CompilationFailure(

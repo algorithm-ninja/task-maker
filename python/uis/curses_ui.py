@@ -381,7 +381,7 @@ class CursesUI(SilentUI):
                 print_phase_stats("Check", result.check_cpu_time,
                                   result.check_wall_time,
                                   result.check_memory_kb)
-                printer.text("%10s: %s" % ("Seed", result.seed))
+                printer.text("%10s: %s\n" % ("Seed", result.seed))
             if solution in self._compilation_errors:
                 printer.red("Compilation errors\n")
                 printer.text(self._compilation_errors[solution])

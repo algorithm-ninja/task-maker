@@ -19,6 +19,12 @@ enum ScoreMode {
   SUM = 3;
 }
 
+enum Arch {
+  DEFAULT = 0;
+  X86_64 = 1;
+  I686 = 2;
+}
+
 message Dependency {
   string name = 1;
   string path = 2;
@@ -29,6 +35,7 @@ message SourceFile {
   repeated Dependency deps = 2;
   Language language = 3;
   string write_bin_to = 4;
+  Arch target_arch = 5;
 }
 
 message TestCase {

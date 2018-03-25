@@ -117,6 +117,7 @@ py_library(
         ":print_ui",
         ":silent_ui",
         "//proto:manager_py",
+        "//proto:task_py",
     ],
 )
 

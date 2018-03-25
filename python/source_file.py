@@ -2,7 +2,7 @@
 import os.path
 from typing import Optional
 
-from proto.task_pb2 import SourceFile
+from proto.task_pb2 import SourceFile, DEFAULT
 
 import python.language
 from python.dependency_finder import find_dependency
@@ -18,8 +18,8 @@ def is_executable(path: str) -> bool:
     return False
 
 
-# TODO(edomora97): source file architecture
-def from_file(path: str, write_to: Optional[str]=None) -> SourceFile:
+def from_file(path: str, write_to: Optional[str] = None,
+              target_arch=DEFAULT) -> SourceFile:
     source_file = SourceFile()
     source_file.path = path
     source_file.deps.extend(find_dependency(path))
@@ -28,6 +28,8 @@ def from_file(path: str, write_to: Optional[str]=None) -> SourceFile:
         if not os.path.isabs(write_to):
             write_to = os.path.join(os.getcwd(), write_to)
         source_file.write_bin_to = write_to
+    if target_arch != DEFAULT:
+        source_file.target_arch = target_arch
     if not python.language.need_compilation(source_file.language):
         if not is_executable(source_file.path):
             raise ValueError("The file %s is not an executable. "

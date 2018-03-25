@@ -5,15 +5,22 @@ import platform
 import random
 
 from proto.manager_pb2 import EvaluateTerryTaskRequest, TerrySolution
-from proto.task_pb2 import TerryTask
+from proto.task_pb2 import TerryTask, DEFAULT, X86_64, I686
 
 from python.absolutize import absolutize_source_file, absolutize_path
 from python.ioi_format import parse_task_yaml, get_options, list_files
 from python.source_file import from_file
 
 
-def get_extension():
-    return "." + platform.system().lower() + "." + platform.machine()
+def get_extension(target_arch=DEFAULT):
+    if target_arch == DEFAULT:
+        return "." + platform.system().lower() + "." + platform.machine()
+    elif target_arch == X86_64:
+        return "." + platform.system().lower() + ".x86_64"
+    elif target_arch == I686:
+        return "." + platform.system().lower() + ".i686"
+    else:
+        raise ValueError("Unsupported architecture")
 
 
 def create_task_from_yaml(data):
@@ -32,7 +39,7 @@ def create_task_from_yaml(data):
     return task
 
 
-def get_manager(manager, optional=False):
+def get_manager(manager, target_arch, optional=False):
     managers = list_files(["managers/%s.*" % manager], exclude=[
         "managers/%s.*.*" % manager])
     if len(managers) == 0:
@@ -41,7 +48,9 @@ def get_manager(manager, optional=False):
         return None
     if len(managers) != 1:
         raise ValueError("Ambiguous manager: " + ", ".join(managers))
-    return from_file(managers[0], "managers/%s%s" % (manager, get_extension()))
+    return from_file(managers[0],
+                     "managers/%s%s" % (manager, get_extension(target_arch)),
+                     target_arch)
 
 
 def get_request(args: argparse.Namespace):
@@ -50,13 +59,16 @@ def get_request(args: argparse.Namespace):
         raise RuntimeError("The task.yaml is not valid")
 
     task = create_task_from_yaml(data)
-    task.generator.CopyFrom(get_manager("generator"))
+
+    task.generator.CopyFrom(get_manager("generator", args.arch))
     absolutize_source_file(task.generator)
-    validator = get_manager("validator", optional=True)
+
+    validator = get_manager("validator", args.arch, optional=True)
     if validator:
         task.validator.CopyFrom(validator)
         absolutize_source_file(task.validator)
-    task.checker.CopyFrom(get_manager("checker"))
+
+    task.checker.CopyFrom(get_manager("checker", args.arch))
     absolutize_source_file(task.checker)
 
     if args.solutions:
@@ -77,7 +89,7 @@ def get_request(args: argparse.Namespace):
         absolutize_source_file(source_file)
         terry_solution = TerrySolution()
         terry_solution.solution.CopyFrom(source_file)
-        terry_solution.seed = random.randint(0, 2**32-1)
+        terry_solution.seed = random.randint(0, 2 ** 32 - 1)
         request.solutions.extend([terry_solution])
     request.store_dir = absolutize_path(args.store_dir)
     request.temp_dir = absolutize_path(args.temp_dir)

@@ -93,7 +93,11 @@ bool Core::Run() {
       while (!file_tasks.empty()) {
         FileID* file = file_tasks.front();
         file_tasks.pop();
-        if (!file->callback_(TaskStatus::Start(file))) return CALLBACK_FALSE;
+        if (!file->callback_(TaskStatus::Start(file))) {
+          LOG(ERROR) << "Task start failed: " << file->Description()
+                     << " [FILE_LOAD]";
+          return CALLBACK_FALSE;
+        }
         std::packaged_task<TaskStatus()> task(
             std::bind(&Core::LoadFileTask, this, file));
         {
@@ -118,7 +122,7 @@ bool Core::Run() {
           continue;
         }
         if (!execution->callback_(TaskStatus::Start(execution))) {
-          LOG(ERROR) << "Task failed: " << execution->Description()
+          LOG(ERROR) << "Task start failed: " << execution->Description()
                      << " [EXECUTION]";
           return CALLBACK_FALSE;
         }
@@ -150,7 +154,7 @@ bool Core::Run() {
         break;
     }
 
-    while (should_enqueue && !quitting_) {
+    while ((should_enqueue or !running_tasks_.empty()) && !quitting_) {
       {
         std::lock_guard<std::mutex> lck(running_tasks_lock_);
         size_t queue_size = running_tasks_.size();
@@ -159,6 +163,11 @@ bool Core::Run() {
           running_tasks_.pop();
           if (running_task.future.wait_for(std::chrono::microseconds(100)) ==
               std::future_status::ready) {
+            if (running_task.info.type == core::RunningTaskInfo::FILE_LOAD)
+              VLOG(1) << "File loaded: " << running_task.info.description;
+            else
+              VLOG(1) << "Execution completed: "
+                      << running_task.info.description;
             TaskStatus answer = running_task.future.get();
             if (answer.event == TaskStatus::Event::BUSY) {
               execution_tasks.push(answer.execution_info);
@@ -170,11 +179,11 @@ bool Core::Run() {
             if (!callback(answer)) {
               cleanup();
               if (running_task.info.type == core::RunningTaskInfo::FILE_LOAD)
-                LOG(ERROR) << "Failed to load "
-                           << running_task.info.description;
+                LOG(ERROR) << "Task execution failed "
+                           << running_task.info.description << " [FILE_LOAD]";
               else
-                LOG(ERROR) << "Failed to execute "
-                           << running_task.info.description;
+                LOG(ERROR) << "Task execution failed "
+                           << running_task.info.description << " [EXECUTION]";
               return false;
             }
           } else {
@@ -195,6 +204,17 @@ bool Core::Run() {
           break;
       }
     }
+    if (!running_tasks_.empty()) {
+      std::lock_guard<std::mutex> lck(running_tasks_lock_);
+      size_t queue_len = running_tasks_.size();
+      LOG(WARNING) << "There are " << queue_len << " running tasks";
+      for (size_t i = 0; i < queue_len; i++) {
+        LOG(WARNING) << "   " << running_tasks_.front().info.description;
+        running_tasks_.push(std::move(running_tasks_.front()));
+        running_tasks_.pop();
+      }
+    }
+    CHECK(running_tasks_.empty() or quitting_);
   } catch (std::exception& e) {
     cleanup();
     throw std::runtime_error(e.what());

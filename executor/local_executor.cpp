@@ -40,7 +40,7 @@ proto::Response LocalExecutor::Execute(
     cmdline_file << cmdline << std::endl;
   }
 
-  VLOG(1) << "Executing: " << "\n"
+  VLOG(2) << "Executing: " << "\n"
           << "\tCommand:        " << cmdline << "\n"
           << "\tInside sandbox: " << tmp.Path();
 

@@ -20,9 +20,16 @@ void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
   std::string name = solution->Name();
   std::string s_seed = std::to_string(seed);
   LOG(INFO) << "Evaluating " << name << " with seed " << seed;
+
   core::Execution* generation = generation_->GetGenerator()->execute(
       "Generation of input for solution " + name + " with seed " + s_seed,
       {s_seed, "0"}, keep_sandbox_);
+  core::Execution* execution =
+      solution->execute("Testing solution " + name, {}, keep_sandbox_);
+  core::Execution* checker =
+      generation_->GetChecker()->execute("Checking output of solution " + name,
+                                         {"input", "output"}, keep_sandbox_);
+
   core::FileID* input = generation->Stdout();
   if (cache_mode_ == proto::GENERATION || cache_mode_ == proto::ALL)
     generation->SetCachingMode(core::Execution::CachingMode::ALWAYS);
@@ -61,6 +68,8 @@ void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
     else
       validation->SetCachingMode(core::Execution::CachingMode::NEVER);
     validation->SetExecutor(executor_);
+    // do the execution only after the validation
+    execution->Input("dependency_tracker", validation->Stdout());
     validation->SetCallback([this,
                              name](const core::TaskStatus& status) -> bool {
       if (status.type == core::TaskStatus::FILE_LOAD)
@@ -87,8 +96,6 @@ void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
     });
   }
 
-  core::Execution* execution =
-      solution->execute("Testing solution " + name, {}, keep_sandbox_);
   execution->Stdin(input);
   core::FileID* output = execution->Stdout();
   if (cache_mode_ == proto::ALL)
@@ -118,9 +125,6 @@ void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
     return true;
   });
 
-  core::Execution* checker =
-      generation_->GetChecker()->execute("Checking output of solution " + name,
-                                         {"input", "output"}, keep_sandbox_);
   checker->Input("input", input);
   checker->Input("output", output);
   if (cache_mode_ == proto::ALL)
