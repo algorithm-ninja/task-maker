@@ -20,7 +20,7 @@ class IOIEvaluation : public Evaluation {
                 proto::CacheMode cache_mode, std::string executor,
                 bool keep_sandbox);
 
-  void Evaluate(SourceFile* solution) override;
+  void Evaluate(SourceFile* solution);
 
  private:
   struct EvaluationStatus {

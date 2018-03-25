@@ -16,13 +16,13 @@ TerryEvaluation::TerryEvaluation(EventQueue* queue, core::Core* core,
       executor_(std::move(executor)),
       keep_sandbox_(keep_sandbox) {}
 
-void TerryEvaluation::Evaluate(SourceFile* solution) {
+void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
   std::string name = solution->Name();
-  std::string seed = "42";  // TODO(edomora97) generate seed
+  std::string s_seed = std::to_string(seed);
   LOG(INFO) << "Evaluating " << name << " with seed " << seed;
   core::Execution* generation = generation_->GetGenerator()->execute(
-      "Generation of input for solution " + name + " with seed " + seed,
-      {seed, "0"}, keep_sandbox_);
+      "Generation of input for solution " + name + " with seed " + s_seed,
+      {s_seed, "0"}, keep_sandbox_);
   core::FileID* input = generation->Stdout();
   if (cache_mode_ == proto::GENERATION || cache_mode_ == proto::ALL)
     generation->SetCachingMode(core::Execution::CachingMode::ALWAYS);
@@ -130,7 +130,7 @@ void TerryEvaluation::Evaluate(SourceFile* solution) {
   checker->SetExecutor(executor_);
   core::FileID* checker_results = checker->Stdout();
   checker->SetCallback([this, name, checker_results, generation, execution,
-                        checker](const core::TaskStatus& status) -> bool {
+                        checker, s_seed](const core::TaskStatus& status) -> bool {
     if (status.type == core::TaskStatus::FILE_LOAD)
       return !(status.event == core::TaskStatus::FAILURE);
     if (status.event == core::TaskStatus::START) queue_->TerryChecking(name);
@@ -163,6 +163,7 @@ void TerryEvaluation::Evaluate(SourceFile* solution) {
         result.set_check_cpu_time(checker->CpuTime());
         result.set_check_wall_time(checker->WallTime());
         result.set_check_memory_kb(checker->Memory());
+        result.set_seed(s_seed);
         queue_->TerryChecked(name, std::move(result));
       } else {
         queue_->TerryCheckingFailure(

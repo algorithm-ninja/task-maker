@@ -5,9 +5,7 @@
 
 namespace manager {
 
-class Evaluation {
-  virtual void Evaluate(SourceFile* solution) = 0;
-};
+class Evaluation {};
 
 }  // namespace manager
 

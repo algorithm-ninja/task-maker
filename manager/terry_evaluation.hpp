@@ -13,7 +13,7 @@ class TerryEvaluation : public Evaluation {
                   proto::CacheMode cache_mode, std::string executor,
                   bool keep_sandbox);
 
-  void Evaluate(SourceFile* solution) override;
+  void Evaluate(SourceFile* solution, int64_t seed);
 
  private:
   EventQueue* queue_;

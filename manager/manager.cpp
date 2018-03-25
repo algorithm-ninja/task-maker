@@ -171,13 +171,15 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
         request.task(), request.cache_mode(), request.evaluate_on(),
         request.keep_sandbox());
 
-    for (const proto::SourceFile& source : request.solutions()) {
+    for (const proto::TerrySolution& solution : request.solutions()) {
+      const proto::SourceFile& source = solution.solution();
+      int64_t seed = solution.seed();
       info.source_files[source.path()] = manager::SourceFile::FromProto(
           info.queue.get(), info.core.get(), source, {}, false,
           request.keep_sandbox());
       auto* evaluation =
           reinterpret_cast<manager::TerryEvaluation*>(info.evaluation.get());
-      evaluation->Evaluate(info.source_files[source.path()].get());
+      evaluation->Evaluate(info.source_files[source.path()].get(), seed);
     }
 
     return info;

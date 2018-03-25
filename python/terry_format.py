@@ -2,8 +2,9 @@
 import argparse
 import os.path
 import platform
+import random
 
-from proto.manager_pb2 import EvaluateTerryTaskRequest
+from proto.manager_pb2 import EvaluateTerryTaskRequest, TerrySolution
 from proto.task_pb2 import TerryTask
 
 from python.absolutize import absolutize_source_file, absolutize_path
@@ -74,7 +75,10 @@ def get_request(args: argparse.Namespace):
                    os.path.splitext(os.path.basename(solution))[0]
         source_file = from_file(solution, bin_file)
         absolutize_source_file(source_file)
-        request.solutions.extend([source_file])
+        terry_solution = TerrySolution()
+        terry_solution.solution.CopyFrom(source_file)
+        terry_solution.seed = random.randint(0, 2**32-1)
+        request.solutions.extend([terry_solution])
     request.store_dir = absolutize_path(args.store_dir)
     request.temp_dir = absolutize_path(args.temp_dir)
     request.cache_mode = args.cache

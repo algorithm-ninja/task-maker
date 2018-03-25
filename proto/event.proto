@@ -95,6 +95,7 @@ message TerryEvaluationResult {
   float check_wall_time = 9;
   int64 check_memory_kb = 10;
   repeated TerryTestcaseStatus testcases = 11;
+  string seed = 12;
 }
 
 message TerryCheck {

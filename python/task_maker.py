@@ -89,18 +89,19 @@ def main() -> None:
             raise ValueError("Format %s not supported" % args.format)
         return
 
+    manager = get_manager(args)
+
     if args.format == "ioi":
         request = ioi_format.get_request(args)
+        solutions = [os.path.basename(sol.path) for sol in request.solutions]
     elif args.format == "terry":
         request = terry_format.get_request(args)
+        solutions = [os.path.basename(sol.solution.path) for sol in
+                     request.solutions]
     else:
         raise ValueError("Format %s not supported" % args.format)
 
-    manager = get_manager(args)
-
-    # TODO pass to the constructor if the task is terry like
-    ui = UIS[args.ui](
-        [os.path.basename(sol.path) for sol in request.solutions], args.format)
+    ui = UIS[args.ui](solutions, args.format)
 
     if args.format == "ioi":
         ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))

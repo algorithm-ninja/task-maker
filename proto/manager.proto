@@ -27,9 +27,14 @@ message EvaluateTaskRequest {
   bool keep_sandbox = 13;
 }
 
+message TerrySolution {
+  SourceFile solution = 1;
+  int64 seed = 2;
+}
+
 message EvaluateTerryTaskRequest {
   TerryTask task = 1;
-  repeated SourceFile solutions = 2;
+  repeated TerrySolution solutions = 2;
   string store_dir = 3;
   string temp_dir = 4;
   CacheMode cache_mode = 5;
