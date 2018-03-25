@@ -112,8 +112,11 @@ def main() -> None:
             last_testcase += len(subtask.testcases)
             ui.set_subtask_info(subtask_num, subtask.max_score,
                                 sorted(subtask.testcases.keys()))
+        ui.set_max_score(sum(subtask.max_score for subtask in
+                             request.task.subtasks.values()))
     elif args.format == "terry":
         ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))
+        ui.set_max_score(request.task.max_score)
     else:
         raise ValueError("Format %s not supported" % args.format)
 

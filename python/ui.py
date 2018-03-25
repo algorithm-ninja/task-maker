@@ -57,6 +57,9 @@ class UI:
     def set_task_name(self, task_name: str) -> None:
         self.task_name = task_name
 
+    def set_max_score(self, max_score: float) -> None:
+        self.max_score = max_score
+
     def set_time_limit(self, time_limit: float) -> None:
         raise NotImplementedError("Please subclass this class")
 

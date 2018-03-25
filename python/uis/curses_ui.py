@@ -7,104 +7,11 @@ from typing import List
 from typing import Optional
 
 from proto.event_pb2 import EventStatus, EvaluationResult, WAITING, RUNNING, \
-    FAILURE, GENERATING, GENERATED, VALIDATING, VALIDATED, SOLVING, DONE
+    FAILURE, GENERATING, GENERATED, VALIDATING, VALIDATED, EXECUTING, \
+    EXECUTED, CHECKING, SOLVING, DONE, MISSING, CORRECT, WRONG
 
+from python.printer import Printer, CursesPrinter, StdoutPrinter
 from python.uis.silent_ui import SilentUI, SolutionStatus
-
-
-class Printer:
-    def text(self, what: str) -> None:
-        pass
-
-    def red(self, what: str, bold: bool = True) -> None:
-        pass
-
-    def green(self, what: str, bold: bool = True) -> None:
-        pass
-
-    def blue(self, what: str, bold: bool = True) -> None:
-        pass
-
-    def bold(self, what: str, bold: bool = True) -> None:
-        pass
-
-
-class StdoutPrinter(Printer):
-    def __init__(self) -> None:
-        def _get_color(color: int) -> str:
-            return curses.tparm(curses.tigetstr("setaf"), color).decode("utf8")
-
-        self.bold_fmt = curses.tparm(curses.tigetstr("bold")).decode()
-        if curses.COLORS >= 256:
-            self.green_fmt = _get_color(82)
-        else:
-            self.green_fmt = _get_color(curses.COLOR_GREEN)
-        self.red_fmt = _get_color(curses.COLOR_RED)
-        self.blue_fmt = _get_color(curses.COLOR_BLUE)
-        self.reset_fmt = curses.tparm(curses.tigetstr("sgr0")).decode()
-        self.right_fmt = curses.tparm(curses.tigetstr("cuf"), 1000).decode()
-
-    # pylint: disable=no-self-use
-    def left_fmt(self, amount: int) -> str:
-        return curses.tparm(curses.tigetstr("cub"), amount).decode()
-
-    # pylint: enable=no-self-use
-
-    def text(self, what: str) -> None:
-        print(what, end="")
-
-    def red(self, what: str, bold: bool = True) -> None:
-        print(
-            self.red_fmt + (self.bold_fmt
-            if bold else "") + what + self.reset_fmt,
-            end="")
-
-    def green(self, what: str, bold: bool = True) -> None:
-        print(
-            self.green_fmt + (self.bold_fmt
-            if bold else "") + what + self.reset_fmt,
-            end="")
-
-    def blue(self, what: str, bold: bool = True) -> None:
-        print(
-            self.blue_fmt + (self.bold_fmt
-            if bold else "") + what + self.reset_fmt,
-            end="")
-
-    def bold(self, what: str, bold: bool = True) -> None:
-        print(self.bold_fmt + what + self.reset_fmt, end="")
-
-    def right(self, what: str) -> None:
-        print(self.right_fmt + self.left_fmt(len(what) - 1) + what)
-
-
-class CursesPrinter(Printer):
-    def __init__(self, stdscr: 'curses._CursesWindow') -> None:
-        self.stdscr = stdscr
-        self.bold_fmt = curses.A_BOLD
-        if curses.COLORS >= 256:
-            self.green_fmt = curses.color_pair(82)
-        else:
-            self.green_fmt = curses.color_pair(curses.COLOR_GREEN)
-        self.red_fmt = curses.color_pair(curses.COLOR_RED)
-        self.blue_fmt = curses.color_pair(curses.COLOR_BLUE)
-
-    def text(self, what: str) -> None:
-        self.stdscr.addstr(what)
-
-    def red(self, what: str, bold: bool = True) -> None:
-        self.stdscr.addstr(what, self.red_fmt | (self.bold_fmt if bold else 0))
-
-    def green(self, what: str, bold: bool = True) -> None:
-        self.stdscr.addstr(what, self.green_fmt | (self.bold_fmt
-        if bold else 0))
-
-    def blue(self, what: str, bold: bool = True) -> None:
-        self.stdscr.addstr(what, self.blue_fmt | (self.bold_fmt
-        if bold else 0))
-
-    def bold(self, what: str, bold: bool = True) -> None:
-        self.stdscr.addstr(what, self.bold_fmt)
 
 
 class CursesUI(SilentUI):
@@ -176,11 +83,10 @@ class CursesUI(SilentUI):
 
     def _print_subtasks_scores(self, status: SolutionStatus, loading: str,
                                printer: Printer) -> None:
-        max_score = sum(self._subtask_max_scores.values())
         if not status.subtask_scores:
             printer.text("% 4s" % "...")
         elif status.score is not None:
-            if status.score == max_score:
+            if status.score == self.max_score:
                 printer.bold("% 4.f" % status.score)
             else:
                 printer.text("% 4.f" % status.score)
@@ -202,23 +108,50 @@ class CursesUI(SilentUI):
             else:
                 printer.bold(" % 4s" % loading)
 
-    def _ui(self, stdscr: 'curses._CursesWindow') -> None:
-        if hasattr(signal, 'pthread_sigmask'):
-            signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGINT])
-        curses.start_color()
-        curses.use_default_colors()
-        for i in range(1, curses.COLORS):
-            curses.init_pair(i, i, -1)
-        curses.halfdelay(1)
+    def _print_terry_solution_row(self, solution, status, printer,
+                                  loading_char):
+        printer.text("%{}s: ".format(self._max_sol_len) % solution)
+        if status.status != DONE and status.status != FAILURE:
+            printer.text("  %s   " % loading_char)
 
+        if status.status == WAITING:
+            printer.text("...")
+        elif status.status == GENERATING:
+            printer.blue("generating")
+        elif status.status == GENERATED:
+            printer.text("generated")
+        elif status.status == VALIDATING:
+            printer.blue("validating")
+        elif status.status == VALIDATED:
+            printer.text("validated")
+        elif status.status == EXECUTING:
+            printer.blue("executing")
+        elif status.status == EXECUTED:
+            printer.text("executed")
+        elif status.status == CHECKING:
+            printer.blue("checking")
+        elif status.status == DONE:
+            printer.text("%2d/%2d " % (status.result.score * self.max_score,
+                                       self.max_score))
+            for testcase in status.result.testcases:
+                if testcase == MISSING:
+                    printer.text("m ")
+                elif testcase == CORRECT:
+                    printer.green("c ")
+                elif testcase == WRONG:
+                    printer.red("w ")
+        elif status.status == FAILURE:
+            printer.red("      FAIL")
+        else:
+            raise ValueError("Invalid status: ", status.status)
+        printer.text("\n")
+
+    def _ioi_ui(self, pad, printer, stdscr) -> None:
         loading_chars = "-\\|/"
         cur_loading_char = 0
-        pad = curses.newpad(1000, 1000)
-        printer = CursesPrinter(pad)
         pos_x, pos_y = 0, 0
-        max_y, max_x = stdscr.getmaxyx()
-
         while not self._done and not self._stopped and self._failure is None:
+            max_y, max_x = stdscr.getmaxyx()
             cur_loading_char = (cur_loading_char + 1) % len(loading_chars)
             loading = loading_chars[cur_loading_char]
             pad.clear()
@@ -281,24 +214,74 @@ class CursesUI(SilentUI):
                 pass
 
             pad.refresh(pos_y, pos_x, 0, 0, max_y - 1, max_x - 1)
+
+    def _terry_ui(self, pad, printer, stdscr):
+        loading_chars = "-\\|/"
+        cur_loading_char = 0
+        pos_x, pos_y = 0, 0
+        while not self._done and not self._stopped and self._failure is None:
+            max_y, max_x = stdscr.getmaxyx()
+            cur_loading_char = (cur_loading_char + 1) % len(loading_chars)
+            loading = loading_chars[cur_loading_char]
+            pad.clear()
+
+            printer.bold("Running... %s\n" % self.task_name)
+
+            self._print_compilation(self._other_compilations, loading, printer)
+            printer.text("\n")
+
+            printer.blue("Testing\n")
+            for solution, status in sorted(self._terry_test_status.items()):
+                self._print_terry_solution_row(solution, status, printer,
+                                               loading)
+
+            printer.text("\n")
+            printer.blue("Running tasks:\n")
+            for task in self._running_tasks:
+                printer.text(
+                    "  %s -- %ds\n" % (task.description, task.duration))
+            try:
+                pressed_key = stdscr.getkey()
+                if pressed_key == "KEY_UP":
+                    pos_y -= 1
+                elif pressed_key == "KEY_DOWN":
+                    pos_y += 1
+                elif pressed_key == "KEY_LEFT":
+                    pos_x -= 1
+                elif pressed_key == "KEY_RIGHT":
+                    pos_x += 1
+                pos_x = max(pos_x, 0)
+                pos_y = max(pos_y, 0)
+            except curses.error:
+                pass
+
+            pad.refresh(pos_y, pos_x, 0, 0, max_y - 1, max_x - 1)
+
+    def _ui(self, stdscr: 'curses._CursesWindow') -> None:
+        if hasattr(signal, 'pthread_sigmask'):
+            signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGINT])
+        curses.start_color()
+        curses.use_default_colors()
+        for i in range(1, curses.COLORS):
+            curses.init_pair(i, i, -1)
+        curses.halfdelay(1)
+
+        pad = curses.newpad(1000, 1000)
+        printer = CursesPrinter(pad)
+
+        if self.format == "ioi":
+            self._ioi_ui(pad, printer, stdscr)
+        elif self.format == "terry":
+            self._terry_ui(pad, printer, stdscr)
+        else:
+            raise NotImplementedError()
+
         curses.endwin()
         if self._stopped:
             print(self._stopped)
 
-    def print_final_status(self) -> None:
-        self._done = True
-        self._ui_thread.join()
-
-        printer = StdoutPrinter()
-
-        printer.blue("Compilation\n")
-        self._print_compilation(self._other_compilations, "?", printer)
-        printer.text("\n")
-        self._print_compilation(self.solutions, "?", printer)
-        printer.text("\n")
-
+    def _ioi_final_status(self, printer):
         printer.blue("Solutions\n")
-        max_score = sum(self._subtask_max_scores.values())
 
         def print_testcase(sol: str, testcase: int,
                            tc_status: EvaluationResult, max_time: float,
@@ -326,11 +309,11 @@ class CursesUI(SilentUI):
             printer.bold("%s: " % sol)
             if status.score is None:
                 printer.red("not available\n")
-            elif status.score == max_score:
-                printer.green(
-                    "%.2f / %.2f\n" % (status.score, max_score), bold=False)
+            elif status.score == self.max_score:
+                printer.green("%.2f / %.2f\n" % (status.score, self.max_score),
+                              bold=False)
             else:
-                printer.text("%.2f / %.2f\n" % (status.score, max_score))
+                printer.text("%.2f / %.2f\n" % (status.score, self.max_score))
 
             if sol in self._compilation_errors:
                 printer.red("Compilation errors\n")
@@ -379,6 +362,55 @@ class CursesUI(SilentUI):
             self._print_subtasks_scores(self._solution_status[sol], "?",
                                         printer)
             printer.text("\n")
+
+    def _terry_final_status(self, printer):
+        printer.blue("Solutions\n")
+
+        def print_phase_stats(phase, cpu_time, wall_time, memory_kb):
+            printer.text("%10s: %.3fs | %.3fs | %.1fMiB\n"
+                         % (phase, cpu_time, wall_time, memory_kb / 1024))
+
+        for solution, status in sorted(self._terry_test_status.items()):
+            result = status.result
+            printer.bold(solution + "\n")
+            if status.status == DONE:
+                print_phase_stats("Generation", result.gen_cpu_time,
+                                  result.gen_wall_time, result.gen_memory_kb)
+                print_phase_stats("Evaluation", result.eval_cpu_time,
+                                  result.eval_wall_time, result.eval_memory_kb)
+                print_phase_stats("Check", result.check_cpu_time,
+                                  result.check_wall_time,
+                                  result.check_memory_kb)
+            if solution in self._compilation_errors:
+                printer.red("Compilation errors\n")
+                printer.text(self._compilation_errors[solution])
+            if status.errors and status.errors.strip():
+                printer.red("Errors\n")
+                printer.text(status.errors.strip())
+            printer.text("\n")
+
+        printer.blue("Summary\n")
+        for solution, status in sorted(self._terry_test_status.items()):
+            self._print_terry_solution_row(solution, status, printer, "?")
+
+    def print_final_status(self) -> None:
+        self._done = True
+        self._ui_thread.join()
+
+        printer = StdoutPrinter()
+
+        printer.blue("Compilation\n")
+        self._print_compilation(self._other_compilations, "?", printer)
+        printer.text("\n")
+        self._print_compilation(self.solutions, "?", printer)
+        printer.text("\n")
+
+        if self.format == "ioi":
+            self._ioi_final_status(printer)
+        elif self.format == "terry":
+            self._terry_final_status(printer)
+        else:
+            raise NotImplementedError()
 
         if self._generation_errors:
             printer.red("\nGeneration errors\n")

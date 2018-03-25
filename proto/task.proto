@@ -67,7 +67,8 @@ message Task {
 message TerryTask {
   string name = 1;
   string title = 2;
-  SourceFile generator = 3;
-  SourceFile validator = 4;
-  SourceFile checker = 5;
+  float max_score = 3;
+  SourceFile generator = 4;
+  SourceFile validator = 5;
+  SourceFile checker = 6;
 }

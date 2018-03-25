@@ -49,6 +49,9 @@ class EventQueue {
   void GenerationWaiting(int64_t testcase) {
     Generation(testcase, proto::EventStatus::WAITING);
   }
+  void TerryGenerationWaiting(const std::string& solution) {
+    TerryGeneration(solution, proto::EventStatus::WAITING);
+  }
   void Generating(int64_t testcase) {
     Generation(testcase, proto::EventStatus::GENERATING);
   }

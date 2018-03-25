@@ -49,6 +49,7 @@ py_library(
     deps = [
         ":silent_ui",
         ":ui",
+        ":printer",
         "//proto:event_py",
     ],
 )
@@ -125,6 +126,13 @@ py_library(
     deps = [
         "//proto:manager_py",
         "//proto:task_py",
+    ],
+)
+
+py_library(
+    name = "printer",
+    srcs = ["printer.py"],
+    deps = [
     ],
 )
 

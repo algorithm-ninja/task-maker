@@ -18,6 +18,7 @@ def get_extension():
 def create_task_from_yaml(data):
     name = get_options(data, ["name", "nome_breve"])
     title = get_options(data, ["description", "nome"])
+    max_score = get_options(data, ["max_score"])
     if name is None:
         raise ValueError("The name is not set in the yaml")
     if title is None:
@@ -26,6 +27,7 @@ def create_task_from_yaml(data):
     task = TerryTask()
     task.name = name
     task.title = title
+    task.max_score = max_score
     return task
 
 

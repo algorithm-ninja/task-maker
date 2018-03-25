@@ -129,33 +129,55 @@ void TerryEvaluation::Evaluate(SourceFile* solution) {
     checker->SetCachingMode(core::Execution::CachingMode::NEVER);
   checker->SetExecutor(executor_);
   core::FileID* checker_results = checker->Stdout();
-  checker->SetCallback(
-      [this, name, checker_results](const core::TaskStatus& status) -> bool {
-        if (status.type == core::TaskStatus::FILE_LOAD)
-          return !(status.event == core::TaskStatus::FAILURE);
-        if (status.event == core::TaskStatus::START)
-          queue_->TerryChecking(name);
-        if (status.event == core::TaskStatus::SUCCESS) {
-          auto exec = status.execution_info;
-          if (exec->Success()) {
-            auto checker_json =
-                nlohmann::json::parse(checker_results->Contents(1024 * 1024));
-            proto::TerryEvaluationResult result;
-            result.set_score(checker_json["score"]);
-            queue_->TerryChecked(name, std::move(result));
-          } else {
-            queue_->TerryCheckingFailure(
-                name,
-                status.message + "\n" + exec->Stderr()->Contents(1024 * 1024));
-            return false;
-          }
+  checker->SetCallback([this, name, checker_results, generation, execution,
+                        checker](const core::TaskStatus& status) -> bool {
+    if (status.type == core::TaskStatus::FILE_LOAD)
+      return !(status.event == core::TaskStatus::FAILURE);
+    if (status.event == core::TaskStatus::START) queue_->TerryChecking(name);
+    if (status.event == core::TaskStatus::SUCCESS) {
+      auto exec = status.execution_info;
+      if (exec->Success()) {
+        auto checker_json =
+            nlohmann::json::parse(checker_results->Contents(1024 * 1024));
+        proto::TerryEvaluationResult result;
+        result.set_score(checker_json["score"]);
+        size_t num_testcase = checker_json["validation"]["cases"].size();
+        const auto& validation_cases = checker_json["validation"]["cases"];
+        const auto& feedback_cases = checker_json["feedback"]["cases"];
+        for (size_t i = 0; i < num_testcase; i++) {
+          proto::TerryTestcaseStatus testcase_status;
+          if (validation_cases[i]["status"] == "missing")
+            testcase_status = proto::TerryTestcaseStatus::MISSING;
+          else if (feedback_cases[i]["correct"])
+            testcase_status = proto::TerryTestcaseStatus::CORRECT;
+          else
+            testcase_status = proto::TerryTestcaseStatus::WRONG;
+          result.add_testcases(testcase_status);
         }
-        if (status.event == core::TaskStatus::FAILURE) {
-          queue_->FatalError(status.message + ": " +
-                             status.execution_info->Message());
-          return false;
-        }
-        return true;
-      });
+        result.set_gen_cpu_time(generation->CpuTime());
+        result.set_gen_wall_time(generation->WallTime());
+        result.set_gen_memory_kb(generation->Memory());
+        result.set_eval_cpu_time(execution->CpuTime());
+        result.set_eval_wall_time(execution->WallTime());
+        result.set_eval_memory_kb(execution->Memory());
+        result.set_check_cpu_time(checker->CpuTime());
+        result.set_check_wall_time(checker->WallTime());
+        result.set_check_memory_kb(checker->Memory());
+        queue_->TerryChecked(name, std::move(result));
+      } else {
+        queue_->TerryCheckingFailure(
+            name,
+            status.message + "\n" + exec->Stderr()->Contents(1024 * 1024));
+        return false;
+      }
+    }
+    if (status.event == core::TaskStatus::FAILURE) {
+      queue_->FatalError(status.message + ": " +
+                         status.execution_info->Message());
+      return false;
+    }
+    return true;
+  });
+  queue_->TerryGenerationWaiting(name);
 }
 }  // namespace manager
