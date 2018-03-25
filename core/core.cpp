@@ -89,6 +89,7 @@ bool Core::Run() {
 
     auto add_tasks = [&file_tasks, &execution_tasks, &add_task, &threads,
                       this]() {
+      std::lock_guard<std::mutex> lck(running_tasks_lock_);
       if (running_tasks_.size() >= threads.size()) return QUEUE_FULL;
       while (!file_tasks.empty()) {
         FileID* file = file_tasks.front();
@@ -100,10 +101,7 @@ bool Core::Run() {
         }
         std::packaged_task<TaskStatus()> task(
             std::bind(&Core::LoadFileTask, this, file));
-        {
-          std::lock_guard<std::mutex> lck(running_tasks_lock_);
-          running_tasks_.emplace(file, task.get_future());
-        }
+        running_tasks_.emplace(file, task.get_future());
         add_task(std::move(task));
         if (running_tasks_.size() >= threads.size()) return QUEUE_FULL;
       }
@@ -128,10 +126,7 @@ bool Core::Run() {
         }
         std::packaged_task<TaskStatus()> task(
             std::bind(&Core::ExecuteTask, this, execution));
-        {
-          std::lock_guard<std::mutex> lck(running_tasks_lock_);
-          running_tasks_.emplace(execution, task.get_future());
-        }
+        running_tasks_.emplace(execution, task.get_future());
         add_task(std::move(task));
         if (running_tasks_.size() >= threads.size()) return QUEUE_FULL;
       }
@@ -204,6 +199,14 @@ bool Core::Run() {
           break;
       }
     }
+    if (!execution_tasks.empty()) {
+      VLOG(1) << "Core exited with " << execution_tasks.size()
+              << " remaining tasks";
+      while (!execution_tasks.empty()) {
+        VLOG(1) << "    " << execution_tasks.front()->Description();
+        execution_tasks.pop();
+      }
+    }
     if (!running_tasks_.empty()) {
       std::lock_guard<std::mutex> lck(running_tasks_lock_);
       size_t queue_len = running_tasks_.size();
@@ -213,8 +216,8 @@ bool Core::Run() {
         running_tasks_.push(std::move(running_tasks_.front()));
         running_tasks_.pop();
       }
+      CHECK(quitting_) << "Core not aborted but exited with running tasks";
     }
-    CHECK(running_tasks_.empty() or quitting_);
   } catch (std::exception& e) {
     cleanup();
     throw std::runtime_error(e.what());
