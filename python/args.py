@@ -125,6 +125,6 @@ def get_parser() -> argparse.ArgumentParser:
         help="Format of the task (ioi|terry)",
         choices=["ioi", "terry"],
         action="store",
-        default="ioi")
+        default=None)
 
     return parser

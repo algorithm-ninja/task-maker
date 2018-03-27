@@ -14,6 +14,7 @@ from proto.manager_pb2 import StopRequest, CleanTaskRequest
 from proto import manager_pb2_grpc
 from python import ioi_format, terry_format
 from python.args import get_parser, UIS
+from python.detect_format import detect_format
 
 
 def manager_process(pipe: Any, manager: str, port: int) -> None:
@@ -88,6 +89,13 @@ def main() -> None:
     args = parser.parse_args()
 
     os.chdir(args.task_dir)
+
+    if not args.format:
+        args.format = detect_format()
+    if not args.format:
+        raise ValueError(
+            "Cannot autodetect format! Try to pass --format to explicitly set "
+            "it. It's probable that the task is ill-formed")
 
     if args.clean:
         if args.format == "ioi":

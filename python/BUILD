@@ -16,6 +16,11 @@ py_library(
 )
 
 py_library(
+    name = "detect_format",
+    srcs = ["detect_format.py"],
+)
+
+py_library(
     name = "source_file",
     srcs = ["source_file.py"],
     deps = [
@@ -47,9 +52,9 @@ py_library(
     name = "curses_ui",
     srcs = ["uis/curses_ui.py"],
     deps = [
+        ":printer",
         ":silent_ui",
         ":ui",
-        ":printer",
         "//proto:event_py",
     ],
 )
@@ -143,6 +148,7 @@ py_binary(
     data = ["//manager"],
     deps = [
         ":args",
+        ":detect_format",
         ":ioi_format",
         ":terry_format",
         requirement("grpcio"),
