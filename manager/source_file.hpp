@@ -13,6 +13,7 @@
 namespace manager {
 class SourceFile {
  public:
+  // TODO(edomora97) cache_mode and executor
   static std::unique_ptr<SourceFile> FromProto(
       EventQueue* queue, core::Core* core, const proto::SourceFile& source,
       const absl::optional<proto::GraderInfo>& grader,
@@ -32,15 +33,17 @@ class SourceFile {
 
  protected:
   SourceFile(core::Core* core, EventQueue* queue, std::string name,
-             bool fatal_failures)
+             std::string exe_name, bool fatal_failures)
       : core_(core),
         queue_(queue),
         name_(std::move(name)),
+        exe_name_(std::move(exe_name)),
         fatal_failures_(fatal_failures){};
 
   core::Core* core_;
   EventQueue* queue_;
   std::string name_;
+  std::string exe_name_;
   bool fatal_failures_;
 };
 

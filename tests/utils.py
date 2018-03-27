@@ -106,8 +106,6 @@ class TestInterface:
 
         if not self.generation_errors:
             assert not ui._generation_errors
-            for gen_status in ui._generation_status.values():
-                assert gen_status == DONE
         else:
             assert ui._generation_errors
             for errors in ui._generation_errors.values():

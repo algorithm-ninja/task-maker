@@ -1,13 +1,13 @@
-#include "manager/evaluation.hpp"
+#include "manager/ioi_evaluation.hpp"
 #include "glog/logging.h"
 #include "util/which.hpp"
 
 namespace manager {
 
-Evaluation::Evaluation(EventQueue* queue, core::Core* core,
-                       const Generation& generation, const proto::Task& task,
-                       bool exclusive, proto::CacheMode cache_mode,
-                       std::string executor, bool keep_sandbox)
+IOIEvaluation::IOIEvaluation(EventQueue* queue, core::Core* core,
+                             IOIGeneration* generation, const proto::Task& task,
+                             bool exclusive, proto::CacheMode cache_mode,
+                             std::string executor, bool keep_sandbox)
     : queue_(queue),
       core_(core),
       generation_(generation),
@@ -23,7 +23,7 @@ Evaluation::Evaluation(EventQueue* queue, core::Core* core,
   }
 }
 
-void Evaluation::Evaluate(SourceFile* solution) {
+void IOIEvaluation::Evaluate(SourceFile* solution) {
   LOG(INFO) << "Evaluating " << solution->Name();
   std::string name = solution->Name();
   status_[name].task_score = -1;  // assuming you cannot make negative points
@@ -35,8 +35,9 @@ void Evaluation::Evaluate(SourceFile* solution) {
   }
 }
 
-void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
-                                    SourceFile* solution) {
+void IOIEvaluation::evaluate_testcase_(int64_t subtask_num,
+                                       int64_t testcase_num,
+                                       SourceFile* solution) {
   std::string name = solution->Name();
   std::string s_testcase_num = std::to_string(testcase_num);
 
@@ -54,9 +55,9 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
   if (!executor_.empty()) execution->SetExecutor(executor_);
   // setup solution i/o
   if (task_.input_file().empty())
-    execution->Stdin(generation_.GetInput(testcase_num));
+    execution->Stdin(generation_->GetInput(testcase_num));
   else
-    execution->Input(task_.input_file(), generation_.GetInput(testcase_num));
+    execution->Input(task_.input_file(), generation_->GetInput(testcase_num));
   core::FileID* output;
   if (task_.output_file().empty())
     output = execution->Stdout();
@@ -89,10 +90,10 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
 
   core::Execution* checker;
   if (task_.has_checker()) {
-    checker = generation_.GetChecker()->execute(
+    checker = generation_->GetChecker()->execute(
         "Checking solution " + name + " for testcase " + s_testcase_num,
         {"input", "output", "contestant_output"}, keep_sandbox_);
-    checker->Input("input", generation_.GetInput(testcase_num));
+    checker->Input("input", generation_->GetInput(testcase_num));
   } else {
     // TODO(veluca): replace this with our own utility?
     checker = core_->AddExecution(
@@ -100,7 +101,7 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
         util::which("diff"), {"-w", "output", "contestant_output"},
         keep_sandbox_);
   }
-  checker->Input("output", generation_.GetOutput(testcase_num));
+  checker->Input("output", generation_->GetOutput(testcase_num));
   checker->Input("contestant_output", output);
   checker->CpuLimit(10 * task_.time_limit());
   checker->MemoryLimit(10 * task_.memory_limit_kb());
@@ -172,9 +173,9 @@ void Evaluation::evaluate_testcase_(int64_t subtask_num, int64_t testcase_num,
 
   queue_->EvaluationWaiting(name, testcase_num);
 }
-void Evaluation::UpdateScore(const std::string& name, int64_t subtask_num,
-                             int64_t testcase_num, float score) {
-  Evaluation::EvaluationStatus& status = status_[name];
+void IOIEvaluation::UpdateScore(const std::string& name, int64_t subtask_num,
+                                int64_t testcase_num, float score) {
+  IOIEvaluation::EvaluationStatus& status = status_[name];
   proto::ScoreMode score_mode = task_.subtasks().at(subtask_num).score_mode();
   status.testcase_scores[testcase_num] = score;
   for (int64_t testcase : testcases_of_subtask[subtask_num])

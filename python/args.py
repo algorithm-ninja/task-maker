@@ -4,14 +4,17 @@ import argparse
 import os.path
 
 from proto.manager_pb2 import ALL, GENERATION, NOTHING
+from proto.task_pb2 import DEFAULT, X86_64, I686
 
-from python.curses_ui import CursesUI
-from python.print_ui import PrintUI
-from python.silent_ui import SilentUI
+from python.uis.curses_ui import CursesUI
+from python.uis.print_ui import PrintUI
+from python.uis.silent_ui import SilentUI
 
 UIS = {"curses": CursesUI, "print": PrintUI, "silent": SilentUI}
 
 CACHES = {"all": ALL, "generation": GENERATION, "nothing": NOTHING}
+
+ARCHS = {"default": DEFAULT, "x86-64": X86_64, "i686": I686}
 
 
 def _validate_num_cores(num: str) -> int:
@@ -29,6 +32,14 @@ def _validate_cache_mode(mode: str) -> int:
         return CACHES[mode]
     except ValueError:
         raise argparse.ArgumentTypeError("Not valid cache mode %s" % mode)
+
+
+def _validate_arch(arch: str) -> int:
+    try:
+        return ARCHS[arch]
+    except ValueError:
+        raise argparse.ArgumentTypeError("Not valid target architecture %s" %
+                                         arch)
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -98,9 +109,22 @@ def get_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False)
     parser.add_argument(
+        "--arch",
+        help="Architecture to target the managers in Terry format (%s)"
+             % "|".join(ARCHS.keys()),
+        action="store",
+        type=_validate_arch,
+        default="default")
+    parser.add_argument(
         "--clean",
         help="Clear the task directory and exit",
         action="store_true",
         default=False)
+    parser.add_argument(
+        "--format",
+        help="Format of the task (ioi|terry)",
+        choices=["ioi", "terry"],
+        action="store",
+        default=None)
 
     return parser

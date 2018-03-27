@@ -31,10 +31,18 @@ cc_library(
 
 cc_library(
     name = "generation",
-    srcs = ["generation.cpp"],
     hdrs = ["generation.hpp"],
     deps = [
+    ],
+)
+
+cc_library(
+    name = "ioi_generation",
+    srcs = ["ioi_generation.cpp"],
+    hdrs = ["ioi_generation.hpp"],
+    deps = [
         ":event_queue",
+        ":generation",
         ":source_file",
         "//core",
         "//core:file_id",
@@ -44,19 +52,56 @@ cc_library(
 )
 
 cc_library(
+    name = "terry_generation",
+    srcs = ["terry_generation.cpp"],
+    hdrs = ["terry_generation.hpp"],
+    deps = [
+        ":generation",
+        ":source_file",
+        "//proto:manager_cc",
+        "//proto:task_cc",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
     name = "evaluation",
-    srcs = ["evaluation.cpp"],
     hdrs = ["evaluation.hpp"],
     deps = [
+        ":source_file",
+    ],
+)
+
+cc_library(
+    name = "ioi_evaluation",
+    srcs = ["ioi_evaluation.cpp"],
+    hdrs = ["ioi_evaluation.hpp"],
+    deps = [
+        ":evaluation",
         ":event_queue",
-        ":generation",
+        ":ioi_generation",
         ":source_file",
         "//core",
         "//core:execution",
         "//core:file_id",
+        "//external:glog",
         "//proto:manager_cc",
         "//proto:task_cc",
         "//util:which",
+    ],
+)
+
+cc_library(
+    name = "terry_evaluation",
+    srcs = ["terry_evaluation.cpp"],
+    hdrs = ["terry_evaluation.hpp"],
+    deps = [
+        ":evaluation",
+        ":terry_generation",
+        "//external:glog",
+        "//external:json",
+        "//proto:manager_cc",
+        "//proto:task_cc",
     ],
 )
 
@@ -66,7 +111,10 @@ cc_binary(
     deps = [
         "//core:core",
         "//sandbox:unix",
-        ":evaluation",
+        ":ioi_generation",
+        ":terry_generation",
+        ":ioi_evaluation",
+        ":terry_evaluation",
         ":event_queue",
         "//util:file",
         "//proto:manager_cc",

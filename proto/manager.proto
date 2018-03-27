@@ -27,6 +27,23 @@ message EvaluateTaskRequest {
   bool keep_sandbox = 13;
 }
 
+message TerrySolution {
+  SourceFile solution = 1;
+  int64 seed = 2;
+}
+
+message EvaluateTerryTaskRequest {
+  TerryTask task = 1;
+  repeated TerrySolution solutions = 2;
+  string store_dir = 3;
+  string temp_dir = 4;
+  CacheMode cache_mode = 5;
+  int32 num_cores = 6;
+  bool dry_run = 7;
+  string evaluate_on = 8;
+  bool keep_sandbox = 9;
+}
+
 message CleanTaskRequest {
   string store_dir = 1;
   string temp_dir = 2;
@@ -52,6 +69,7 @@ message ShutdownResponse {
 
 service TaskMakerManager {
   rpc EvaluateTask(EvaluateTaskRequest) returns (stream Event);
+  rpc EvaluateTerryTask(EvaluateTerryTaskRequest) returns (stream Event);
   rpc CleanTask(CleanTaskRequest) returns (CleanTaskResponse);
   rpc Stop(StopRequest) returns (StopResponse);
   rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);

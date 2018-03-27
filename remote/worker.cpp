@@ -29,7 +29,7 @@ void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
       stream(stub->GetWork(&context));
   proto::Request request;
   while (stream->Read(&request)) {
-    LOG(INFO) << "Got work: " << request.executable();
+    LOG(INFO) << "[" << name << "] Got work: " << request.executable();
     std::unique_ptr<executor::Executor> executor{new executor::LocalExecutor(
         FLAGS_store_directory, FLAGS_temp_directory)};
     proto::Response response;
@@ -37,35 +37,30 @@ void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
       response = executor->Execute(
           request, [&stub](const proto::SHA256& hash,
                            const util::File::ChunkReceiver& chunk_receiver) {
-            LOG(INFO) << "Retrieving file " << hash.DebugString();
             remote::RetrieveFile(stub, hash, chunk_receiver);
-            LOG(INFO) << "Got file " << hash.DebugString();
           });
     } catch (std::exception& e) {
-      response.set_status_code(proto::Status::INTERNAL_ERROR);
+      response.set_status(proto::Status::INTERNAL_ERROR);
       response.set_error_message(e.what());
     }
     for (const proto::FileInfo& info : response.output()) {
       using std::placeholders::_1;
       using std::placeholders::_2;
       if (info.has_contents()) continue;  // Small file
-      LOG(INFO) << "Sending file " << info.hash().DebugString();
       remote::SendFile(
           stub, info.hash(),
           std::bind(&executor::Executor::GetFile, executor.get(), _1, _2));
-      LOG(INFO) << "Sent file " << info.hash().DebugString();
     }
-    LOG(INFO) << "Done, sending answer..." << std::endl;
     if (!stream->Write(response)) break;
-    LOG(INFO) << "Ok";
+    LOG(INFO) << "[" << name << "] Done";
   }
   grpc::Status status = stream->Finish();
-  LOG(ERROR) << "DoWork: " << status.error_message();
+  LOG(ERROR) << "[" << name << "] DoWork: " << status.error_message();
 }
 
 void worker(const std::string& server, const std::string& name) {
   while (true) {
-    LOG(INFO) << "Worker connecting...";
+    LOG(INFO) << "[" << name << "] Connecting...";
     std::shared_ptr<grpc::Channel> channel =
         grpc::CreateChannel(server, grpc::InsecureChannelCredentials());
     if (channel->GetState(/* try_to_connect = */ true) ==
@@ -74,6 +69,7 @@ void worker(const std::string& server, const std::string& name) {
       LOG(ERROR) << "Connection failed";
       continue;
     }
+    LOG(INFO) << "[" << name << "] Connected";
     std::unique_ptr<proto::TaskMakerServer::Stub> stub(
         proto::TaskMakerServer::NewStub(channel));
     grpc::ClientContext context;

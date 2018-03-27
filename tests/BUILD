@@ -4,7 +4,10 @@ load("@python_deps//:requirements.bzl", "requirement")
 
 py_library(
     name = "test",
-    srcs = ["test.py", "utils.py"],
+    srcs = [
+        "test.py",
+        "utils.py",
+    ],
     deps = [
         requirement("pytest"),
         "//proto:event_py",
@@ -20,9 +23,8 @@ py_test(
     timeout = "short",
     srcs = ["with_st.py"],
     data = glob(["task_with_st/**"]),
-    flaky = True,
     deps = [
-        ":test"
+        ":test",
     ],
 )
 
@@ -32,9 +34,8 @@ py_test(
     timeout = "short",
     srcs = ["without_st.py"],
     data = glob(["task_without_st/**"]),
-    flaky = True,
     deps = [
-        ":test"
+        ":test",
     ],
 )
 
@@ -44,9 +45,8 @@ py_test(
     timeout = "short",
     srcs = ["with_bugged_gen.py"],
     data = glob(["task_with_bugged_gen/**"]),
-    flaky = True,
     deps = [
-        ":test"
+        ":test",
     ],
 )
 
@@ -56,9 +56,8 @@ py_test(
     timeout = "short",
     srcs = ["with_bugged_sol.py"],
     data = glob(["task_with_bugged_sol/**"]),
-    flaky = True,
     deps = [
-        ":test"
+        ":test",
     ],
 )
 
@@ -68,9 +67,8 @@ py_test(
     timeout = "short",
     srcs = ["with_stdin.py"],
     data = glob(["task_with_stdin/**"]),
-    flaky = True,
     deps = [
-        ":test"
+        ":test",
     ],
 )
 
@@ -80,9 +78,8 @@ py_test(
     timeout = "short",
     srcs = ["with_checker.py"],
     data = glob(["task_with_checker/**"]),
-    flaky = True,
     deps = [
-        ":test"
+        ":test",
     ],
 )
 
@@ -92,9 +89,8 @@ py_test(
     timeout = "short",
     srcs = ["with_bugged_checker.py"],
     data = glob(["task_with_bugged_checker/**"]),
-    flaky = True,
     deps = [
-        ":test"
+        ":test",
     ],
 )
 
@@ -104,8 +100,7 @@ py_test(
     timeout = "short",
     srcs = ["without_gen.py"],
     data = glob(["task_without_gen/**"]),
-    flaky = True,
     deps = [
-        ":test"
+        ":test",
     ],
 )

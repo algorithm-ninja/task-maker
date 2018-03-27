@@ -3,7 +3,8 @@ import os.path
 from typing import List, Optional
 from typing import Dict  # pylint: disable=unused-import
 
-from proto.event_pb2 import EvaluationResult, EventStatus, RunningTaskInfo
+from proto.event_pb2 import EvaluationResult, TerryEvaluationResult, \
+    EventStatus, RunningTaskInfo
 
 from python.ui import UI
 
@@ -18,9 +19,16 @@ class SolutionStatus:
         self.compiled = False
 
 
+class TerryStatus:
+    def __init__(self) -> None:
+        self.status = None  # type: EventStatus
+        self.errors = None  # type: Optional[str]
+        self.result = None  # type: Optional[TerryEvaluationResult]
+
+
 class SilentUI(UI):
-    def __init__(self, solutions: List[str]) -> None:
-        super().__init__(solutions)
+    def __init__(self, solutions: List[str], format: str) -> None:
+        super().__init__(solutions, format)
         self._num_testcases = 0
         self._subtask_max_scores = dict()  # type: Dict[int, float]
         self._subtask_testcases = dict()  # type: Dict[int, List[int]]
@@ -29,6 +37,7 @@ class SilentUI(UI):
         self._compilation_errors = dict()  # type: Dict[str, str]
         self._generation_status = dict()  # type: Dict[int, EventStatus]
         self._generation_errors = dict()  # type: Dict[int, str]
+        self._terry_test_status = dict()  # type: Dict[str, TerryStatus]
         self._time_limit = 0.0
         self._memory_limit = 0.0
         self._solution_status = dict()  # type: Dict[str, SolutionStatus]
@@ -69,6 +78,15 @@ class SilentUI(UI):
         if stderr:
             self._generation_errors[testcase_num] = stderr
 
+    def set_terry_generation_status(self,
+                                    solution: str,
+                                    status: EventStatus,
+                                    stderr: Optional[str] = None):
+        if solution not in self._terry_test_status:
+            self._terry_test_status[solution] = TerryStatus()
+        self._terry_test_status[solution].status = status
+        self._terry_test_status[solution].errors = stderr
+
     def set_evaluation_status(self,
                               testcase_num: int,
                               solution_name: str,
@@ -84,6 +102,26 @@ class SilentUI(UI):
             sol_status.testcase_errors[testcase_num] = error
         if result:
             sol_status.testcase_result[testcase_num] = result
+
+    def set_terry_evaluation_status(self,
+                                    solution: str,
+                                    status: EventStatus,
+                                    error: Optional[str] = None):
+        if solution not in self._terry_test_status:
+            self._terry_test_status[solution] = TerryStatus()
+        self._terry_test_status[solution].status = status
+        self._terry_test_status[solution].errors = error
+
+    def set_terry_check_status(self,
+                               solution: str,
+                               status: EventStatus,
+                               error: Optional[str] = None,
+                               result: Optional[TerryEvaluationResult] = None):
+        if solution not in self._terry_test_status:
+            self._terry_test_status[solution] = TerryStatus()
+        self._terry_test_status[solution].status = status
+        self._terry_test_status[solution].errors = error
+        self._terry_test_status[solution].result = result
 
     def set_subtask_score(self, subtask_num: int, solution_name: str,
                           score: float) -> None:

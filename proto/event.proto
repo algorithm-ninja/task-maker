@@ -32,6 +32,12 @@ enum EventStatus {
   FAILURE = 11;
 }
 
+enum TerryTestcaseStatus {
+  MISSING = 0;
+  CORRECT = 1;
+  WRONG = 2;
+}
+
 message Compilation {
   string filename = 1;
   // WAITING, RUNNING, DONE, FAILURE
@@ -43,6 +49,13 @@ message Generation {
   int64 testcase = 1;
   // WAITING, GENERATING, GENERATED, VALIDATING, VALIDATED, SOLVING, DONE,
   // FAILURE
+  EventStatus status = 2;
+  string error = 3;
+}
+
+message TerryGeneration {
+  string solution = 1;
+  // WAITING, GENERATING, GENERATED, VALIDATING, VALIDATED, FAILURE
   EventStatus status = 2;
   string error = 3;
 }
@@ -61,6 +74,36 @@ message Evaluation {
   // WAITING, EXECUTING, EXECUTED, CHECKING, DONE, FAILURE
   EventStatus status = 3;
   EvaluationResult result = 4;
+}
+
+message TerryEvaluation {
+  string solution = 1;
+  // EXECUTING, EXECUTED, FAILURE
+  EventStatus status = 2;
+  string errors = 3;
+}
+
+message TerryEvaluationResult {
+  float score = 1;
+  float gen_cpu_time = 2;
+  float gen_wall_time = 3;
+  int64 gen_memory_kb = 4;
+  float eval_cpu_time = 5;
+  float eval_wall_time = 6;
+  int64 eval_memory_kb = 7;
+  float check_cpu_time = 8;
+  float check_wall_time = 9;
+  int64 check_memory_kb = 10;
+  repeated TerryTestcaseStatus testcases = 11;
+  string seed = 12;
+}
+
+message TerryCheck {
+  string solution = 1;
+  // CHECKING, DONE, FAILURE
+  EventStatus status = 2;
+  string errors = 3;
+  TerryEvaluationResult result = 4;
 }
 
 message EvaluationStarted {
@@ -88,8 +131,11 @@ message Event {
     SubtaskScore subtask_score = 4;
     Compilation compilation = 5;
     Generation generation = 6;
-    Evaluation evaluation = 7;
-    EvaluationEnded evaluation_ended = 8;
-    RunningTasks running_tasks = 9;
+    TerryGeneration terry_generation = 7;
+    Evaluation evaluation = 8;
+    TerryEvaluation terry_evaluation = 9;
+    TerryCheck terry_check = 10;
+    EvaluationEnded evaluation_ended = 11;
+    RunningTasks running_tasks = 12;
   }
 }

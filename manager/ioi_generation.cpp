@@ -1,4 +1,4 @@
-#include "manager/generation.hpp"
+#include "manager/ioi_generation.hpp"
 
 namespace manager {
 
@@ -23,29 +23,28 @@ void generate_input(
     core::Execution* gen = (*source_cache)[generator]->execute(
         "Generation of input " + std::to_string(testcase_num), args,
         keep_sandbox);
-    gen->SetCallback(
-        [queue, testcase_num](const core::TaskStatus& status) -> bool {
-          if (status.event == core::TaskStatus::FAILURE) {
-            queue->GenerationFailure(testcase_num, status.message);
-            return false;
-          }
-          if (status.type == core::TaskStatus::FILE_LOAD) return true;
-          if (status.event == core::TaskStatus::START)
-            queue->Generating(testcase_num);
-          if (status.event == core::TaskStatus::SUCCESS) {
-            auto exec = status.execution_info;
-            if (exec->Success()) {
-              queue->Generated(testcase_num);
-            } else {
-              queue->GenerationFailure(
-                  testcase_num,
-                  status.message + "\n" +
-                      status.execution_info->Stderr()->Contents(1024 * 1024));
-              return false;
-            }
-          }
-          return true;
-        });
+    gen->SetCallback([queue,
+                      testcase_num](const core::TaskStatus& status) -> bool {
+      if (status.event == core::TaskStatus::FAILURE) {
+        queue->GenerationFailure(testcase_num, status.message);
+        return false;
+      }
+      if (status.type == core::TaskStatus::FILE_LOAD) return true;
+      if (status.event == core::TaskStatus::START)
+        queue->Generating(testcase_num);
+      if (status.event == core::TaskStatus::SUCCESS) {
+        auto exec = status.execution_info;
+        if (exec->Success()) {
+          queue->Generated(testcase_num);
+        } else {
+          queue->GenerationFailure(
+              testcase_num,
+              status.message + "\n" + exec->Stderr()->Contents(1024 * 1024));
+          return false;
+        }
+      }
+      return true;
+    });
     for (const proto::Dependency& dep : testcase.extra_deps()) {
       core::FileID* file_id =
           core->LoadFile("Testcase " + std::to_string(testcase_num) +
@@ -169,9 +168,10 @@ void generate_output(const proto::TestCase& testcase, int64_t testcase_num,
 }
 }  // namespace
 
-Generation::Generation(EventQueue* queue, core::Core* core,
-                       const proto::Task& task, proto::CacheMode cache_mode,
-                       const std::string& executor, bool keep_sandbox) {
+IOIGeneration::IOIGeneration(EventQueue* queue, core::Core* core,
+                             const proto::Task& task,
+                             proto::CacheMode cache_mode,
+                             const std::string& executor, bool keep_sandbox) {
   // TODO(edomora97) set executor and cache_mode in the compilations
   task_ = task;
   if (task.has_official_solution()) {
@@ -213,7 +213,7 @@ Generation::Generation(EventQueue* queue, core::Core* core,
 }
 
 // To be called after Core.Run
-void Generation::WriteInputs(const proto::EvaluateTaskRequest& request) {
+void IOIGeneration::WriteInputs(const proto::EvaluateTaskRequest& request) {
   auto map = request.write_inputs_to();
   for (auto input : inputs_) {
     if (map.count(input.first) == 0) {
@@ -224,7 +224,7 @@ void Generation::WriteInputs(const proto::EvaluateTaskRequest& request) {
     }
   }
 }
-void Generation::WriteOutputs(const proto::EvaluateTaskRequest& request) {
+void IOIGeneration::WriteOutputs(const proto::EvaluateTaskRequest& request) {
   auto map = request.write_outputs_to();
   for (auto output : outputs_) {
     if (map.count(output.first) == 0) {
@@ -235,7 +235,7 @@ void Generation::WriteOutputs(const proto::EvaluateTaskRequest& request) {
     }
   }
 }
-void Generation::WriteChecker(const proto::EvaluateTaskRequest& request) {
+void IOIGeneration::WriteChecker(const proto::EvaluateTaskRequest& request) {
   if (!checker_) throw std::logic_error("There is not checker to write");
   if (request.write_checker_to().empty())
     throw std::range_error("write_checker_to not provided");

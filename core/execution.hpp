@@ -70,6 +70,7 @@ class Execution {
  private:
   friend class Core;
   std::vector<int64_t> Deps() const;
+  std::vector<int64_t> Produces() const;
   proto::Response RunWithCache(executor::Executor* executor,
                                const proto::Request& request);
   void Run(const std::function<util::SHA256_t(int64_t)>& get_hash,
@@ -78,9 +79,9 @@ class Execution {
   bool IsExclusive() const { return exclusive_; }
 
   Execution(ExecutionCacher* cacher, std::string store_directory,
-            std::string temp_directory, int num_cores, std::string description,
-            std::string executable, std::vector<std::string> args,
-            bool keep_sandbox)
+            std::string temp_directory, size_t num_cores,
+            std::string description, std::string executable,
+            std::vector<std::string> args, bool keep_sandbox)
       : store_directory_(std::move(store_directory)),
         temp_directory_(std::move(temp_directory)),
         num_cores_(num_cores),
@@ -101,7 +102,7 @@ class Execution {
 
   std::string store_directory_;
   std::string temp_directory_;
-  int num_cores_;
+  size_t num_cores_;
 
   std::string description_;
   int64_t id_;
