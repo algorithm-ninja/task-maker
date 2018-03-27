@@ -1,3 +1,3 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
-cat input.txt > output.txt
+cp input.txt output.txt

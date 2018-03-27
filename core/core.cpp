@@ -102,6 +102,15 @@ void Core::BuildDependencyGraph() {
     else
       waiting_jobs_.insert(job.get());
   }
+  if (VLOG_IS_ON(2)) {
+    for (const auto& job : jobs_) {
+      VLOG(2) << job->execution->Description();
+      for (auto id : job->execution->Produces()) {
+        for (auto next : dependents_[id])
+          VLOG(2) << "  - [" << id << "] " << next->execution->Description();
+      }
+    }
+  }
 }
 
 void Core::EnqueueJob(Job* job) {
@@ -186,7 +195,8 @@ bool Core::ProcessTaskCompleted(RunningTask* task) {
     case TaskStatus::FAILURE:
       MarkAsFailed(job);
       if (!job->execution->callback_(answer)) {
-        LOG(ERROR) << "Task failed: " << job->execution->Description();
+        LOG(ERROR) << "Task failed: " << job->execution->Description() << "\n"
+                   << job->execution->response_.DebugString();
         return false;
       }
       break;
