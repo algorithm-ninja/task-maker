@@ -1,4 +1,4 @@
-# task-maker [![pipeline status](https://gitlab.com/olimpiadi-informatica/task-maker/badges/master/pipeline.svg)](https://gitlab.com/olimpiadi-informatica/task-maker/commits/master)
+# task-maker
 
 The new cmsMake!
 
