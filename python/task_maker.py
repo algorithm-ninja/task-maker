@@ -65,13 +65,22 @@ def get_manager(args):
     raise RuntimeError("Failed to spawn the manager")
 
 
-def ioi_format_clean(args):
-    ioi_format.clean()
+def manager_clean(args):
     request = CleanTaskRequest()
     request.store_dir = os.path.abspath(args.store_dir)
     request.temp_dir = os.path.abspath(args.temp_dir)
     manager = get_manager(args)
     manager.CleanTask(request)
+
+
+def ioi_format_clean(args):
+    ioi_format.clean()
+    manager_clean(args)
+
+
+def terry_format_clean(args):
+    terry_format.clean()
+    manager_clean(args)
 
 
 def main() -> None:
@@ -84,7 +93,7 @@ def main() -> None:
         if args.format == "ioi":
             ioi_format_clean(args)
         elif args.format == "terry":
-            raise NotImplementedError("Clean not implemented yet for terry")
+            terry_format_clean(args)
         else:
             raise ValueError("Format %s not supported" % args.format)
         return

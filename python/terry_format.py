@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import glob
 import os.path
 import platform
 import random
@@ -101,3 +102,14 @@ def get_request(args: argparse.Namespace):
         request.evaluate_on = args.evaluate_on
     request.keep_sandbox = args.keep_sandbox
     return request
+
+
+def clean():
+    def remove_file(path: str) -> None:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+    for manager in glob.glob("managers/*.linux.*"):
+        remove_file(manager)
