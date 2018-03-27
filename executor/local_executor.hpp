@@ -1,9 +1,9 @@
 #ifndef EXECUTOR_LOCAL_EXECUTOR_HPP
 #define EXECUTOR_LOCAL_EXECUTOR_HPP
-#include "executor/executor.hpp"
 
 #include <mutex>
 
+#include "executor/executor.hpp"
 #include "sandbox/sandbox.hpp"
 
 namespace executor {
@@ -27,7 +27,7 @@ class LocalExecutor : public Executor {
   LocalExecutor& operator=(LocalExecutor&&) = delete;
   ~LocalExecutor() override = default;
   LocalExecutor(std::string store_directory, std::string temp_directory,
-                int num_cores = 0);
+                size_t num_cores = 0);
 
  private:
   class ThreadGuard {
@@ -39,11 +39,11 @@ class LocalExecutor : public Executor {
     ThreadGuard(ThreadGuard&&) = delete;
     ThreadGuard& operator=(ThreadGuard&&) = delete;
 
-    static void SetMaxThreads(int32_t num);
+    static void SetMaxThreads(size_t num);
 
    private:
-    static int32_t& MaxThreads();
-    static int32_t& CurThreads();
+    static size_t& MaxThreads();
+    static size_t& CurThreads();
     static std::mutex& Mutex();
     bool exclusive_;
   };

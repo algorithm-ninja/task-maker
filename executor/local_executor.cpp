@@ -10,9 +10,7 @@
 #include <thread>
 
 namespace {
-bool IsIllegalChar(char c) {
-  return c == '/' or c == '\0';
-}
+bool IsIllegalChar(char c) { return c == '/' or c == '\0'; }
 }  // namespace
 
 namespace executor {
@@ -31,8 +29,7 @@ proto::Response LocalExecutor::Execute(
 
   std::string cmdline = request.executable();
   if (!request.arg().empty())
-    for (const std::string& arg : request.arg())
-      cmdline += " '" + arg + "'";
+    for (const std::string& arg : request.arg()) cmdline += " '" + arg + "'";
 
   if (request.keep_sandbox()) {
     tmp.Keep();
@@ -40,7 +37,7 @@ proto::Response LocalExecutor::Execute(
     cmdline_file << cmdline << std::endl;
   }
 
-  VLOG(2) << "Executing: " << "\n"
+  VLOG(2) << "Executing:\n"
           << "\tCommand:        " << cmdline << "\n"
           << "\tInside sandbox: " << tmp.Path();
 
@@ -224,7 +221,7 @@ void LocalExecutor::GetFile(const proto::SHA256& hash,
 }
 
 LocalExecutor::LocalExecutor(std::string store_directory,
-                             std::string temp_directory, int num_cores)
+                             std::string temp_directory, size_t num_cores)
     : store_directory_(std::move(store_directory)),
       temp_directory_(std::move(temp_directory)) {
   util::File::MakeDirs(temp_directory_);
@@ -257,17 +254,17 @@ LocalExecutor::ThreadGuard::~ThreadGuard() {
   CurThreads() = exclusive_ ? 0 : (CurThreads() - 1);
 }
 
-void LocalExecutor::ThreadGuard::SetMaxThreads(int32_t num) {
+void LocalExecutor::ThreadGuard::SetMaxThreads(size_t num) {
   MaxThreads() = num;
 }
 
-int32_t& LocalExecutor::ThreadGuard::MaxThreads() {
-  static int32_t max = 0;
+size_t& LocalExecutor::ThreadGuard::MaxThreads() {
+  static size_t max = 0;
   return max;
 }
 
-int32_t& LocalExecutor::ThreadGuard::CurThreads() {
-  static int32_t cur = 0;
+size_t& LocalExecutor::ThreadGuard::CurThreads() {
+  static size_t cur = 0;
   return cur;
 }
 

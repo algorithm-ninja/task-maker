@@ -14,7 +14,7 @@ cc_library(
     deps = [
         ":execution",
         ":file_id",
-    ]
+    ],
 )
 
 cc_library(
@@ -66,7 +66,10 @@ cc_library(
         ":execution",
         ":execution_cacher",
         ":file_id",
-        ":task_status",
         ":running_task",
+        ":task_status",
+        "//executor:local_executor",
+        "//external:glog",
+        "@com_google_absl//absl/synchronization",
     ],
 )

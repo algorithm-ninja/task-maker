@@ -1,51 +1,89 @@
 #include "core/core.hpp"
 #include "executor/local_executor.hpp"
-#include "glog/logging.h"
-
-namespace {
-enum EnqueueStatus {
-  QUEUE_FULL,
-  CALLBACK_FALSE,
-  LEFTOVERS,
-  NO_TASK,
-  NO_READY_TASK
-};
-}  // namespace
 
 namespace core {
 
-void Core::ThreadBody() {
-  while (!quitting_) {
-    std::unique_lock<std::mutex> lck(task_mutex_);
-    while (!quitting_ && tasks_.empty()) {
-      task_ready_.wait(lck);
-    }
-    if (quitting_) break;
-    std::packaged_task<TaskStatus()> task = std::move(tasks_.front());
-    tasks_.pop();
-    lck.unlock();
-    task();
+bool Core::Run() {
+  const auto TASK_WAIT_TIME = std::chrono::microseconds(100);
+
+  std::vector<std::thread> threads;
+
+  auto tear_down = [this, &threads] {
+    if (cacher_) cacher_->TearDown();
+    quitting_ = true;
+    task_ready_.notify_all();
+    for (auto& thread : threads) thread.join();
+  };
+
+  if (cacher_) cacher_->Setup();
+
+  BuildDependencyGraph();
+  if (!LoadInitialFiles()) {
+    tear_down();
+    return false;
   }
+
+  threads.reserve(num_cores_);
+  for (size_t i = 0; i < num_cores_; i++)
+    threads.emplace_back([this] { ThreadBody(); });
+
+  while (!quitting_) {
+    std::unique_lock<std::mutex> lck(job_mutex_);
+    if (waiting_jobs_.empty() && ready_tasks_.empty() && running_jobs_.empty())
+      break;
+    std::deque<RunningTask> temp;
+    while (!running_jobs_.empty()) {
+      RunningTask task = std::move(running_jobs_.front());
+      running_jobs_.pop_front();
+      // TODO(edomora97) instead of keeping the futures and check them
+      // continually maybe the thread can move the job in another queue when
+      // completed and the main thread can wait with a conditional_variable
+      if (task.future.wait_for(TASK_WAIT_TIME) == std::future_status::ready) {
+        if (!ProcessTaskCompleted(&task)) {
+          lck.unlock();
+          tear_down();
+          return false;
+        }
+      } else {
+        temp.push_back(std::move(task));
+      }
+    }
+    std::swap(temp, running_jobs_);
+  }
+  tear_down();
+  return !failed_;
 }
 
-TaskStatus Core::LoadFileTask(FileID* file) {
-  try {
-    using std::placeholders::_1;
-    using std::placeholders::_2;
-    file->Load(std::bind(&Core::SetFile, this, _1, _2));
-    return TaskStatus::Success(file);
-  } catch (const std::exception& exc) {
-    return TaskStatus::Failure(file, exc.what());
+void Core::ThreadBody() {
+  while (!quitting_) {
+    std::unique_lock<std::mutex> lck(job_mutex_);
+    while (!quitting_ && ready_tasks_.empty()) task_ready_.wait(lck);
+    if (quitting_) break;
+
+    ReadyTask task = std::move(ready_tasks_.front());
+    ready_tasks_.pop();
+    if (!task.job->execution->callback_(
+            TaskStatus::Start(task.job->execution))) {
+      LOG(ERROR) << "Failed to start job: "
+                 << task.job->execution->Description();
+      quitting_ = true;
+      failed_ = true;
+      task_ready_.notify_all();
+      return;
+    }
+    RunningTask running_task{RunningTaskInfo(task.job->execution), task.job,
+                             task.task.get_future()};
+    running_jobs_.push_back(std::move(running_task));
+    lck.unlock();
+    task.task();
   }
 }
 
 TaskStatus Core::ExecuteTask(Execution* execution) {
-  LOG(INFO) << execution->Description();
   try {
-    using std::placeholders::_1;
-    using std::placeholders::_2;
-    execution->Run(std::bind(&Core::GetFile, this, _1),
-                   std::bind(&Core::SetFile, this, _1, _2));
+    execution->Run(
+        [this](int64_t id) { return GetFile(id); },
+        [this](int64_t id, const util::SHA256_t& hash) { SetFile(id, hash); });
     return TaskStatus::Success(execution);
   } catch (executor::too_many_executions& exc) {
     return TaskStatus::Busy(execution);
@@ -54,188 +92,115 @@ TaskStatus Core::ExecuteTask(Execution* execution) {
   }
 }
 
-bool Core::Run() {
-  // TODO(veluca): detect dependency cycles.
-  // TODO(veluca): think about how to automatically resize the thread pool.
-
-  // Load up cache.
-  cacher_->Setup();
-
-  std::vector<std::thread> threads(num_cores_);
-  for (int i = 0; i < num_cores_; i++)
-    threads[i] = std::thread(std::bind(&Core::ThreadBody, this));
-
-  quitting_ = false;
-
-  auto cleanup = [this, &threads]() {
-    cacher_->TearDown();
-    quitting_ = true;
-    task_ready_.notify_all();
-    for (std::thread& thread : threads) thread.join();
-  };
-
-  try {
-    std::queue<FileID*> file_tasks;
-    for (const auto& file : files_to_load_) file_tasks.push(file.get());
-    std::queue<Execution*> execution_tasks;
-    for (const auto& execution : executions_)
-      execution_tasks.push(execution.get());
-
-    auto add_task = [this](std::packaged_task<TaskStatus()> task) {
-      std::lock_guard<std::mutex> lck(task_mutex_);
-      tasks_.push(std::move(task));
-      task_ready_.notify_all();
-    };
-
-    auto add_tasks = [&file_tasks, &execution_tasks, &add_task, &threads,
-                      this]() {
-      std::lock_guard<std::mutex> lck(running_tasks_lock_);
-      if (running_tasks_.size() >= threads.size()) return QUEUE_FULL;
-      while (!file_tasks.empty()) {
-        FileID* file = file_tasks.front();
-        file_tasks.pop();
-        if (!file->callback_(TaskStatus::Start(file))) {
-          LOG(ERROR) << "Task start failed: " << file->Description()
-                     << " [FILE_LOAD]";
-          return CALLBACK_FALSE;
-        }
-        std::packaged_task<TaskStatus()> task(
-            std::bind(&Core::LoadFileTask, this, file));
-        running_tasks_.emplace(file, task.get_future());
-        add_task(std::move(task));
-        if (running_tasks_.size() >= threads.size()) return QUEUE_FULL;
-      }
-      size_t reenqueued_tasks = 0;
-      while (reenqueued_tasks < execution_tasks.size() &&
-             !execution_tasks.empty()) {
-        Execution* execution = execution_tasks.front();
-        execution_tasks.pop();
-        bool ready = true;
-        for (int64_t dep : execution->Deps()) {
-          if (!FilePresent(dep)) ready = false;
-        }
-        if (!ready) {
-          execution_tasks.push(execution);
-          reenqueued_tasks++;
-          continue;
-        }
-        if (!execution->callback_(TaskStatus::Start(execution))) {
-          LOG(ERROR) << "Task start failed: " << execution->Description()
-                     << " [EXECUTION]";
-          return CALLBACK_FALSE;
-        }
-        std::packaged_task<TaskStatus()> task(
-            std::bind(&Core::ExecuteTask, this, execution));
-        running_tasks_.emplace(execution, task.get_future());
-        add_task(std::move(task));
-        if (running_tasks_.size() >= threads.size()) return QUEUE_FULL;
-      }
-      if (!running_tasks_.empty()) return NO_READY_TASK;
-      return execution_tasks.empty() ? NO_TASK : LEFTOVERS;
-    };
-
-    bool should_enqueue = true;
-
-    switch (add_tasks()) {
-      case CALLBACK_FALSE:
-        cleanup();
-        return false;
-      case NO_TASK:
-      case LEFTOVERS:
-        should_enqueue = false;
-        break;
-      case NO_READY_TASK:
-      case QUEUE_FULL:
-        break;
-    }
-
-    while ((should_enqueue or !running_tasks_.empty()) && !quitting_) {
-      {
-        std::lock_guard<std::mutex> lck(running_tasks_lock_);
-        size_t queue_size = running_tasks_.size();
-        for (size_t _ = 0; _ < queue_size; _++) {
-          RunningTask running_task = std::move(running_tasks_.front());
-          running_tasks_.pop();
-          if (running_task.future.wait_for(std::chrono::microseconds(100)) ==
-              std::future_status::ready) {
-            if (running_task.info.type == core::RunningTaskInfo::FILE_LOAD)
-              VLOG(1) << "File loaded: " << running_task.info.description;
-            else
-              VLOG(1) << "Execution completed: "
-                      << running_task.info.description;
-            TaskStatus answer = running_task.future.get();
-            if (answer.event == TaskStatus::Event::BUSY) {
-              execution_tasks.push(answer.execution_info);
-            }
-            std::function<bool(const TaskStatus&)> callback =
-                answer.type == TaskStatus::Type::EXECUTION
-                    ? answer.execution_info->callback_
-                    : answer.file_info->callback_;
-            if (!callback(answer)) {
-              cleanup();
-              if (running_task.info.type == core::RunningTaskInfo::FILE_LOAD)
-                LOG(ERROR) << "Task execution failed "
-                           << running_task.info.description << " [FILE_LOAD]";
-              else
-                LOG(ERROR) << "Task execution failed "
-                           << running_task.info.description << " [EXECUTION]";
-              return false;
-            }
-          } else {
-            running_tasks_.push(std::move(running_task));
-          }
-        }
-      }
-      switch (add_tasks()) {
-        case CALLBACK_FALSE:
-          cleanup();
-          return false;
-        case NO_TASK:
-        case LEFTOVERS:
-          should_enqueue = false;
-          break;
-        case NO_READY_TASK:
-        case QUEUE_FULL:
-          break;
-      }
-    }
-    if (!execution_tasks.empty()) {
-      VLOG(1) << "Core exited with " << execution_tasks.size()
-              << " remaining tasks";
-      while (!execution_tasks.empty()) {
-        VLOG(1) << "    " << execution_tasks.front()->Description();
-        execution_tasks.pop();
-      }
-    }
-    if (!running_tasks_.empty()) {
-      std::lock_guard<std::mutex> lck(running_tasks_lock_);
-      size_t queue_len = running_tasks_.size();
-      LOG(WARNING) << "There are " << queue_len << " running tasks";
-      for (size_t i = 0; i < queue_len; i++) {
-        LOG(WARNING) << "   " << running_tasks_.front().info.description;
-        running_tasks_.push(std::move(running_tasks_.front()));
-        running_tasks_.pop();
-      }
-      CHECK(quitting_) << "Core not aborted but exited with running tasks";
-    }
-  } catch (std::exception& e) {
-    cleanup();
-    throw std::runtime_error(e.what());
+void Core::BuildDependencyGraph() {
+  for (const auto& job : jobs_) {
+    auto deps = job->execution->Deps();
+    for (int64_t dep : deps) dependents_[dep].push_back(job.get());
+    job->pending_deps = deps.size();
+    if (deps.empty())
+      EnqueueJob(job.get());
+    else
+      waiting_jobs_.insert(job.get());
   }
-  cleanup();
+}
+
+void Core::EnqueueJob(Job* job) {
+  std::packaged_task<TaskStatus()> task(
+      [this, job] { return ExecuteTask(job->execution); });
+  ready_tasks_.push(ReadyTask{job, std::move(task)});
+  task_ready_.notify_all();
+}
+
+void Core::MarkAsSuccessful(Job* job) {
+  for (int64_t file_id : job->execution->Produces()) MarkAsSuccessful(file_id);
+}
+
+void Core::MarkAsSuccessful(int64_t file_id) {
+  for (Job* next : dependents_[file_id]) {
+    next->pending_deps--;
+    if (next->pending_deps == 0) {
+      EnqueueJob(next);
+      waiting_jobs_.erase(next);
+    }
+  }
+}
+
+void Core::MarkAsFailed(Job* job) {
+  for (int64_t file_id : job->execution->Produces()) MarkAsFailed(file_id);
+}
+
+void Core::MarkAsFailed(int64_t file_id) {
+  for (Job* next : dependents_[file_id]) {
+    // the job has already thrown away
+    if (waiting_jobs_.count(next) == 0) continue;
+    waiting_jobs_.erase(next);
+    MarkAsFailed(next);
+  }
+}
+
+bool Core::LoadInitialFiles() {
+  for (const auto& file : files_to_load_) {
+    if (!file->callback_(TaskStatus::Start(file.get()))) {
+      LOG(ERROR) << "Failed to start loading: " << file->Description();
+      return false;
+    }
+    try {
+      file->Load([this, &file](int64_t id, const util::SHA256_t& hash) {
+        SetFile(id, hash);
+      });
+      if (!file->callback_(TaskStatus::Success(file.get()))) {
+        LOG(ERROR) << "Failed to complete loading: " << file->Description();
+        return false;
+      }
+      MarkAsSuccessful(file->ID());
+    } catch (const std::exception& exc) {
+      if (!file->callback_(TaskStatus::Failure(file.get(), exc.what()))) {
+        LOG(ERROR) << "Failed loading: " << file->Description();
+        return false;
+      }
+      MarkAsFailed(file->ID());
+    }
+  }
+  return true;
+}
+
+bool Core::ProcessTaskCompleted(RunningTask* task) {
+  VLOG(1) << "Task completed: " << task->info.description;
+  TaskStatus answer = task->future.get();
+  Job* job = task->job;
+  switch (answer.event) {
+    case TaskStatus::BUSY:
+      EnqueueJob(job);
+      break;
+    case TaskStatus::SUCCESS:
+      if (answer.execution_info->Success())
+        MarkAsSuccessful(job);
+      else
+        MarkAsFailed(job);
+      if (!job->execution->callback_(answer)) {
+        LOG(ERROR) << "Task success callback failed: "
+                   << job->execution->Description();
+        return false;
+      }
+      break;
+    case TaskStatus::FAILURE:
+      MarkAsFailed(job);
+      if (!job->execution->callback_(answer)) {
+        LOG(ERROR) << "Task failed: " << job->execution->Description();
+        return false;
+      }
+      break;
+    default:
+      LOG(FATAL) << "Invalid event type: " << answer.type;
+      return false;
+  }
   return true;
 }
 
 std::vector<RunningTaskInfo> Core::RunningTasks() const {
-  std::lock_guard<std::mutex> lck(running_tasks_lock_);
+  std::lock_guard<std::mutex> lck(job_mutex_);
   std::vector<RunningTaskInfo> tasks;
-  size_t queue_size = running_tasks_.size();
-  for (size_t _ = 0; _ < queue_size; _++) {
-    RunningTask task = std::move(running_tasks_.front());
-    running_tasks_.pop();
-    tasks.push_back(task.info);
-    running_tasks_.push(std::move(task));
-  }
+  for (const RunningTask& task : running_jobs_) tasks.emplace_back(task.info);
   return tasks;
 }
 

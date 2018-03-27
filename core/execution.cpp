@@ -22,6 +22,14 @@ std::vector<int64_t> Execution::Deps() const {
   return result;
 }
 
+std::vector<int64_t> Execution::Produces() const {
+  std::vector<int64_t> result;
+  result.push_back(stdout_->ID());
+  result.push_back(stderr_->ID());
+  for (const auto& out : outputs_) result.push_back(out.second->ID());
+  return result;
+}
+
 proto::Response Execution::RunWithCache(executor::Executor* executor,
                                         const proto::Request& request) {
   proto::Response response;
