@@ -30,7 +30,7 @@ jobs:
             EOF
       - restore_cache:
           keys:
-            - task-maker-{{ arch }}-
+            - task-maker-v2-{{ arch }}-
       - run:
           name: Build
           command: bazel build ...
@@ -39,7 +39,7 @@ jobs:
           command: bazel test ...
       - save_cache:
           paths: ~/.cache
-          key: task-maker-{{ arch }}-{{ .Revision }}
+          key: task-maker-v2-{{ arch }}-{{ .Revision }}
           when: always
 
   release-ubuntu-14.04:
