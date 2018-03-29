@@ -78,7 +78,8 @@ def get_request(args: argparse.Namespace):
             for sol in args.solutions
         ]
     else:
-        solutions = list_files(["solutions/*"])
+        solutions = list_files(["solutions/*"],
+                               exclude=["solutions/__init__.py"])
 
     request = EvaluateTerryTaskRequest()
     request.task.CopyFrom(task)

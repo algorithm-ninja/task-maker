@@ -62,6 +62,26 @@ class TestSolutionNotCompile(TestSolution):
         return "<TestSolutionNotCompile name=%s>" % self.name
 
 
+class TerryTestSolution:
+    def __init__(self, task: "TerryTestInterface", name: str, score: float,
+                 tc_score: Optional[List]):
+        self.task = task
+        self.name = name
+        self.score = score
+        self.tc_score = tc_score
+
+    def check_solution(self, ui: TestingUI):
+        assert self.name in ui.solutions
+        assert ui._compilation_status[self.name] == DONE
+        solution = ui._terry_test_status[self.name]
+        assert abs(
+            solution.result.score * self.task.max_score - self.score) < 0.0001
+        if self.tc_score:
+            for status, expected in zip(solution.result.testcases,
+                                        self.tc_score):
+                assert status == expected
+
+
 class TestInterface:
     def __init__(self, name, desc, timelimit, memlimit):
         self.solutions = []  # type: List[TestSolution]
@@ -118,3 +138,47 @@ class TestInterface:
             assert ui.fatal_errors
         else:
             assert not ui.fatal_errors
+
+
+class TerryTestInterface:
+    def __init__(self, name: str, desc: str, max_score: float):
+        self.solutions = []  # type: List[TerryTestSolution]
+        self.generator_name = None  # type: Optional[str]
+        self.validator_name = None  # type: Optional[str]
+        self.checker_name = None  # type: Optional[str]
+        self.max_score = max_score
+        self.name = name
+        self.desc = desc
+        self.fatal_error = False
+
+    def set_generator(self, name: str):
+        self.generator_name = name
+
+    def set_validator(self, name: str):
+        self.validator_name = name
+
+    def set_checker(self, name: str):
+        self.checker_name = name
+
+    def set_fatal_error(self):
+        self.fatal_error = True
+
+    def add_solution(self, name: str, score: float, tc_score: Optional[List]):
+        self.solutions.append(TerryTestSolution(self, name, score, tc_score))
+
+    def run_checks(self, ui: TestingUI):
+        assert ui.task_name == "%s (%s)" % (self.desc, self.name)
+        if self.fatal_error:
+            assert ui.fatal_errors
+        else:
+            assert not ui.fatal_errors
+
+        for sol in self.solutions:
+            sol.check_solution(ui)
+
+        if self.generator_name:
+            assert self.generator_name in ui._other_compilations
+        if self.validator_name:
+            assert self.validator_name in ui._other_compilations
+        if self.checker_name:
+            assert self.checker_name in ui._other_compilations

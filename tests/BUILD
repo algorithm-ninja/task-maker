@@ -104,3 +104,39 @@ py_test(
         ":test",
     ],
 )
+
+py_test(
+    name = "terry_with_validator",
+    size = "medium",
+    timeout = "short",
+    srcs = ["terry_with_validator.py"],
+    data = glob(["task_terry_with_validator/**"]),
+    deps = [
+        ":test",
+        "//proto:event_py",
+    ],
+)
+
+py_test(
+    name = "terry_without_validator",
+    size = "medium",
+    timeout = "short",
+    srcs = ["terry_without_validator.py"],
+    data = glob(["task_terry_without_validator/**"]),
+    deps = [
+        ":test",
+        "//proto:event_py",
+    ],
+)
+
+py_test(
+    name = "terry_with_bugged_gen",
+    size = "medium",
+    timeout = "short",
+    srcs = ["terry_with_bugged_gen.py"],
+    data = glob(["task_terry_with_bugged_gen/**"]),
+    deps = [
+        ":test",
+        "//proto:event_py",
+    ],
+)
