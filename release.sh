@@ -25,4 +25,5 @@ find . -type f -print0 | xargs -0 chmod u-w
 
 popd
 
-mv $TEMPDIR/task_maker ./task_maker-$CI_COMMIT_TAG
+mkdir release
+zip -r release/task-maker-$CIRCLE_TAG.zip $TEMPDIR/task_maker

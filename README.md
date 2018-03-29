@@ -1,4 +1,4 @@
-# task-maker
+# task-maker [![CircleCI](https://circleci.com/gh/algorithm-ninja/task-maker.svg?style=svg)](https://circleci.com/gh/algorithm-ninja/task-maker)
 
 The new cmsMake!
 
