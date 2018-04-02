@@ -5,7 +5,7 @@ The new cmsMake!
 ## Usage
 
 ### Simple local usage
-After installing task-maker, run `task_maker` in the task folder to compile
+After installing task-maker, run `task-maker` in the task folder to compile
 and run everything. Specifying no option all the caches are active, the next
 executions will be very fast, actually doing only what's needed.
 
@@ -13,7 +13,7 @@ executions will be very fast, actually doing only what's needed.
 If you really want to repeat the execution of something provide the `--cache`
 option:
 ```bash
-task_maker --cache=nothing
+task-maker --cache=nothing
 ```
 
 Possible values of `--cache` are: `all`, `generation` (do not regenerate
@@ -23,21 +23,21 @@ inputs/outputs if not needed), `nothing` (disable all the cache).
 Sometimes you only want to test only some solutions, speeding up the
 compilation and cleaning a bit the output:
 ```bash
-task_maker sol1.cpp sol2.py
+task-maker sol1.cpp sol2.py
 ```
 
 ### Disable multithreading
 If you want to be extra sure about the timings you can disable multithreading,
 setting the number of core to 1:
 ```bash
-task_maker --num-cores=1
+task-maker --num-cores=1
 ```
 
 ### Using different task directory
 By default the task in the current directory is executed, if you want to change
 the task without `cd`-ing away:
 ```bash
-task_maker --task-dir ~/tasks/poldo
+task-maker --task-dir ~/tasks/poldo
 ```
 
 ### Extracting executable files
@@ -45,13 +45,13 @@ All the compiled files are kept in an internal folder but if you want to
 use them, for example to debug a solution, passing `--copy-exe` all the
 useful files are copied to the `bin/` folder inside the task directory.
 ```bash
-task_maker --copy-exe
+task-maker --copy-exe
 ```
 
 ### Clean the task directory
 If you want to clean everything, for example after the contest, simply run:
 ```bash
-task_maker --clean
+task-maker --clean
 ```
 
 ### Using a remote executor
@@ -74,7 +74,7 @@ If you want to see the logs from these two commands pass them `-logtostderr`.
 
 To run the execution remotely just pass:
 ```bash
-task_maker --evaluate-on server_ip:7070
+task-maker --evaluate-on server_ip:7070
 ```
 
 Note that the TCP port 7070 is used, the connection has to be available,
