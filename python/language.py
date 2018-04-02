@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import os
 from itertools import chain
@@ -16,11 +16,13 @@ EXTENSIONS = {
 }
 
 
-def valid_extensions() -> List[str]:
+def valid_extensions():
+    # type: () -> List[str]
     return list(chain(*EXTENSIONS.values()))
 
 
-def from_file(path: str) -> int:
+def from_file(path):
+    # type: (str) -> int
     ext = os.path.splitext(path)[1]
     for lang, exts in EXTENSIONS.items():
         if ext in exts:
@@ -28,9 +30,11 @@ def from_file(path: str) -> int:
     return INVALID_LANGUAGE
 
 
-def grader_from_file(path: str) -> int:
+def grader_from_file(path):
+    # type: (str) -> int
     return from_file(path)
 
 
-def need_compilation(language: int) -> bool:
+def need_compilation(language):
+    # type: (int) -> bool
     return language in [CPP, C, PASCAL]

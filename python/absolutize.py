@@ -1,23 +1,26 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import os.path
 from proto.manager_pb2 import EvaluateTaskRequest
 from proto.task_pb2 import Task, Subtask, TestCase, SourceFile, GraderInfo
 
 
-def absolutize_path(path: str) -> str:
+def absolutize_path(path):
+    # type: (str) -> str
     if os.path.isabs(path):
         return path
     return os.path.join(os.getcwd(), path)
 
 
-def absolutize_source_file(source_file: SourceFile) -> None:
+def absolutize_source_file(source_file):
+    # type: (SourceFile) -> None
     source_file.path = absolutize_path(source_file.path)
     for dependency in source_file.deps:
         dependency.path = absolutize_path(dependency.path)
 
 
-def absolutize_testcase(testcase: TestCase) -> None:
+def absolutize_testcase(testcase):
+    # type: (TestCase) -> None
     if testcase.HasField("generator"):
         absolutize_source_file(testcase.generator)
     if testcase.HasField("validator"):
@@ -30,17 +33,20 @@ def absolutize_testcase(testcase: TestCase) -> None:
         dep.path = absolutize_path(dep.path)
 
 
-def absolutize_subtask(subtask: Subtask) -> None:
+def absolutize_subtask(subtask):
+    # type: (Subtask) -> None
     for testcase in subtask.testcases.values():
         absolutize_testcase(testcase)
 
 
-def absolutize_grader_info(info: GraderInfo) -> None:
+def absolutize_grader_info(info):
+    # type: (GraderInfo) -> None
     for dependency in info.files:
         dependency.path = absolutize_path(dependency.path)
 
 
-def absolutize_task(task: Task) -> None:
+def absolutize_task(task):
+    # type: (Task) -> None
     for subtask in task.subtasks.values():
         absolutize_subtask(subtask)
     if task.HasField("official_solution"):
@@ -51,7 +57,8 @@ def absolutize_task(task: Task) -> None:
         absolutize_source_file(task.checker)
 
 
-def absolutize_request(request: EvaluateTaskRequest) -> None:
+def absolutize_request(request):
+    # type: (EvaluateTaskRequest) -> None
     absolutize_task(request.task)
     for solution in request.solutions:
         absolutize_source_file(solution)

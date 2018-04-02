@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+
+from __future__ import print_function
 
 import argparse
 import glob
@@ -22,8 +24,8 @@ from python.sanitize import sanitize_command
 from python.source_file import from_file
 
 
-def list_files(patterns: List[str],
-               exclude: Optional[List[str]] = None) -> List[str]:
+def list_files(patterns, exclude=None):
+    # type: (List[str], Optional[List[str]]) -> List[str]
     if exclude is None:
         exclude = []
     files = [_file for pattern in patterns
@@ -35,7 +37,8 @@ def list_files(patterns: List[str],
     ]
 
 
-def load_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
+def load_testcases():
+    # type: () -> Tuple[Optional[str], Dict[int, Subtask]]
     nums = [
         int(input_file[11:-4])
         for input_file in glob.glob(os.path.join("input", "input*.txt"))
@@ -55,20 +58,21 @@ def load_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
     return None, {0: subtask}
 
 
-def get_generator() -> Optional[str]:
+def get_generator():
+    # type: () -> Optional[str]
     for generator in list_files(["gen/generator.*", "gen/generatore.*"]):
         return generator
     return None
 
 
-def gen_testcases(copy_compiled: bool) -> Tuple[
-    Optional[str], Dict[int, Subtask]]:
+def gen_testcases(copy_compiled):
+    # type: (bool) -> Tuple[Optional[str], Dict[int, Subtask]]
     validator = None  # type: Optional[str]
     subtasks = {}  # type: Dict[int, Subtask]
     official_solution = None  # type: Optional[str]
 
-    def create_subtask(subtask_num: int, testcases: Dict[int, TestCase],
-                       score: float) -> None:
+    def create_subtask(subtask_num, testcases, score):
+        # type: (int, Dict[int, TestCase], float) -> None
         if testcases:
             subtask = Subtask()
             subtask.score_mode = MIN
@@ -129,7 +133,8 @@ def gen_testcases(copy_compiled: bool) -> Tuple[
     return official_solution, subtasks
 
 
-def detect_yaml() -> str:
+def detect_yaml():
+    # type: () -> str
     cwd = os.getcwd()
     task_name = os.path.basename(cwd)
     yaml_names = ["task", os.path.join("..", task_name)]
@@ -139,18 +144,18 @@ def detect_yaml() -> str:
             path = os.path.join(cwd, name + "." + ext)
             if os.path.exists(path):
                 return path
-    raise FileNotFoundError("Cannot find the task yaml of %s" % cwd)
+    raise IOError("Cannot find the task yaml of %s" % cwd)
 
 
-def parse_task_yaml() -> Dict[str, Any]:
+def parse_task_yaml():
+    # type: () -> Dict[str, Any]
     path = detect_yaml()
     with open(path) as yaml_file:
         return yaml.load(yaml_file)
 
 
-def get_options(data: Dict[str, Any],
-                names: List[str],
-                default: Optional[Any] = None) -> Any:
+def get_options(data, names, default=None):
+    # type: (Dict[str, Any], List[str], Optional[Any]) -> Any
     for name in names:
         if name in data:
             return data[name]
@@ -160,7 +165,8 @@ def get_options(data: Dict[str, Any],
     return default
 
 
-def create_task_from_yaml(data: Dict[str, Any]) -> Task:
+def create_task_from_yaml(data):
+    # type: (Dict[str, Any]) -> Task
     name = get_options(data, ["name", "nome_breve"])
     title = get_options(data, ["title", "nome"])
     if name is None:
@@ -183,7 +189,8 @@ def create_task_from_yaml(data: Dict[str, Any]) -> Task:
     return task
 
 
-def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
+def get_request(args):
+    # type: (argparse.Namespace) -> EvaluateTaskRequest
     copy_compiled = args.copy_exe
     data = parse_task_yaml()
     if not data:
@@ -253,7 +260,8 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
 
 
 def clean():
-    def remove_dir(path: str, pattern) -> None:
+    def remove_dir(path, pattern):
+        # type: (str, str) -> None
         if not os.path.exists(path):
             return
         for file in glob.glob(os.path.join(path, pattern)):
@@ -263,7 +271,8 @@ def clean():
         except OSError:
             print("Directory %s not empty, kept non-%s files" % (path, pattern))
 
-    def remove_file(path: str) -> None:
+    def remove_file(path):
+        # type: (str) -> None
         try:
             os.remove(path)
         except OSError:

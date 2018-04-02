@@ -1,18 +1,21 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 from typing import List
 from typing import Optional
 
-from proto.event_pb2 import Event, EventStatus, EvaluationResult
+from proto.event_pb2 import Event, EventStatus, EvaluationResult,\
+    RunningTaskInfo
 
 
 class UI:
-    def __init__(self, solutions: List[str], format: str) -> None:
+    def __init__(self, solutions, format):
+        # type: (List[str], str) -> None
         self.task_name = ""
         self.solutions = solutions
         self.format = format
 
-    def from_event(self, event: Event) -> None:
+    def from_event(self, event):
+        # type: (Event) -> None
         event_type = event.WhichOneof("event_oneof")
         if event_type == "fatal_error":
             self.fatal_error(event.fatal_error.msg)
@@ -54,76 +57,75 @@ class UI:
         elif event_type == "running_tasks":
             self.set_running_tasks(event.running_tasks.task)
 
-    def set_task_name(self, task_name: str) -> None:
+    def set_task_name(self, task_name):
+        # type: (str) -> None
         self.task_name = task_name
 
-    def set_max_score(self, max_score: float) -> None:
+    def set_max_score(self, max_score):
+        # type: (float) -> None
         self.max_score = max_score
 
-    def set_time_limit(self, time_limit: float) -> None:
+    def set_time_limit(self, time_limit):
+        # type: (float) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_memory_limit(self, memory_limit: int) -> None:
+    def set_memory_limit(self, memory_limit):
+        # type: (int) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_subtask_info(self, subtask_num: int, max_score: float,
-                         testcases: List[int]) -> None:
+    def set_subtask_info(self, subtask_num, max_score, testcases):
+        # type: (int, float, List[int]) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_compilation_status(self,
-                               file_name: str,
-                               status: EventStatus,
-                               warnings: Optional[str] = None) -> None:
+    def set_compilation_status(self, file_name, status, warnings=None):
+        # type: (str, EventStatus, Optional[str]) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_generation_status(self,
-                              testcase_num: int,
-                              status: EventStatus,
-                              stderr: Optional[str] = None) -> None:
+    def set_generation_status(self, testcase_num, status, stderr=None):
+        # type: (int, EventStatus, Optional[str]) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_terry_generation_status(self,
-                                    solution: str,
-                                    status: EventStatus,
-                                    stderr: Optional[str] = None) -> None:
+    def set_terry_generation_status(self, solution, status, stderr=None):
+        # type: (str, EventStatus, Optional[str]) -> None
         raise NotImplementedError("Please subclass this class")
 
     def set_evaluation_status(self,
-                              testcase_num: int,
-                              solution_name: str,
-                              status: EventStatus,
-                              result: Optional[EvaluationResult] = None,
-                              error: Optional[str] = None) -> None:
+                              testcase_num,  # type: int
+                              solution_name,  # type: str
+                              status,  # type: EventStatus
+                              result=None,  # type: Optional[EvaluationResult]
+                              error=None  # type: Optional[str]
+                              ):
+        # type: (...) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_terry_evaluation_status(self,
-                                    solution: str,
-                                    status: EventStatus,
-                                    error: Optional[str] = None) -> None:
+    def set_terry_evaluation_status(self, solution, status, error=None):
+        # type: (str, EventStatus, Optional[str]) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_terry_check_status(self,
-                               solution: str,
-                               status: EventStatus,
-                               error: Optional[str] = None,
-                               score: Optional[float] = None) -> None:
+    def set_terry_check_status(self, solution, status, error=None, score=None):
+        # type: (str, EventStatus, Optional[str], Optional[float]) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_subtask_score(self, subtask_num: int, solution_name: str,
-                          score: float) -> None:
+    def set_subtask_score(self, subtask_num, solution_name, score):
+        # type: (int, str, float) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_task_score(self, solution_name: str, score: float) -> None:
+    def set_task_score(self, solution_name, score):
+        # type: (str, float) -> None
         raise NotImplementedError("Please subclass this class")
 
     def set_running_tasks(self, tasks):
+        # type: (List[RunningTaskInfo]) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def print_final_status(self) -> None:
+    def print_final_status(self):
         raise NotImplementedError("Please subclass this class")
 
-    def fatal_error(self, msg: str) -> None:
+    def fatal_error(self, msg):
+        # type: (str) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def stop(self, msg: str) -> None:
+    def stop(self, msg):
+        # type: (str) -> None
         raise NotImplementedError("Please subclass this class")

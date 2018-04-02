@@ -1,4 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+
+from __future__ import print_function
+
 import os.path
 import shutil
 import sys
@@ -14,12 +17,14 @@ from python.task_maker import main
 class TestingUI(SilentUI):
     inst = None
 
-    def __init__(self, solutions: List[str], format: str) -> None:
-        super().__init__(solutions, format)
+    def __init__(self, solutions, format):
+        # type: (List[str], str) -> None
+        SilentUI.__init__(self, solutions, format)
         TestingUI.inst = self
         self.fatal_errors = []  # type: List[str]
 
-    def fatal_error(self, msg: str) -> None:
+    def fatal_error(self, msg):
+        # type: (str) -> None
         self.fatal_errors.append(msg)
         print("FATAL ERROR", msg, file=sys.stderr)
 
