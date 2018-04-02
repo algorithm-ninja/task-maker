@@ -87,14 +87,25 @@ the manager, a daemon spawned by task-maker.
 
 
 ## Compilation
-For now the only installation method available is from source, there are some
-compilation dependencies:
+If you want to compile tak-maker yourself you need the following dependencies:
 ```
 bazel python3-dev python3-setuptools python3-wheel g++
 ```
 
-You need a compiler capable of compiling C++11.
+You also need a compiler capable of compiling C++11.
 
 This is also a python3 project, you need to have Python>=3.5 as default python
 environment (running `python --version`), the easiest way to achieve this is
 via virtualenv.
+
+To start the compilation simply run:
+```
+bazel build ...
+```
+
+This will pull all the dependencies and compile everything. If you want to
+enable the optimization remember to put `-c opt` to the above command.
+
+## Archlinux
+If you are using Archlinux you may want to install task-maker from the AUR:
+[task-maker-git](https://aur.archlinux.org/packages/task-maker-git).
