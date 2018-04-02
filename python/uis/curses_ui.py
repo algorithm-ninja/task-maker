@@ -26,14 +26,16 @@ class CursesUI(SilentUI):
                                            args=(self._ui,))
         self._ui_thread.start()
 
-    def set_compilation_status(self, file_name, status, warnings=None):
-        # type: (str, EventStatus, Optional[str]) -> None
-        SilentUI.set_compilation_status(self, file_name, status, warnings)
+    def set_compilation_status(self, file_name, status, warnings=None,
+                               from_cache=False):
+        # type: (str, EventStatus, Optional[str], bool) -> None
+        SilentUI.set_compilation_status(self, file_name, status, warnings,
+                                        from_cache)
         self._max_sol_len = max(self._max_sol_len, len(file_name))
 
     # pylint: disable=no-self-use
-    def _print_compilation_status(self, status, loading, printer):
-        # type: (EventStatus, str, Printer) -> None
+    def _print_compilation_status(self, name, status, loading, printer):
+        # type: (str, EventStatus, str, Printer) -> None
         if status == WAITING:
             printer.text("...")
         elif status == RUNNING:
@@ -44,14 +46,17 @@ class CursesUI(SilentUI):
             printer.red("FAILURE")
         else:
             printer.red(EventStatus.Name(status))
+        if name in self._compilation_cache:
+            printer.text("  [cached]")
         printer.text("\n")
+
     # pylint: enable=no-self-use
 
     def _print_compilation(self, sources, loading, printer):
         # type: (List[str], str, Printer) -> None
         for comp in sorted(sources):
             printer.text("%{}s: ".format(self._max_sol_len) % comp)
-            self._print_compilation_status(self._compilation_status[comp],
+            self._print_compilation_status(comp, self._compilation_status[comp],
                                            loading, printer)
 
     def _print_generation_status(self, printer):
@@ -285,7 +290,6 @@ class CursesUI(SilentUI):
 
     def _ioi_final_status(self, printer):
         # type: (StdoutPrinter) -> None
-        printer.blue("Solutions\n")
 
         def print_testcase(sol, testcase, tc_status, max_time, max_mem):
             # type: (str, int, EvaluationResult, float, float) -> None
@@ -305,7 +309,15 @@ class CursesUI(SilentUI):
             else:
                 printer.text("%5.1fMiB" % (tc_status.memory_used_kb / 1024))
             printer.text("] %s" % tc_status.message)
+            if (sol, testcase) in self._evaluation_cache:
+                printer.text(" [cached]")
             printer.right("[%s]" % sol)
+
+        if self._generation_cache:
+            printer.text("%d/%d inputs and outputs come from the cache\n\n" % (
+                len(self._generation_cache), self._num_testcases))
+
+        printer.blue("Solutions\n")
 
         for sol in sorted(self._solution_status):
             status = self._solution_status[sol]
@@ -370,21 +382,26 @@ class CursesUI(SilentUI):
         # type: (Printer) -> None
         printer.blue("Solutions\n")
 
-        def print_phase_stats(phase, cpu_time, wall_time, memory_kb):
-            printer.text("%10s: %.3fs | %.3fs | %.1fMiB\n"
-                         % (phase, cpu_time, wall_time, memory_kb / 1024))
+        def print_phase_stats(phase, cpu_time, wall_time, memory_kb, cached):
+            # type: (str, float, float, float, bool) -> None
+            printer.text("%10s: %.3fs | %.3fs | %.1fMiB%s\n"
+                         % (phase, cpu_time, wall_time, memory_kb / 1024,
+                            " [cached]" if cached else ""))
 
         for solution, status in sorted(self._terry_test_status.items()):
             result = status.result
             printer.bold(solution + "\n")
             if status.status == DONE:
                 print_phase_stats("Generation", result.gen_cpu_time,
-                                  result.gen_wall_time, result.gen_memory_kb)
+                                  result.gen_wall_time, result.gen_memory_kb,
+                                  solution in self._terry_generation_cache)
                 print_phase_stats("Evaluation", result.eval_cpu_time,
-                                  result.eval_wall_time, result.eval_memory_kb)
+                                  result.eval_wall_time, result.eval_memory_kb,
+                                  solution in self._terry_evaluation_cache)
                 print_phase_stats("Check", result.check_cpu_time,
                                   result.check_wall_time,
-                                  result.check_memory_kb)
+                                  result.check_memory_kb,
+                                  solution in self._terry_check_cache)
                 printer.text("%10s: %s\n" % ("Seed", result.seed))
             if solution in self._compilation_errors:
                 printer.red("Compilation errors\n")

@@ -61,6 +61,8 @@ class Execution {
   int32_t StatusCode() const { return response_.status_code(); }
   int32_t Signal() const { return response_.signal(); }
 
+  bool Cached() const { return cached_; }
+
   Execution(const Execution&) = delete;
   Execution& operator=(const Execution&) = delete;
   Execution(Execution&&) = delete;

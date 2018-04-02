@@ -130,5 +130,11 @@ def get_parser():
         choices=["ioi", "terry"],
         action="store",
         default=None)
+    parser.add_argument(
+        "--seed",
+        help="Seed for the terry generator",
+        type=int,
+        action="store",
+        default=None)
 
     return parser

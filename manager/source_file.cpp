@@ -142,7 +142,8 @@ CompiledSourceFile::CompiledSourceFile(
   compilation_->SetCallback([this, queue, source,
                              name](const core::TaskStatus& status) -> bool {
     if (status.event == core::TaskStatus::FAILURE) {
-      queue->CompilationFailure(name_, status.message);
+      queue->CompilationFailure(name_, status.message,
+                                status.execution_info->Cached());
       return false;
     }
     if (status.type == core::TaskStatus::FILE_LOAD) return true;
@@ -152,7 +153,8 @@ CompiledSourceFile::CompiledSourceFile(
     if (status.event == core::TaskStatus::SUCCESS) {
       if (status.execution_info->Success()) {
         queue->CompilationDone(
-            name_, status.execution_info->Stderr()->Contents(1024 * 1024));
+            name_, status.execution_info->Stderr()->Contents(1024 * 1024),
+            status.execution_info->Cached());
         if (!source.write_bin_to().empty()) {
           compiled_->WriteTo(source.write_bin_to());
           chmod(source.write_bin_to().c_str(), S_IRUSR | S_IWUSR | S_IXUSR);
@@ -160,8 +162,10 @@ CompiledSourceFile::CompiledSourceFile(
         }
       } else {
         queue->CompilationFailure(
-            name_, status.message + "\n" +
-                       status.execution_info->Stderr()->Contents(1024 * 1024));
+            name_,
+            status.message + "\n" +
+                status.execution_info->Stderr()->Contents(1024 * 1024),
+            status.execution_info->Cached());
         return !fatal_failures_;
       }
     }
@@ -197,11 +201,13 @@ NotCompiledSourceFile::NotCompiledSourceFile(
   program_->SetCallback(
       [this, queue, source](const core::TaskStatus& status) -> bool {
         if (status.event == core::TaskStatus::FAILURE) {
-          queue->CompilationFailure(name_, "Error loading file");
+          queue->CompilationFailure(name_, "Error loading file",
+                                    status.execution_info->Cached());
           return false;
         }
         if (status.event == core::TaskStatus::SUCCESS) {
-          queue->CompilationDone(name_, "");
+          // the file is not compiled so it doesn't came from the cache
+          queue->CompilationDone(name_, "", false);
           if (!source.write_bin_to().empty()) {
             program_->WriteTo(source.write_bin_to());
             chmod(source.write_bin_to().c_str(), S_IRUSR | S_IWUSR | S_IXUSR);

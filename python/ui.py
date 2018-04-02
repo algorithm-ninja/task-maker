@@ -3,7 +3,7 @@
 from typing import List
 from typing import Optional
 
-from proto.event_pb2 import Event, EventStatus, EvaluationResult,\
+from proto.event_pb2 import Event, EventStatus, EvaluationResult, \
     RunningTaskInfo
 
 
@@ -29,31 +29,36 @@ class UI:
         elif event_type == "compilation":
             compilation = event.compilation
             self.set_compilation_status(compilation.filename,
-                                        compilation.status, compilation.stderr)
+                                        compilation.status,
+                                        compilation.stderr,
+                                        compilation.from_cache)
         elif event_type == "generation":
             generation = event.generation
             self.set_generation_status(generation.testcase, generation.status,
-                                       generation.error)
+                                       generation.error, generation.from_cache)
         elif event_type == "terry_generation":
             generation = event.terry_generation
             self.set_terry_generation_status(generation.solution,
                                              generation.status,
-                                             generation.error)
+                                             generation.error,
+                                             generation.from_cache)
         elif event_type == "evaluation":
             evaluation = event.evaluation
             res = evaluation.result if evaluation.HasField("result") else None
             self.set_evaluation_status(evaluation.testcase, evaluation.solution,
-                                       evaluation.status, res)
+                                       evaluation.status, res, None,
+                                       evaluation.from_cache)
         elif event_type == "terry_evaluation":
             evaluation = event.terry_evaluation
             self.set_terry_evaluation_status(evaluation.solution,
                                              evaluation.status,
-                                             evaluation.errors)
+                                             evaluation.errors,
+                                             evaluation.from_cache)
         elif event_type == "terry_check":
             check = event.terry_check
             res = check.result if check.HasField("result") else None
             self.set_terry_check_status(check.solution, check.status,
-                                        check.errors, res)
+                                        check.errors, res, check.from_cache)
         elif event_type == "running_tasks":
             self.set_running_tasks(event.running_tasks.task)
 
@@ -77,16 +82,19 @@ class UI:
         # type: (int, float, List[int]) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_compilation_status(self, file_name, status, warnings=None):
-        # type: (str, EventStatus, Optional[str]) -> None
+    def set_compilation_status(self, file_name, status, warnings=None,
+                               from_cache=False):
+        # type: (str, EventStatus, Optional[str], bool) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_generation_status(self, testcase_num, status, stderr=None):
-        # type: (int, EventStatus, Optional[str]) -> None
+    def set_generation_status(self, testcase_num, status, stderr=None,
+                              from_cache=False):
+        # type: (int, EventStatus, Optional[str], bool) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_terry_generation_status(self, solution, status, stderr=None):
-        # type: (str, EventStatus, Optional[str]) -> None
+    def set_terry_generation_status(self, solution, status, stderr=None,
+                                    from_cache=False):
+        # type: (str, EventStatus, Optional[str], bool) -> None
         raise NotImplementedError("Please subclass this class")
 
     def set_evaluation_status(self,
@@ -94,17 +102,20 @@ class UI:
                               solution_name,  # type: str
                               status,  # type: EventStatus
                               result=None,  # type: Optional[EvaluationResult]
-                              error=None  # type: Optional[str]
+                              error=None,  # type: Optional[str],
+                              from_cache=False  # type: bool
                               ):
         # type: (...) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_terry_evaluation_status(self, solution, status, error=None):
-        # type: (str, EventStatus, Optional[str]) -> None
+    def set_terry_evaluation_status(self, solution, status, error=None,
+                                    from_cache=False):
+        # type: (str, EventStatus, Optional[str], bool) -> None
         raise NotImplementedError("Please subclass this class")
 
-    def set_terry_check_status(self, solution, status, error=None, score=None):
-        # type: (str, EventStatus, Optional[str], Optional[float]) -> None
+    def set_terry_check_status(self, solution, status, error=None,
+                               score=None, from_cache=False):
+        # type: (str, EventStatus, Optional[str], Optional[float], bool) -> None
         raise NotImplementedError("Please subclass this class")
 
     def set_subtask_score(self, subtask_num, solution_name, score):

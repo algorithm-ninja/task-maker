@@ -2,11 +2,12 @@
 
 from __future__ import print_function
 
-from proto.event_pb2 import EvaluationResult, TerryEvaluationResult, \
-    RunningTaskInfo, EventStatus, DONE
 from typing import Dict  # pylint: disable=unused-import
 from typing import List
 from typing import Optional
+
+from proto.event_pb2 import EvaluationResult, TerryEvaluationResult, \
+    RunningTaskInfo, EventStatus, DONE
 
 from python.ui import UI
 
@@ -32,26 +33,33 @@ class PrintUI(UI):
         print("Subtask %d has max score %.2f and %d testcases" %
               (subtask_num, max_score, len(testcases)))
 
-    def set_compilation_status(self, file_name, status, warnings=None):
-        # type: (str, EventStatus, Optional[str]) -> None
+    def set_compilation_status(self, file_name, status, warnings=None,
+                               from_cache=False):
+        # type: (str, EventStatus, Optional[str], bool) -> None
         is_solution = file_name in self.solutions
-        print("%sStatus of the compilation of %s is %s" %
-              ("[sol] " if is_solution else "", file_name,
-               EventStatus.Name(status)))
+        print("%sStatus of the compilation of %s is %s%s" %
+              ("[sol] " if is_solution else "",
+               file_name,
+               EventStatus.Name(status),
+               " [cached]" if from_cache else ""))
         if warnings:
             print("Compiler output:", warnings, sep="\n")
 
-    def set_generation_status(self, testcase_num, status, stderr=None):
-        # type: (int, EventStatus, Optional[str]) -> None
-        print("Status of the generation of testcase %d is %s"
-              % (testcase_num, EventStatus.Name(status)))
+    def set_generation_status(self, testcase_num, status, stderr=None,
+                              from_cache=False):
+        # type: (int, EventStatus, Optional[str], bool) -> None
+        print("Status of the generation of testcase %d is %s%s"
+              % (testcase_num, EventStatus.Name(status),
+                 " [cached]" if from_cache else ""))
         if stderr:
             print("Errors:", stderr, sep="\n")
 
-    def set_terry_generation_status(self, solution, status, stderr=None):
-        # type: (str, EventStatus, Optional[str]) -> None
-        print("Status of the generation of input for %s is %s"
-              % (solution, EventStatus.Name(status)))
+    def set_terry_generation_status(self, solution, status, stderr=None,
+                                    from_cache=False):
+        # type: (str, EventStatus, Optional[str], bool) -> None
+        print("Status of the generation of input for %s is %s%s"
+              % (solution, EventStatus.Name(status),
+                 " [cached]" if from_cache else ""))
         if stderr:
             print("Errors:", stderr, sep="\n")
 
@@ -60,11 +68,13 @@ class PrintUI(UI):
                               solution_name,  # type: str
                               status,  # type: EventStatus
                               result=None,  # type: Optional[EvaluationResult]
-                              error=None  # type: Optional[str]
+                              error=None,  # type: Optional[str]
+                              from_cache=False  # type: bool
                               ):
         # type: (...) -> None
-        print("Status of the evaluation of solution %s on testcase %d: %s" %
-              (solution_name, testcase_num, EventStatus.Name(status)))
+        print("Status of the evaluation of solution %s on testcase %d: %s%s" %
+              (solution_name, testcase_num, EventStatus.Name(status),
+               " [cached]" if from_cache else ""))
         if error:
             print("Errors:", error, sep="\n")
         if status == DONE:
@@ -74,10 +84,12 @@ class PrintUI(UI):
                   (result.cpu_time_used, result.wall_time_used,
                    result.memory_used_kb / 1024))
 
-    def set_terry_evaluation_status(self, solution, status, error=None):
-        # type: (str, EventStatus, Optional[str]) -> None
-        print("Status of the evaluation of solution %s is %s"
-              % (solution, EventStatus.Name(status)))
+    def set_terry_evaluation_status(self, solution, status, error=None,
+                                    from_cache=False):
+        # type: (str, EventStatus, Optional[str], bool) -> None
+        print("Status of the evaluation of solution %s is %s%s"
+              % (solution, EventStatus.Name(status),
+                 " [cached]" if from_cache else ""))
         if error:
             print("Errors:", error, sep="\n")
 
@@ -85,12 +97,14 @@ class PrintUI(UI):
                                solution,  # type: str
                                status,  # type: EventStatus
                                error=None,  # type: Optional[str]
-                               result=None
+                               result=None,
                                # type: Optional[TerryEvaluationResult]
+                               from_cache=False  # type: bool
                                ):
         # type: (...) -> None
-        print("Status of the checking of solution %s is %s"
-              % (solution, EventStatus.Name(status)))
+        print("Status of the checking of solution %s is %s%s"
+              % (solution, EventStatus.Name(status),
+                 " [cached]" if from_cache else ""))
         if error:
             print("Errors:", error, sep="\n")
         if result is not None:

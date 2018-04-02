@@ -43,11 +43,11 @@ void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
     if (status.event == core::TaskStatus::SUCCESS) {
       auto exec = status.execution_info;
       if (exec->Success()) {
-        queue_->TerryGenerated(name);
+        queue_->TerryGenerated(name, exec->Cached());
       } else {
         queue_->TerryGenerationFailure(
-            name,
-            status.message + "\n" + exec->Stderr()->Contents(1024 * 1024));
+            name, status.message + "\n" + exec->Stderr()->Contents(1024 * 1024),
+            exec->Cached());
         return false;
       }
     }
@@ -70,30 +70,31 @@ void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
     validation->SetExecutor(executor_);
     // do the execution only after the validation
     execution->Input("dependency_tracker", validation->Stdout());
-    validation->SetCallback([this,
-                             name](const core::TaskStatus& status) -> bool {
-      if (status.type == core::TaskStatus::FILE_LOAD)
-        return !(status.event == core::TaskStatus::FAILURE);
-      if (status.event == core::TaskStatus::START)
-        queue_->TerryValidating(name);
-      if (status.event == core::TaskStatus::SUCCESS) {
-        auto exec = status.execution_info;
-        if (exec->Success()) {
-          queue_->TerryValidated(name);
-        } else {
-          queue_->TerryGenerationFailure(
-              name,
-              status.message + "\n" + exec->Stderr()->Contents(1024 * 1024));
-          return false;
-        }
-      }
-      if (status.event == core::TaskStatus::FAILURE) {
-        queue_->FatalError(status.message + ": " +
-                           status.execution_info->Message());
-        return false;
-      }
-      return true;
-    });
+    validation->SetCallback(
+        [this, name](const core::TaskStatus& status) -> bool {
+          if (status.type == core::TaskStatus::FILE_LOAD)
+            return !(status.event == core::TaskStatus::FAILURE);
+          if (status.event == core::TaskStatus::START)
+            queue_->TerryValidating(name);
+          if (status.event == core::TaskStatus::SUCCESS) {
+            auto exec = status.execution_info;
+            if (exec->Success()) {
+              queue_->TerryValidated(name, exec->Cached());
+            } else {
+              queue_->TerryGenerationFailure(
+                  name,
+                  status.message + "\n" + exec->Stderr()->Contents(1024 * 1024),
+                  exec->Cached());
+              return false;
+            }
+          }
+          if (status.event == core::TaskStatus::FAILURE) {
+            queue_->FatalError(status.message + ": " +
+                               status.execution_info->Message());
+            return false;
+          }
+          return true;
+        });
   }
 
   execution->Stdin(input);
@@ -110,11 +111,11 @@ void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
     if (status.event == core::TaskStatus::SUCCESS) {
       auto exec = status.execution_info;
       if (exec->Success()) {
-        queue_->TerryEvaluated(name);
+        queue_->TerryEvaluated(name, exec->Cached());
       } else {
         queue_->TerryEvaluationFailure(
-            name,
-            status.message + "\n" + exec->Stderr()->Contents(1024 * 1024));
+            name, status.message + "\n" + exec->Stderr()->Contents(1024 * 1024),
+            exec->Cached());
       }
     }
     if (status.event == core::TaskStatus::FAILURE) {
@@ -134,7 +135,8 @@ void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
   checker->SetExecutor(executor_);
   core::FileID* checker_results = checker->Stdout();
   checker->SetCallback([this, name, checker_results, generation, execution,
-                        checker, s_seed](const core::TaskStatus& status) -> bool {
+                        checker,
+                        s_seed](const core::TaskStatus& status) -> bool {
     if (status.type == core::TaskStatus::FILE_LOAD)
       return !(status.event == core::TaskStatus::FAILURE);
     if (status.event == core::TaskStatus::START) queue_->TerryChecking(name);
@@ -168,11 +170,11 @@ void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
         result.set_check_wall_time(checker->WallTime());
         result.set_check_memory_kb(checker->Memory());
         result.set_seed(s_seed);
-        queue_->TerryChecked(name, std::move(result));
+        queue_->TerryChecked(name, std::move(result), exec->Cached());
       } else {
         queue_->TerryCheckingFailure(
-            name,
-            status.message + "\n" + exec->Stderr()->Contents(1024 * 1024));
+            name, status.message + "\n" + exec->Stderr()->Contents(1024 * 1024),
+            exec->Cached());
         return false;
       }
     }

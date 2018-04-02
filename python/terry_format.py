@@ -96,7 +96,10 @@ def get_request(args):
         absolutize_source_file(source_file)
         terry_solution = TerrySolution()
         terry_solution.solution.CopyFrom(source_file)
-        terry_solution.seed = random.randint(0, 2 ** 32 - 1)
+        if args.seed:
+            terry_solution.seed = args.seed
+        else:
+            terry_solution.seed = random.randint(0, 2 ** 32 - 1)
         request.solutions.extend([terry_solution])
     request.store_dir = absolutize_path(args.store_dir)
     request.temp_dir = absolutize_path(args.temp_dir)

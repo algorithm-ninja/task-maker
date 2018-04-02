@@ -43,6 +43,7 @@ message Compilation {
   // WAITING, RUNNING, DONE, FAILURE
   EventStatus status = 2;
   string stderr = 3;
+  bool from_cache = 4;
 }
 
 message Generation {
@@ -51,6 +52,7 @@ message Generation {
   // FAILURE
   EventStatus status = 2;
   string error = 3;
+  bool from_cache = 4;
 }
 
 message TerryGeneration {
@@ -58,6 +60,7 @@ message TerryGeneration {
   // WAITING, GENERATING, GENERATED, VALIDATING, VALIDATED, FAILURE
   EventStatus status = 2;
   string error = 3;
+  bool from_cache = 4;
 }
 
 message EvaluationResult {
@@ -74,6 +77,7 @@ message Evaluation {
   // WAITING, EXECUTING, EXECUTED, CHECKING, DONE, FAILURE
   EventStatus status = 3;
   EvaluationResult result = 4;
+  bool from_cache = 5;
 }
 
 message TerryEvaluation {
@@ -81,6 +85,7 @@ message TerryEvaluation {
   // EXECUTING, EXECUTED, FAILURE
   EventStatus status = 2;
   string errors = 3;
+  bool from_cache = 4;
 }
 
 message TerryEvaluationResult {
@@ -104,6 +109,7 @@ message TerryCheck {
   EventStatus status = 2;
   string errors = 3;
   TerryEvaluationResult result = 4;
+  bool from_cache = 5;
 }
 
 message EvaluationStarted {
