@@ -7,6 +7,7 @@ py_library(
     srcs = ["language.py"],
     deps = [
         "//proto:task_py",
+        requirement("typing"),
     ],
 )
 
@@ -18,6 +19,9 @@ py_library(
 py_library(
     name = "detect_format",
     srcs = ["detect_format.py"],
+    deps = [
+        requirement("typing"),
+    ]
 )
 
 py_library(
@@ -28,6 +32,7 @@ py_library(
         ":detect_exe",
         ":language",
         "//proto:task_py",
+        requirement("typing"),
     ],
 )
 
@@ -36,6 +41,7 @@ py_library(
     srcs = ["ui.py"],
     deps = [
         "//proto:event_py",
+        requirement("typing"),
     ],
 )
 
@@ -45,6 +51,7 @@ py_library(
     deps = [
         ":ui",
         "//proto:event_py",
+        requirement("typing"),
     ],
 )
 
@@ -56,6 +63,7 @@ py_library(
         ":silent_ui",
         ":ui",
         "//proto:event_py",
+        requirement("typing"),
     ],
 )
 
@@ -65,6 +73,7 @@ py_library(
     deps = [
         ":ui",
         "//proto:event_py",
+        requirement("typing"),
     ],
 )
 
@@ -74,6 +83,7 @@ py_library(
     deps = [
         ":language",
         "//proto:task_py",
+        requirement("typing"),
     ],
 )
 
@@ -82,6 +92,7 @@ py_library(
     srcs = ["sanitize.py"],
     deps = [
         ":dependency_finder",
+        requirement("typing"),
     ],
 )
 
@@ -97,6 +108,7 @@ py_library(
         "//proto:manager_py",
         "//proto:task_py",
         requirement("PyYAML"),
+        requirement("typing"),
     ],
 )
 
@@ -111,6 +123,7 @@ py_library(
         "//proto:manager_py",
         "//proto:task_py",
         requirement("PyYAML"),
+        requirement("typing"),
     ],
 )
 
@@ -153,5 +166,6 @@ py_binary(
         ":terry_format",
         requirement("grpcio"),
         requirement("python-daemon"),
+        requirement("typing"),
     ],
 )
