@@ -9,15 +9,16 @@
 #include "core/task_status.hpp"
 #include "manager/event_queue.hpp"
 #include "proto/task.pb.h"
+#include "proto/manager.pb.h"
 
 namespace manager {
 class SourceFile {
  public:
-  // TODO(edomora97) cache_mode and executor
   static std::unique_ptr<SourceFile> FromProto(
       EventQueue* queue, core::Core* core, const proto::SourceFile& source,
       const absl::optional<proto::GraderInfo>& grader,
-      bool fatal_failures, bool keep_sandbox);
+      bool fatal_failures, bool keep_sandbox, proto::CacheMode cache_mode,
+      const std::string& executor);
   virtual core::Execution* execute(const std::string& description,
                                    const std::vector<std::string>& args,
                                    bool keep_sandbox) = 0;

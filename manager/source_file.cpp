@@ -14,7 +14,8 @@ class CompiledSourceFile : public SourceFile {
                      const proto::SourceFile& source, const std::string& name,
                      const std::string& exe_name,
                      const absl::optional<proto::GraderInfo>& grader,
-                     bool fatal_failures, bool keep_sandbox);
+                     bool fatal_failures, bool keep_sandbox,
+                     proto::CacheMode cache_mode, const std::string& executor);
 
   core::Execution* execute(const std::string& description,
                            const std::vector<std::string>& args,
@@ -57,7 +58,8 @@ class NotCompiledSourceFile : public SourceFile {
 std::unique_ptr<SourceFile> SourceFile::FromProto(
     EventQueue* queue, core::Core* core, const proto::SourceFile& source,
     const absl::optional<proto::GraderInfo>& grader, bool fatal_failures,
-    bool keep_sandbox) {
+    bool keep_sandbox, proto::CacheMode cache_mode,
+    const std::string& executor) {
   // the name of the source file is mainly used in the evaluation process, it
   // will be sent to the queue. Maybe we want to send the absolute path?
   std::string name =
@@ -69,7 +71,7 @@ std::unique_ptr<SourceFile> SourceFile::FromProto(
     case proto::PASCAL:
       return absl::make_unique<CompiledSourceFile>(
           queue, core, source, std::move(name), std::move(exe_name), grader,
-          fatal_failures, keep_sandbox);
+          fatal_failures, keep_sandbox, cache_mode, executor);
     default:
       return absl::make_unique<NotCompiledSourceFile>(
           queue, core, source, std::move(name), std::move(exe_name),
@@ -81,7 +83,7 @@ CompiledSourceFile::CompiledSourceFile(
     EventQueue* queue, core::Core* core, const proto::SourceFile& source,
     const std::string& name, const std::string& exe_name,
     const absl::optional<proto::GraderInfo>& grader, bool fatal_failures,
-    bool keep_sandbox)
+    bool keep_sandbox, proto::CacheMode cache_mode, const std::string& executor)
     : SourceFile(core, queue, name, exe_name, fatal_failures) {
   std::string compiler;
   std::vector<std::string> args;
@@ -133,7 +135,11 @@ CompiledSourceFile::CompiledSourceFile(
   }
   compilation_ = core->AddExecution("Compilation of " + source.path(), compiler,
                                     args, keep_sandbox);
-
+  if (cache_mode == proto::ALL)
+    compilation_->SetCachingMode(core::Execution::SAME_EXECUTOR);
+  else
+    compilation_->SetCachingMode(core::Execution::NEVER);
+  if (!executor.empty()) compilation_->SetExecutor(executor);
   compilation_->Input(name_, input_file);
   compiled_ =
       compilation_->Output(exe_name, "Compiled file of " + source.path());
