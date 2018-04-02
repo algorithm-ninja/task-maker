@@ -9,6 +9,11 @@ jobs:
       - run:
           name: Install dependencies
           command: |
+            cat > /etc/pacman.d/mirrorlist <<EOF
+            Server = https://archlinux.surlyjake.com/archlinux/$repo/os/$arch
+            Server = http://mirrors.evowise.com/archlinux/$repo/os/$arch
+            Server = http://mirror.rackspace.com/archlinux/$repo/os/$arch
+            EOF
             pacman -Syu --noconfirm jdk8-openjdk bazel gcc make python-virtualenv python-wheel
       - run:
           name: Configure bazel
