@@ -43,7 +43,7 @@ def _strip_tar_impl(ctx):
       find %s -type f -name '*.pyc' -delete &&
       find %s -type f -name '*.so' | xargs strip -s &&
       tar Jcf %s -C %s . --strip-components=1
-    """ % (temp.path, input.path, temp.path, temp.path, temp.path, temp.path, output.path, temp.path))
+    """ % (temp.path, input.path, temp.path, temp.path, temp.path, output.path, temp.path))
 
 def _pkg_tar_impl(ctx):
   """Implementation of the pkg_tar rule."""

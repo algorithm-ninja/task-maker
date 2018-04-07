@@ -63,7 +63,7 @@ jobs:
             - task-maker-v2-{{ arch }}-
       - run:
           name: Build
-          command: bazel build ...
+          command: bazel build manager python:task_maker remote:all
       - run:
           name: Test
           command: bazel test ...
