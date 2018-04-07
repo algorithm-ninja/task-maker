@@ -39,12 +39,13 @@ class EventQueue {
   void CompilationRunning(const std::string& filename) {
     Compilation(filename, proto::EventStatus::RUNNING);
   }
-  void CompilationDone(const std::string& filename, const std::string& errors) {
-    Compilation(filename, proto::EventStatus::DONE, errors);
+  void CompilationDone(const std::string& filename, const std::string& errors,
+                       bool from_cache) {
+    Compilation(filename, proto::EventStatus::DONE, errors, from_cache);
   }
   void CompilationFailure(const std::string& filename,
-                          const std::string& errors) {
-    Compilation(filename, proto::EventStatus::FAILURE, errors);
+                          const std::string& errors, bool from_cache) {
+    Compilation(filename, proto::EventStatus::FAILURE, errors, from_cache);
   }
   void GenerationWaiting(int64_t testcase) {
     Generation(testcase, proto::EventStatus::WAITING);
@@ -58,11 +59,11 @@ class EventQueue {
   void TerryGenerating(const std::string& solution) {
     TerryGeneration(solution, proto::EventStatus::GENERATING);
   }
-  void Generated(int64_t testcase) {
-    Generation(testcase, proto::EventStatus::GENERATED);
+  void Generated(int64_t testcase, bool from_cache) {
+    Generation(testcase, proto::EventStatus::GENERATED, "", from_cache);
   }
-  void TerryGenerated(const std::string& solution) {
-    TerryGeneration(solution, proto::EventStatus::GENERATED);
+  void TerryGenerated(const std::string& solution, bool from_cache) {
+    TerryGeneration(solution, proto::EventStatus::GENERATED, "", from_cache);
   }
   void Validating(int64_t testcase) {
     Generation(testcase, proto::EventStatus::VALIDATING);
@@ -70,24 +71,25 @@ class EventQueue {
   void TerryValidating(const std::string& solution) {
     TerryGeneration(solution, proto::EventStatus::VALIDATING);
   }
-  void Validated(int64_t testcase) {
-    Generation(testcase, proto::EventStatus::VALIDATED);
+  void Validated(int64_t testcase, bool from_cache) {
+    Generation(testcase, proto::EventStatus::VALIDATED, "", from_cache);
   }
-  void TerryValidated(const std::string& solution) {
-    TerryGeneration(solution, proto::EventStatus::VALIDATED);
+  void TerryValidated(const std::string& solution, bool from_cache) {
+    TerryGeneration(solution, proto::EventStatus::VALIDATED, "", from_cache);
   }
   void Solving(int64_t testcase) {
     Generation(testcase, proto::EventStatus::SOLVING);
   }
-  void GenerationDone(int64_t testcase) {
-    Generation(testcase, proto::EventStatus::DONE);
+  void GenerationDone(int64_t testcase, bool from_cache) {
+    Generation(testcase, proto::EventStatus::DONE, "", from_cache);
   }
-  void GenerationFailure(int64_t testcase, const std::string& errors) {
-    Generation(testcase, proto::EventStatus::FAILURE, errors);
+  void GenerationFailure(int64_t testcase, const std::string& errors,
+                         bool from_cache) {
+    Generation(testcase, proto::EventStatus::FAILURE, errors, from_cache);
   }
   void TerryGenerationFailure(const std::string& solution,
-                              const std::string& errors) {
-    TerryGeneration(solution, proto::EventStatus::FAILURE, errors);
+                              const std::string& errors, bool from_cache) {
+    TerryGeneration(solution, proto::EventStatus::FAILURE, errors, from_cache);
   }
   void EvaluationWaiting(const std::string& solution, int64_t testcase) {
     Evaluation(solution, testcase, proto::EventStatus::WAITING);
@@ -98,11 +100,13 @@ class EventQueue {
   void TerryEvaluating(const std::string& solution) {
     TerryEvaluation(solution, proto::EventStatus::EXECUTING);
   }
-  void Executed(const std::string& solution, int64_t testcase) {
-    Evaluation(solution, testcase, proto::EventStatus::EXECUTED);
+  void Executed(const std::string& solution, int64_t testcase,
+                bool from_cache) {
+    Evaluation(solution, testcase, proto::EventStatus::EXECUTED, {},
+               from_cache);
   }
-  void TerryEvaluated(const std::string& solution) {
-    TerryEvaluation(solution, proto::EventStatus::EXECUTED);
+  void TerryEvaluated(const std::string& solution, bool from_cache) {
+    TerryEvaluation(solution, proto::EventStatus::EXECUTED, "", from_cache);
   }
   void Checking(const std::string& solution, int64_t testcase) {
     Evaluation(solution, testcase, proto::EventStatus::CHECKING);
@@ -111,38 +115,40 @@ class EventQueue {
     TerryCheck(solution, proto::EventStatus::CHECKING);
   }
   void TerryChecked(const std::string& solution,
-                    proto::TerryEvaluationResult result) {
-    TerryCheck(solution, proto::EventStatus::DONE, "", std::move(result));
+                    proto::TerryEvaluationResult result, bool from_cache) {
+    TerryCheck(solution, proto::EventStatus::DONE, "", std::move(result),
+               from_cache);
   }
   void TerryCheckingFailure(const std::string& solution,
-                            const std::string& errors) {
-    TerryCheck(solution, proto::EventStatus::FAILURE, errors);
+                            const std::string& errors, bool from_cache) {
+    TerryCheck(solution, proto::EventStatus::FAILURE, errors, {}, from_cache);
   }
   void EvaluationDone(const std::string& solution, int64_t testcase,
                       float score, const std::string& message, float cpu_time,
-                      float wall_time, int64_t memory) {
+                      float wall_time, int64_t memory, bool from_cache) {
     proto::EvaluationResult result;
     result.set_score(score);
     result.set_message(message);
     result.set_cpu_time_used(cpu_time);
     result.set_wall_time_used(wall_time);
     result.set_memory_used_kb(memory);
-    Evaluation(solution, testcase, proto::EventStatus::DONE, std::move(result));
+    Evaluation(solution, testcase, proto::EventStatus::DONE, std::move(result),
+               from_cache);
   }
   void EvaluationFailure(const std::string& solution, int64_t testcase,
                          const std::string& message, float cpu_time,
-                         float wall_time, int64_t memory) {
+                         float wall_time, int64_t memory, bool from_cache) {
     proto::EvaluationResult result;
     result.set_message(message);
     result.set_cpu_time_used(cpu_time);
     result.set_wall_time_used(wall_time);
     result.set_memory_used_kb(memory);
     Evaluation(solution, testcase, proto::EventStatus::FAILURE,
-               std::move(result));
+               std::move(result), from_cache);
   }
   void TerryEvaluationFailure(const std::string& solution,
-                              const std::string& errors) {
-    TerryEvaluation(solution, proto::EventStatus::FAILURE, errors);
+                              const std::string& errors, bool from_cache) {
+    TerryEvaluation(solution, proto::EventStatus::FAILURE, errors, from_cache);
   }
   absl::optional<proto::Event> Dequeue();
   void Stop();
@@ -154,65 +160,75 @@ class EventQueue {
   bool stopped_ GUARDED_BY(queue_mutex_) = false;
   void Enqueue(proto::Event&& event);
   void Compilation(const std::string& filename, proto::EventStatus status,
-                   const std::string& errors = "") {
+                   const std::string& errors = "", bool from_cache = false) {
     proto::Event event;
     auto* sub_event = event.mutable_compilation();
     sub_event->set_filename(filename);
     sub_event->set_status(status);
+    sub_event->set_from_cache(from_cache);
     if (!errors.empty()) {
       sub_event->set_stderr(errors);
     }
     Enqueue(std::move(event));
   }
   void Generation(int64_t testcase, proto::EventStatus status,
-                  const std::string& errors = "") {
+                  const std::string& errors = "", bool from_cache = false) {
     proto::Event event;
     auto* sub_event = event.mutable_generation();
     sub_event->set_testcase(testcase);
     sub_event->set_status(status);
+    sub_event->set_from_cache(from_cache);
     if (!errors.empty()) {
       sub_event->set_error(errors);
     }
     Enqueue(std::move(event));
   }
   void TerryGeneration(const std::string& solution, proto::EventStatus status,
-                       const std::string& errors = "") {
+                       const std::string& errors = "",
+                       bool from_cache = false) {
     proto::Event event;
     auto* sub_event = event.mutable_terry_generation();
     sub_event->set_solution(solution);
     sub_event->set_status(status);
+    sub_event->set_from_cache(from_cache);
     if (!errors.empty()) sub_event->set_error(errors);
     Enqueue(std::move(event));
   }
   void Evaluation(const std::string& solution, int64_t testcase,
                   proto::EventStatus status,
-                  absl::optional<proto::EvaluationResult>&& result = {}) {
+                  absl::optional<proto::EvaluationResult>&& result = {},
+                  bool from_cache = false) {
     proto::Event event;
     auto* sub_event = event.mutable_evaluation();
     sub_event->set_solution(solution);
     sub_event->set_testcase(testcase);
     sub_event->set_status(status);
+    sub_event->set_from_cache(from_cache);
     if (result.has_value()) {
       sub_event->mutable_result()->Swap(&result.value());
     }
     Enqueue(std::move(event));
   }
   void TerryEvaluation(const std::string& solution, proto::EventStatus status,
-                       const std::string& errors = "") {
+                       const std::string& errors = "",
+                       bool from_cache = false) {
     proto::Event event;
     auto* sub_event = event.mutable_terry_evaluation();
     sub_event->set_solution(solution);
     sub_event->set_status(status);
+    sub_event->set_from_cache(from_cache);
     if (!errors.empty()) sub_event->set_errors(errors);
     Enqueue(std::move(event));
   }
   void TerryCheck(const std::string& solution, proto::EventStatus status,
                   const std::string& errors = "",
-                  absl::optional<proto::TerryEvaluationResult>&& result = {}) {
+                  absl::optional<proto::TerryEvaluationResult>&& result = {},
+                  bool from_cache = false) {
     proto::Event event;
     auto* sub_event = event.mutable_terry_check();
     sub_event->set_solution(solution);
     sub_event->set_status(status);
+    sub_event->set_from_cache(from_cache);
     if (!errors.empty()) sub_event->set_errors(errors);
     if (result.has_value()) sub_event->mutable_result()->Swap(&result.value());
     Enqueue(std::move(event));

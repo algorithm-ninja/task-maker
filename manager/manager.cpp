@@ -144,7 +144,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
         grader = graders[source.language()];
       info.source_files[source.path()] = manager::SourceFile::FromProto(
           info.queue.get(), info.core.get(), source, grader, false,
-          request.keep_sandbox());
+          request.keep_sandbox(), request.cache_mode(), request.evaluate_on());
       auto* evaluation =
           reinterpret_cast<manager::IOIEvaluation*>(info.evaluation.get());
       evaluation->Evaluate(info.source_files[source.path()].get());
@@ -176,7 +176,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
       int64_t seed = solution.seed();
       info.source_files[source.path()] = manager::SourceFile::FromProto(
           info.queue.get(), info.core.get(), source, {}, false,
-          request.keep_sandbox());
+          request.keep_sandbox(), request.cache_mode(), request.evaluate_on());
       auto* evaluation =
           reinterpret_cast<manager::TerryEvaluation*>(info.evaluation.get());
       evaluation->Evaluate(info.source_files[source.path()].get(), seed);

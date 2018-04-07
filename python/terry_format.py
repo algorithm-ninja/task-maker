@@ -1,12 +1,13 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import argparse
 import glob
-import os.path
 import platform
 import random
 
+import os.path
 from proto.manager_pb2 import EvaluateTerryTaskRequest, TerrySolution
 from proto.task_pb2 import TerryTask, DEFAULT, X86_64, I686
+from typing import Any
 
 from python.absolutize import absolutize_source_file, absolutize_path
 from python.ioi_format import parse_task_yaml, get_options, list_files
@@ -14,6 +15,7 @@ from python.source_file import from_file
 
 
 def get_extension(target_arch=DEFAULT):
+    # type: (int) -> str
     if target_arch == DEFAULT:
         return "." + platform.system().lower() + "." + platform.machine()
     elif target_arch == X86_64:
@@ -25,6 +27,7 @@ def get_extension(target_arch=DEFAULT):
 
 
 def create_task_from_yaml(data):
+    # type: (Any) -> TerryTask
     name = get_options(data, ["name", "nome_breve"])
     title = get_options(data, ["description", "nome"])
     max_score = get_options(data, ["max_score"])
@@ -41,11 +44,12 @@ def create_task_from_yaml(data):
 
 
 def get_manager(manager, target_arch, optional=False):
+    # type: (str, int, bool) -> Any
     managers = list_files(["managers/%s.*" % manager], exclude=[
         "managers/%s.*.*" % manager])
     if len(managers) == 0:
         if not optional:
-            raise FileNotFoundError("Missing manager: %s" % manager)
+            raise IOError("Missing manager: %s" % manager)
         return None
     if len(managers) != 1:
         raise ValueError("Ambiguous manager: " + ", ".join(managers))
@@ -54,7 +58,8 @@ def get_manager(manager, target_arch, optional=False):
                      target_arch)
 
 
-def get_request(args: argparse.Namespace):
+def get_request(args):
+    # type: (argparse.Namespace) -> EvaluateTerryTaskRequest
     data = parse_task_yaml()
     if not data:
         raise RuntimeError("The task.yaml is not valid")
@@ -91,7 +96,10 @@ def get_request(args: argparse.Namespace):
         absolutize_source_file(source_file)
         terry_solution = TerrySolution()
         terry_solution.solution.CopyFrom(source_file)
-        terry_solution.seed = random.randint(0, 2 ** 32 - 1)
+        if args.seed:
+            terry_solution.seed = args.seed
+        else:
+            terry_solution.seed = random.randint(0, 2 ** 32 - 1)
         request.solutions.extend([terry_solution])
     request.store_dir = absolutize_path(args.store_dir)
     request.temp_dir = absolutize_path(args.temp_dir)
@@ -106,7 +114,8 @@ def get_request(args: argparse.Namespace):
 
 
 def clean():
-    def remove_file(path: str) -> None:
+    def remove_file(path):
+        # type: (str) -> None
         try:
             os.remove(path)
         except OSError:

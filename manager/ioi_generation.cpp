@@ -13,7 +13,8 @@ void generate_input(
   if (!testcase.input_file().empty()) {
     (*inputs_)[testcase_num] = core->LoadFile(
         "Static input " + std::to_string(testcase_num), testcase.input_file());
-    queue->Validated(testcase_num);
+    // using static input is not intended as cache
+    queue->Validated(testcase_num, false);
   } else if (testcase.has_generator() && testcase.has_validator()) {
     const std::string& generator = testcase.generator().path();
     const std::string& validator = testcase.validator().path();
@@ -25,21 +26,22 @@ void generate_input(
         keep_sandbox);
     gen->SetCallback([queue,
                       testcase_num](const core::TaskStatus& status) -> bool {
+      auto exec = status.execution_info;
       if (status.event == core::TaskStatus::FAILURE) {
-        queue->GenerationFailure(testcase_num, status.message);
+        queue->GenerationFailure(testcase_num, status.message, exec->Cached());
         return false;
       }
       if (status.type == core::TaskStatus::FILE_LOAD) return true;
       if (status.event == core::TaskStatus::START)
         queue->Generating(testcase_num);
       if (status.event == core::TaskStatus::SUCCESS) {
-        auto exec = status.execution_info;
         if (exec->Success()) {
-          queue->Generated(testcase_num);
+          queue->Generated(testcase_num, exec->Cached());
         } else {
           queue->GenerationFailure(
               testcase_num,
-              status.message + "\n" + exec->Stderr()->Contents(1024 * 1024));
+              status.message + "\n" + exec->Stderr()->Contents(1024 * 1024),
+              exec->Cached());
           return false;
         }
       }
@@ -63,29 +65,30 @@ void generate_input(
     core::Execution* val = (*source_cache)[validator]->execute(
         "Validation of input " + std::to_string(testcase_num),
         {"input", std::to_string(subtask_num + 1)}, keep_sandbox);
-    val->SetCallback(
-        [queue, testcase_num](const core::TaskStatus& status) -> bool {
-          if (status.event == core::TaskStatus::FAILURE) {
-            queue->GenerationFailure(testcase_num, status.message);
-            return false;
-          }
-          if (status.type == core::TaskStatus::FILE_LOAD) return true;
-          if (status.event == core::TaskStatus::START)
-            queue->Validating(testcase_num);
-          if (status.event == core::TaskStatus::SUCCESS) {
-            auto exec = status.execution_info;
-            if (exec->Success()) {
-              queue->Validated(testcase_num);
-            } else {
-              queue->GenerationFailure(
-                  testcase_num,
-                  status.message + "\n" +
-                      status.execution_info->Stderr()->Contents(1024 * 1024));
-              return false;
-            }
-          }
-          return true;
-        });
+    val->SetCallback([queue,
+                      testcase_num](const core::TaskStatus& status) -> bool {
+      auto exec = status.execution_info;
+      if (status.event == core::TaskStatus::FAILURE) {
+        queue->GenerationFailure(testcase_num, status.message, exec->Cached());
+        return false;
+      }
+      if (status.type == core::TaskStatus::FILE_LOAD) return true;
+      if (status.event == core::TaskStatus::START)
+        queue->Validating(testcase_num);
+      if (status.event == core::TaskStatus::SUCCESS) {
+        if (exec->Success()) {
+          queue->Validated(testcase_num, exec->Cached());
+        } else {
+          queue->GenerationFailure(
+              testcase_num,
+              status.message + "\n" +
+                  status.execution_info->Stderr()->Contents(1024 * 1024),
+              exec->Cached());
+          return false;
+        }
+      }
+      return true;
+    });
     if (!executor.empty()) val->SetExecutor(executor);
     if (cache_mode == proto::GENERATION || cache_mode == proto::ALL)
       val->SetCachingMode(core::Execution::CachingMode::ALWAYS);
@@ -114,35 +117,36 @@ void generate_output(const proto::TestCase& testcase, int64_t testcase_num,
     (*outputs_)[testcase_num] =
         core->LoadFile("Static output " + std::to_string(testcase_num),
                        testcase.output_file());
-    queue->GenerationDone(testcase_num);
+    // using static output is not intended as cache
+    queue->GenerationDone(testcase_num, false);
   } else if (solution_) {
     core::Execution* sol = solution_->execute(
         "Generation of output " + std::to_string(testcase_num), {},
         keep_sandbox);
-    sol->SetCallback(
-        [queue, testcase_num](const core::TaskStatus& status) -> bool {
-          if (status.event == core::TaskStatus::FAILURE) {
-            queue->GenerationFailure(testcase_num, status.message);
-            return false;
-          }
-          if (status.type == core::TaskStatus::FILE_LOAD) return true;
-          if (status.event == core::TaskStatus::START)
-            queue->Solving(testcase_num);
-          if (status.event == core::TaskStatus::SUCCESS) {
-            auto exec = status.execution_info;
-            if (exec->Success()) {
-              queue->GenerationDone(testcase_num);
-            } else {
-              queue->GenerationFailure(
-                  testcase_num,
-                  status.message + "\n" +
-                      status.execution_info->Stderr()->Contents(1024 * 1024));
-              return false;
-            }
-          }
+    sol->SetCallback([queue,
+                      testcase_num](const core::TaskStatus& status) -> bool {
+      auto exec = status.execution_info;
+      if (status.event == core::TaskStatus::FAILURE) {
+        queue->GenerationFailure(testcase_num, status.message, exec->Cached());
+        return false;
+      }
+      if (status.type == core::TaskStatus::FILE_LOAD) return true;
+      if (status.event == core::TaskStatus::START) queue->Solving(testcase_num);
+      if (status.event == core::TaskStatus::SUCCESS) {
+        if (exec->Success()) {
+          queue->GenerationDone(testcase_num, exec->Cached());
+        } else {
+          queue->GenerationFailure(
+              testcase_num,
+              status.message + "\n" +
+                  status.execution_info->Stderr()->Contents(1024 * 1024),
+              exec->Cached());
+          return false;
+        }
+      }
 
-          return true;
-        });
+      return true;
+    });
     if (!executor.empty()) sol->SetExecutor(executor);
     if (cache_mode == proto::GENERATION || cache_mode == proto::ALL)
       sol->SetCachingMode(core::Execution::CachingMode::ALWAYS);
@@ -172,7 +176,6 @@ IOIGeneration::IOIGeneration(EventQueue* queue, core::Core* core,
                              const proto::Task& task,
                              proto::CacheMode cache_mode,
                              const std::string& executor, bool keep_sandbox) {
-  // TODO(edomora97) set executor and cache_mode in the compilations
   task_ = task;
   if (task.has_official_solution()) {
     absl::optional<proto::GraderInfo> info;
@@ -181,12 +184,13 @@ IOIGeneration::IOIGeneration(EventQueue* queue, core::Core* core,
         info = grader;
         break;
       }
-    solution_ = SourceFile::FromProto(queue, core, task.official_solution(),
-                                      info, true, keep_sandbox);
+    solution_ =
+        SourceFile::FromProto(queue, core, task.official_solution(), info, true,
+                              keep_sandbox, cache_mode, executor);
   }
   if (task.has_checker())
     checker_ = SourceFile::FromProto(queue, core, task.checker(), {}, true,
-                                     keep_sandbox);
+                                     keep_sandbox, cache_mode, executor);
 
   for (auto subtask : task.subtasks()) {
     for (auto testcase_kv : subtask.second.testcases()) {
@@ -194,12 +198,14 @@ IOIGeneration::IOIGeneration(EventQueue* queue, core::Core* core,
       // compile generator/validator
       if (testcase.has_generator())
         if (source_cache_.count(testcase.generator().path()) == 0)
-          source_cache_[testcase.generator().path()] = SourceFile::FromProto(
-              queue, core, testcase.generator(), {}, true, keep_sandbox);
+          source_cache_[testcase.generator().path()] =
+              SourceFile::FromProto(queue, core, testcase.generator(), {}, true,
+                                    keep_sandbox, cache_mode, executor);
       if (testcase.has_validator())
         if (source_cache_.count(testcase.validator().path()) == 0)
-          source_cache_[testcase.validator().path()] = SourceFile::FromProto(
-              queue, core, testcase.validator(), {}, true, keep_sandbox);
+          source_cache_[testcase.validator().path()] =
+              SourceFile::FromProto(queue, core, testcase.validator(), {}, true,
+                                    keep_sandbox, cache_mode, executor);
 
       generate_input(testcase, testcase_kv.first, subtask.first, core, queue,
                      &source_cache_, cache_mode, executor, &inputs_,

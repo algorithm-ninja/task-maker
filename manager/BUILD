@@ -23,6 +23,7 @@ cc_library(
         "//core",
         "//core:execution",
         "//external:glog",
+        "//proto:manager_cc",
         "//proto:task_cc",
         "//util:which",
         "@com_google_absl//absl/types:optional",

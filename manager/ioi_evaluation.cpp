@@ -72,11 +72,11 @@ void IOIEvaluation::evaluate_testcase_(int64_t subtask_num,
     if (status.event == core::TaskStatus::SUCCESS) {
       auto exec = status.execution_info;
       if (exec->Success()) {
-        queue_->Executed(name, testcase_num);
+        queue_->Executed(name, testcase_num, exec->Cached());
       } else {
         queue_->EvaluationDone(name, testcase_num, 0.0, exec->Message(),
                                exec->CpuTime(), exec->WallTime(),
-                               exec->Memory());
+                               exec->Memory(), exec->Cached());
         UpdateScore(name, subtask_num, testcase_num, 0.0);
       }
     }
@@ -130,12 +130,13 @@ void IOIEvaluation::evaluate_testcase_(int64_t subtask_num,
       if (status.execution_info->Success()) {
         queue_->EvaluationDone(name, testcase_num, 1.0f, "Output is correct",
                                execution->CpuTime(), execution->WallTime(),
-                               execution->Memory());
+                               execution->Memory(), execution->Cached());
         UpdateScore(name, subtask_num, testcase_num, 1.0);
       } else {
         queue_->EvaluationDone(name, testcase_num, 0.0f,
                                "Output is not correct", execution->CpuTime(),
-                               execution->WallTime(), execution->Memory());
+                               execution->WallTime(), execution->Memory(),
+                               execution->Cached());
         UpdateScore(name, subtask_num, testcase_num, 0.0);
       }
     } else {
@@ -148,12 +149,12 @@ void IOIEvaluation::evaluate_testcase_(int64_t subtask_num,
             throw std::invalid_argument("score not in range [0.0, 1.0]");
           queue_->EvaluationDone(name, testcase_num, score, err,
                                  execution->CpuTime(), execution->WallTime(),
-                                 execution->Memory());
+                                 execution->Memory(), execution->Cached());
           UpdateScore(name, subtask_num, testcase_num, score);
         } catch (const std::invalid_argument& ex) {
           queue_->EvaluationFailure(name, testcase_num, "checker failed",
                                     execution->CpuTime(), execution->WallTime(),
-                                    execution->Memory());
+                                    execution->Memory(), execution->Cached());
           queue_->FatalError(std::string("Checker returned invalid score: ") +
                              ex.what() + "\n" + "The stdout was: " + out +
                              "\n" + "The stderr was: " + err);
@@ -161,9 +162,10 @@ void IOIEvaluation::evaluate_testcase_(int64_t subtask_num,
         }
       } else {
         std::string checker_error = checker->Stderr()->Contents(1024 * 1024);
-        queue_->EvaluationFailure(
-            name, testcase_num, checker->Message() + "\n" + checker_error,
-            execution->CpuTime(), execution->WallTime(), execution->Memory());
+        queue_->EvaluationFailure(name, testcase_num,
+                                  checker->Message() + "\n" + checker_error,
+                                  execution->CpuTime(), execution->WallTime(),
+                                  execution->Memory(), execution->Cached());
         queue_->FatalError("Checker failed: " + checker_error);
         return false;
       }

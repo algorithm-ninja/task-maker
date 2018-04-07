@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import os.path
 from typing import Optional
 
@@ -9,7 +9,8 @@ from python.dependency_finder import find_dependency
 from python.detect_exe import get_exeflags, EXEFLAG_NONE
 
 
-def is_executable(path: str) -> bool:
+def is_executable(path):
+    # type: (str) -> bool
     if get_exeflags(path) != EXEFLAG_NONE:
         return True
     with open(path, "rb") as source:
@@ -18,8 +19,8 @@ def is_executable(path: str) -> bool:
     return False
 
 
-def from_file(path: str, write_to: Optional[str] = None,
-              target_arch=DEFAULT) -> SourceFile:
+def from_file(path, write_to=None, target_arch=DEFAULT):
+    # type: (str, Optional[str], int) -> SourceFile
     source_file = SourceFile()
     source_file.path = path
     source_file.deps.extend(find_dependency(path))

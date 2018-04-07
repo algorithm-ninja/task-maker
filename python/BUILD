@@ -1,12 +1,13 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@python_deps//:requirements.bzl", "requirement")
+load("@python_deps//:requirements.bzl", "pypi_requirements")
 
 py_library(
     name = "language",
     srcs = ["language.py"],
     deps = [
         "//proto:task_py",
+        pypi_requirements(),
     ],
 )
 
@@ -18,6 +19,9 @@ py_library(
 py_library(
     name = "detect_format",
     srcs = ["detect_format.py"],
+    deps = [
+        pypi_requirements(),
+    ],
 )
 
 py_library(
@@ -28,6 +32,7 @@ py_library(
         ":detect_exe",
         ":language",
         "//proto:task_py",
+        pypi_requirements(),
     ],
 )
 
@@ -36,6 +41,7 @@ py_library(
     srcs = ["ui.py"],
     deps = [
         "//proto:event_py",
+        pypi_requirements(),
     ],
 )
 
@@ -45,6 +51,7 @@ py_library(
     deps = [
         ":ui",
         "//proto:event_py",
+        pypi_requirements(),
     ],
 )
 
@@ -56,6 +63,7 @@ py_library(
         ":silent_ui",
         ":ui",
         "//proto:event_py",
+        pypi_requirements(),
     ],
 )
 
@@ -65,6 +73,7 @@ py_library(
     deps = [
         ":ui",
         "//proto:event_py",
+        pypi_requirements(),
     ],
 )
 
@@ -74,6 +83,7 @@ py_library(
     deps = [
         ":language",
         "//proto:task_py",
+        pypi_requirements(),
     ],
 )
 
@@ -82,6 +92,7 @@ py_library(
     srcs = ["sanitize.py"],
     deps = [
         ":dependency_finder",
+        pypi_requirements(),
     ],
 )
 
@@ -96,7 +107,7 @@ py_library(
         ":source_file",
         "//proto:manager_py",
         "//proto:task_py",
-        requirement("PyYAML"),
+        pypi_requirements(),
     ],
 )
 
@@ -110,7 +121,7 @@ py_library(
         ":source_file",
         "//proto:manager_py",
         "//proto:task_py",
-        requirement("PyYAML"),
+        pypi_requirements(),
     ],
 )
 
@@ -151,7 +162,6 @@ py_binary(
         ":detect_format",
         ":ioi_format",
         ":terry_format",
-        requirement("grpcio"),
-        requirement("python-daemon"),
+        pypi_requirements(),
     ],
 )

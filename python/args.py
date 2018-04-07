@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import argparse
 import os.path
@@ -17,7 +17,8 @@ CACHES = {"all": ALL, "generation": GENERATION, "nothing": NOTHING}
 ARCHS = {"default": DEFAULT, "x86-64": X86_64, "i686": I686}
 
 
-def _validate_num_cores(num: str) -> int:
+def _validate_num_cores(num):
+    # type: (str) -> int
     error_message = "%s is not a positive number" % num
     try:
         if int(num) <= 0:
@@ -27,14 +28,16 @@ def _validate_num_cores(num: str) -> int:
         raise argparse.ArgumentTypeError(error_message)
 
 
-def _validate_cache_mode(mode: str) -> int:
+def _validate_cache_mode(mode):
+    # type: (str) -> int
     try:
         return CACHES[mode]
     except ValueError:
         raise argparse.ArgumentTypeError("Not valid cache mode %s" % mode)
 
 
-def _validate_arch(arch: str) -> int:
+def _validate_arch(arch):
+    # type: (str) -> int
     try:
         return ARCHS[arch]
     except ValueError:
@@ -42,7 +45,8 @@ def _validate_arch(arch: str) -> int:
                                          arch)
 
 
-def get_parser() -> argparse.ArgumentParser:
+def get_parser():
+    # type: () -> argparse.ArgumentParser
     parser = argparse.ArgumentParser(description="The new cmsMake!")
     parser.add_argument(
         "solutions",
@@ -124,6 +128,12 @@ def get_parser() -> argparse.ArgumentParser:
         "--format",
         help="Format of the task (ioi|terry)",
         choices=["ioi", "terry"],
+        action="store",
+        default=None)
+    parser.add_argument(
+        "--seed",
+        help="Seed for the terry generator",
+        type=int,
         action="store",
         default=None)
 
