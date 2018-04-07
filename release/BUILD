@@ -49,5 +49,5 @@ pkg_deb(
     description = "The new cmsMake",
     maintainer = "Edoardo Morassutto <edoardo.morassutto@gmail.com>",
     package = "task-maker",
-    version = "1.0.0",
+    version = "1.0.1",
 )
