@@ -10,3 +10,4 @@ build --verbose_failures
 # in a container this fails to run tests.
 build --spawn_strategy=standalone --genrule_strategy=standalone
 test --test_strategy=standalone --test_output=streamed
+build --python_path=python3

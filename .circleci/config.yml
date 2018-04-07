@@ -1,5 +1,30 @@
 version: 2
 
+SETUP_UBUNTU: &SETUP_UBUNTU
+    name: Setup system
+    command: |
+      apt update
+      apt install -y openjdk-8-jdk curl python python3 python3-wheel xz-utils
+      echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list
+      curl https://bazel.build/bazel-release.pub.gpg | apt-key add -
+      apt update
+      apt install -y bazel
+      cat > .bazelrc <<EOF
+        # This is from Bazel's former travis setup, to avoid blowing up the RAM usage.
+        startup --host_jvm_args=-Xmx2500m
+        startup --host_jvm_args=-Xms2500m
+        startup --batch
+        # This is so we understand failures better
+        build --verbose_failures
+        # This is so we don't use sandboxed execution. Sandboxed execution
+        # runs stuff in a container, and since GitLabCI already runs its script
+        # in a container this fails to run tests.
+        build --spawn_strategy=standalone --genrule_strategy=standalone
+        test --test_strategy=standalone --test_output=streamed --nocache_test_results
+        build --show_progress_rate_limit 3
+        build --local_resources=4000,2,1.0
+      EOF
+
 jobs:
   build:
     docker:
@@ -49,14 +74,14 @@ jobs:
 
   release-ubuntu-14.04:
     docker:
-      - image: ubuntu:14.04.4
+      - image: ubuntu:14.04.5
     steps:
       - checkout
       - run:
           name: Setup system
           command: |
             apt-get update
-            apt-get -y install software-properties-common curl build-essential python3-wheel python-virtualenv python3-dev python3-setuptools zip
+            apt-get -y install software-properties-common curl build-essential python-wheel python-dev python-setuptools zip
             add-apt-repository -y ppa:webupd8team/java
             add-apt-repository -y ppa:ubuntu-toolchain-r/test
             apt-get update
@@ -87,10 +112,52 @@ jobs:
           environment:
             - CC: gcc-4.9
             - CXX: g++-4.9
-          command: ./release.sh
+          command: .circleci/release.sh
       - store_artifacts:
           path: ./release
           destination: ubuntu-14.04
+
+  release-ubuntu-16.04:
+    docker:
+      - image: ubuntu:16.04
+    steps:
+      - checkout
+      - run:
+          <<: *SETUP_UBUNTU
+      - run:
+          name: Build release
+          command: bazel build //release:release-deb -c opt --python_path=python3
+      - store_artifacts:
+          path: ./bazel-bin/release
+          destination: ubuntu-16.04
+
+  release-ubuntu-17.10:
+    docker:
+      - image: ubuntu:17.10
+    steps:
+      - checkout
+      - run:
+          <<: *SETUP_UBUNTU
+      - run:
+          name: Build release
+          command: bazel build //release:release-deb -c opt --python_path=python3
+      - store_artifacts:
+          path: ./bazel-bin/release
+          destination: ubuntu-17.10
+
+  release-ubuntu-18.04:
+    docker:
+      - image: ubuntu:18.04
+    steps:
+      - checkout
+      - run:
+          <<: *SETUP_UBUNTU
+      - run:
+          name: Build release
+          command: bazel build //release:release-deb -c opt --python_path=python3
+      - store_artifacts:
+          path: ./bazel-bin/release
+          destination: ubuntu-18.04
 
   release-archlinux:
       docker:
@@ -118,7 +185,7 @@ jobs:
               EOF
         - run:
             name: Build release
-            command: ./release.sh
+            command: .circleci/release.sh
         - store_artifacts:
             path: ./release
             destination: archlinux
@@ -133,6 +200,30 @@ workflows:
             tags:
               only: /.*/
       - release-ubuntu-14.04:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v.*/
+      - release-ubuntu-16.04:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v.*/
+      - release-ubuntu-17.10:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v.*/
+      - release-ubuntu-18.04:
           requires:
             - build
           filters:

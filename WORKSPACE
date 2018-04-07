@@ -36,15 +36,15 @@ new_git_repository(
 # Rules for Python
 git_repository(
     name = "io_bazel_rules_python",
-    commit = "63cdc8f29b6e6ff517744756cc67cf05577ae724",
-    remote = "https://github.com/bazelbuild/rules_python",
+    commit = "3d703d11769c7e400696f44ca1c3e9cefe7312a7",
+    remote = "https://github.com/joshclimacell/rules_python",
 )
 
-load("@io_bazel_rules_python//python:pip.bzl", "pip_repositories", "pip_import")
+load("@io_bazel_rules_python//python:pip.bzl", "pip_repositories", "pip3_import")
 
 pip_repositories()
 
-pip_import(
+pip3_import(
     name = "python_deps",
     requirements = "//tools:requirements.txt",
 )
