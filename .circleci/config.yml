@@ -71,6 +71,8 @@ jobs:
           paths: ~/.cache
           key: task-maker-v2-{{ arch }}-{{ .Revision }}
           when: always
+      - store_test_results:
+          path: bazel-testlogs
 
   release-ubuntu-14.04:
     docker:
@@ -189,8 +191,6 @@ jobs:
         - store_artifacts:
             path: ./release
             destination: archlinux
-        - store_test_results:
-            path: bazel-testlogs
 
 workflows:
   version: 2
