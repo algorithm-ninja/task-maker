@@ -51,6 +51,10 @@ bool Core::Run() {
     std::swap(temp, running_jobs_);
   }
   tear_down();
+  for (const auto& file : files_to_load_)
+    file->callback_(TaskStatus::Finish(file.get(), !failed_));
+  for (const auto& exec : executions_)
+    exec->callback_(TaskStatus::Finish(exec.get(), !failed_));
   return !failed_;
 }
 

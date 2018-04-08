@@ -9,7 +9,15 @@ class FileID;
 class Execution;
 
 struct TaskStatus {
-  enum Event { START, SUCCESS, BUSY, FAILURE };
+  enum Event {
+    START,    // before the action starts
+    SUCCESS,  // after the action completes successfully
+    BUSY,     // the execution is resheduled because of a lack of executors
+    FAILURE,  // the action failed (because of an internal error, e.g the
+              // sandbox failed)
+    FINISH_SUCCESS,  // the core exited successfully
+    FINISH_FAILED    // the core exited with an error
+  };
   Event event;
   std::string message;
   enum Type { FILE_LOAD, EXECUTION };
@@ -29,34 +37,33 @@ struct TaskStatus {
  private:
   friend class Core;
   static TaskStatus Start(FileID* file) {
-    // fprintf(stderr, "Start: %s\n", file->Description().c_str());
     return TaskStatus(START, "", FILE_LOAD, file, nullptr);
   }
   static TaskStatus Start(Execution* execution) {
-    // fprintf(stderr, "Start: %s\n", execution->Description().c_str());
     return TaskStatus(START, "", EXECUTION, nullptr, execution);
   }
   static TaskStatus Busy(Execution* execution) {
-    // fprintf(stderr, "Busy: %s\n", execution->Description().c_str());
     return TaskStatus(BUSY, "", EXECUTION, nullptr, execution);
   }
   static TaskStatus Success(FileID* file) {
-    // fprintf(stderr, "Success: %s\n", file->Description().c_str());
     return TaskStatus(SUCCESS, "", FILE_LOAD, file, nullptr);
   }
   static TaskStatus Success(Execution* execution) {
-    // fprintf(stderr, "Success: %s\n", execution->Description().c_str());
     return TaskStatus(SUCCESS, "", EXECUTION, nullptr, execution);
   }
   static TaskStatus Failure(FileID* file, const std::string& msg) {
-    // fprintf(stderr, "Failure: %s, %s\n", file->Description().c_str(),
-    //        msg.c_str());
     return TaskStatus(FAILURE, msg, FILE_LOAD, file, nullptr);
   }
   static TaskStatus Failure(Execution* execution, const std::string& msg) {
-    // fprintf(stderr, "Failure: %s, %s\n", execution->Description().c_str(),
-    //        msg.c_str());
     return TaskStatus(FAILURE, msg, EXECUTION, nullptr, execution);
+  }
+  static TaskStatus Finish(FileID* file, bool success) {
+    return TaskStatus(success ? FINISH_SUCCESS : FINISH_FAILED, "", FILE_LOAD,
+                      file, nullptr);
+  }
+  static TaskStatus Finish(Execution* execution, bool success) {
+    return TaskStatus(success ? FINISH_SUCCESS : FINISH_FAILED, "", EXECUTION,
+                      nullptr, execution);
   }
 };
 

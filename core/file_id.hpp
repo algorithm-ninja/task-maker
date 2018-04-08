@@ -23,7 +23,7 @@ class FileID {
   }
 
   // These methods should be called after Core::Run is done.
-  void WriteTo(const std::string& path, bool overwrite = false,
+  void WriteTo(const std::string& path, bool overwrite = true,
                bool exist_ok = true);
   std::string Contents(int64_t size_limit = 0);
 

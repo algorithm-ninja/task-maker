@@ -164,11 +164,6 @@ CompiledSourceFile::CompiledSourceFile(
         queue->CompilationDone(
             name_, status.execution_info->Stderr()->Contents(1024 * 1024),
             status.execution_info->Cached());
-        if (!source.write_bin_to().empty()) {
-          compiled_->WriteTo(source.write_bin_to());
-          chmod(source.write_bin_to().c_str(), S_IRUSR | S_IWUSR | S_IXUSR);
-          LOG(INFO) << "Compiled program copied to " << source.write_bin_to();
-        }
       } else {
         queue->CompilationFailure(
             name_,
@@ -176,6 +171,15 @@ CompiledSourceFile::CompiledSourceFile(
                 status.execution_info->Stderr()->Contents(1024 * 1024),
             status.execution_info->Cached());
         return !fatal_failures_;
+      }
+    }
+    if (status.event == core::TaskStatus::FINISH_SUCCESS) {
+      if (status.execution_info->Success()) {
+        if (!source.write_bin_to().empty()) {
+          compiled_->WriteTo(source.write_bin_to());
+          chmod(source.write_bin_to().c_str(), S_IRUSR | S_IXUSR);
+          LOG(INFO) << "Compiled program copied to " << source.write_bin_to();
+        }
       }
     }
     return true;
@@ -217,9 +221,12 @@ NotCompiledSourceFile::NotCompiledSourceFile(
         if (status.event == core::TaskStatus::SUCCESS) {
           // the file is not compiled so it doesn't came from the cache
           queue->CompilationDone(name_, "", false);
+        }
+        if (status.event == core::TaskStatus::FINISH_SUCCESS) {
           if (!source.write_bin_to().empty()) {
             program_->WriteTo(source.write_bin_to());
-            chmod(source.write_bin_to().c_str(), S_IRUSR | S_IWUSR | S_IXUSR);
+            chmod(source.write_bin_to().c_str(), S_IRUSR | S_IXUSR);
+            LOG(INFO) << "Source program copied to " << source.write_bin_to();
           }
         }
         return true;
