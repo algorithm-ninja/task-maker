@@ -31,9 +31,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     EvaluationInfo info = setup_request(*request);
 
     if (info.queue->IsStopped()) {
-      absl::optional<proto::Event> event;
-      while ((event = info.queue->Dequeue()))
-        writer->Write(*event);
+      info.queue->BindWriterUnlocked(writer);
       LOG(ERROR) << "Deleted request " << current_id;
       return grpc::Status::OK;
     }
@@ -53,9 +51,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     EvaluationInfo info = setup_request(*request);
 
     if (info.queue->IsStopped()) {
-      absl::optional<proto::Event> event;
-      while ((event = info.queue->Dequeue()))
-        writer->Write(*event);
+      info.queue->BindWriterUnlocked(writer);
       LOG(ERROR) << "Deleted request " << current_id;
       return grpc::Status::OK;
     }
@@ -142,8 +138,8 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 
     try {
       info.generation = absl::make_unique<manager::IOIGeneration>(
-          info.queue.get(), info.core.get(), request.task(), request.cache_mode(),
-          request.evaluate_on(), request.keep_sandbox());
+          info.queue.get(), info.core.get(), request.task(),
+          request.cache_mode(), request.evaluate_on(), request.keep_sandbox());
 
       info.evaluation = absl::make_unique<manager::IOIEvaluation>(
           info.queue.get(), info.core.get(),
@@ -187,8 +183,8 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 
     try {
       info.generation = absl::make_unique<manager::TerryGeneration>(
-          info.queue.get(), info.core.get(), request.task(), request.cache_mode(),
-          request.evaluate_on(), request.keep_sandbox());
+          info.queue.get(), info.core.get(), request.task(),
+          request.cache_mode(), request.evaluate_on(), request.keep_sandbox());
       info.evaluation = absl::make_unique<manager::TerryEvaluation>(
           info.queue.get(), info.core.get(),
           reinterpret_cast<manager::TerryGeneration*>(info.generation.get()),
@@ -289,11 +285,10 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     std::mutex writer_mutex;
     // send EvaluationStarted event
     {
-      std::lock_guard<std::mutex> lock(writer_mutex);
       proto::Event eval_started_event;
       auto* sub_event = eval_started_event.mutable_evaluation_started();
       sub_event->set_id(current_id);
-      writer->Write(eval_started_event);
+      queue->Enqueue(std::move(eval_started_event));
     }
     // running is true while the core has not finished, this is synchronized for
     // the poller thread
@@ -319,6 +314,8 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
           event_task->set_duration(duration.count());
         }
         {
+          // we cannot push this to the queue because in this thread the queue
+          // may has been closed
           std::lock_guard<std::mutex> lock(writer_mutex);
           writer->Write(event);
         }
@@ -326,16 +323,14 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
       }
     });
     // forward all the events from the event queue
-    while ((event = queue->Dequeue())) {
-      std::lock_guard<std::mutex> lock(writer_mutex);
-      writer->Write(*event);
-    }
+    queue->BindWriter(writer, &writer_mutex);
     // send EvaluationEnded event
     {
       std::lock_guard<std::mutex> lock(writer_mutex);
       proto::Event eval_ended_event;
       auto* sub_event = eval_ended_event.mutable_evaluation_ended();
       sub_event->set_id(current_id);
+      // the queue has ended so we cannot push with it
       writer->Write(eval_ended_event);
     }
     // stop the poller thread

@@ -24,4 +24,18 @@ void EventQueue::Stop() {
   absl::MutexLock lck(&queue_mutex_);
   stopped_ = true;
 }
+
+void EventQueue::BindWriter(grpc::ServerWriter<proto::Event>* writer,
+                            std::mutex* mutex) {
+  absl::optional<proto::Event> event;
+  while ((event = Dequeue())) {
+    std::lock_guard<std::mutex> lock(*mutex);
+    writer->Write(*event);
+  }
+}
+
+void EventQueue::BindWriterUnlocked(grpc::ServerWriter<proto::Event>* writer) {
+  absl::optional<proto::Event> event;
+  while ((event = Dequeue())) writer->Write(*event);
+}
 }  // namespace manager

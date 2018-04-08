@@ -7,6 +7,7 @@
 #include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
 #include "proto/event.pb.h"
+#include "proto/manager.grpc.pb.h"
 
 namespace manager {
 
@@ -150,6 +151,10 @@ class EventQueue {
                               const std::string& errors, bool from_cache) {
     TerryEvaluation(solution, proto::EventStatus::FAILURE, errors, from_cache);
   }
+
+  void BindWriter(grpc::ServerWriter<proto::Event>* writer, std::mutex* mutex);
+  void BindWriterUnlocked(grpc::ServerWriter<proto::Event>* writer);
+  void Enqueue(proto::Event&& event);
   absl::optional<proto::Event> Dequeue();
   void Stop();
   bool IsStopped() { return stopped_; }
@@ -158,7 +163,6 @@ class EventQueue {
   absl::Mutex queue_mutex_;
   std::queue<proto::Event> queue_ GUARDED_BY(queue_mutex_);
   bool stopped_ GUARDED_BY(queue_mutex_) = false;
-  void Enqueue(proto::Event&& event);
   void Compilation(const std::string& filename, proto::EventStatus status,
                    const std::string& errors = "", bool from_cache = false) {
     proto::Event event;
