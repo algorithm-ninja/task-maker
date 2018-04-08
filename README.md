@@ -106,6 +106,8 @@ bazel build ...
 This will pull all the dependencies and compile everything. If you want to
 enable the optimization remember to put `-c opt` to the above command.
 
-## Archlinux
-If you are using Archlinux you may want to install task-maker from the AUR:
+## Arch Linux
+If you are using Arch Linux you may want to install task-maker from the AUR:
+[task-maker](https://aur.archlinux.org/packages/task-maker)
+or
 [task-maker-git](https://aur.archlinux.org/packages/task-maker-git).
