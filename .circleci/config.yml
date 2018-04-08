@@ -189,6 +189,8 @@ jobs:
         - store_artifacts:
             path: ./release
             destination: archlinux
+        - store_test_results:
+            path: bazel-testlogs
 
 workflows:
   version: 2
