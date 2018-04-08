@@ -1,42 +1,37 @@
-#!/usr/bin/env python
-
-from __future__ import print_function
+#!/usr/bin/env python3
 
 import multiprocessing
 import os
 import signal
 import subprocess
 import time
+from typing import Any
 
 import daemon
 import grpc
-from proto import manager_pb2_grpc
 from proto.manager_pb2 import StopRequest, CleanTaskRequest
-from typing import Any
 
+from proto import manager_pb2_grpc
 from python import ioi_format, terry_format
 from python.args import get_parser, UIS
 from python.detect_format import detect_format
 
 
-def manager_process(pipe, manager, port):
-    # type: (Any, str, int) -> None
+def manager_process(pipe: Any, manager: str, port: int) -> None:
     try:
-        with open(os.devnull) as devnull:
-            manager_proc = subprocess.Popen(
-                [manager, "--port", str(port)],
-                stdin=devnull,
-                stdout=devnull,
-                stderr=devnull)
-            pipe.send(None)
+        manager_proc = subprocess.Popen(
+            [manager, "--port", str(port)],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL)
+        pipe.send(None)
     except Exception as exc:  # pylint: disable=broad-except
         pipe.send(exc)
     with daemon.DaemonContext(detach_process=True, working_directory="/tmp"):
         manager_proc.wait()
 
 
-def spawn_manager(port):
-    # type: (int) -> None
+def spawn_manager(port: int) -> None:
     manager = os.path.dirname(__file__)
     manager = os.path.join(manager, "..", "manager", "manager")
     manager = os.path.abspath(manager)
@@ -89,7 +84,7 @@ def terry_format_clean(args):
     manager_clean(args)
 
 
-def main():
+def main() -> None:
     parser = get_parser()
     args = parser.parse_args()
 
@@ -145,7 +140,7 @@ def main():
 
     eval_id = None
 
-    def stop_server(signum, _):
+    def stop_server(signum: int, _: Any) -> None:
         if eval_id:
             ui.stop("Waiting the manager to complete the last job")
             manager.Stop(StopRequest(evaluation_id=eval_id))

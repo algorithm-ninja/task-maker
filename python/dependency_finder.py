@@ -1,11 +1,11 @@
-#!/usr/bin/env python
-
-import re
+#!/usr/bin/env python3
 
 import os.path
-from proto.task_pb2 import CPP, C, PYTHON
-from proto.task_pb2 import Dependency
+import re
 from typing import List
+
+from proto.task_pb2 import Dependency
+from proto.task_pb2 import CPP, C, PYTHON
 
 from python import language
 
@@ -13,8 +13,7 @@ CXX_INCLUDE = re.compile('#include *["<](.+)[">]')
 PY_IMPORT = re.compile('import +(.+)|from +(.+) +import')
 
 
-def find_python_dependency(content, scope):
-    # type: (str, str) -> List[Dependency]
+def find_python_dependency(content: str, scope: str) -> List[Dependency]:
     imports = PY_IMPORT.findall(content)
     dependencies = []  # type: List[Dependency]
     for imp in imports:
@@ -31,8 +30,7 @@ def find_python_dependency(content, scope):
     return dependencies
 
 
-def find_cxx_dependency(content, scope):
-    # type: (str, str) -> List[Dependency]
+def find_cxx_dependency(content: str, scope: str) -> List[Dependency]:
     includes = CXX_INCLUDE.findall(content)
     dependencies = []  # type: List[Dependency]
     for include in includes:
@@ -50,8 +48,7 @@ def find_cxx_dependency(content, scope):
     return dependencies
 
 
-def find_dependency(filename):
-    # type: (str) -> List[Dependency]
+def find_dependency(filename: str) -> List[Dependency]:
     scope = os.path.dirname(filename)
     try:
         with open(filename) as file:
@@ -62,12 +59,11 @@ def find_dependency(filename):
                 # TODO add .h and .hpp files
                 return make_unique(find_cxx_dependency(file.read(), scope))
             return []
-    except IOError:
+    except FileNotFoundError:
         return []
     except UnicodeDecodeError:
         return []
 
 
-def make_unique(deps):
-    # type: (List[Dependency]) -> List[Dependency]
+def make_unique(deps: List[Dependency]) -> List[Dependency]:
     return list(item[1] for item in {dep.name: dep for dep in deps}.items())

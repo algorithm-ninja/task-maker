@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import os.path
 import string
 from typing import List
@@ -6,8 +6,7 @@ from typing import List
 from python.dependency_finder import Dependency
 
 
-def sanitize_command(args):
-    # type: (List[str]) -> List[Dependency]
+def sanitize_command(args: List[str]) -> List[Dependency]:
     dependencies = []  # type: List[Dependency]
     for i, arg in enumerate(args):
         if os.path.exists(arg):
@@ -17,8 +16,7 @@ def sanitize_command(args):
     return dependencies
 
 
-def sanitize_filename(filename):
-    # type: (str) -> str
+def sanitize_filename(filename: str) -> str:
     return "".join(
         filter(lambda x: x in string.ascii_letters + string.digits + "_-.",
                filename))

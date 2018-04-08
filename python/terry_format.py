@@ -1,13 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import argparse
 import glob
+import os.path
 import platform
 import random
 
-import os.path
 from proto.manager_pb2 import EvaluateTerryTaskRequest, TerrySolution
 from proto.task_pb2 import TerryTask, DEFAULT, X86_64, I686
-from typing import Any
 
 from python.absolutize import absolutize_source_file, absolutize_path
 from python.ioi_format import parse_task_yaml, get_options, list_files
@@ -15,7 +14,6 @@ from python.source_file import from_file
 
 
 def get_extension(target_arch=DEFAULT):
-    # type: (int) -> str
     if target_arch == DEFAULT:
         return "." + platform.system().lower() + "." + platform.machine()
     elif target_arch == X86_64:
@@ -27,7 +25,6 @@ def get_extension(target_arch=DEFAULT):
 
 
 def create_task_from_yaml(data):
-    # type: (Any) -> TerryTask
     name = get_options(data, ["name", "nome_breve"])
     title = get_options(data, ["description", "nome"])
     max_score = get_options(data, ["max_score"])
@@ -44,12 +41,11 @@ def create_task_from_yaml(data):
 
 
 def get_manager(manager, target_arch, optional=False):
-    # type: (str, int, bool) -> Any
     managers = list_files(["managers/%s.*" % manager], exclude=[
         "managers/%s.*.*" % manager])
     if len(managers) == 0:
         if not optional:
-            raise IOError("Missing manager: %s" % manager)
+            raise FileNotFoundError("Missing manager: %s" % manager)
         return None
     if len(managers) != 1:
         raise ValueError("Ambiguous manager: " + ", ".join(managers))
@@ -58,8 +54,7 @@ def get_manager(manager, target_arch, optional=False):
                      target_arch)
 
 
-def get_request(args):
-    # type: (argparse.Namespace) -> EvaluateTerryTaskRequest
+def get_request(args: argparse.Namespace):
     data = parse_task_yaml()
     if not data:
         raise RuntimeError("The task.yaml is not valid")
@@ -114,8 +109,7 @@ def get_request(args):
 
 
 def clean():
-    def remove_file(path):
-        # type: (str) -> None
+    def remove_file(path: str) -> None:
         try:
             os.remove(path)
         except OSError:

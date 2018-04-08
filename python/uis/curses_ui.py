@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import curses
 import signal
@@ -11,13 +11,12 @@ from proto.event_pb2 import EventStatus, EvaluationResult, WAITING, RUNNING, \
     EXECUTED, CHECKING, SOLVING, DONE, MISSING, CORRECT, WRONG
 
 from python.printer import Printer, CursesPrinter, StdoutPrinter
-from python.uis.silent_ui import SilentUI, SolutionStatus, TerryStatus
+from python.uis.silent_ui import SilentUI, SolutionStatus
 
 
 class CursesUI(SilentUI):
-    def __init__(self, solutions, format):
-        # type: (List[str], str) -> None
-        SilentUI.__init__(self, solutions, format)
+    def __init__(self, solutions: List[str], format: str) -> None:
+        super().__init__(solutions, format)
         self._max_sol_len = max(map(len, solutions))
         self._done = False
         self._stopped = False
@@ -26,16 +25,16 @@ class CursesUI(SilentUI):
                                            args=(self._ui,))
         self._ui_thread.start()
 
-    def set_compilation_status(self, file_name, status, warnings=None,
-                               from_cache=False):
-        # type: (str, EventStatus, Optional[str], bool) -> None
-        SilentUI.set_compilation_status(self, file_name, status, warnings,
-                                        from_cache)
+    def set_compilation_status(self, file_name: str, status: EventStatus,
+                               warnings: Optional[str] = None,
+                               from_cache: bool = False):
+        super().set_compilation_status(file_name, status, warnings,
+                                       from_cache)
         self._max_sol_len = max(self._max_sol_len, len(file_name))
 
     # pylint: disable=no-self-use
-    def _print_compilation_status(self, name, status, loading, printer):
-        # type: (str, EventStatus, str, Printer) -> None
+    def _print_compilation_status(self, name: str, status: EventStatus,
+                                  loading: str, printer: Printer):
         if status == WAITING:
             printer.text("...")
         elif status == RUNNING:
@@ -52,15 +51,14 @@ class CursesUI(SilentUI):
 
     # pylint: enable=no-self-use
 
-    def _print_compilation(self, sources, loading, printer):
-        # type: (List[str], str, Printer) -> None
+    def _print_compilation(self, sources: List[str], loading: str,
+                           printer: Printer) -> None:
         for comp in sorted(sources):
             printer.text("%{}s: ".format(self._max_sol_len) % comp)
             self._print_compilation_status(comp, self._compilation_status[comp],
                                            loading, printer)
 
-    def _print_generation_status(self, printer):
-        # type: (Printer) -> None
+    def _print_generation_status(self, printer: Printer) -> None:
         for subtask in sorted(self._subtask_testcases):
             if subtask > 0:
                 printer.text("|")
@@ -85,8 +83,8 @@ class CursesUI(SilentUI):
                 else:
                     printer.text(".")
 
-    def _print_subtasks_scores(self, status, loading, printer):
-        # type: (SolutionStatus, str, Printer) -> None
+    def _print_subtasks_scores(self, status: SolutionStatus, loading: str,
+                               printer: Printer) -> None:
         if not status.subtask_scores:
             printer.text("% 4s" % "...")
         elif status.score is not None:
@@ -114,7 +112,6 @@ class CursesUI(SilentUI):
 
     def _print_terry_solution_row(self, solution, status, printer,
                                   loading_char):
-        # type: (str, TerryStatus, Printer, str) -> None
         printer.text("%{}s: ".format(self._max_sol_len) % solution)
         if status.status != DONE and status.status != FAILURE:
             printer.text("  %s   " % loading_char)
@@ -151,8 +148,7 @@ class CursesUI(SilentUI):
             raise ValueError("Invalid status: ", status.status)
         printer.text("\n")
 
-    def _ioi_ui(self, pad, printer, stdscr):
-        # type: (..., Printer, ...) -> None
+    def _ioi_ui(self, pad, printer, stdscr) -> None:
         loading_chars = "-\\|/"
         cur_loading_char = 0
         pos_x, pos_y = 0, 0
@@ -222,7 +218,6 @@ class CursesUI(SilentUI):
             pad.refresh(pos_y, pos_x, 0, 0, max_y - 1, max_x - 1)
 
     def _terry_ui(self, pad, printer, stdscr):
-        # type: (..., Printer, ...) -> None
         loading_chars = "-\\|/"
         cur_loading_char = 0
         pos_x, pos_y = 0, 0
@@ -264,8 +259,7 @@ class CursesUI(SilentUI):
 
             pad.refresh(pos_y, pos_x, 0, 0, max_y - 1, max_x - 1)
 
-    def _ui(self, stdscr):
-        # type: (curses._CursesWindow) -> None
+    def _ui(self, stdscr: 'curses._CursesWindow') -> None:
         if hasattr(signal, 'pthread_sigmask'):
             signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGINT])
         curses.start_color()
@@ -288,11 +282,12 @@ class CursesUI(SilentUI):
         if self._stopped:
             print(self._stopped)
 
-    def _ioi_final_status(self, printer):
-        # type: (StdoutPrinter) -> None
+    def _ioi_final_status(self, printer: StdoutPrinter):
+        printer.blue("Solutions\n")
 
-        def print_testcase(sol, testcase, tc_status, max_time, max_mem):
-            # type: (str, int, EvaluationResult, float, float) -> None
+        def print_testcase(sol: str, testcase: int,
+                           tc_status: EvaluationResult, max_time: float,
+                           max_mem: float) -> None:
             printer.text("%3d) " % testcase)
             if tc_status.score == 1.0:
                 printer.green("[%.2f] " % tc_status.score, bold=False)
@@ -316,8 +311,6 @@ class CursesUI(SilentUI):
         if self._generation_cache:
             printer.text("%d/%d inputs and outputs come from the cache\n\n" % (
                 len(self._generation_cache), self._num_testcases))
-
-        printer.blue("Solutions\n")
 
         for sol in sorted(self._solution_status):
             status = self._solution_status[sol]
@@ -379,7 +372,6 @@ class CursesUI(SilentUI):
             printer.text("\n")
 
     def _terry_final_status(self, printer):
-        # type: (Printer) -> None
         printer.blue("Solutions\n")
 
         def print_phase_stats(phase, cpu_time, wall_time, memory_kb, cached):
@@ -415,7 +407,7 @@ class CursesUI(SilentUI):
         for solution, status in sorted(self._terry_test_status.items()):
             self._print_terry_solution_row(solution, status, printer, "?")
 
-    def print_final_status(self):
+    def print_final_status(self) -> None:
         self._done = True
         self._ui_thread.join()
 
@@ -450,13 +442,11 @@ class CursesUI(SilentUI):
             printer.text("\n")
             return
 
-    def fatal_error(self, msg):
-        # type: (str) -> None
+    def fatal_error(self, msg: str) -> None:
         if not self._failure:
             self._failure = msg
         else:
             self._failure += "\n" + msg
 
-    def stop(self, msg):
-        # type: (str) -> None
+    def stop(self, msg: str) -> None:
         self._stopped = msg

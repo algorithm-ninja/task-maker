@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Inspired by
 # http://lallouslab.net/2017/07/03/detect-executable-format-using-python/
@@ -23,8 +23,7 @@ _EXE_SIGNATURES = (
 )
 
 
-def get_exeflags(filepath):
-    # type: (str) -> int
+def get_exeflags(filepath: str) -> int:
     with open(filepath, "rb") as file:
         buf = b""
         buf_len = 0
