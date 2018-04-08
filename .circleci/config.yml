@@ -223,14 +223,15 @@ workflows:
               ignore: /.*/
             tags:
               only: /^v.*/
-      - release-ubuntu-18.04:
-          requires:
-            - build
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v.*/
+      # disabled because at the moment python3 it's bugged in ubuntu 18.04
+#      - release-ubuntu-18.04:
+#          requires:
+#            - build
+#          filters:
+#            branches:
+#              ignore: /.*/
+#            tags:
+#              only: /^v.*/
       - release-archlinux:
           requires:
             - build
