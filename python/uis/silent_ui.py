@@ -4,7 +4,7 @@ from typing import List, Optional
 
 import os.path
 from proto.event_pb2 import EvaluationResult, TerryEvaluationResult, \
-    EventStatus, RunningTaskInfo
+    EventStatus, RunningTaskInfo, WAITING
 
 from python.ui import UI
 
@@ -21,7 +21,7 @@ class SolutionStatus:
 
 class TerryStatus:
     def __init__(self) -> None:
-        self.status = None  # type: EventStatus
+        self.status = WAITING  # type: EventStatus
         self.errors = None  # type: Optional[str]
         self.result = None  # type: Optional[TerryEvaluationResult]
 
@@ -33,11 +33,11 @@ class SilentUI(UI):
         self._subtask_max_scores = dict()  # type: Dict[int, float]
         self._subtask_testcases = dict()  # type: Dict[int, List[int]]
         self._other_compilations = []  # type: List[str]
-        self._compilation_status = dict()  # type: Dict[str, EventStatus]
+        self._compilation_status = dict((s, WAITING) for s in solutions)
         self._compilation_errors = dict()  # type: Dict[str, str]
-        self._generation_status = dict()  # type: Dict[int, EventStatus]
+        self._generation_status = dict((s, WAITING) for s in solutions)
         self._generation_errors = dict()  # type: Dict[int, str]
-        self._terry_test_status = dict()  # type: Dict[str, TerryStatus]
+        self._terry_test_status = dict((s, TerryStatus()) for s in solutions)
         self._compilation_cache = set()  # type: Set[str]
         self._generation_cache = set()  # type: Set[int]
         self._evaluation_cache = set()  # type: Set[Tuple[str, int]]
@@ -46,7 +46,7 @@ class SilentUI(UI):
         self._terry_check_cache = set()  # type: Set[str]
         self._time_limit = 0.0
         self._memory_limit = 0.0
-        self._solution_status = dict()  # type: Dict[str, SolutionStatus]
+        self._solution_status = dict((s, SolutionStatus()) for s in solutions)
         self._running_tasks = list()  # type: List[RunningTaskInfo]
 
     def set_time_limit(self, time_limit: float) -> None:

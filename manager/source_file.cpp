@@ -91,10 +91,12 @@ CompiledSourceFile::CompiledSourceFile(
   core::FileID* input_file =
       core->LoadFile("Source file for " + name_, source.path());
 
+  bool use_compiler_cache = cache_mode == proto::CacheMode::ALL;
+
   switch (source.language()) {
     // TODO(edomora97) use $CXX $CC $CFLAGS and $CXXFLAGS if provided
     case proto::CPP:
-      compiler = util::which("c++");
+      compiler = util::which("c++", use_compiler_cache);
       args = {"-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", exe_name, name_};
       switch (source.target_arch()) {
         case proto::Arch::I686:
@@ -105,7 +107,7 @@ CompiledSourceFile::CompiledSourceFile(
       }
       break;
     case proto::C:
-      compiler = util::which("cc");
+      compiler = util::which("cc", use_compiler_cache);
       args = {"-O2", "-std=c11", "-DEVAL", "-Wall", "-o", exe_name, name_};
       switch (source.target_arch()) {
         case proto::Arch::I686:
@@ -116,7 +118,7 @@ CompiledSourceFile::CompiledSourceFile(
       }
       break;
     case proto::PASCAL:
-      compiler = util::which("fpc");
+      compiler = util::which("fpc", use_compiler_cache);
       args = {"-dEVAL", "-XS", "-O2", "-o" + exe_name, name_};
       if (source.target_arch() != proto::Arch::DEFAULT)
         throw std::domain_error(

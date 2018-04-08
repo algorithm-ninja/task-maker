@@ -17,20 +17,25 @@ bool file_exists(const std::string& path) {
 
 namespace util {
 
-std::string which(const std::string& cmd) {
+std::string which(const std::string& cmd, bool use_cache) {
   static const std::string path = std::getenv("PATH");
   static const std::vector<std::string> dirs = absl::StrSplit(path, ":");
 
-  if (cmd_cache.count(cmd) > 0)
+  if (use_cache && cmd_cache.count(cmd) > 0)
     return cmd_cache[cmd];
 
   for (const std::string& dir : dirs) {
     std::string fullpath = util::File::JoinPath(dir, cmd);
-    if (file_exists(fullpath))
-      return cmd_cache[cmd] = fullpath;
+    if (file_exists(fullpath)) {
+      if (use_cache)
+        cmd_cache[cmd] = fullpath;
+      return fullpath;
+    }
   }
 
-  return cmd_cache[cmd] = "";
+  if (use_cache)
+    cmd_cache[cmd] = "";
+  return "";
 }
 
 }  // namespace util

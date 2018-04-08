@@ -30,6 +30,14 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     int64_t current_id = evaluation_id_counter_++;
     EvaluationInfo info = setup_request(*request);
 
+    if (info.queue->IsStopped()) {
+      absl::optional<proto::Event> event;
+      while ((event = info.queue->Dequeue()))
+        writer->Write(*event);
+      LOG(ERROR) << "Deleted request " << current_id;
+      return grpc::Status::OK;
+    }
+
     running_[current_id] = std::move(info);
     run_core(*request, current_id);
 
@@ -43,6 +51,14 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 
     int64_t current_id = evaluation_id_counter_++;
     EvaluationInfo info = setup_request(*request);
+
+    if (info.queue->IsStopped()) {
+      absl::optional<proto::Event> event;
+      while ((event = info.queue->Dequeue()))
+        writer->Write(*event);
+      LOG(ERROR) << "Deleted request " << current_id;
+      return grpc::Status::OK;
+    }
 
     running_[current_id] = std::move(info);
     run_core(*request, current_id);
@@ -124,30 +140,37 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 
     info.queue = absl::make_unique<manager::EventQueue>();
 
-    info.generation = absl::make_unique<manager::IOIGeneration>(
-        info.queue.get(), info.core.get(), request.task(), request.cache_mode(),
-        request.evaluate_on(), request.keep_sandbox());
+    try {
+      info.generation = absl::make_unique<manager::IOIGeneration>(
+          info.queue.get(), info.core.get(), request.task(), request.cache_mode(),
+          request.evaluate_on(), request.keep_sandbox());
 
-    info.evaluation = absl::make_unique<manager::IOIEvaluation>(
-        info.queue.get(), info.core.get(),
-        reinterpret_cast<manager::IOIGeneration*>(info.generation.get()),
-        request.task(), request.exclusive(), request.cache_mode(),
-        request.evaluate_on(), request.keep_sandbox());
+      info.evaluation = absl::make_unique<manager::IOIEvaluation>(
+          info.queue.get(), info.core.get(),
+          reinterpret_cast<manager::IOIGeneration*>(info.generation.get()),
+          request.task(), request.exclusive(), request.cache_mode(),
+          request.evaluate_on(), request.keep_sandbox());
 
-    std::map<proto::Language, proto::GraderInfo> graders;
-    for (const proto::GraderInfo& grader : request.task().grader_info())
-      graders[grader.for_language()] = grader;
+      std::map<proto::Language, proto::GraderInfo> graders;
+      for (const proto::GraderInfo& grader : request.task().grader_info())
+        graders[grader.for_language()] = grader;
 
-    for (const proto::SourceFile& source : request.solutions()) {
-      absl::optional<proto::GraderInfo> grader;
-      if (graders.count(source.language()) == 1)
-        grader = graders[source.language()];
-      info.source_files[source.path()] = manager::SourceFile::FromProto(
-          info.queue.get(), info.core.get(), source, grader, false,
-          request.keep_sandbox(), request.cache_mode(), request.evaluate_on());
-      auto* evaluation =
-          reinterpret_cast<manager::IOIEvaluation*>(info.evaluation.get());
-      evaluation->Evaluate(info.source_files[source.path()].get());
+      for (const proto::SourceFile& source : request.solutions()) {
+        absl::optional<proto::GraderInfo> grader;
+        if (graders.count(source.language()) == 1)
+          grader = graders[source.language()];
+        info.source_files[source.path()] = manager::SourceFile::FromProto(
+            info.queue.get(), info.core.get(), source, grader, false,
+            request.keep_sandbox(), request.cache_mode(), request.evaluate_on());
+        auto* evaluation =
+            reinterpret_cast<manager::IOIEvaluation*>(info.evaluation.get());
+        evaluation->Evaluate(info.source_files[source.path()].get());
+      }
+    } catch (std::exception& ex) {
+      LOG(ERROR) << "Failed to prepare core: " << ex.what();
+      info.queue->FatalError(std::string("Failed to start the core! ") +
+                             ex.what());
+      info.queue->Stop();
     }
 
     return info;
@@ -162,24 +185,31 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 
     info.queue = absl::make_unique<manager::EventQueue>();
 
-    info.generation = absl::make_unique<manager::TerryGeneration>(
-        info.queue.get(), info.core.get(), request.task(), request.cache_mode(),
-        request.evaluate_on(), request.keep_sandbox());
-    info.evaluation = absl::make_unique<manager::TerryEvaluation>(
-        info.queue.get(), info.core.get(),
-        reinterpret_cast<manager::TerryGeneration*>(info.generation.get()),
-        request.task(), request.cache_mode(), request.evaluate_on(),
-        request.keep_sandbox());
+    try {
+      info.generation = absl::make_unique<manager::TerryGeneration>(
+          info.queue.get(), info.core.get(), request.task(), request.cache_mode(),
+          request.evaluate_on(), request.keep_sandbox());
+      info.evaluation = absl::make_unique<manager::TerryEvaluation>(
+          info.queue.get(), info.core.get(),
+          reinterpret_cast<manager::TerryGeneration*>(info.generation.get()),
+          request.task(), request.cache_mode(), request.evaluate_on(),
+          request.keep_sandbox());
 
-    for (const proto::TerrySolution& solution : request.solutions()) {
-      const proto::SourceFile& source = solution.solution();
-      int64_t seed = solution.seed();
-      info.source_files[source.path()] = manager::SourceFile::FromProto(
-          info.queue.get(), info.core.get(), source, {}, false,
-          request.keep_sandbox(), request.cache_mode(), request.evaluate_on());
-      auto* evaluation =
-          reinterpret_cast<manager::TerryEvaluation*>(info.evaluation.get());
-      evaluation->Evaluate(info.source_files[source.path()].get(), seed);
+      for (const proto::TerrySolution& solution : request.solutions()) {
+        const proto::SourceFile& source = solution.solution();
+        int64_t seed = solution.seed();
+        info.source_files[source.path()] = manager::SourceFile::FromProto(
+            info.queue.get(), info.core.get(), source, {}, false,
+            request.keep_sandbox(), request.cache_mode(), request.evaluate_on());
+        auto* evaluation =
+            reinterpret_cast<manager::TerryEvaluation*>(info.evaluation.get());
+        evaluation->Evaluate(info.source_files[source.path()].get(), seed);
+      }
+    } catch (std::exception& ex) {
+      LOG(ERROR) << "Failed to prepare core: " << ex.what();
+      info.queue->FatalError(std::string("Failed to start the core! ") +
+                             ex.what());
+      info.queue->Stop();
     }
 
     return info;

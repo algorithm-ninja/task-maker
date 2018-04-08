@@ -5,7 +5,7 @@
 
 namespace util {
 
-std::string which(const std::string& cmd);
+std::string which(const std::string& cmd, bool use_cache = true);
 
 }  // namespace util
 
