@@ -123,51 +123,53 @@ void IOIEvaluation::evaluate_testcase_(int64_t subtask_num,
                          status.execution_info->Message());
       return true;
     }
-
-    if (!task_.has_checker()) {
-      // without the checker diff is used to check and it exits with (1) if the
-      // files differ.
-      if (status.execution_info->Success()) {
-        queue_->EvaluationDone(name, testcase_num, 1.0f, "Output is correct",
-                               execution->CpuTime(), execution->WallTime(),
-                               execution->Memory(), execution->Cached());
-        UpdateScore(name, subtask_num, testcase_num, 1.0);
-      } else {
-        queue_->EvaluationDone(name, testcase_num, 0.0f,
-                               "Output is not correct", execution->CpuTime(),
-                               execution->WallTime(), execution->Memory(),
-                               execution->Cached());
-        UpdateScore(name, subtask_num, testcase_num, 0.0);
-      }
-    } else {
-      if (status.execution_info->Success()) {
-        std::string out = checker->Stdout()->Contents(1024 * 1024);
-        std::string err = checker->Stderr()->Contents(1024 * 1024);
-        try {
-          float score = std::stof(out);
-          if (score < 0.0 || score > 1.0)
-            throw std::invalid_argument("score not in range [0.0, 1.0]");
-          queue_->EvaluationDone(name, testcase_num, score, err,
+    if (status.event == core::TaskStatus::SUCCESS) {
+      if (!task_.has_checker()) {
+        // without the checker diff is used to check and it exits with (1) if
+        // the files differ.
+        if (status.execution_info->Success()) {
+          queue_->EvaluationDone(name, testcase_num, 1.0f, "Output is correct",
                                  execution->CpuTime(), execution->WallTime(),
                                  execution->Memory(), execution->Cached());
-          UpdateScore(name, subtask_num, testcase_num, score);
-        } catch (const std::invalid_argument& ex) {
-          queue_->EvaluationFailure(name, testcase_num, "checker failed",
-                                    execution->CpuTime(), execution->WallTime(),
-                                    execution->Memory(), execution->Cached());
-          queue_->FatalError(std::string("Checker returned invalid score: ") +
-                             ex.what() + "\n" + "The stdout was: " + out +
-                             "\n" + "The stderr was: " + err);
-          return false;
+          UpdateScore(name, subtask_num, testcase_num, 1.0);
+        } else {
+          queue_->EvaluationDone(name, testcase_num, 0.0f,
+                                 "Output is not correct", execution->CpuTime(),
+                                 execution->WallTime(), execution->Memory(),
+                                 execution->Cached());
+          UpdateScore(name, subtask_num, testcase_num, 0.0);
         }
       } else {
-        std::string checker_error = checker->Stderr()->Contents(1024 * 1024);
-        queue_->EvaluationFailure(name, testcase_num,
-                                  checker->Message() + "\n" + checker_error,
-                                  execution->CpuTime(), execution->WallTime(),
-                                  execution->Memory(), execution->Cached());
-        queue_->FatalError("Checker failed: " + checker_error);
-        return false;
+        if (status.execution_info->Success()) {
+          std::string out = checker->Stdout()->Contents(1024 * 1024);
+          std::string err = checker->Stderr()->Contents(1024 * 1024);
+          try {
+            float score = std::stof(out);
+            if (score < 0.0 || score > 1.0)
+              throw std::invalid_argument("score not in range [0.0, 1.0]");
+            queue_->EvaluationDone(name, testcase_num, score, err,
+                                   execution->CpuTime(), execution->WallTime(),
+                                   execution->Memory(), execution->Cached());
+            UpdateScore(name, subtask_num, testcase_num, score);
+          } catch (const std::invalid_argument& ex) {
+            queue_->EvaluationFailure(name, testcase_num, "checker failed",
+                                      execution->CpuTime(),
+                                      execution->WallTime(),
+                                      execution->Memory(), execution->Cached());
+            queue_->FatalError(std::string("Checker returned invalid score: ") +
+                               ex.what() + "\n" + "The stdout was: " + out +
+                               "\n" + "The stderr was: " + err);
+            return false;
+          }
+        } else {
+          std::string checker_error = checker->Stderr()->Contents(1024 * 1024);
+          queue_->EvaluationFailure(name, testcase_num,
+                                    checker->Message() + "\n" + checker_error,
+                                    execution->CpuTime(), execution->WallTime(),
+                                    execution->Memory(), execution->Cached());
+          queue_->FatalError("Checker failed: " + checker_error);
+          return false;
+        }
       }
     }
     return true;
