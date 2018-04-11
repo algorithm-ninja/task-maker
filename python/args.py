@@ -42,95 +42,117 @@ def _validate_arch(arch: str) -> int:
                                          arch)
 
 
-def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="The new cmsMake!")
-    parser.add_argument(
-        "solutions",
-        help="Test only these solutions",
-        nargs="*",
-        default=[],
-        metavar="solution")
-    parser.add_argument(
+def add_generic_group(parser: argparse.ArgumentParser):
+    group = parser.add_argument_group("Generic options")
+    group.add_argument(
         "--task-dir",
         help="Directory of the task to build",
         default=os.getcwd())
-    parser.add_argument(
+    group.add_argument(
         "--ui",
         help="UI to use (%s)" % ("|".join(UIS.keys())),
         choices=UIS.keys(),
         action="store",
         default="curses")
-    parser.add_argument(
+    group.add_argument(
         "--cache",
         help="Cache policy to use (%s)" % ("|".join(CACHES.keys())),
         action="store",
         type=_validate_cache_mode,
         default="all")
-    parser.add_argument(
-        "--evaluate-on",
-        action="store",
-        help="Where evaluations should be run",
-        default=None)
-    parser.add_argument(
-        "--manager-port",
-        action="store",
-        help="port of the manager",
-        default=7071,
-        type=int)
-    parser.add_argument(
+    group.add_argument(
         "--dry-run",
         help="Execute everything but do not touch the task directory",
         action="store_true",
         default=False)
-    parser.add_argument(
+    group.add_argument(
+        "--clean",
+        help="Clear the task directory and exit",
+        action="store_true",
+        default=False)
+    group.add_argument(
+        "--format",
+        help="Format of the task (ioi|terry)",
+        choices=["ioi", "terry"],
+        action="store",
+        default=None)
+
+
+def add_remote_group(parser: argparse.ArgumentParser):
+    group = parser.add_argument_group("Remote options")
+    group.add_argument(
+        "--evaluate-on",
+        action="store",
+        help="Where evaluations should be run",
+        default=None)
+    group.add_argument(
+        "--manager-port",
+        action="store",
+        help="Port of the manager",
+        default=7071,
+        type=int)
+
+
+def add_execution_group(parser: argparse.ArgumentParser):
+    group = parser.add_argument_group("Execution options")
+    group.add_argument(
         "--num-cores",
         help="Number of cores to use",
         action="store",
         type=_validate_num_cores,
         default=None)
-    parser.add_argument(
+    group.add_argument(
         "--temp-dir",
         help="Where the sandboxes should be created",
         action="store",
         default="temp")
-    parser.add_argument(
+    group.add_argument(
         "--store-dir",
         help="Where files should be stored",
         action="store",
         default="files")
-    parser.add_argument(
+    group.add_argument(
         "--copy-exe",
         help="Copy executable files in bin/ folder",
         action="store_true",
         default=False)
-    parser.add_argument(
+    group.add_argument(
         "--keep-sandbox",
         help="Do not drop the sandbox folder",
         action="store_true",
         default=False)
-    parser.add_argument(
+
+
+def add_terry_group(parser: argparse.ArgumentParser):
+    group = parser.add_argument_group("Terry options")
+    group.add_argument(
         "--arch",
         help="Architecture to target the managers in Terry format (%s)"
              % "|".join(ARCHS.keys()),
         action="store",
         type=_validate_arch,
         default="default")
-    parser.add_argument(
-        "--clean",
-        help="Clear the task directory and exit",
-        action="store_true",
-        default=False)
-    parser.add_argument(
-        "--format",
-        help="Format of the task (ioi|terry)",
-        choices=["ioi", "terry"],
-        action="store",
-        default=None)
-    parser.add_argument(
+
+    group.add_argument(
         "--seed",
         help="Seed for the terry generator",
         type=int,
         action="store",
         default=None)
+
+
+def get_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="The new cmsMake!")
+    add_generic_group(parser)
+    add_remote_group(parser)
+    add_execution_group(parser)
+    add_terry_group(parser)
+
+    parser.add_argument(
+        "solutions",
+        help="Test only these solutions",
+        nargs="*",
+        default=[],
+        metavar="solution")
 
     return parser
