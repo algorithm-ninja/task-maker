@@ -85,8 +85,8 @@ def get_request(args: argparse.Namespace):
     request.task.CopyFrom(task)
     copy_compiled = args.copy_exe
     for solution in solutions:
-        bin_file = copy_compiled and "bin/" + \
-                   os.path.splitext(os.path.basename(solution))[0]
+        path, ext = os.path.splitext(os.path.basename(solution))
+        bin_file = copy_compiled and "bin/" + path + "_" + ext[1:]
         source_file = from_file(solution, bin_file)
         absolutize_source_file(source_file)
         terry_solution = TerrySolution()
