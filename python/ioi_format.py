@@ -237,6 +237,7 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
         request.solutions.extend([from_file(solution, bin_file)])
     request.store_dir = args.store_dir
     request.temp_dir = args.temp_dir
+    request.exclusive = args.exclusive
     request.keep_sandbox = args.keep_sandbox
     for testcase in range(num_testcases):
         request.write_inputs_to[testcase] = "input/input%d.txt" % testcase

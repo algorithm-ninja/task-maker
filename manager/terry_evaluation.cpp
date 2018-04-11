@@ -5,13 +5,14 @@
 namespace manager {
 TerryEvaluation::TerryEvaluation(EventQueue* queue, core::Core* core,
                                  TerryGeneration* generation,
-                                 proto::TerryTask task,
+                                 proto::TerryTask task, bool exclusive,
                                  proto::CacheMode cache_mode,
                                  std::string executor, bool keep_sandbox)
     : queue_(queue),
       core_(core),
       generation_(generation),
       task_(std::move(task)),
+      exclusive_(exclusive),
       cache_mode_(cache_mode),
       executor_(std::move(executor)),
       keep_sandbox_(keep_sandbox) {}
@@ -29,6 +30,11 @@ void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
   core::Execution* checker =
       generation_->GetChecker()->execute("Checking output of solution " + name,
                                          {"input", "output"}, keep_sandbox_);
+  if (exclusive_) {
+    generation->SetExclusive();
+    execution->SetExclusive();
+    checker->SetExclusive();
+  }
 
   core::FileID* input = generation->Stdout();
   if (cache_mode_ == proto::GENERATION || cache_mode_ == proto::ALL)

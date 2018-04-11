@@ -102,6 +102,11 @@ def add_execution_group(parser: argparse.ArgumentParser):
         type=_validate_num_cores,
         default=None)
     group.add_argument(
+        "--exclusive",
+        help="Evaluate the solutions one test at the time",
+        action="store_true",
+        default=False)
+    group.add_argument(
         "--temp-dir",
         help="Where the sandboxes should be created",
         action="store",

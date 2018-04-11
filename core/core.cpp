@@ -1,5 +1,6 @@
 #include "core/core.hpp"
 #include "executor/local_executor.hpp"
+#include "absl/strings/match.h"
 
 namespace core {
 
@@ -89,9 +90,9 @@ TaskStatus Core::ExecuteTask(Execution* execution) {
         [this](int64_t id) { return GetFile(id); },
         [this](int64_t id, const util::SHA256_t& hash) { SetFile(id, hash); });
     return TaskStatus::Success(execution);
-  } catch (executor::too_many_executions& exc) {
-    return TaskStatus::Busy(execution);
   } catch (std::exception& exc) {
+    if (absl::EndsWith(exc.what(), "worker busy"))
+      return TaskStatus::Busy(execution);
     return TaskStatus::Failure(execution, exc.what());
   }
 }

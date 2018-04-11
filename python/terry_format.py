@@ -105,6 +105,7 @@ def get_request(args: argparse.Namespace):
     if args.evaluate_on:
         request.evaluate_on = args.evaluate_on
     request.keep_sandbox = args.keep_sandbox
+    request.exclusive = args.exclusive
     return request
 
 

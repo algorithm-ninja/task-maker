@@ -70,6 +70,7 @@ cc_library(
         ":task_status",
         "//executor:local_executor",
         "//external:glog",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
     ],
 )

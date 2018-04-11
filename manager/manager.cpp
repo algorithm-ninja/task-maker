@@ -197,8 +197,8 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
       info.evaluation = absl::make_unique<manager::TerryEvaluation>(
           info.queue.get(), info.core.get(),
           reinterpret_cast<manager::TerryGeneration*>(info.generation.get()),
-          request.task(), request.cache_mode(), request.evaluate_on(),
-          request.keep_sandbox());
+          request.task(), request.exclusive(), request.cache_mode(),
+          request.evaluate_on(), request.keep_sandbox());
 
       for (const proto::TerrySolution& solution : request.solutions()) {
         const proto::SourceFile& source = solution.solution();
