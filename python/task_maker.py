@@ -4,7 +4,7 @@ import os
 import signal
 from typing import Any
 
-from proto.manager_pb2 import StopRequest, CleanTaskRequest
+from proto.manager_pb2 import StopRequest, CleanTaskRequest, ShutdownRequest
 
 from python import ioi_format, terry_format
 from python.args import get_parser, UIS
@@ -30,6 +30,13 @@ def terry_format_clean(args):
     manager_clean(args)
 
 
+def quit_manager(args, force):
+    request = ShutdownRequest()
+    request.force = force
+    manager = get_manager(args)
+    manager.Shutdown(request)
+
+
 def main() -> None:
     parser = get_parser()
     args = parser.parse_args()
@@ -50,6 +57,13 @@ def main() -> None:
             terry_format_clean(args)
         else:
             raise ValueError("Format %s not supported" % args.format)
+
+    if args.kill_manager:
+        quit_manager(args, True)
+    if args.quit_manager:
+        quit_manager(args, False)
+
+    if args.quit_manager or args.kill_manager or args.clean:
         return
 
     manager = get_manager(args)

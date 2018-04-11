@@ -1,4 +1,5 @@
 #include <condition_variable>
+#include <future>
 
 #include "absl/memory/memory.h"
 #include "absl/types/optional.h"
@@ -18,6 +19,9 @@ DEFINE_int32(port, 7071, "port to listen on");  // NOLINT
 
 namespace {
 const auto RUNNING_TASK_POLL_INTERVAL = std::chrono::seconds(1);  // NOLINT
+
+// will be resolved if a shutdown request is made
+std::promise<void> do_exit;
 }  // namespace
 
 class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
@@ -92,9 +96,9 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
   grpc::Status Shutdown(grpc::ServerContext* /*context*/,
                         const proto::ShutdownRequest* request,
                         proto::ShutdownResponse* /*response*/) override {
-    // TODO(edomora97) eventually kill the core/thread
-    // FIXME it doesn't work :(
     LOG(WARNING) << "Requesting to shutdown the server";
+    if (!running_.empty())
+      LOG(WARNING) << "There is an execution running";
     if (request->force()) {
       LOG(WARNING) << " -- FORCING SHUTDOWN --";
       for (auto& kw : running_) {
@@ -102,11 +106,11 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
         kw.second.queue->Stop();
       }
     }
-    for (auto& kw : running_) {
+    std::lock_guard<std::mutex> lck(requests_mutex_);
+    for (auto& kw : running_)
       kw.second.running_thread.join();
-    }
-    server_->Shutdown();
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "TODO");
+    do_exit.set_value();
+    return grpc::Status::OK;
   }
 
   void RegisterServer(grpc::Server* server) { server_ = server; }
@@ -363,5 +367,11 @@ int main(int argc, char** argv) {
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   service.RegisterServer(server.get());
   LOG(INFO) << "Server listening on " << server_address;
-  server->Wait();
+  std::thread serving_thread([&]() {
+    server->Wait();
+  });
+  do_exit.get_future().wait();
+  LOG(WARNING) << "Shutting down the server, goodbye";
+  server->Shutdown();
+  serving_thread.join();
 }

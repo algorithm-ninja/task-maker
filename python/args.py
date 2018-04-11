@@ -121,6 +121,16 @@ def add_execution_group(parser: argparse.ArgumentParser):
         help="Do not drop the sandbox folder",
         action="store_true",
         default=False)
+    group.add_argument(
+        "--quit-manager",
+        help="Tell the manager to quit after processing the last request",
+        action="store_true",
+        default=False)
+    group.add_argument(
+        "--kill-manager",
+        help="Tell the manager to quit ASAP",
+        action="store_true",
+        default=False)
 
 
 def add_terry_group(parser: argparse.ArgumentParser):
