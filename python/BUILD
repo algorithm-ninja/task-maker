@@ -153,6 +153,14 @@ py_library(
     ],
 )
 
+py_library(
+    name = "manager",
+    srcs = ["manager.py"],
+    deps = [
+        "//proto:manager_py",
+    ],
+)
+
 py_binary(
     name = "task_maker",
     srcs = ["task_maker.py"],
@@ -161,6 +169,7 @@ py_binary(
         ":args",
         ":detect_format",
         ":ioi_format",
+        ":manager",
         ":terry_format",
         pypi_requirements(),
     ],
