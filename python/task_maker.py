@@ -41,6 +41,13 @@ def main() -> None:
     parser = get_parser()
     args = parser.parse_args()
 
+    if args.kill_manager:
+        quit_manager(args, True)
+    if args.quit_manager:
+        quit_manager(args, False)
+    if args.kill_manager or args.quit_manager:
+        return
+
     os.chdir(args.task_dir)
 
     if not args.format:
@@ -57,13 +64,6 @@ def main() -> None:
             terry_format_clean(args)
         else:
             raise ValueError("Format %s not supported" % args.format)
-
-    if args.kill_manager:
-        quit_manager(args, True)
-    if args.quit_manager:
-        quit_manager(args, False)
-
-    if args.quit_manager or args.kill_manager or args.clean:
         return
 
     manager = get_manager(args)

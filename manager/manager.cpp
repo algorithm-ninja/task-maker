@@ -97,18 +97,19 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
                         const proto::ShutdownRequest* request,
                         proto::ShutdownResponse* /*response*/) override {
     LOG(WARNING) << "Requesting to shutdown the server";
-    if (!running_.empty())
-      LOG(WARNING) << "There is an execution running";
+    if (!running_.empty()) LOG(WARNING) << "There is an execution running";
     if (request->force()) {
       LOG(WARNING) << " -- FORCING SHUTDOWN --";
       for (auto& kw : running_) {
+        if (kw.second.is_remote)
+          return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION,
+                              "Not forcing remote execution killing");
         kw.second.core->Stop();
         kw.second.queue->Stop();
       }
     }
     std::lock_guard<std::mutex> lck(requests_mutex_);
-    for (auto& kw : running_)
-      kw.second.running_thread.join();
+    for (auto& kw : running_) kw.second.running_thread.join();
     do_exit.set_value();
     return grpc::Status::OK;
   }
@@ -122,6 +123,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     std::unique_ptr<manager::Generation> generation;
     std::unique_ptr<manager::Evaluation> evaluation;
     std::map<std::string, std::unique_ptr<manager::SourceFile>> source_files;
+    bool is_remote;
 
     std::thread running_thread;
   };
@@ -139,6 +141,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     info.core->SetNumCores(request.num_cores());
 
     info.queue = absl::make_unique<manager::EventQueue>();
+    info.is_remote = !request.evaluate_on().empty();
 
     try {
       info.generation = absl::make_unique<manager::IOIGeneration>(
@@ -161,7 +164,8 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
           grader = graders[source.language()];
         info.source_files[source.path()] = manager::SourceFile::FromProto(
             info.queue.get(), info.core.get(), source, grader, false,
-            request.keep_sandbox(), request.cache_mode(), request.evaluate_on());
+            request.keep_sandbox(), request.cache_mode(),
+            request.evaluate_on());
         auto* evaluation =
             reinterpret_cast<manager::IOIEvaluation*>(info.evaluation.get());
         evaluation->Evaluate(info.source_files[source.path()].get());
@@ -184,6 +188,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     info.core->SetNumCores(request.num_cores());
 
     info.queue = absl::make_unique<manager::EventQueue>();
+    info.is_remote = !request.evaluate_on().empty();
 
     try {
       info.generation = absl::make_unique<manager::TerryGeneration>(
@@ -200,7 +205,8 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
         int64_t seed = solution.seed();
         info.source_files[source.path()] = manager::SourceFile::FromProto(
             info.queue.get(), info.core.get(), source, {}, false,
-            request.keep_sandbox(), request.cache_mode(), request.evaluate_on());
+            request.keep_sandbox(), request.cache_mode(),
+            request.evaluate_on());
         auto* evaluation =
             reinterpret_cast<manager::TerryEvaluation*>(info.evaluation.get());
         evaluation->Evaluate(info.source_files[source.path()].get(), seed);
@@ -367,9 +373,7 @@ int main(int argc, char** argv) {
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   service.RegisterServer(server.get());
   LOG(INFO) << "Server listening on " << server_address;
-  std::thread serving_thread([&]() {
-    server->Wait();
-  });
+  std::thread serving_thread([&]() { server->Wait(); });
   do_exit.get_future().wait();
   LOG(WARNING) << "Shutting down the server, goodbye";
   server->Shutdown();
