@@ -232,8 +232,8 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
     request = EvaluateTaskRequest()
     request.task.CopyFrom(task)
     for solution in solutions:
-        bin_file = copy_compiled and "bin/" + \
-                   os.path.splitext(os.path.basename(solution))[0]
+        path, ext = os.path.splitext(os.path.basename(solution))
+        bin_file = copy_compiled and "bin/" + path + "_" + ext[1:]
         request.solutions.extend([from_file(solution, bin_file)])
     request.store_dir = args.store_dir
     request.temp_dir = args.temp_dir
