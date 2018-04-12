@@ -39,34 +39,6 @@ cc_library(
 )
 
 cc_library(
-    name = "ioi_generation",
-    srcs = ["ioi_generation.cpp"],
-    hdrs = ["ioi_generation.hpp"],
-    deps = [
-        ":event_queue",
-        ":generation",
-        ":source_file",
-        "//core",
-        "//core:file_id",
-        "//proto:manager_cc",
-        "//proto:task_cc",
-    ],
-)
-
-cc_library(
-    name = "terry_generation",
-    srcs = ["terry_generation.cpp"],
-    hdrs = ["terry_generation.hpp"],
-    deps = [
-        ":generation",
-        ":source_file",
-        "//proto:manager_cc",
-        "//proto:task_cc",
-        "@com_google_absl//absl/types:optional",
-    ],
-)
-
-cc_library(
     name = "evaluation",
     hdrs = ["evaluation.hpp"],
     deps = [
@@ -75,35 +47,14 @@ cc_library(
 )
 
 cc_library(
-    name = "ioi_evaluation",
-    srcs = ["ioi_evaluation.cpp"],
-    hdrs = ["ioi_evaluation.hpp"],
+    name = "evaluation_info",
+    hdrs = ["evaluation_info.hpp"],
     deps = [
         ":evaluation",
         ":event_queue",
-        ":ioi_generation",
+        ":generation",
         ":source_file",
         "//core",
-        "//core:execution",
-        "//core:file_id",
-        "//external:glog",
-        "//proto:manager_cc",
-        "//proto:task_cc",
-        "//util:which",
-    ],
-)
-
-cc_library(
-    name = "terry_evaluation",
-    srcs = ["terry_evaluation.cpp"],
-    hdrs = ["terry_evaluation.hpp"],
-    deps = [
-        ":evaluation",
-        ":terry_generation",
-        "//external:glog",
-        "//external:json",
-        "//proto:manager_cc",
-        "//proto:task_cc",
     ],
 )
 
@@ -113,15 +64,14 @@ cc_binary(
     deps = [
         "//core:core",
         "//sandbox:unix",
-        ":ioi_generation",
-        ":terry_generation",
-        ":ioi_evaluation",
-        ":terry_evaluation",
         ":event_queue",
+        ":evaluation_info",
         "//util:file",
         "//proto:manager_cc",
         "//external:gflags",
         "//external:glog",
+        "//manager/ioi_format:ioi_format",
+        "//manager/terry_format:terry_format",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/memory",
     ] + GRPC_COMPILE_DEPS,

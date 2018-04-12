@@ -2,7 +2,7 @@
 #define MANAGER_TERRY_EVALUATION_HPP
 
 #include "manager/evaluation.hpp"
-#include "manager/terry_generation.hpp"
+#include "manager/terry_format/terry_generation.hpp"
 
 namespace manager {
 

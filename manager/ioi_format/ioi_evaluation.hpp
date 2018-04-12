@@ -4,7 +4,7 @@
 #include "core/core.hpp"
 #include "manager/evaluation.hpp"
 #include "manager/event_queue.hpp"
-#include "manager/ioi_generation.hpp"
+#include "manager/ioi_format/ioi_generation.hpp"
 #include "manager/source_file.hpp"
 #include "proto/manager.pb.h"
 #include "proto/task.pb.h"

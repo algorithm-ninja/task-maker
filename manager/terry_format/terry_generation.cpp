@@ -1,4 +1,4 @@
-#include "manager/terry_generation.hpp"
+#include "manager/terry_format/terry_generation.hpp"
 
 namespace manager {
 TerryGeneration::TerryGeneration(EventQueue* queue, core::Core* core,

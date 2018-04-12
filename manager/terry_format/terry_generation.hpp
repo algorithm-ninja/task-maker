@@ -1,9 +1,12 @@
 #ifndef MANAGER_TERRY_GENERATION_HPP
 #define MANAGER_TERRY_GENERATION_HPP
 
+#include "core/core.hpp"
+#include "manager/event_queue.hpp"
 #include "manager/generation.hpp"
 #include "manager/source_file.hpp"
 #include "proto/manager.pb.h"
+#include "proto/task.pb.h"
 
 namespace manager {
 

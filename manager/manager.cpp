@@ -11,8 +11,9 @@
 #include "grpc++/server.h"
 #include "grpc++/server_builder.h"
 #include "grpc++/server_context.h"
-#include "manager/ioi_evaluation.hpp"
-#include "manager/terry_evaluation.hpp"
+#include "manager/evaluation_info.hpp"
+#include "manager/ioi_format/ioi_format.hpp"
+#include "manager/terry_format/terry_format.hpp"
 #include "proto/manager.grpc.pb.h"
 
 DEFINE_int32(port, 7071, "port to listen on");  // NOLINT
@@ -24,6 +25,7 @@ const auto RUNNING_TASK_POLL_INTERVAL = std::chrono::seconds(1);  // NOLINT
 std::promise<void> do_exit;
 }  // namespace
 
+namespace manager {
 class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
  public:
   grpc::Status EvaluateTask(grpc::ServerContext* /*context*/,
@@ -32,7 +34,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     std::lock_guard<std::mutex> lck(requests_mutex_);
 
     int64_t current_id = evaluation_id_counter_++;
-    EvaluationInfo info = setup_request(*request);
+    EvaluationInfo info = manager::setup_request(*request);
 
     if (info.queue->IsStopped()) {
       info.queue->BindWriterUnlocked(writer);
@@ -41,7 +43,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     }
 
     running_[current_id] = std::move(info);
-    run_core(*request, current_id);
+    manager::run_core(*request, current_id, &running_);
 
     return process_request(current_id, writer);
   }
@@ -52,7 +54,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     std::lock_guard<std::mutex> lck(requests_mutex_);
 
     int64_t current_id = evaluation_id_counter_++;
-    EvaluationInfo info = setup_request(*request);
+    EvaluationInfo info = manager::setup_request(*request);
 
     if (info.queue->IsStopped()) {
       info.queue->BindWriterUnlocked(writer);
@@ -61,7 +63,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     }
 
     running_[current_id] = std::move(info);
-    run_core(*request, current_id);
+    manager::run_core(*request, current_id, &running_);
 
     return process_request(current_id, writer);
   }
@@ -117,175 +119,10 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
   void RegisterServer(grpc::Server* server) { server_ = server; }
 
  private:
-  struct EvaluationInfo {
-    std::unique_ptr<core::Core> core;
-    std::unique_ptr<manager::EventQueue> queue;
-    std::unique_ptr<manager::Generation> generation;
-    std::unique_ptr<manager::Evaluation> evaluation;
-    std::map<std::string, std::unique_ptr<manager::SourceFile>> source_files;
-    bool is_remote;
-
-    std::thread running_thread;
-  };
-
   grpc::Server* server_ = nullptr;
   std::map<int64_t, EvaluationInfo> running_ GUARDED_BY(requests_mutex_);
   int64_t evaluation_id_counter_ = 0;
   std::mutex requests_mutex_;
-
-  EvaluationInfo setup_request(const proto::EvaluateTaskRequest& request) {
-    EvaluationInfo info{};
-    info.core = absl::make_unique<core::Core>();
-    info.core->SetStoreDirectory(request.store_dir());
-    info.core->SetTempDirectory(request.temp_dir());
-    info.core->SetNumCores(request.num_cores());
-
-    info.queue = absl::make_unique<manager::EventQueue>();
-    info.is_remote = !request.evaluate_on().empty();
-
-    try {
-      info.generation = absl::make_unique<manager::IOIGeneration>(
-          info.queue.get(), info.core.get(), request.task(),
-          request.cache_mode(), request.evaluate_on(), request.keep_sandbox());
-
-      info.evaluation = absl::make_unique<manager::IOIEvaluation>(
-          info.queue.get(), info.core.get(),
-          reinterpret_cast<manager::IOIGeneration*>(info.generation.get()),
-          request.task(), request.exclusive(), request.cache_mode(),
-          request.evaluate_on(), request.keep_sandbox());
-
-      std::map<proto::Language, proto::GraderInfo> graders;
-      for (const proto::GraderInfo& grader : request.task().grader_info())
-        graders[grader.for_language()] = grader;
-
-      for (const proto::SourceFile& source : request.solutions()) {
-        absl::optional<proto::GraderInfo> grader;
-        if (graders.count(source.language()) == 1)
-          grader = graders[source.language()];
-        info.source_files[source.path()] = manager::SourceFile::FromProto(
-            info.queue.get(), info.core.get(), source, grader, false,
-            request.keep_sandbox(), request.cache_mode(),
-            request.evaluate_on());
-        auto* evaluation =
-            reinterpret_cast<manager::IOIEvaluation*>(info.evaluation.get());
-        evaluation->Evaluate(info.source_files[source.path()].get());
-      }
-    } catch (std::exception& ex) {
-      LOG(ERROR) << "Failed to prepare core: " << ex.what();
-      info.queue->FatalError(std::string("Failed to start the core! ") +
-                             ex.what());
-      info.queue->Stop();
-    }
-
-    return info;
-  }
-
-  EvaluationInfo setup_request(const proto::EvaluateTerryTaskRequest& request) {
-    EvaluationInfo info{};
-    info.core = absl::make_unique<core::Core>();
-    info.core->SetStoreDirectory(request.store_dir());
-    info.core->SetTempDirectory(request.temp_dir());
-    info.core->SetNumCores(request.num_cores());
-
-    info.queue = absl::make_unique<manager::EventQueue>();
-    info.is_remote = !request.evaluate_on().empty();
-
-    try {
-      info.generation = absl::make_unique<manager::TerryGeneration>(
-          info.queue.get(), info.core.get(), request.task(),
-          request.cache_mode(), request.evaluate_on(), request.keep_sandbox());
-      info.evaluation = absl::make_unique<manager::TerryEvaluation>(
-          info.queue.get(), info.core.get(),
-          reinterpret_cast<manager::TerryGeneration*>(info.generation.get()),
-          request.task(), request.exclusive(), request.cache_mode(),
-          request.evaluate_on(), request.keep_sandbox());
-
-      for (const proto::TerrySolution& solution : request.solutions()) {
-        const proto::SourceFile& source = solution.solution();
-        int64_t seed = solution.seed();
-        info.source_files[source.path()] = manager::SourceFile::FromProto(
-            info.queue.get(), info.core.get(), source, {}, false,
-            request.keep_sandbox(), request.cache_mode(),
-            request.evaluate_on());
-        auto* evaluation =
-            reinterpret_cast<manager::TerryEvaluation*>(info.evaluation.get());
-        evaluation->Evaluate(info.source_files[source.path()].get(), seed);
-      }
-    } catch (std::exception& ex) {
-      LOG(ERROR) << "Failed to prepare core: " << ex.what();
-      info.queue->FatalError(std::string("Failed to start the core! ") +
-                             ex.what());
-      info.queue->Stop();
-    }
-
-    return info;
-  }
-
-  void run_core(const proto::EvaluateTaskRequest& request, int64_t current_id) {
-    running_[current_id].running_thread = std::thread([this, request,
-                                                       current_id] {
-      EvaluationInfo& info = running_[current_id];
-      LOG(INFO) << "Starting new core for request " << current_id;
-      try {
-        if (info.core->Run()) {
-          LOG(INFO) << "The core for request " << current_id
-                    << " has succeeded";
-          info.queue->Stop();
-          if (request.dry_run()) {
-            LOG(INFO) << "Dry-run mode, inputs/outputs/checker not saved";
-            return;
-          }
-          auto* generation =
-              reinterpret_cast<manager::IOIGeneration*>(info.generation.get());
-          if (request.task().has_checker() &&
-              !request.write_checker_to().empty())
-            generation->WriteChecker(request);
-          generation->WriteInputs(request);
-          generation->WriteOutputs(request);
-        } else {
-          info.queue->FatalError("The core failed!");
-          LOG(WARNING) << "The core for request " << current_id
-                       << " has failed";
-          info.queue->Stop();
-        }
-      } catch (const std::exception& ex) {
-        LOG(WARNING) << "The core for request " << current_id
-                     << " has failed with an excetpion: " << ex.what();
-        info.queue->FatalError(std::string("The core failed! ") + ex.what());
-        info.queue->Stop();
-      }
-    });
-  }
-
-  void run_core(const proto::EvaluateTerryTaskRequest& request,
-                int64_t current_id) {
-    running_[current_id].running_thread = std::thread([this, request,
-                                                       current_id] {
-      EvaluationInfo& info = running_[current_id];
-      LOG(INFO) << "Starting new core for terry request " << current_id;
-      try {
-        if (info.core->Run()) {
-          LOG(INFO) << "The core for request " << current_id
-                    << " has succeeded";
-          info.queue->Stop();
-          if (request.dry_run()) {
-            LOG(INFO) << "Dry-run mode, compiled files not saved";
-            return;
-          }
-        } else {
-          info.queue->FatalError("The core failed");
-          LOG(WARNING) << "The core for request " << current_id
-                       << " has failed";
-          info.queue->Stop();
-        }
-      } catch (const std::exception& ex) {
-        LOG(WARNING) << "The core for request " << current_id
-                     << " has failed with exception: " << ex.what();
-        info.queue->FatalError(std::string("The core failed! ") + ex.what());
-        info.queue->Stop();
-      }
-    });
-  }
 
   grpc::Status process_request(int64_t current_id,
                                grpc::ServerWriter<proto::Event>* writer) {
@@ -359,6 +196,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     return grpc::Status::OK;
   }
 };
+}  // namespace manager
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -366,7 +204,7 @@ int main(int argc, char** argv) {
   google::InstallFailureSignalHandler();
 
   std::string server_address = "127.0.0.1:" + std::to_string(FLAGS_port);
-  TaskMakerManagerImpl service;
+  manager::TaskMakerManagerImpl service;
   grpc::ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.RegisterService(&service);

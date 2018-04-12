@@ -1,4 +1,4 @@
-#include "manager/ioi_generation.hpp"
+#include "manager/ioi_format/ioi_generation.hpp"
 
 namespace manager {
 

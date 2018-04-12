@@ -1,4 +1,4 @@
-#include "manager/ioi_evaluation.hpp"
+#include "manager/ioi_format/ioi_evaluation.hpp"
 #include "glog/logging.h"
 #include "util/which.hpp"
 
