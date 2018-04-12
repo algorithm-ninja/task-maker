@@ -91,6 +91,24 @@ def add_remote_group(parser: argparse.ArgumentParser):
         help="Port of the manager",
         default=7071,
         type=int)
+    group.add_argument(
+        "--run-manager",
+        action="store",
+        nargs=argparse.REMAINDER,
+        help="Run the manager in foreground instead of running a task",
+        default=None)
+    group.add_argument(
+        "--run-server",
+        action="store",
+        nargs=argparse.REMAINDER,
+        help="Run the server in foreground instead of running a task",
+        default=None)
+    group.add_argument(
+        "--run-worker",
+        action="store",
+        nargs=argparse.REMAINDER,
+        help="Run a worker in foreground instead of running a task",
+        default=None)
 
 
 def add_execution_group(parser: argparse.ArgumentParser):

@@ -9,7 +9,8 @@ from proto.manager_pb2 import StopRequest, CleanTaskRequest, ShutdownRequest
 from python import ioi_format, terry_format
 from python.args import get_parser, UIS
 from python.detect_format import detect_format
-from python.manager import get_manager
+from python.manager import get_manager, became_manager, became_server, \
+    became_worker
 
 
 def manager_clean(args):
@@ -40,6 +41,13 @@ def quit_manager(args, force):
 def main() -> None:
     parser = get_parser()
     args = parser.parse_args()
+
+    if args.run_manager is not None:
+        became_manager(args)
+    if args.run_server is not None:
+        became_server(args)
+    if args.run_worker is not None:
+        became_worker(args)
 
     if args.kill_manager:
         quit_manager(args, True)

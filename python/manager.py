@@ -12,6 +12,24 @@ import os.path
 from proto import manager_pb2_grpc
 
 
+def get_manager_path():
+    manager = os.path.dirname(__file__)
+    manager = os.path.join(manager, "..", "manager", "manager")
+    return os.path.abspath(manager)
+
+
+def get_server_path():
+    server = os.path.dirname(__file__)
+    server = os.path.join(server, "..", "remote", "server")
+    return os.path.abspath(server)
+
+
+def get_worker_path():
+    worker = os.path.dirname(__file__)
+    worker = os.path.join(worker, "..", "remote", "worker")
+    return os.path.abspath(worker)
+
+
 def manager_process(pipe: Any, manager: str, port: int) -> None:
     try:
         manager_proc = subprocess.Popen(
@@ -27,9 +45,7 @@ def manager_process(pipe: Any, manager: str, port: int) -> None:
 
 
 def spawn_manager(port: int) -> None:
-    manager = os.path.dirname(__file__)
-    manager = os.path.join(manager, "..", "manager", "manager")
-    manager = os.path.abspath(manager)
+    manager = get_manager_path()
     parent_conn, child_conn = multiprocessing.Pipe()
     proc = multiprocessing.Process(
         target=manager_process, args=(child_conn, manager, port))
@@ -59,3 +75,21 @@ def get_manager(args):
         else:
             return manager_pb2_grpc.TaskMakerManagerStub(channel)
     raise RuntimeError("Failed to spawn the manager")
+
+
+def became_manager(args):
+    print("Spawning manager")
+    manager_args = args.run_manager
+    os.execv(get_manager_path(), ["manager"] + manager_args)
+
+
+def became_server(args):
+    print("Spawning server")
+    server_args = args.run_server
+    os.execv(get_server_path(), ["server"] + server_args)
+
+
+def became_worker(args):
+    print("Spawning worker")
+    worker_args = args.run_worker
+    os.execv(get_worker_path(), ["worker"] + worker_args)

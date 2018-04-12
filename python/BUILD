@@ -164,7 +164,11 @@ py_library(
 py_binary(
     name = "task_maker",
     srcs = ["task_maker.py"],
-    data = ["//manager"],
+    data = [
+        "//manager",
+        "//remote:server",
+        "//remote:worker",
+    ],
     deps = [
         ":args",
         ":detect_format",
