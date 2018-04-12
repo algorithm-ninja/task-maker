@@ -222,23 +222,19 @@ IOIGeneration::IOIGeneration(EventQueue* queue, core::Core* core,
 void IOIGeneration::WriteInputs(const proto::EvaluateTaskRequest& request) {
   auto map = request.write_inputs_to();
   for (auto input : inputs_) {
-    if (map.count(input.first) == 0) {
+    if (map.count(input.first) == 0)
       throw std::range_error("Missing destination for input " +
                              std::to_string(input.first));
-    } else {
-      input.second->WriteTo(map[input.first]);
-    }
+    input.second->WriteTo(map[input.first]);
   }
 }
 void IOIGeneration::WriteOutputs(const proto::EvaluateTaskRequest& request) {
   auto map = request.write_outputs_to();
   for (auto output : outputs_) {
-    if (map.count(output.first) == 0) {
+    if (map.count(output.first) == 0)
       throw std::range_error("Missing destination for output " +
                              std::to_string(output.first));
-    } else {
-      output.second->WriteTo(map[output.first]);
-    }
+    output.second->WriteTo(map[output.first]);
   }
 }
 void IOIGeneration::WriteChecker(const proto::EvaluateTaskRequest& request) {

@@ -7,7 +7,7 @@ TerryEvaluation::TerryEvaluation(EventQueue* queue, core::Core* core,
                                  TerryGeneration* generation,
                                  proto::TerryTask task, bool exclusive,
                                  proto::CacheMode cache_mode,
-                                 std::string executor, bool keep_sandbox)
+                                 const std::string& executor, bool keep_sandbox)
     : queue_(queue),
       core_(core),
       generation_(generation),

@@ -1,12 +1,10 @@
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <cstdlib>
+#include <memory>
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "sandbox/sandbox.hpp"
-
-#include <fcntl.h>
-#include <sys/stat.h>
-
-#include <stdlib.h>
-#include <memory>
 
 namespace {
 

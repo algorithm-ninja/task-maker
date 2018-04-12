@@ -1,7 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@org_pubref_rules_protobuf//cpp:rules.bzl", "GRPC_COMPILE_DEPS")
-
 cc_library(
     name = "terry_generation",
     srcs = ["terry_generation.cpp"],

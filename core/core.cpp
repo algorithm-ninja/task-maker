@@ -1,6 +1,6 @@
+#include "absl/strings/match.h"
 #include "core/core.hpp"
 #include "executor/local_executor.hpp"
-#include "absl/strings/match.h"
 
 namespace core {
 

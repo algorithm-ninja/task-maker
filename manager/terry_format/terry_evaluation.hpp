@@ -11,7 +11,7 @@ class TerryEvaluation : public Evaluation {
   TerryEvaluation(EventQueue* queue, core::Core* core,
                   TerryGeneration* generation, proto::TerryTask task,
                   bool exclusive, proto::CacheMode cache_mode,
-                  std::string executor, bool keep_sandbox);
+                  const std::string& executor, bool keep_sandbox);
 
   void Evaluate(SourceFile* solution, int64_t seed);
 
