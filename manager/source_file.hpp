@@ -26,6 +26,7 @@ class SourceFile {
                        bool exist_ok) = 0;
   const std::string& Name() { return name_; }
   core::FileID* GetExecutable() const { return executable_; };
+  const std::string& GetExecutableName() { return exe_name_; };
 
   virtual ~SourceFile() = default;
   SourceFile(const SourceFile&) = delete;
