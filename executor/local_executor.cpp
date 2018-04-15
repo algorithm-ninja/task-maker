@@ -173,7 +173,10 @@ void LocalExecutor::PrepareFile(const proto::FileInfo& info,
   }
   std::string source_path =
       util::File::ProtoSHAToPath(store_directory_, info.hash());
-  util::File::Copy(source_path, util::File::JoinPath(tmpdir, name));
+  std::string target_path = util::File::JoinPath(tmpdir, name);
+  util::File::Copy(source_path, target_path);
+  if (info.executable())
+    util::File::MakeExecutable(target_path);
   input_files->push_back(util::File::JoinPath(tmpdir, name));
 }
 

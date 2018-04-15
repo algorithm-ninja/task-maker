@@ -24,6 +24,9 @@ message FileInfo {
 
   // If the file is small enough (<32k), its contents can be set here instead.
   FileContents contents = 4;
+
+  // Whether the file has to be chmodded
+  bool executable = 5;
 }
 
 message FileContents {

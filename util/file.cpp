@@ -31,6 +31,10 @@ bool OsRemoveTree(const std::string& path) {
               64, FTW_DEPTH | FTW_PHYS | FTW_MOUNT) != -1;
 }
 
+bool OsMakeExecutable(const std::string& path) {
+  return chmod(path.c_str(), S_IRUSR | S_IXUSR) != -1;
+}
+
 const size_t max_path_len = 1 << 15;
 std::string OsTempDir(const std::string& path) {
   std::string tmp = util::File::JoinPath(path, "XXXXXX");
@@ -200,6 +204,11 @@ void File::Remove(const std::string& path) {
 void File::RemoveTree(const std::string& path) {
   if (!OsRemoveTree(path))
     throw std::system_error(errno, std::system_category(), "removetree");
+}
+
+void File::MakeExecutable(const std::string& path) {
+  if (!OsMakeExecutable(path))
+    throw std::system_error(errno, std::system_category(), "chmod");
 }
 
 std::string File::PathForHash(const SHA256_t& hash) {

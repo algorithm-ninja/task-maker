@@ -17,8 +17,8 @@ FileID* Execution::Output(const std::string& name,
 
 std::vector<int64_t> Execution::Deps() const {
   std::vector<int64_t> result;
-  if (stdin_ != 0) result.push_back(stdin_);
-  for (const auto& in : inputs_) result.push_back(in.second);
+  if (stdin_ != 0) result.push_back(stdin_->ID());
+  for (const auto& in : inputs_) result.push_back(in.second->ID());
   return result;
 }
 
@@ -81,14 +81,16 @@ void Execution::Run(
   for (const auto& out : outputs_) request.add_output()->set_name(out.first);
 
   // Inputs.
-  auto prepare_input = [&request, &get_hash, this](int64_t id,
+  auto prepare_input = [&request, &get_hash, this](FileID* id,
                                                    const char* name) {
     proto::FileInfo* in = request.add_input();
     if (*name == 0) in->set_type(proto::FileType::STDIN);
     in->set_name(name);
-    util::File::SetSHA(store_directory_, get_hash(id), in);
+    util::File::SetSHA(store_directory_, get_hash(id->ID()), in);
+    if (id->IsExecutable())
+      in->set_executable(true);
   };
-  if (stdin_ != 0) prepare_input(stdin_, "");
+  if (stdin_ != nullptr) prepare_input(stdin_, "");
   for (const auto& input : inputs_)
     prepare_input(input.second, input.first.c_str());
 

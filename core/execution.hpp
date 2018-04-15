@@ -20,9 +20,9 @@ class Execution {
   const std::string& Description() const { return description_; }
   int64_t ID() const { return id_; }
 
-  void Stdin(const FileID* in) { stdin_ = in->ID(); }
-  void Input(const std::string& name, const FileID* id) {
-    inputs_.emplace(name, id->ID());
+  void Stdin(FileID* in) { stdin_ = in; }
+  void Input(const std::string& name, FileID* id) {
+    inputs_.emplace(name, id);
   }
 
   FileID* Stdout() { return stdout_.get(); }
@@ -113,10 +113,10 @@ class Execution {
   std::string executable_;
   std::vector<std::string> args_;
   bool keep_sandbox_;
-  std::unordered_map<std::string, int64_t> inputs_;
+  std::unordered_map<std::string, FileID*> inputs_;
   std::unordered_map<std::string, std::unique_ptr<FileID>> outputs_;
 
-  int64_t stdin_ = 0;
+  FileID* stdin_ = nullptr;
   std::unique_ptr<FileID> stdout_;
   std::unique_ptr<FileID> stderr_;
 

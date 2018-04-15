@@ -27,6 +27,9 @@ class FileID {
                bool exist_ok = true);
   std::string Contents(int64_t size_limit = 0);
 
+  void MarkExecutable() { executable_ = true; }
+  bool IsExecutable() { return executable_; }
+
   FileID(FileID&& other) = delete;
   FileID& operator=(FileID&& other) = delete;
   FileID(const FileID& other) = delete;
@@ -40,8 +43,8 @@ class FileID {
   explicit FileID(std::string store_directory, std::string description)
       : description_(std::move(description)),
         store_directory_(std::move(store_directory)),
-        id_((reinterpret_cast<int64_t>(&next_id_) << 32) | (next_id_++)) {
-    // fprintf(stderr, "generated id: %lu, next_id_ ptr: %p\n", id_, &next_id_);
+        id_((reinterpret_cast<int64_t>(&next_id_) << 32) | (next_id_++)),
+        executable_(false) {
     callback_ = [](const TaskStatus& status) {
       return status.event != TaskStatus::FAILURE;
     };
@@ -60,6 +63,7 @@ class FileID {
   std::string path_;
   std::string store_directory_;
   int64_t id_;
+  bool executable_;
   absl::Mutex hash_mutex_;
   util::SHA256_t hash_ GUARDED_BY(hash_mutex_) = {};
   std::function<bool(const TaskStatus&)> callback_;

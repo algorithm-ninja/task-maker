@@ -149,6 +149,7 @@ CompiledSourceFile::CompiledSourceFile(
   compilation_->Input(name_, input_file);
   executable_ =
       compilation_->Output(exe_name, "Compiled file of " + source.path());
+  executable_->MarkExecutable();
   queue->CompilationWaiting(name_);
 
   compilation_->SetCallback([this, queue, source,
@@ -214,6 +215,7 @@ NotCompiledSourceFile::NotCompiledSourceFile(
   for (const auto& dep : source.deps())
     runtime_deps_.push_back(core->LoadFile(dep.name(), dep.path()));
   executable_ = core->LoadFile(source.path(), source.path());
+  executable_->MarkExecutable();
   executable_->SetCallback(
       [this, queue, source](const core::TaskStatus& status) -> bool {
         if (status.event == core::TaskStatus::FAILURE) {

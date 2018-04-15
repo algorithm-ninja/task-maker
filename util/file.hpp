@@ -57,6 +57,9 @@ class File {
   // Recursively removes a tree.
   static void RemoveTree(const std::string& path);
 
+  // Make a file executable
+  static void MakeExecutable(const std::string& path);
+
   // Computes the path for a file with the given hash.
   static std::string PathForHash(const SHA256_t& hash);
 
