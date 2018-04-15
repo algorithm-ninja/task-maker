@@ -78,4 +78,5 @@ message TerryTask {
   SourceFile generator = 4;
   SourceFile validator = 5;
   SourceFile checker = 6;
+  SourceFile solution = 7;
 }

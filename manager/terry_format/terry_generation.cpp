@@ -13,5 +13,8 @@ TerryGeneration::TerryGeneration(EventQueue* queue, core::Core* core,
   if (task.has_validator())
     validator_ = SourceFile::FromProto(queue, core, task.validator(), {}, true,
                                        keep_sandbox, cache_mode, executor);
+  if (task.has_solution())
+    solution_ = SourceFile::FromProto(queue, core, task.solution(), {}, true,
+                                      keep_sandbox, cache_mode, executor);
 }
 }  // namespace manager

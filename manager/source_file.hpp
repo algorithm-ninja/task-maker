@@ -25,6 +25,7 @@ class SourceFile {
   virtual void WriteTo(const std::string& path, bool overwrite,
                        bool exist_ok) = 0;
   const std::string& Name() { return name_; }
+  core::FileID* GetExecutable() const { return executable_; };
 
   virtual ~SourceFile() = default;
   SourceFile(const SourceFile&) = delete;
@@ -46,6 +47,7 @@ class SourceFile {
   std::string name_;
   std::string exe_name_;
   bool fatal_failures_;
+  core::FileID* executable_;
 };
 
 }  // namespace manager

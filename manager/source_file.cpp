@@ -23,12 +23,11 @@ class CompiledSourceFile : public SourceFile {
 
   void WriteTo(const std::string& path, bool overwrite,
                bool exist_ok) override {
-    compiled_->WriteTo(path, overwrite, exist_ok);
+    executable_->WriteTo(path, overwrite, exist_ok);
   }
 
  protected:
   core::Execution* compilation_;
-  core::FileID* compiled_;
 };
 
 class NotCompiledSourceFile : public SourceFile {
@@ -44,12 +43,11 @@ class NotCompiledSourceFile : public SourceFile {
 
   void WriteTo(const std::string& path, bool overwrite,
                bool exist_ok) override {
-    program_->WriteTo(path, overwrite, exist_ok);
+    executable_->WriteTo(path, overwrite, exist_ok);
   }
 
  protected:
   std::vector<core::FileID*> runtime_deps_;
-  core::FileID* program_;
 };
 
 }  // namespace
@@ -61,10 +59,15 @@ std::unique_ptr<SourceFile> SourceFile::FromProto(
     bool keep_sandbox, proto::CacheMode cache_mode,
     const std::string& executor) {
   // the name of the source file is mainly used in the evaluation process, it
-  // will be sent to the queue. Maybe we want to send the absolute path?
+  // will be sent to the queue
   std::string name =
       source.path().substr(source.path().find_last_of("/\\") + 1);
-  std::string exe_name = name.substr(0, name.find_last_of('.'));
+  std::string exe_name;
+  if (source.write_bin_to().empty())
+    exe_name = name.substr(0, name.find_last_of('.'));
+  else
+    exe_name = source.write_bin_to().substr(
+        source.write_bin_to().find_last_of("/\\") + 1);
   switch (source.language()) {
     case proto::CPP:
     case proto::C:
@@ -144,7 +147,7 @@ CompiledSourceFile::CompiledSourceFile(
     compilation_->SetCachingMode(core::Execution::NEVER);
   if (!executor.empty()) compilation_->SetExecutor(executor);
   compilation_->Input(name_, input_file);
-  compiled_ =
+  executable_ =
       compilation_->Output(exe_name, "Compiled file of " + source.path());
   queue->CompilationWaiting(name_);
 
@@ -176,7 +179,7 @@ CompiledSourceFile::CompiledSourceFile(
     if (status.event == core::TaskStatus::FINISH_SUCCESS) {
       if (status.execution_info->Success()) {
         if (!source.write_bin_to().empty()) {
-          compiled_->WriteTo(source.write_bin_to());
+          executable_->WriteTo(source.write_bin_to());
           chmod(source.write_bin_to().c_str(), S_IRUSR | S_IXUSR);
           LOG(INFO) << "Compiled program copied to " << source.write_bin_to();
         }
@@ -198,7 +201,7 @@ core::Execution* CompiledSourceFile::execute(
     bool keep_sandbox) {
   core::Execution* execution =
       core_->AddExecution(description, exe_name_, args, keep_sandbox);
-  execution->Input(exe_name_, compiled_);
+  execution->Input(exe_name_, executable_);
   return execution;
 }
 
@@ -210,8 +213,8 @@ NotCompiledSourceFile::NotCompiledSourceFile(
   queue_ = queue;
   for (const auto& dep : source.deps())
     runtime_deps_.push_back(core->LoadFile(dep.name(), dep.path()));
-  program_ = core->LoadFile(source.path(), source.path());
-  program_->SetCallback(
+  executable_ = core->LoadFile(source.path(), source.path());
+  executable_->SetCallback(
       [this, queue, source](const core::TaskStatus& status) -> bool {
         if (status.event == core::TaskStatus::FAILURE) {
           queue->CompilationFailure(name_, "Error loading file",
@@ -224,7 +227,7 @@ NotCompiledSourceFile::NotCompiledSourceFile(
         }
         if (status.event == core::TaskStatus::FINISH_SUCCESS) {
           if (!source.write_bin_to().empty()) {
-            program_->WriteTo(source.write_bin_to());
+            executable_->WriteTo(source.write_bin_to());
             chmod(source.write_bin_to().c_str(), S_IRUSR | S_IXUSR);
             LOG(INFO) << "Source program copied to " << source.write_bin_to();
           }
@@ -239,7 +242,7 @@ core::Execution* NotCompiledSourceFile::execute(
     bool keep_sandbox) {
   core::Execution* execution =
       core_->AddExecution(description, exe_name_, args, keep_sandbox);
-  execution->Input(exe_name_, program_);
+  execution->Input(exe_name_, executable_);
   for (auto dep : runtime_deps_) execution->Input(dep->Description(), dep);
   return execution;
 }

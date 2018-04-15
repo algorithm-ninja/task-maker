@@ -30,6 +30,9 @@ void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
   core::Execution* checker =
       generation_->GetChecker()->execute("Checking output of solution " + name,
                                          {"input", "output"}, keep_sandbox_);
+  if (generation_->GetSolution())
+    checker->Input("solution", generation_->GetSolution()->GetExecutable());
+
   if (exclusive_) {
     generation->SetExclusive();
     execution->SetExclusive();

@@ -72,6 +72,11 @@ def get_request(args: argparse.Namespace):
     task.checker.CopyFrom(get_manager("checker", args.arch))
     absolutize_source_file(task.checker)
 
+    solution = get_manager("solution", args.arch, optional=True)
+    if solution:
+        task.solution.CopyFrom(solution)
+        absolutize_source_file(task.solution)
+
     if args.solutions:
         solutions = [
             sol if sol.startswith("solutions/") else "solutions/" + sol

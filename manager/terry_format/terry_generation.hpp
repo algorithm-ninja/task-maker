@@ -19,11 +19,13 @@ class TerryGeneration : public Generation {
   SourceFile* GetGenerator() { return generator_.get(); }
   SourceFile* GetValidator() { return validator_.get(); }
   SourceFile* GetChecker() { return checker_.get(); }
+  SourceFile* GetSolution() { return solution_.get(); }
 
  private:
   std::unique_ptr<SourceFile> generator_;
   std::unique_ptr<SourceFile> validator_;
   std::unique_ptr<SourceFile> checker_;
+  std::unique_ptr<SourceFile> solution_;
 };
 
 }  // namespace manager
