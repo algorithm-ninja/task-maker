@@ -4,7 +4,8 @@ import os
 from itertools import chain
 from typing import List
 
-from proto.task_pb2 import CPP, C, PASCAL, PYTHON, BASH, RUBY, INVALID_LANGUAGE
+from proto.task_pb2 import CPP, C, PASCAL, PYTHON, BASH, RUBY, ERLANG,\
+    INVALID_LANGUAGE
 
 EXTENSIONS = {
     CPP: [".cpp", ".C", ".cc"],
@@ -13,6 +14,7 @@ EXTENSIONS = {
     PYTHON: [".py"],
     BASH: [".sh"],
     RUBY: [".rb"],
+    ERLANG: [".erl"],
 }
 
 

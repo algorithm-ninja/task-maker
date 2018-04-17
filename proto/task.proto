@@ -10,6 +10,7 @@ enum Language {
   PYTHON = 4;
   BASH = 5;
   RUBY = 6;
+  ERLANG = 7;
 }
 
 enum ScoreMode {
