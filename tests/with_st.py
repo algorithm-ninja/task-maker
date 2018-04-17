@@ -28,6 +28,8 @@ def test_task():
                            [(0, "Output is not correct")] * 6)
     interface.add_solution("wrong_file.cpp", 0, [0, 0, 0],
                            [(0, "Missing output files")] * 6)
+    interface.add_solution("solution.rs", 100, [5, 45, 50],
+                           [(1, "Output is correct")] * 6)
     interface.run_checks(TestingUI.inst)
 
 
