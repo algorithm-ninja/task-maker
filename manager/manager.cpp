@@ -32,6 +32,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
                             const proto::EvaluateTaskRequest* request,
                             grpc::ServerWriter<proto::Event>* writer) override {
     std::lock_guard<std::mutex> lck(requests_mutex_);
+    VLOG(3) << request->DebugString();
 
     int64_t current_id = evaluation_id_counter_++;
     EvaluationInfo info = manager::setup_request(*request);
@@ -52,6 +53,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
       const proto::EvaluateTerryTaskRequest* request,
       grpc::ServerWriter<proto::Event>* writer) override {
     std::lock_guard<std::mutex> lck(requests_mutex_);
+    VLOG(3) << request->DebugString();
 
     int64_t current_id = evaluation_id_counter_++;
     EvaluationInfo info = manager::setup_request(*request);
