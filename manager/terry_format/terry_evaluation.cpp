@@ -154,7 +154,7 @@ void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
       auto exec = status.execution_info;
       if (exec->Success()) {
         auto checker_json =
-            nlohmann::json::parse(checker_results->Contents(1024 * 1024));
+            nlohmann::json::parse(checker_results->Contents());
         proto::TerryEvaluationResult result;
         result.set_score(checker_json["score"]);
         size_t num_testcase = checker_json["validation"]["cases"].size();
