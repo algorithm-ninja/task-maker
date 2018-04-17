@@ -72,6 +72,7 @@ std::unique_ptr<SourceFile> SourceFile::FromProto(
     case proto::CPP:
     case proto::C:
     case proto::PASCAL:
+    case proto::RUST:
       return absl::make_unique<CompiledSourceFile>(
           queue, core, source, std::move(name), std::move(exe_name), grader,
           fatal_failures, keep_sandbox, cache_mode, executor);
@@ -127,6 +128,13 @@ CompiledSourceFile::CompiledSourceFile(
         throw std::domain_error(
             "Cannot target a Pascal executable to a specific architecture yet");
       break;
+    case proto::RUST:
+      compiler = util::which("rustc", use_compiler_cache);
+      args = {"--cfg", "EVAL", "-O", "-o", exe_name, name_};
+      if (source.target_arch() != proto::Arch::DEFAULT)
+        throw std::domain_error(
+            "Cannot target a Rust executable to a specific architecture yet");
+      break;
     default:
       throw std::domain_error("Cannot compile " + source.path() +
                               ": unknown language");
@@ -137,7 +145,15 @@ CompiledSourceFile::CompiledSourceFile(
         proto::Language_Name(source.language()) + " not found");
   }
   if (grader) {
-    for (const auto& dep : grader->files()) args.push_back(dep.name());
+    switch (source.language()) {
+      case proto::CPP:
+      case proto::C:
+      case proto::PASCAL:
+        for (const auto& dep : grader->files()) args.push_back(dep.name());
+        break;
+      default:
+        break;
+    }
   }
   compilation_ = core->AddExecution("Compilation of " + source.path(), compiler,
                                     args, keep_sandbox);

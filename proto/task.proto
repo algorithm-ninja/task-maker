@@ -11,6 +11,7 @@ enum Language {
   BASH = 5;
   RUBY = 6;
   ERLANG = 7;
+  RUST = 8;
 }
 
 enum ScoreMode {

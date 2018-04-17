@@ -5,7 +5,7 @@ from itertools import chain
 from typing import List
 
 from proto.task_pb2 import CPP, C, PASCAL, PYTHON, BASH, RUBY, ERLANG,\
-    INVALID_LANGUAGE
+    RUST, INVALID_LANGUAGE
 
 EXTENSIONS = {
     CPP: [".cpp", ".C", ".cc"],
@@ -15,6 +15,7 @@ EXTENSIONS = {
     BASH: [".sh"],
     RUBY: [".rb"],
     ERLANG: [".erl"],
+    RUST: [".rs"],
 }
 
 
@@ -35,4 +36,4 @@ def grader_from_file(path: str) -> int:
 
 
 def need_compilation(language: int) -> bool:
-    return language in [CPP, C, PASCAL]
+    return language in [CPP, C, PASCAL, RUST]
