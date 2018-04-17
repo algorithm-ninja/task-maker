@@ -72,6 +72,9 @@ jobs:
           paths: ~/.cache
           key: task-maker-v2-{{ arch }}-{{ .Revision }}
           when: always
+      - store_artifacts:
+          path: ./bazel-bin
+          destination: archlinux-HEAD
       - store_test_results:
           path: bazel-testlogs
 
