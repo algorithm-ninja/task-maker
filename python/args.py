@@ -49,6 +49,11 @@ def add_generic_group(parser: argparse.ArgumentParser):
         help="Directory of the task to build",
         default=os.getcwd())
     group.add_argument(
+        "--max-depth",
+        help="Look at most for this number of parents to search the task",
+        type=int,
+        default=2)
+    group.add_argument(
         "--ui",
         help="UI to use (%s)" % ("|".join(UIS.keys())),
         choices=UIS.keys(),

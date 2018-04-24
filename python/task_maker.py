@@ -8,7 +8,7 @@ from proto.manager_pb2 import StopRequest, CleanTaskRequest, ShutdownRequest
 
 from python import ioi_format, terry_format
 from python.args import get_parser, UIS
-from python.detect_format import detect_format
+from python.detect_format import find_task_dir
 from python.manager import get_manager, became_manager, became_server, \
     became_worker
 
@@ -56,39 +56,40 @@ def main() -> None:
     if args.kill_manager or args.quit_manager:
         return
 
-    os.chdir(args.task_dir)
-
-    if not args.format:
-        args.format = detect_format()
-    if not args.format:
+    task_dir, format = find_task_dir(args.task_dir, args.max_depth)
+    if not format:
         raise ValueError(
-            "Cannot autodetect format! Try to pass --format to explicitly set "
-            "it. It's probable that the task is ill-formed")
+            "Cannot detect format! It's probable that the task is ill-formed")
+    if args.format is not None and format != args.format:
+        raise ValueError(
+            "Detected format mismatch the required one: %s" % format)
+
+    os.chdir(task_dir)
 
     if args.clean:
-        if args.format == "ioi":
+        if format == "ioi":
             ioi_format_clean(args)
-        elif args.format == "terry":
+        elif format == "terry":
             terry_format_clean(args)
         else:
-            raise ValueError("Format %s not supported" % args.format)
+            raise ValueError("Format %s not supported" % format)
         return
 
     manager = get_manager(args)
 
-    if args.format == "ioi":
+    if format == "ioi":
         request = ioi_format.get_request(args)
         solutions = [os.path.basename(sol.path) for sol in request.solutions]
-    elif args.format == "terry":
+    elif format == "terry":
         request = terry_format.get_request(args)
         solutions = [os.path.basename(sol.solution.path) for sol in
                      request.solutions]
     else:
-        raise ValueError("Format %s not supported" % args.format)
+        raise ValueError("Format %s not supported" % format)
 
-    ui = UIS[args.ui](solutions, args.format)
+    ui = UIS[args.ui](solutions, format)
 
-    if args.format == "ioi":
+    if format == "ioi":
         ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))
         ui.set_time_limit(request.task.time_limit)
         ui.set_memory_limit(request.task.memory_limit_kb)
@@ -100,11 +101,11 @@ def main() -> None:
                                 sorted(subtask.testcases.keys()))
         ui.set_max_score(sum(subtask.max_score for subtask in
                              request.task.subtasks.values()))
-    elif args.format == "terry":
+    elif format == "terry":
         ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))
         ui.set_max_score(request.task.max_score)
     else:
-        raise ValueError("Format %s not supported" % args.format)
+        raise ValueError("Format %s not supported" % format)
 
     eval_id = None
 
@@ -117,12 +118,12 @@ def main() -> None:
     signal.signal(signal.SIGINT, stop_server)
     signal.signal(signal.SIGTERM, stop_server)
 
-    if args.format == "ioi":
+    if format == "ioi":
         events = manager.EvaluateTask(request)
-    elif args.format == "terry":
+    elif format == "terry":
         events = manager.EvaluateTerryTask(request)
     else:
-        raise NotImplementedError("Format %s not supported" % args.format)
+        raise NotImplementedError("Format %s not supported" % format)
 
     for event in events:
         event_type = event.WhichOneof("event_oneof")
