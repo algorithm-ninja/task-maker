@@ -25,21 +25,43 @@ target_link_libraries(cpp_core
 )
 
 
-# TODO: compile sandboxes individually, disable them on unsupported OSes
 add_library(cpp_sandbox
-  sandbox/echo.cpp
   sandbox/sandbox.cpp
-  sandbox/unix.cpp
 )
 target_link_libraries(cpp_sandbox
   cpp_util
 )
+
+add_library(cpp_echo_sandbox
+  sandbox/echo.cpp
+)
+target_link_libraries(cpp_echo_sandbox
+  cpp_sandbox
+)
+
 IF (APPLE)
-  set(CPP_SANDBOX -Wl,-force_load cpp_sandbox)
+  set(CPP_SANDBOXES -Wl,-force_load cpp_echo_sandbox ${CPP_SANDBOXES})
 else()
-  set(CPP_SANDBOX
-      -Wl,--whole-archive cpp_sandbox -Wl,--no-whole-archive)
+  set(CPP_SANDBOXES
+    -Wl,--whole-archive cpp_echo_sandbox -Wl,--no-whole-archive ${CPP_SANDBOXES})
 endif()
+
+IF (UNIX)
+add_library(cpp_unix_sandbox
+  sandbox/unix.cpp
+)
+target_link_libraries(cpp_unix_sandbox
+  cpp_sandbox
+)
+
+IF (APPLE)
+  set(CPP_SANDBOXES -Wl,-force_load cpp_unix_sandbox ${CPP_SANDBOXES})
+else()
+  set(CPP_SANDBOXES
+    -Wl,--whole-archive cpp_unix_sandbox -Wl,--no-whole-archive ${CPP_SANDBOXES})
+endif()
+endif()
+
 
 # TODO: compile sandbox tests
 
@@ -81,7 +103,7 @@ add_executable(manager
   manager/manager.cpp
 )
 target_link_libraries(manager
-  ${CPP_SANDBOX}
+  ${CPP_SANDBOXES}
   cpp_manager_lib
 )
 
@@ -96,6 +118,6 @@ add_executable(worker
   remote/worker.cpp
 )
 target_link_libraries(worker
-  ${CPP_SANDBOX}
+  ${CPP_SANDBOXES}
   cpp_executor
 )
