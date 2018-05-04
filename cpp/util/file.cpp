@@ -41,8 +41,8 @@ std::string OsTempDir(const std::string& path) {
   CHECK_LT(tmp.size(), max_path_len);
   char data[max_path_len + 1];
   data[0] = 0;
-  strncat(data, tmp.c_str(), max_path_len);  // NOLINT
-  if (mkdtemp(data) == nullptr)              // NOLINT
+  strncat(data, tmp.c_str(), max_path_len - 1);  // NOLINT
+  if (mkdtemp(data) == nullptr)                  // NOLINT
     return "";
   return data;  // NOLINT
 }
@@ -61,9 +61,9 @@ int OsTempFile(const std::string& path, std::string* tmp) {
   *tmp = path + ".XXXXXX";
   char data[max_path_len];
   data[0] = 0;
-  strncat(data, tmp->c_str(), max_path_len);  // NOLINT
-  int fd = mkostemp(data, O_CLOEXEC);         // NOLINT
-  *tmp = data;                                // NOLINT
+  strncat(data, tmp->c_str(), max_path_len - 1);  // NOLINT
+  int fd = mkostemp(data, O_CLOEXEC);             // NOLINT
+  *tmp = data;                                    // NOLINT
   return fd;
 #endif
 }

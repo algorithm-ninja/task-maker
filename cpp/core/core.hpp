@@ -12,7 +12,7 @@
 #include "core/file_id.hpp"
 #include "core/running_task.hpp"
 #include "core/task_status.hpp"
-#include "external/glog_repo/glog/logging.h"
+#include "glog/logging.h"
 
 namespace core {
 

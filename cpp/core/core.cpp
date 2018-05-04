@@ -1,5 +1,5 @@
-#include "absl/strings/match.h"
 #include "core/core.hpp"
+#include "absl/strings/match.h"
 #include "executor/local_executor.hpp"
 
 namespace core {
@@ -159,7 +159,7 @@ bool Core::LoadInitialFiles() {
       return false;
     }
     try {
-      file->Load([this, &file](int64_t id, const util::SHA256_t& hash) {
+      file->Load([this](int64_t id, const util::SHA256_t& hash) {
         SetFile(id, hash);
       });
       if (!file->callback_(TaskStatus::Success(file.get()))) {

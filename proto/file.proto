@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package proto;
 
-import "proto/sha256.proto";
+import "sha256.proto";
 
 enum FileType {
   REGULAR_FILE = 0;

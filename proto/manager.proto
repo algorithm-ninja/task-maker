@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package proto;
 
-import "proto/task.proto";
-import "proto/event.proto";
+import "task.proto";
+import "event.proto";
 
 enum CacheMode {
   NOTHING = 0;

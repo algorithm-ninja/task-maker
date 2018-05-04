@@ -17,7 +17,6 @@ class TerryEvaluation : public Evaluation {
 
  private:
   EventQueue* queue_;
-  core::Core* core_;
   TerryGeneration* generation_;
   proto::TerryTask task_;
   bool exclusive_;

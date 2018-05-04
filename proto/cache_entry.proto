@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package proto;
 
-import "proto/request.proto";
-import "proto/response.proto";
+import "request.proto";
+import "response.proto";
 
 message CacheEntry {
   string executor = 1;

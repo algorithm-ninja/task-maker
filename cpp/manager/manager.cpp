@@ -147,8 +147,8 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 
     // every RUNNING_TASK_POLL_INTERVAL get the list of running tasks from the
     // core
-    std::thread poller([&running, &running_cv, &running_mutex, queue,
-                        current_id, writer, &writer_mutex, this] {
+    std::thread poller([&running, &running_cv, &running_mutex, current_id,
+                        writer, &writer_mutex, this] {
       std::unique_lock<std::mutex> lck(running_mutex);
       while (running) {
         core::Core* core = running_[current_id].core.get();

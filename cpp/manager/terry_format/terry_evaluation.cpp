@@ -9,7 +9,6 @@ TerryEvaluation::TerryEvaluation(EventQueue* queue, core::Core* core,
                                  proto::CacheMode cache_mode,
                                  const std::string& executor, bool keep_sandbox)
     : queue_(queue),
-      core_(core),
       generation_(generation),
       task_(std::move(task)),
       exclusive_(exclusive),
@@ -153,8 +152,7 @@ void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
     if (status.event == core::TaskStatus::SUCCESS) {
       auto exec = status.execution_info;
       if (exec->Success()) {
-        auto checker_json =
-            nlohmann::json::parse(checker_results->Contents());
+        auto checker_json = nlohmann::json::parse(checker_results->Contents());
         proto::TerryEvaluationResult result;
         result.set_score(checker_json["score"]);
         size_t num_testcase = checker_json["validation"]["cases"].size();
