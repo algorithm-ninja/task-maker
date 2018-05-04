@@ -1,5 +1,7 @@
 project(task-maker-cpp)
 
+add_subdirectory(sandbox/test)
+
 add_library(cpp_util
   util/file.cpp
   util/sha256.cpp
@@ -32,38 +34,47 @@ target_link_libraries(cpp_sandbox
   cpp_util
 )
 
-add_library(cpp_echo_sandbox
+add_library(cpp_sandbox_echo
   sandbox/echo.cpp
 )
-target_link_libraries(cpp_echo_sandbox
+target_link_libraries(cpp_sandbox_echo
   cpp_sandbox
 )
 
 IF (APPLE)
-  set(CPP_SANDBOXES -Wl,-force_load cpp_echo_sandbox ${CPP_SANDBOXES})
+  set(CPP_SANDBOXES -Wl,-force_load cpp_sandbox_echo ${CPP_SANDBOXES})
 else()
   set(CPP_SANDBOXES
-    -Wl,--whole-archive cpp_echo_sandbox -Wl,--no-whole-archive ${CPP_SANDBOXES})
+    -Wl,--whole-archive cpp_sandbox_echo -Wl,--no-whole-archive ${CPP_SANDBOXES})
 endif()
 
 IF (UNIX)
-add_library(cpp_unix_sandbox
+add_library(cpp_sandbox_unix
   sandbox/unix.cpp
 )
-target_link_libraries(cpp_unix_sandbox
+target_link_libraries(cpp_sandbox_unix
   cpp_sandbox
 )
 
+add_executable(sandbox_unix_test
+  sandbox/unix_test.cpp
+  sandbox/unix.cpp
+)
+target_link_libraries(sandbox_unix_test
+  cpp_sandbox
+  gtest_main
+  gmock
+)
+
+
 IF (APPLE)
-  set(CPP_SANDBOXES -Wl,-force_load cpp_unix_sandbox ${CPP_SANDBOXES})
+  set(CPP_SANDBOXES -Wl,-force_load cpp_sandbox_unix ${CPP_SANDBOXES})
 else()
   set(CPP_SANDBOXES
-    -Wl,--whole-archive cpp_unix_sandbox -Wl,--no-whole-archive ${CPP_SANDBOXES})
+    -Wl,--whole-archive cpp_sandbox_unix -Wl,--no-whole-archive ${CPP_SANDBOXES})
 endif()
 endif()
 
-
-# TODO: compile sandbox tests
 
 add_library(cpp_remote
   remote/common.cpp
