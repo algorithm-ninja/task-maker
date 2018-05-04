@@ -16,13 +16,11 @@ set(PROTOS
 set(PROTO_SRC_DIR ${CMAKE_CURRENT_BINARY_DIR}/proto)
 file(MAKE_DIRECTORY ${PROTO_SRC_DIR})
 
-set(PROTO_PY_DIR ${CMAKE_CURRENT_BINARY_DIR}/python/proto)
+set(PROTO_PY_DIR ${CMAKE_CURRENT_BINARY_DIR}/python)
 file(MAKE_DIRECTORY ${PROTO_PY_DIR})
 
-string(REPLACE ".proto"
-  "_pb2.py" PROTO_PY_OUT "${PROTOS}")
-string(REPLACE ".proto"
-  "_pb2_grpc.py" GRPC_PY_OUT "${PROTOS}")
+string(REPLACE ".proto" "_pb2.py" PROTO_PY_OUT "${PROTOS}")
+string(REPLACE ".proto" "_pb2_grpc.py" GRPC_PY_OUT "${PROTOS}")
 
 string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "${PROTO_PY_DIR}" PROTOS_PY_TMP "${PROTO_PY_OUT};${GRPC_PY_OUT}")
 
@@ -32,6 +30,8 @@ add_custom_command(OUTPUT ${PROTOS_PY_TMP}
   COMMAND ${PYTHON_EXECUTABLE} -m grpc_tools.protoc -I${CMAKE_CURRENT_SOURCE_DIR} --python_out=${PROTO_PY_DIR} --grpc_python_out=${PROTO_PY_DIR} ${PROTOS}
   DEPENDS ${PROTOS}
 )
+
+add_custom_target(protos_py DEPENDS ${PROTOS_PY_TMP})
 
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_SRC_DIR} ${PROTOS})
 grpc_generate_cpp(GRPC_SRCS GRPC_HDRS ${PROTO_SRC_DIR} ${PROTOS})

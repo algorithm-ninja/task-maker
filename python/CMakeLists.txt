@@ -27,7 +27,7 @@ string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/uis" "${UIS_MODULE}" UIS_PY_TG
 
 add_custom_command(OUTPUT ${PROTOS_PY_TGT}
   COMMAND ${CMAKE_COMMAND} -E copy ${PROTOS_PY} ${PROTOS_MODULE}
-  DEPENDS "${PROTOS_PY}"
+  DEPENDS protos_py
 )
 
 add_custom_command(OUTPUT ${SOURCES_PY_TGT}
