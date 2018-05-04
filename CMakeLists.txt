@@ -30,12 +30,4 @@ add_subdirectory(absl)
 add_subdirectory(glog)
 add_subdirectory(proto)
 add_subdirectory(cpp)
-
-# Python
-
-file(GLOB SOURCES_PY "${CMAKE_CURRENT_SOURCE_DIR}/python/*.py")
-file(GLOB UIS_PY "${CMAKE_CURRENT_SOURCE_DIR}/python/uis/*.py")
-
-message("${PROTOS_PY}")
-message("${SOURCES_PY}")
-message("${UIS_PY}")
+add_subdirectory(python)
