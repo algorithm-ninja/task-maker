@@ -8,6 +8,9 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# Disable testing as it is currently broken with absl
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+
 set(CMAKE_CXX_FLAGS "-Wall -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
