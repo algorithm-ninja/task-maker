@@ -22,6 +22,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 find_package(Protobuf REQUIRED)
 find_package(GRPC REQUIRED)
+find_package(PythonInterp 3.5 REQUIRED)
 
 add_subdirectory(nlohmann_json)
 add_subdirectory(googletest)
@@ -30,4 +31,11 @@ add_subdirectory(glog)
 add_subdirectory(proto)
 add_subdirectory(cpp)
 
-# TODO: python
+# Python
+
+file(GLOB SOURCES_PY "${CMAKE_CURRENT_SOURCE_DIR}/python/*.py")
+file(GLOB UIS_PY "${CMAKE_CURRENT_SOURCE_DIR}/python/uis/*.py")
+
+message("${PROTOS_PY}")
+message("${SOURCES_PY}")
+message("${UIS_PY}")
