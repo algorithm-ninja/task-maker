@@ -1,5 +1,3 @@
-project(task-maker-cpp)
-
 add_subdirectory(sandbox/test)
 
 add_library(cpp_util

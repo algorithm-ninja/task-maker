@@ -4,10 +4,10 @@ from typing import Dict  # pylint: disable=unused-import
 from typing import List
 from typing import Optional
 
-from proto.event_pb2 import EvaluationResult, TerryEvaluationResult, \
+from event_pb2 import EvaluationResult, TerryEvaluationResult, \
     RunningTaskInfo, EventStatus, DONE
 
-from python.ui import UI
+from task_maker.ui import UI
 
 
 class PrintUI(UI):

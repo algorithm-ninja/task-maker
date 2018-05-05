@@ -9,24 +9,24 @@ import daemon
 import grpc
 import os.path
 
-from proto import manager_pb2_grpc
+import manager_pb2_grpc
 
 
 def get_manager_path():
     manager = os.path.dirname(__file__)
-    manager = os.path.join(manager, "..", "manager", "manager")
+    manager = os.path.join(manager, "bin", "manager")
     return os.path.abspath(manager)
 
 
 def get_server_path():
     server = os.path.dirname(__file__)
-    server = os.path.join(server, "..", "remote", "server")
+    server = os.path.join(server, "bin", "server")
     return os.path.abspath(server)
 
 
 def get_worker_path():
     worker = os.path.dirname(__file__)
-    worker = os.path.join(worker, "..", "remote", "worker")
+    worker = os.path.join(worker, "bin", "worker")
     return os.path.abspath(worker)
 
 
@@ -61,8 +61,7 @@ def get_manager(args):
     max_attempts = 10
     connect_timeout = 1
     for attempt in range(max_attempts):
-        channel = grpc.insecure_channel(
-            "localhost:" + str(args.manager_port))
+        channel = grpc.insecure_channel("localhost:" + str(args.manager_port))
         ready_future = grpc.channel_ready_future(channel)
         try:
             ready_future.result(timeout=connect_timeout)

@@ -1,5 +1,3 @@
-project(task-maker-proto)
-
 set(PROTOS
   ${CMAKE_CURRENT_SOURCE_DIR}/cache_entry.proto
   ${CMAKE_CURRENT_SOURCE_DIR}/event.proto

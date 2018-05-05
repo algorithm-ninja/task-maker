@@ -3,10 +3,10 @@ from typing import Dict, Set, Tuple
 from typing import List, Optional
 
 import os.path
-from proto.event_pb2 import EvaluationResult, TerryEvaluationResult, \
+from event_pb2 import EvaluationResult, TerryEvaluationResult, \
     EventStatus, RunningTaskInfo, WAITING
 
-from python.ui import UI
+from task_maker.ui import UI
 
 
 class SolutionStatus:

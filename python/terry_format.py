@@ -5,12 +5,12 @@ import os.path
 import platform
 import random
 
-from proto.manager_pb2 import EvaluateTerryTaskRequest, TerrySolution
-from proto.task_pb2 import TerryTask, DEFAULT, X86_64, I686
+from manager_pb2 import EvaluateTerryTaskRequest, TerrySolution
+from task_pb2 import TerryTask, DEFAULT, X86_64, I686
 
-from python.absolutize import absolutize_source_file, absolutize_path
-from python.ioi_format import parse_task_yaml, get_options, list_files
-from python.source_file import from_file
+from task_maker.absolutize import absolutize_source_file, absolutize_path
+from task_maker.ioi_format import parse_task_yaml, get_options, list_files
+from task_maker.source_file import from_file
 
 
 def get_extension(target_arch=DEFAULT):
@@ -41,17 +41,16 @@ def create_task_from_yaml(data):
 
 
 def get_manager(manager, target_arch, optional=False):
-    managers = list_files(["managers/%s.*" % manager], exclude=[
-        "managers/%s.*.*" % manager])
+    managers = list_files(
+        ["managers/%s.*" % manager], exclude=["managers/%s.*.*" % manager])
     if len(managers) == 0:
         if not optional:
             raise FileNotFoundError("Missing manager: %s" % manager)
         return None
     if len(managers) != 1:
         raise ValueError("Ambiguous manager: " + ", ".join(managers))
-    return from_file(managers[0],
-                     "managers/%s%s" % (manager, get_extension(target_arch)),
-                     target_arch)
+    return from_file(managers[0], "managers/%s%s" %
+                     (manager, get_extension(target_arch)), target_arch)
 
 
 def get_request(args: argparse.Namespace):
@@ -83,8 +82,8 @@ def get_request(args: argparse.Namespace):
             for sol in args.solutions
         ]
     else:
-        solutions = list_files(["solutions/*"],
-                               exclude=["solutions/__init__.py"])
+        solutions = list_files(
+            ["solutions/*"], exclude=["solutions/__init__.py"])
 
     request = EvaluateTerryTaskRequest()
     request.task.CopyFrom(task)
@@ -99,7 +98,7 @@ def get_request(args: argparse.Namespace):
         if args.seed:
             terry_solution.seed = args.seed
         else:
-            terry_solution.seed = random.randint(0, 2 ** 32 - 1)
+            terry_solution.seed = random.randint(0, 2**32 - 1)
         request.solutions.extend([terry_solution])
     request.store_dir = absolutize_path(args.store_dir)
     request.temp_dir = absolutize_path(args.temp_dir)

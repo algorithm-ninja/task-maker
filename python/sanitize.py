@@ -3,7 +3,7 @@ import os.path
 import string
 from typing import List
 
-from python.dependency_finder import Dependency
+from task_maker.dependency_finder import Dependency
 
 
 def sanitize_command(args: List[str]) -> List[Dependency]:

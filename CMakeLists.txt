@@ -20,17 +20,15 @@ list(APPEND CMAKE_PREFIX_PATH "/opt/grpc" "/opt/protobuf")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-include(FindPythonModule)
-
 find_package(Protobuf REQUIRED)
 find_package(GRPC REQUIRED)
 find_package(PythonInterp 3.5 REQUIRED)
-find_python_module(grpc_tools REQUIRED)
 
-add_subdirectory(nlohmann_json)
-add_subdirectory(googletest)
-add_subdirectory(absl)
-add_subdirectory(glog)
+add_subdirectory(nlohmann_json EXCLUDE_FROM_ALL)
+add_subdirectory(googletest EXCLUDE_FROM_ALL)
+add_subdirectory(absl EXCLUDE_FROM_ALL)
+add_subdirectory(glog EXCLUDE_FROM_ALL)
+
 add_subdirectory(proto)
 add_subdirectory(cpp)
 add_subdirectory(python)

@@ -1,5 +1,3 @@
-project(task-maker-py)
-
 # Python
 
 file(GLOB SOURCES_PY "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
@@ -7,18 +5,15 @@ file(GLOB UIS_PY "${CMAKE_CURRENT_SOURCE_DIR}/uis/*.py")
 
 SET(SOURCES_MODULE "${CMAKE_CURRENT_BINARY_DIR}/task_maker")
 SET(UIS_MODULE "${SOURCES_MODULE}/uis")
-SET(PROTOS_MODULE "${SOURCES_MODULE}/protos")
-SET(MANAGER_DIRECTORY "${SOURCES_MODULE}/manager")
-SET(REMOTE_DIRECTORY "${SOURCES_MODULE}/remote")
+SET(PROTOS_MODULE "${SOURCES_MODULE}/proto")
+SET(BIN_DIRECTORY "${SOURCES_MODULE}/bin")
 
 file(MAKE_DIRECTORY ${SOURCES_MODULE})
 file(MAKE_DIRECTORY ${UIS_MODULE})
 file(MAKE_DIRECTORY ${PROTOS_MODULE})
-file(MAKE_DIRECTORY ${MANAGER_DIRECTORY})
-file(MAKE_DIRECTORY ${REMOTE_DIRECTORY})
+file(MAKE_DIRECTORY ${BIN_DIRECTORY})
 file(WRITE "${PROTOS_MODULE}/__init__.py" "")
-file(WRITE "${MANAGER_DIRECTORY}/__init__.py" "")
-file(WRITE "${REMOTE_DIRECTORY}/__init__.py" "")
+file(WRITE "${BIN_DIRECTORY}/__init__.py" "")
 
 string(REGEX REPLACE "[^;]*/" "${PROTOS_MODULE}/" PROTOS_PY_TGT "${PROTOS_PY}")
 string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "${SOURCES_MODULE}" SOURCES_PY_TGT "${SOURCES_PY}")
@@ -40,26 +35,28 @@ add_custom_command(OUTPUT ${UIS_PY_TGT}
   DEPENDS "${UIS_PY}"
 )
 
-add_custom_command(OUTPUT "${MANAGER_DIRECTORY}/manager"
-  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:manager> ${MANAGER_DIRECTORY}
-  DEPENDS manager
+add_custom_command(OUTPUT ${BIN_DIRECTORY}/server ${BIN_DIRECTORY}/worker ${BIN_DIRECTORY}/manager
+  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:server> $<TARGET_FILE:worker> $<TARGET_FILE:manager> ${BIN_DIRECTORY}
+  DEPENDS server worker manager
 )
 
-add_custom_command(OUTPUT "${REMOTE_DIRECTORY}/server" "${REMOTE_DIRECTORY}/worker"
-  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:server> $<TARGET_FILE:worker> ${REMOTE_DIRECTORY}
-  DEPENDS server worker
-)
+SET(SETUP_PY ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in ${SETUP_PY})
 
 SET(CPP_EXECUTABLES
-  "${MANAGER_DIRECTORY}/manager"
-  "${REMOTE_DIRECTORY}/server"
-  "${REMOTE_DIRECTORY}/worker"
+  "${BIN_DIRECTORY}/manager"
+  "${BIN_DIRECTORY}/server"
+  "${BIN_DIRECTORY}/worker"
 )
 
-add_custom_target(tmp ALL
+add_custom_target(module_files ALL
   DEPENDS ${PROTOS_PY_TGT} ${UIS_PY_TGT} ${SOURCES_PY_TGT} ${CPP_EXECUTABLES}
 )
 
-message("${PROTOS_PY_TGT}")
-message("${UIS_PY_TGT}")
-message("${SOURCES_PY_TGT}")
+add_custom_target(develop
+  COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} develop
+  DEPENDS module_files
+)
+
+install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} install)")

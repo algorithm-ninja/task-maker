@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 
 import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), 'proto'))
+
 import signal
 from typing import Any
 
-from proto.manager_pb2 import StopRequest, CleanTaskRequest, ShutdownRequest
+from manager_pb2 import StopRequest, CleanTaskRequest, ShutdownRequest
 
-from python import ioi_format, terry_format
-from python.args import get_parser, UIS
-from python.detect_format import find_task_dir
-from python.manager import get_manager, became_manager, became_server, \
+from task_maker import ioi_format, terry_format
+from task_maker.args import get_parser, UIS
+from task_maker.detect_format import find_task_dir
+from task_maker.manager import get_manager, became_manager, became_server, \
     became_worker
 
 
@@ -39,6 +42,7 @@ def quit_manager(args, force):
 
 
 def main() -> None:
+    print(sys.modules)
     parser = get_parser()
     args = parser.parse_args()
 
@@ -82,8 +86,9 @@ def main() -> None:
         solutions = [os.path.basename(sol.path) for sol in request.solutions]
     elif format == "terry":
         request = terry_format.get_request(args)
-        solutions = [os.path.basename(sol.solution.path) for sol in
-                     request.solutions]
+        solutions = [
+            os.path.basename(sol.solution.path) for sol in request.solutions
+        ]
     else:
         raise ValueError("Format %s not supported" % format)
 
@@ -99,8 +104,9 @@ def main() -> None:
             last_testcase += len(subtask.testcases)
             ui.set_subtask_info(subtask_num, subtask.max_score,
                                 sorted(subtask.testcases.keys()))
-        ui.set_max_score(sum(subtask.max_score for subtask in
-                             request.task.subtasks.values()))
+        ui.set_max_score(
+            sum(subtask.max_score
+                for subtask in request.task.subtasks.values()))
     elif format == "terry":
         ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))
         ui.set_max_score(request.task.max_score)

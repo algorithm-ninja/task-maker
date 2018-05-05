@@ -4,10 +4,10 @@ import os.path
 import re
 from typing import List
 
-from proto.task_pb2 import Dependency
-from proto.task_pb2 import CPP, C, PYTHON
+from task_pb2 import Dependency
+from task_pb2 import CPP, C, PYTHON
 
-from python import language
+from task_maker import language
 
 CXX_INCLUDE = re.compile('#include *["<](.+)[">]')
 PY_IMPORT = re.compile('import +(.+)|from +(.+) +import')
