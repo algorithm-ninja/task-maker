@@ -42,7 +42,6 @@ def quit_manager(args, force):
 
 
 def main() -> None:
-    print(sys.modules)
     parser = get_parser()
     args = parser.parse_args()
 
