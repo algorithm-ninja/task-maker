@@ -20,10 +20,10 @@ jobs:
             Server = http://archlinux.surlyjake.com/archlinux/\$repo/os/\$arch
             Server = https://archlinux.surlyjake.com/archlinux/\$repo/os/\$arch
             EOF
-            pacman -Syu --noconfirm --needed base-devel cmake git python
+            pacman -Syu --noconfirm --needed base-devel cmake git python go
       - checkout
       - run: git submodule sync
-      - run: git submodule update --init
+      - run: git submodule update --init --recursive
       - run:
           name: Prepare build
           command: mkdir -p build
