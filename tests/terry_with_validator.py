@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from proto.event_pb2 import CORRECT, MISSING, WRONG
+from event_pb2 import CORRECT, MISSING, WRONG
 
 from tests.test import run_tests, TestingUI
 

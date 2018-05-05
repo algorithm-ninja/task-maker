@@ -6,9 +6,9 @@ from typing import List
 
 import pytest
 
-from python.args import UIS
-from python.uis.silent_ui import SilentUI
-from python.task_maker import main
+from task_maker.args import UIS
+from task_maker.uis.silent_ui import SilentUI
+from task_maker.task_maker import main
 
 
 class TestingUI(SilentUI):
@@ -46,10 +46,6 @@ def run_tests(task_name, file):
     main()
     raise SystemExit(
         pytest.main([
-            os.path.join(os.path.dirname(__file__), "utils.py"),
-            file,
-            "--override-ini=python_classes=XXXX",
-            "--verbose",
-            "--color=yes"
+            os.path.join(os.path.dirname(__file__), "utils.py"), file,
+            "--override-ini=python_classes=XXXX", "--verbose", "--color=yes"
         ]))
-

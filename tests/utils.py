@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from typing import Optional, List, Tuple
 
-from proto.event_pb2 import DONE, FAILURE
+from event_pb2 import DONE, FAILURE
 
 from tests.test import TestingUI
 
