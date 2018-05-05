@@ -17,22 +17,16 @@ file(MAKE_DIRECTORY ${PROTO_SRC_DIR})
 set(PROTO_PY_DIR ${CMAKE_CURRENT_BINARY_DIR}/python)
 file(MAKE_DIRECTORY ${PROTO_PY_DIR})
 
-string(REPLACE ".proto" "_pb2.py" PROTO_PY_OUT "${PROTOS}")
-string(REPLACE ".proto" "_pb2_grpc.py" GRPC_PY_OUT "${PROTOS}")
-
-string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "${PROTO_PY_DIR}" PROTOS_PY_TMP "${PROTO_PY_OUT};${GRPC_PY_OUT}")
-
-SET(PROTOS_PY ${PROTOS_PY_TMP} PARENT_SCOPE)
-
-add_custom_command(OUTPUT ${PROTOS_PY_TMP}
-  COMMAND ${PYTHON_EXECUTABLE} -m grpc_tools.protoc -I${CMAKE_CURRENT_SOURCE_DIR} --python_out=${PROTO_PY_DIR} --grpc_python_out=${PROTO_PY_DIR} ${PROTOS}
-  DEPENDS ${PROTOS}
-)
-
-add_custom_target(protos_py DEPENDS ${PROTOS_PY_TMP})
-
+protobuf_generate_py(PROTOS_PY ${PROTO_SRC_DIR} ${PROTOS})
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_SRC_DIR} ${PROTOS})
+grpc_generate_py(GRPC_PY ${PROTO_SRC_DIR} ${PROTOS})
 grpc_generate_cpp(GRPC_SRCS GRPC_HDRS ${PROTO_SRC_DIR} ${PROTOS})
+
+add_custom_target(protos_py DEPENDS ${PROTOS_PY})
+add_custom_target(grpc_py DEPENDS ${GRPC_PY})
+
+SET(PROTOS_PY ${PROTOS_PY} PARENT_SCOPE)
+SET(GRPC_PY ${GRPC_PY} PARENT_SCOPE)
 
 add_library(
   proto_cpp
@@ -43,6 +37,6 @@ add_library(
 target_include_directories(proto_cpp PUBLIC ${PROTO_SRC_DIR}/..)
 
 target_link_libraries(proto_cpp
-    gRPC::grpc++_reflection
-    protobuf::libprotobuf
+    grpc++_reflection
+    libprotobuf
 )

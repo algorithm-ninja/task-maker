@@ -1,5 +1,7 @@
 add_subdirectory(sandbox/test)
 
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -fdiagnostics-color=always -std=c++11")
+
 add_library(cpp_util
   util/file.cpp
   util/sha256.cpp
@@ -12,6 +14,7 @@ target_link_libraries(cpp_util
   absl::strings
   absl::synchronization
   glog
+  gflags
 )
 
 add_library(cpp_core
@@ -47,30 +50,31 @@ else()
 endif()
 
 IF (UNIX)
-add_library(cpp_sandbox_unix
-  sandbox/unix.cpp
-)
-target_link_libraries(cpp_sandbox_unix
-  cpp_sandbox
-)
+  add_library(cpp_sandbox_unix
+    sandbox/unix.cpp
+  )
+  target_link_libraries(cpp_sandbox_unix
+    cpp_sandbox
+  )
 
-add_executable(sandbox_unix_test
-  sandbox/unix_test.cpp
-  sandbox/unix.cpp
-)
-target_link_libraries(sandbox_unix_test
-  cpp_sandbox
-  gtest_main
-  gmock
-)
+  add_executable(sandbox_unix_test
+    sandbox/unix_test.cpp
+    sandbox/unix.cpp
+    $<TARGET_OBJECTS:gtest_main>
+  )
+  target_link_libraries(sandbox_unix_test
+    cpp_sandbox
+    googletest
+    googlemock
+  )
 
 
-IF (APPLE)
-  set(CPP_SANDBOXES -Wl,-force_load cpp_sandbox_unix ${CPP_SANDBOXES})
-else()
-  set(CPP_SANDBOXES
-    -Wl,--whole-archive cpp_sandbox_unix -Wl,--no-whole-archive ${CPP_SANDBOXES})
-endif()
+  IF (APPLE)
+    set(CPP_SANDBOXES -Wl,-force_load cpp_sandbox_unix ${CPP_SANDBOXES})
+  else()
+    set(CPP_SANDBOXES
+      -Wl,--whole-archive cpp_sandbox_unix -Wl,--no-whole-archive ${CPP_SANDBOXES})
+  endif()
 endif()
 
 

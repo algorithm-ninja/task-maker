@@ -20,16 +20,7 @@ jobs:
             Server = http://archlinux.surlyjake.com/archlinux/\$repo/os/\$arch
             Server = https://archlinux.surlyjake.com/archlinux/\$repo/os/\$arch
             EOF
-            cat >> /etc/pacman.conf <<EOF
-            [archlinuxfr]
-            SigLevel = Never
-            Server = http://repo.archlinux.fr/\$arch
-            EOF
-            useradd builduser
-            passwd -d builduser
-            pacman -Syu --noconfirm base-devel cmake protobuf yaourt git python
-            printf 'builduser ALL=(ALL) ALL\n' | tee -a /etc/sudoers
-            sudo -u builduser bash -c 'yaourt -Sy --noconfirm grpc'
+            pacman -Syu --noconfirm --needed base-devel cmake git python
       - checkout
       - run: git submodule sync
       - run: git submodule update --init

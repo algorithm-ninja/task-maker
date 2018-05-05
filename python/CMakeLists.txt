@@ -16,13 +16,18 @@ file(WRITE "${PROTOS_MODULE}/__init__.py" "")
 file(WRITE "${BIN_DIRECTORY}/__init__.py" "")
 
 string(REGEX REPLACE "[^;]*/" "${PROTOS_MODULE}/" PROTOS_PY_TGT "${PROTOS_PY}")
+string(REGEX REPLACE "[^;]*/" "${PROTOS_MODULE}/" GRPC_PY_TGT "${GRPC_PY}")
 string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "${SOURCES_MODULE}" SOURCES_PY_TGT "${SOURCES_PY}")
 string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/uis" "${UIS_MODULE}" UIS_PY_TGT "${UIS_PY}")
-
 
 add_custom_command(OUTPUT ${PROTOS_PY_TGT}
   COMMAND ${CMAKE_COMMAND} -E copy ${PROTOS_PY} ${PROTOS_MODULE}
   DEPENDS protos_py
+)
+
+add_custom_command(OUTPUT ${GRPC_PY_TGT}
+  COMMAND ${CMAKE_COMMAND} -E copy ${GRPC_PY} ${PROTOS_MODULE}
+  DEPENDS grpc_py
 )
 
 add_custom_command(OUTPUT ${SOURCES_PY_TGT}
@@ -51,7 +56,7 @@ SET(CPP_EXECUTABLES
 )
 
 add_custom_target(module_files ALL
-  DEPENDS ${PROTOS_PY_TGT} ${UIS_PY_TGT} ${SOURCES_PY_TGT} ${CPP_EXECUTABLES}
+  DEPENDS ${PROTOS_PY_TGT} ${GRPC_PY_TGT} ${UIS_PY_TGT} ${SOURCES_PY_TGT} ${CPP_EXECUTABLES}
 )
 
 add_custom_target(develop
