@@ -29,7 +29,7 @@ jobs:
           command: mkdir -p build
       - restore_cache:
           keys:
-            - task-maker-v3-{{ arch }}-
+            - task-maker-v4-{{ arch }}-
       - run:
           name: cmake
           command: cmake ..
@@ -40,7 +40,7 @@ jobs:
           working_directory: build
       - save_cache:
           paths: build
-          key: task-maker-v3-{{ arch }}-{{ .Revision }}
+          key: task-maker-v4-{{ arch }}-{{ .Revision }}
           when: always
 
 # Ubuntu dependencies: g++ make cmake git python3 libprotobuf-dev protobuf-compiler
