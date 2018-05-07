@@ -1,43 +1,54 @@
 cmake_minimum_required(VERSION 3.2)
 
-cmake_policy(SET CMP0048 NEW)
+include("cmake/HunterGate.cmake")
+
+HunterGate(
+    URL "https://github.com/ruslo/hunter/archive/v0.20.69.tar.gz"
+    SHA1 "e02d106c762c81efb215587c5516c11416c00b52"
+    # Needed to compile gRPC because it needs -fPIC
+    FILEPATH ${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake
+)
 
 project(task-maker VERSION 1.0.2)
 
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif()
-
-# Disable testing as it is currently broken with absl
-set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
-
 # Enable colors in ninja
-set(CMAKE_CXX_FLAGS "-fdiagnostics-color=always -std=c++11")
+set(CMAKE_CXX_FLAGS "-fdiagnostics-color=always -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-# Add gtest and gmock with a different name because the usual one collides with
-# a dependency of grpc
-add_library(googletest ${CMAKE_CURRENT_SOURCE_DIR}/googletest/googletest/src/gtest-all.cc)
-target_include_directories(googletest
-  PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/googletest/googletest/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/googletest/googletest)
-add_library(googlemock ${CMAKE_CURRENT_SOURCE_DIR}/googletest/googlemock/src/gmock-all.cc)
-target_include_directories(googlemock
-  PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/googletest/googlemock/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/googletest/googlemock)
-target_link_libraries(googlemock googletest)
+set(CMAKE_CXX_STANDARD_REQUIRED true)
+set(CMAKE_CXX_STANDARD 11)
 
-add_subdirectory(glog EXCLUDE_FROM_ALL)
-add_subdirectory(grpc EXCLUDE_FROM_ALL)
-add_subdirectory(nlohmann_json EXCLUDE_FROM_ALL)
-add_subdirectory(absl EXCLUDE_FROM_ALL)
+hunter_add_package(gRPC)
+find_package(gRPC CONFIG REQUIRED)
 
-find_package(Protobuf REQUIRED)
-find_package(GRPC REQUIRED)
+hunter_add_package(GTest)
+find_package(GTest CONFIG REQUIRED)
+find_package(GMock CONFIG REQUIRED)
+
+hunter_add_package(glog)
+find_package(glog CONFIG REQUIRED)
+
+hunter_add_package(gRPC)
+find_package(gRPC CONFIG REQUIRED)
+
+hunter_add_package(nlohmann_json)
+find_package(nlohmann_json CONFIG REQUIRED)
+
+hunter_add_package(Protobuf)
+find_package(Protobuf CONFIG REQUIRED)
+
+hunter_add_package(gflags)
+find_package(gflags CONFIG REQUIRED)
+
+# TODO(edomora97) mode abseil to hunter
+# Disable testing as it is currently broken with absl
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+add_subdirectory(third_party/abseil-cpp)
+
+include(cmake/Protobuf.cmake)
+include(cmake/GRPC.cmake)
 
 add_subdirectory(proto)
 add_subdirectory(cpp)

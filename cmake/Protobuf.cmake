@@ -53,9 +53,9 @@ function(PROTOBUF_GENERATE_CPP SRCS HDRS DEST)
     add_custom_command(
       OUTPUT "${DEST}/${FIL_WE}.pb.cc"
              "${DEST}/${FIL_WE}.pb.h"
-      COMMAND protoc
+      COMMAND protobuf::protoc
       ARGS --cpp_out ${DEST} ${_protobuf_include_path} ${ABS_FIL}
-      DEPENDS ${ABS_FIL} protoc
+      DEPENDS ${ABS_FIL} protobuf::protoc
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"
       VERBATIM )
   endforeach()
@@ -113,9 +113,9 @@ function(PROTOBUF_GENERATE_PY SRCS DEST)
 
     add_custom_command(
             OUTPUT "${DEST}/${FIL_WE}_pb2.py"
-            COMMAND protoc
+            COMMAND protobuf::protoc
             ARGS --python_out ${DEST} ${_protobuf_include_path} ${ABS_FIL}
-            DEPENDS ${ABS_FIL} protoc
+            DEPENDS ${ABS_FIL} protobuf::protoc
             COMMENT "Running PY protocol buffer compiler on ${FIL}"
             VERBATIM )
   endforeach()

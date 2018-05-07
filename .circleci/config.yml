@@ -29,23 +29,21 @@ jobs:
           command: mkdir -p build
       - restore_cache:
           keys:
-            - task-maker-v4-{{ arch }}-
+            - task-maker-v5-{{ arch }}-
       - run:
           name: cmake
-          command: cmake ..
+          command: cmake .. -DHUNTER_STATUS_DEBUG=ON -DHUNTER_ROOT=hunter-root
           working_directory: build
       - run:
           name: make
           command: make -j 4
           working_directory: build
       - save_cache:
-          paths: build
-          key: task-maker-v4-{{ arch }}-{{ .Revision }}
+          paths:
+            - build
+            - hunter-root
+          key: task-maker-v5-{{ arch }}-{{ .Revision }}
           when: always
-
-# Ubuntu dependencies: g++ make cmake git python3 libprotobuf-dev protobuf-compiler
-# https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz
-# libgrpc-dev is not enough for Ubuntu 16.04 (it currently does not work with xenial)
 
 workflows:
   version: 2

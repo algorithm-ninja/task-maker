@@ -52,9 +52,9 @@ function(GRPC_GENERATE_CPP SRCS HDRS DEST)
     add_custom_command(
       OUTPUT "${DEST}/${FIL_WE}.grpc.pb.cc"
              "${DEST}/${FIL_WE}.grpc.pb.h"
-      COMMAND protoc
-      ARGS --grpc_out ${DEST} ${_protobuf_include_path} --plugin=protoc-gen-grpc=$<TARGET_FILE:grpc_cpp_plugin> ${ABS_FIL}
-      DEPENDS ${ABS_FIL} protoc grpc_cpp_plugin
+      COMMAND protobuf::protoc
+      ARGS --grpc_out ${DEST} ${_protobuf_include_path} --plugin=protoc-gen-grpc=$<TARGET_FILE:gRPC::grpc_cpp_plugin> ${ABS_FIL}
+      DEPENDS ${ABS_FIL} protobuf::protoc gRPC::grpc_cpp_plugin
       COMMENT "Running C++ gRPC compiler on ${FIL}"
       VERBATIM )
   endforeach()
@@ -111,9 +111,9 @@ function(GRPC_GENERATE_PY SRCS DEST)
 
     add_custom_command(
             OUTPUT "${DEST}/${FIL_WE}_pb2_grpc.py"
-            COMMAND protoc
-            ARGS --grpc_out ${DEST} ${_protobuf_include_path} --plugin=protoc-gen-grpc=$<TARGET_FILE:grpc_python_plugin> ${ABS_FIL}
-            DEPENDS ${ABS_FIL} protoc grpc_python_plugin
+            COMMAND protobuf::protoc
+            ARGS --grpc_out ${DEST} ${_protobuf_include_path} --plugin=protoc-gen-grpc=$<TARGET_FILE:gRPC::grpc_python_plugin> ${ABS_FIL}
+            DEPENDS ${ABS_FIL} protobuf::protoc gRPC::grpc_python_plugin
             COMMENT "Running PY gRPC compiler on ${FIL}"
             VERBATIM )
   endforeach()

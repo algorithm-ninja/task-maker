@@ -1,7 +1,5 @@
 add_subdirectory(sandbox/test)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -fdiagnostics-color=always -std=c++11")
-
 add_library(cpp_util
   util/file.cpp
   util/sha256.cpp
@@ -13,7 +11,7 @@ target_link_libraries(cpp_util
   absl_bad_optional_access
   absl::strings
   absl::synchronization
-  glog
+  glog::glog
   gflags
 )
 
@@ -60,12 +58,11 @@ IF (UNIX)
   add_executable(sandbox_unix_test
     sandbox/unix_test.cpp
     sandbox/unix.cpp
-    $<TARGET_OBJECTS:gtest_main>
   )
   target_link_libraries(sandbox_unix_test
     cpp_sandbox
-    googletest
-    googlemock
+    GTest::main
+    GMock::gmock
   )
 
 

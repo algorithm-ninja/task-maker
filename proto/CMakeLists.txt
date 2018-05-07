@@ -37,6 +37,6 @@ add_library(
 target_include_directories(proto_cpp PUBLIC ${PROTO_SRC_DIR}/..)
 
 target_link_libraries(proto_cpp
-    grpc++_reflection
-    libprotobuf
+    gRPC::grpc++_reflection
+    protobuf::libprotobuf
 )
