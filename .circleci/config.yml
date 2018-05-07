@@ -32,7 +32,7 @@ jobs:
             - task-maker-v5-{{ arch }}-
       - run:
           name: cmake
-          command: cmake .. -DHUNTER_STATUS_DEBUG=ON -DHUNTER_ROOT=hunter-root -DHUNTER_JOBS_NUMBER=4
+          command: cmake .. -DHUNTER_STATUS_DEBUG=ON -DHUNTER_ROOT=hunter-root -DHUNTER_JOBS_NUMBER=1
           working_directory: build
       - run:
           name: make
