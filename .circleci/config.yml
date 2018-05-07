@@ -32,12 +32,15 @@ jobs:
             - task-maker-v5-{{ arch }}-
       - run:
           name: cmake
-          command: cmake .. -DHUNTER_STATUS_DEBUG=ON -DHUNTER_ROOT=hunter-root
+          command: cmake .. -DHUNTER_STATUS_DEBUG=ON -DHUNTER_ROOT=hunter-root -DHUNTER_JOBS_NUMBER=4
           working_directory: build
       - run:
           name: make
           command: make -j 4
           working_directory: build
+      - store_artifacts:
+          path: build
+          destination: archlinux-nightly
       - save_cache:
           paths:
             - build

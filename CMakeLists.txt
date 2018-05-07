@@ -27,6 +27,9 @@ hunter_add_package(GTest)
 find_package(GTest CONFIG REQUIRED)
 find_package(GMock CONFIG REQUIRED)
 
+hunter_add_package(gflags)
+find_package(gflags CONFIG REQUIRED)
+
 hunter_add_package(glog)
 find_package(glog CONFIG REQUIRED)
 
@@ -38,9 +41,6 @@ find_package(nlohmann_json CONFIG REQUIRED)
 
 hunter_add_package(Protobuf)
 find_package(Protobuf CONFIG REQUIRED)
-
-hunter_add_package(gflags)
-find_package(gflags CONFIG REQUIRED)
 
 # TODO(edomora97) mode abseil to hunter
 # Disable testing as it is currently broken with absl
