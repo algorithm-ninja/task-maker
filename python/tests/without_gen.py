@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-from tests.test import run_tests, TestingUI
+from task_maker.tests.test import run_tests, TestingUI
 
 
 def test_task():
-    from tests.utils import TestInterface
+    from task_maker.tests.utils import TestInterface
     interface = TestInterface("without_gen", "Testing task-maker", 1, 65536)
     interface.add_solution("soluzione.cpp", 100, [100],
                            [(1, "Output is correct")] * 4)

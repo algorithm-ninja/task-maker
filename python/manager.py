@@ -59,15 +59,15 @@ def spawn_manager(port: int) -> None:
 def get_manager(args):
     manager_spawned = False
     max_attempts = 10
-    connect_timeout = 1
+    connect_timeout = 5
     for attempt in range(max_attempts):
         channel = grpc.insecure_channel("localhost:" + str(args.manager_port))
         ready_future = grpc.channel_ready_future(channel)
         try:
             ready_future.result(timeout=connect_timeout)
         except grpc.FutureTimeoutError:
-            print("Spawning manager...")
             if not manager_spawned:
+                print("Spawning manager...")
                 spawn_manager(args.manager_port)
                 manager_spawned = True
             time.sleep(0.5)

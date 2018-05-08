@@ -3,7 +3,7 @@ from typing import Optional, List, Tuple
 
 from event_pb2 import DONE, FAILURE
 
-from tests.test import TestingUI
+from task_maker.tests.test import TestingUI
 
 
 class TestSolution:

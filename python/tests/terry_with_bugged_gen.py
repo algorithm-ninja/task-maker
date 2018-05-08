@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
-from event_pb2 import CORRECT, MISSING, WRONG
-
-from tests.test import run_tests, TestingUI
+from task_maker.tests.test import run_tests, TestingUI
 
 
 def test_task():
-    from tests.utils import TerryTestInterface
+    from task_maker.tests.utils import TerryTestInterface
     interface = TerryTestInterface("terry_with_bugged_gen",
                                    "Testing task-maker",
                                    100)

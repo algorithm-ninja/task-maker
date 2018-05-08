@@ -1,17 +1,22 @@
+import glob
 import os
 from setuptools import setup
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
+tests = glob.glob("task_maker/tests/*/**", recursive=True)
+
 setup(
     name='task_maker',
     version='${PROJECT_VERSION}',
     packages=[
-        'task_maker', 'task_maker.uis', 'task_maker.proto', 'task_maker.bin'
+        'task_maker', 'task_maker.uis', 'task_maker.tests', 'task_maker.proto',
+        'task_maker.bin'
     ],
     zip_safe=False,
     package_data={
         'task_maker.bin': ['*'],
+        'task_maker.tests': [test[len("task_maker/tests/"):] for test in tests],
     },
     entry_points={
         "console_scripts": ["task-maker = task_maker.task_maker:main"]

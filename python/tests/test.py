@@ -6,6 +6,8 @@ from typing import List
 
 import pytest
 
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "proto"))
+
 from task_maker.args import UIS
 from task_maker.uis.silent_ui import SilentUI
 from task_maker.task_maker import main
@@ -29,6 +31,7 @@ UIS["testing"] = TestingUI
 
 
 def run_tests(task_name, file):
+    file = os.path.abspath(file)
     task_dir = "task_" + task_name
     orig_task_dir = os.path.join(os.path.dirname(__file__), task_dir)
     task_path = os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), task_dir)

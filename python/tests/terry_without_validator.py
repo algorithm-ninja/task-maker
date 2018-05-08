@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-from event_pb2 import CORRECT, MISSING, WRONG
+from task_maker.tests.test import run_tests, TestingUI
 
-from tests.test import run_tests, TestingUI
+from event_pb2 import CORRECT, MISSING, WRONG
 
 
 def test_task():
-    from tests.utils import TerryTestInterface
+    from task_maker.tests.utils import TerryTestInterface
     interface = TerryTestInterface("terry_without_validator",
                                    "Testing task-maker",
                                    100)

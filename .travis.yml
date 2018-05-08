@@ -8,12 +8,14 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
+            - sourceline: "ppa:jonathonf/python-3.6"
           packages:
             - g++-4.9
             - git
             - make
-            - python3
+            - python3.6
             - wget
+            - rustc
       env:
          - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
 
@@ -23,42 +25,14 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-          packages:
-            - g++-5
-            - git
-            - make
-            - python3
-            - wget
-      env:
-         - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
-
-    # works on Precise and Trusty
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-6
-            - git
-            - make
-            - python3
-            - wget
-      env:
-        - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
-
-    # works on Precise and Trusty
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
+            - sourceline: "ppa:jonathonf/python-3.6"
           packages:
             - g++-7
             - git
             - make
-            - python3
+            - python3.6
             - wget
+            - rustc
       env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
@@ -69,76 +43,16 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
             - llvm-toolchain-precise-3.6
+            - sourceline: "ppa:jonathonf/python-3.6"
           packages:
             - clang-3.6
             - git
             - make
-            - python3
+            - python3.6
             - wget
+            - rustc
       env:
         - MATRIX_EVAL="CC=clang-3.6 && CXX=clang++-3.6"
-
-    # works on Precise and Trusty
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.7
-          packages:
-            - clang-3.7
-            - git
-            - make
-            - python3
-            - wget
-      env:
-        - MATRIX_EVAL="CC=clang-3.7 && CXX=clang++-3.7"
-
-    # works on Precise and Trusty
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.8
-          packages:
-            - clang-3.8
-            - git
-            - make
-            - python3
-            - wget
-      env:
-        - MATRIX_EVAL="CC=clang-3.8 && CXX=clang++-3.8"
-
-    # works on Trusty
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - llvm-toolchain-trusty-3.9
-          packages:
-            - clang-3.9
-            - git
-            - make
-            - python3
-            - wget
-      env:
-        - MATRIX_EVAL="CC=clang-3.9 && CXX=clang++-3.9"
-
-    # works on Trusty
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - llvm-toolchain-trusty-4.0
-          packages:
-            - clang-4.0
-            - git
-            - make
-            - python3
-            - wget
-      env:
-        - MATRIX_EVAL="CC=clang-4.0 && CXX=clang++-4.0"
 
     # works on Trusty
     - os: linux
@@ -146,12 +60,14 @@ matrix:
         apt:
           sources:
             - llvm-toolchain-trusty-5.0
+            - sourceline: "ppa:jonathonf/python-3.6"
           packages:
             - clang-5.0
             - git
             - make
-            - python3
+            - python3.6
             - wget
+            - rustc
       env:
         - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
 
@@ -166,13 +82,26 @@ before_install:
   - eval "${MATRIX_EVAL}"
 
 install:
+  # install cmake
   - '[ -d /tmp/cmake ] || wget -O /tmp/cmake.tar.gz "https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz"'
   - '[ -d /tmp/cmake ] || (mkdir /tmp/cmake && tar xf /tmp/cmake.tar.gz -C /tmp/cmake)'
   - alias cmake=$(find /tmp/cmake -name "cmake" -type f -executable)
+  # install python and pull all the dependencies
+  - python3.6 -m venv /tmp/venv --without-pip
+  - source /tmp/venv/bin/activate
+  - wget https://bootstrap.pypa.io/get-pip.py
+  - python get-pip.py
+  - pip install protobuf grpcio python-daemon pytest typing PyYAML
+  # fix missing commands
+  - mkdir -p /tmp/bin
+  - ln -sf $(which $CXX) /tmp/bin/c++
+  - ln -sf $(which $CC) /tmp/bin/cc
+  - 'export PATH=/tmp/bin:$PATH'
 
 script:
-  - cmake -H. -Bbuild -DHUNTER_ROOT=hunter-root -DHUNTER_JOBS_NUMBER=2
+  - cmake -H. -Bbuild -DHUNTER_ROOT=hunter-root
   - cmake --build build
+  - python build/python/setup.py install
 
 after_success:
   - ./build/cpp/manager -help
