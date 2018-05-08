@@ -160,9 +160,10 @@ before_install:
   - eval "${MATRIX_EVAL}"
 
 install:
-  - cd /tmp && wget "https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz"
-  - cd /tmp && tar xvf /tmp/cmake-*-Linux-x86_64.tar.gz
-  - alias cmake=$(find /tmp/cmake* -name "cmake" -type f -executable)
+  - wget -O /tmp/cmake.tar.gz "https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz"
+  - mkdir /tmp/cmake
+  - tar xf /tmp/cmake.tar.gz -C /tmp/cmake
+  - alias cmake=$(find /tmp/cmake -name "cmake" -type f -executable)
 
 script:
   - cmake -H. -Bbuild -DHUNTER_ROOT=hunter-root -DHUNTER_JOBS_NUMBER=2
