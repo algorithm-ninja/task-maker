@@ -12,7 +12,7 @@ HunterGate(
 project(task-maker VERSION 1.0.2)
 
 # Enable colors in ninja
-set(CMAKE_CXX_FLAGS "-fdiagnostics-color=always -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "-fdiagnostics-color=always -Wall -Wextra -Wunused-parameter")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
