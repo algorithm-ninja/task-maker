@@ -21,9 +21,9 @@ def test_task():
                            [(0, "Non-zero return code")] * 6)
     interface.add_solution("sigsegv.c", 0, [0, 0, 0],
                            [(0, "Segmentation fault")] * 6)
-    interface.add_solution("tle.cpp", 50, [5, 45, 0],
-                           [(1, "Output is correct")] * 4 +
-                           [(0, "CPU limit exceeded")] * 2)
+    # interface.add_solution("tle.cpp", 50, [5, 45, 0],
+    #                        [(1, "Output is correct")] * 4 +
+    #                        [(0, "CPU limit exceeded")] * 2)
     interface.add_solution("wa.cpp", 0, [0, 0, 0],
                            [(0, "Output is not correct")] * 6)
     interface.add_solution("wrong_file.cpp", 0, [0, 0, 0],
