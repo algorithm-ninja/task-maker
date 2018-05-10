@@ -18,6 +18,11 @@ class SolutionStatus:
         self.score = None  # type: Optional[float]
         self.compiled = False
 
+    def __repr__(self):
+        return "<SolutionStatus [%s]>" % (", ".join(
+            "%d: %.1f" % (i, tc.score) for i, tc in
+            self.testcase_result.items()))
+
 
 class TerryStatus:
     def __init__(self) -> None:
