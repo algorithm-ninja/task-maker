@@ -134,6 +134,7 @@ int OsWrite(const std::string& path,
     close(fd);
     throw;
   }
+  if (fsync(fd) == -1) return errno;
   if (close(fd) == -1) return errno;
   return OsAtomicMove(temp_file, path, overwrite, exist_ok);
 }

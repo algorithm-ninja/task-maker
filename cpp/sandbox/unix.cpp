@@ -34,8 +34,8 @@ int GetProcessMemoryUsageFromProc(pid_t pid, int64_t* memory_usage_kb) {
                 O_RDONLY | O_CLOEXEC);
   if (fd == -1) return fd;
   char buf[64 * 1024] = {};
-  int num_read = 0;
-  int cur = 0;
+  size_t num_read = 0;
+  ssize_t cur = 0;
   do {
     cur = read(fd, buf + num_read, 64 * 1024 - num_read);  // NOLINT
     if (cur < 0) {
@@ -183,11 +183,11 @@ void Unix::Child() {
   close(pipe_fds_[0]);
   auto die2 = [this](const char* prefix, const char* err) {
     fprintf(stdout, "%s\n", err);  // NOLINT
-    char buf[kStrErrorBufSize + 64 + 2] = {};
+    char buf[kStrErrorBufSize + 64 + 3 + 1] = {};
     strncat(buf, prefix, 64);             // NOLINT
-    strncat(buf, ": ", 2);                // NOLINT
+    strncat(buf, ": ", 3);                // NOLINT
     strncat(buf, err, kStrErrorBufSize);  // NOLINT
-    int len = strlen(buf);                // NOLINT
+    ssize_t len = strlen(buf);                // NOLINT
     CHECK(write(pipe_fds_[1], &len, sizeof(len)) == sizeof(len));
     CHECK(write(pipe_fds_[1], buf, len) == len);  // NOLINT
     close(pipe_fds_[1]);
@@ -301,7 +301,7 @@ void Unix::Child() {
 
 bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
   close(pipe_fds_[1]);
-  int error_len = 0;
+  ssize_t error_len = 0;
   if (read(pipe_fds_[0], &error_len, sizeof(error_len)) == sizeof(error_len)) {
     char error[PIPE_BUF] = {};
     CHECK(read(pipe_fds_[0], error, error_len) == error_len);  // NOLINT
