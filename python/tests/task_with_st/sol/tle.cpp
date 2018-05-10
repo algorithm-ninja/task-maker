@@ -6,13 +6,13 @@
 volatile unsigned int x;
 
 int main() {
+  std::clock_t startcputime = std::clock();
   int N;
   std::ifstream in("input.txt");
   std::ofstream out("output.txt");
   in >> N;
 
-  const constexpr int sz = 10240;
-  std::clock_t startcputime = std::clock();
+  const constexpr int sz = 1024;
   std::vector<int> v;
   v.resize(sz, 0);
   int i = 0;
