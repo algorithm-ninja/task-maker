@@ -6,7 +6,6 @@
 #include <mutex>
 #include <queue>
 
-#include "absl/memory/memory.h"
 #include "core/execution.hpp"
 #include "core/execution_cacher.hpp"
 #include "core/file_id.hpp"

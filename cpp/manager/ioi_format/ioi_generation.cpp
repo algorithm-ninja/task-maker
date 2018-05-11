@@ -178,18 +178,23 @@ IOIGeneration::IOIGeneration(EventQueue* queue, core::Core* core,
                              const std::string& executor, bool keep_sandbox) {
   task_ = task;
   if (task.has_official_solution()) {
-    absl::optional<proto::GraderInfo> info;
+    bool grader_found = false;
     for (auto grader : task.grader_info())
       if (task.official_solution().language() == grader.for_language()) {
-        info = grader;
+        solution_ =
+            SourceFile::FromProto(queue, core, task.official_solution(), true,
+                                  keep_sandbox, cache_mode, executor, &grader);
+        grader_found = true;
         break;
       }
-    solution_ =
-        SourceFile::FromProto(queue, core, task.official_solution(), info, true,
-                              keep_sandbox, cache_mode, executor);
+    if (!grader_found) {
+      solution_ =
+          SourceFile::FromProto(queue, core, task.official_solution(), true,
+                                keep_sandbox, cache_mode, executor);
+    }
   }
   if (task.has_checker())
-    checker_ = SourceFile::FromProto(queue, core, task.checker(), {}, true,
+    checker_ = SourceFile::FromProto(queue, core, task.checker(), true,
                                      keep_sandbox, cache_mode, executor);
 
   for (auto subtask : task.subtasks()) {
@@ -199,12 +204,12 @@ IOIGeneration::IOIGeneration(EventQueue* queue, core::Core* core,
       if (testcase.has_generator())
         if (source_cache_.count(testcase.generator().path()) == 0)
           source_cache_[testcase.generator().path()] =
-              SourceFile::FromProto(queue, core, testcase.generator(), {}, true,
+              SourceFile::FromProto(queue, core, testcase.generator(), true,
                                     keep_sandbox, cache_mode, executor);
       if (testcase.has_validator())
         if (source_cache_.count(testcase.validator().path()) == 0)
           source_cache_[testcase.validator().path()] =
-              SourceFile::FromProto(queue, core, testcase.validator(), {}, true,
+              SourceFile::FromProto(queue, core, testcase.validator(), true,
                                     keep_sandbox, cache_mode, executor);
 
       generate_input(testcase, testcase_kv.first, subtask.first, core, queue,

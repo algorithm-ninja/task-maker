@@ -1,8 +1,6 @@
 #include <condition_variable>
 #include <future>
 
-#include "absl/memory/memory.h"
-#include "absl/types/optional.h"
 #include "core/core.hpp"
 #include "event_queue.hpp"
 #include "gflags/gflags.h"
@@ -122,14 +120,13 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 
  private:
   grpc::Server* server_ = nullptr;
-  std::map<int64_t, EvaluationInfo> running_ GUARDED_BY(requests_mutex_);
+  std::map<int64_t, EvaluationInfo> running_;
   int64_t evaluation_id_counter_ = 0;
   std::mutex requests_mutex_;
 
   grpc::Status process_request(int64_t current_id,
                                grpc::ServerWriter<proto::Event>* writer) {
     manager::EventQueue* queue = running_[current_id].queue.get();
-    absl::optional<proto::Event> event;
 
     std::mutex writer_mutex;
     // send EvaluationStarted event

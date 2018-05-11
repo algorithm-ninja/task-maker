@@ -3,7 +3,6 @@
 
 #include <vector>
 
-#include "absl/types/optional.h"
 #include "core/core.hpp"
 #include "core/execution.hpp"
 #include "core/task_status.hpp"
@@ -16,9 +15,8 @@ class SourceFile {
  public:
   static std::unique_ptr<SourceFile> FromProto(
       EventQueue* queue, core::Core* core, const proto::SourceFile& source,
-      const absl::optional<proto::GraderInfo>& grader, bool fatal_failures,
-      bool keep_sandbox, proto::CacheMode cache_mode,
-      const std::string& executor);
+      bool fatal_failures, bool keep_sandbox, proto::CacheMode cache_mode,
+      const std::string& executor, const proto::GraderInfo* grader = nullptr);
   virtual core::Execution* execute(const std::string& description,
                                    const std::vector<std::string>& args,
                                    bool keep_sandbox) = 0;

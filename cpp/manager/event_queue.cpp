@@ -3,39 +3,39 @@
 namespace manager {
 
 void EventQueue::Enqueue(proto::Event&& event) {
-  absl::MutexLock lck(&queue_mutex_);
+  std::unique_lock<std::mutex> lck(queue_mutex_);
   queue_.push(event);
+  queue_cv_.notify_all();
 }
 
-absl::optional<proto::Event> EventQueue::Dequeue() {
-  absl::MutexLock lck(&queue_mutex_);
-  auto cond = [this]() {
-    queue_mutex_.AssertHeld();
-    return stopped_ || !queue_.empty();
-  };
-  queue_mutex_.Await(absl::Condition(&cond));
-  if (queue_.empty()) return {};
-  absl::optional<proto::Event> event = std::move(queue_.front());
+bool EventQueue::Dequeue(proto::Event* out) {
+  std::unique_lock<std::mutex> lck(queue_mutex_);
+  while (!stopped_ && queue_.empty()) {
+    queue_cv_.wait(lck);
+  }
+  if (queue_.empty()) return false;
+  out->Swap(&queue_.front());
   queue_.pop();
-  return event;
+  return true;
 }
 
 void EventQueue::Stop() {
-  absl::MutexLock lck(&queue_mutex_);
+  std::unique_lock<std::mutex> lck(queue_mutex_);
   stopped_ = true;
+  queue_cv_.notify_all();
 }
 
 void EventQueue::BindWriter(grpc::ServerWriter<proto::Event>* writer,
                             std::mutex* mutex) {
-  absl::optional<proto::Event> event;
-  while ((event = Dequeue())) {
+  proto::Event event;
+  while (Dequeue(&event)) {
     std::lock_guard<std::mutex> lock(*mutex);
-    writer->Write(*event);
+    writer->Write(event);
   }
 }
 
 void EventQueue::BindWriterUnlocked(grpc::ServerWriter<proto::Event>* writer) {
-  absl::optional<proto::Event> event;
-  while ((event = Dequeue())) writer->Write(*event);
+  proto::Event event;
+  while (Dequeue(&event)) writer->Write(event);
 }
 }  // namespace manager

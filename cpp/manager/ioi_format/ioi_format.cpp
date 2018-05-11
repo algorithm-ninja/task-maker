@@ -5,20 +5,20 @@
 namespace manager {
 EvaluationInfo setup_request(const proto::EvaluateTaskRequest& request) {
   EvaluationInfo info{};
-  info.core = absl::make_unique<core::Core>();
+  info.core = std::make_unique<core::Core>();
   info.core->SetStoreDirectory(request.store_dir());
   info.core->SetTempDirectory(request.temp_dir());
   info.core->SetNumCores(request.num_cores());
 
-  info.queue = absl::make_unique<manager::EventQueue>();
+  info.queue = std::make_unique<manager::EventQueue>();
   info.is_remote = !request.evaluate_on().empty();
 
   try {
-    info.generation = absl::make_unique<manager::IOIGeneration>(
+    info.generation = std::make_unique<manager::IOIGeneration>(
         info.queue.get(), info.core.get(), request.task(), request.cache_mode(),
         request.evaluate_on(), request.keep_sandbox());
 
-    info.evaluation = absl::make_unique<manager::IOIEvaluation>(
+    info.evaluation = std::make_unique<manager::IOIEvaluation>(
         info.queue.get(), info.core.get(),
         reinterpret_cast<manager::IOIGeneration*>(info.generation.get()),
         request.task(), request.exclusive(), request.cache_mode(),
@@ -29,12 +29,17 @@ EvaluationInfo setup_request(const proto::EvaluateTaskRequest& request) {
       graders[grader.for_language()] = grader;
 
     for (const proto::SourceFile& source : request.solutions()) {
-      absl::optional<proto::GraderInfo> grader;
-      if (graders.count(source.language()) == 1)
-        grader = graders[source.language()];
-      info.source_files[source.path()] = manager::SourceFile::FromProto(
-          info.queue.get(), info.core.get(), source, grader, false,
-          request.keep_sandbox(), request.cache_mode(), request.evaluate_on());
+      if (graders.count(source.language()) == 1) {
+        info.source_files[source.path()] = manager::SourceFile::FromProto(
+            info.queue.get(), info.core.get(), source, false,
+            request.keep_sandbox(), request.cache_mode(), request.evaluate_on(),
+            &graders[source.language()]);
+      } else {
+        info.source_files[source.path()] = manager::SourceFile::FromProto(
+            info.queue.get(), info.core.get(), source, false,
+            request.keep_sandbox(), request.cache_mode(),
+            request.evaluate_on());
+      }
       auto* evaluation =
           reinterpret_cast<manager::IOIEvaluation*>(info.evaluation.get());
       evaluation->Evaluate(info.source_files[source.path()].get());

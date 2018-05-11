@@ -8,9 +8,6 @@ add_library(cpp_util
 target_include_directories(cpp_util PUBLIC .)
 target_link_libraries(cpp_util
   proto_cpp
-  absl_bad_optional_access
-  absl::strings
-  absl::synchronization
   glog::glog
   gflags
 )

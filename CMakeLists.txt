@@ -20,7 +20,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 set(CMAKE_CXX_STANDARD_REQUIRED true)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 hunter_add_package(gRPC)
 find_package(gRPC CONFIG REQUIRED)
@@ -43,11 +43,6 @@ find_package(nlohmann_json CONFIG REQUIRED)
 
 hunter_add_package(Protobuf)
 find_package(Protobuf CONFIG REQUIRED)
-
-# TODO(edomora97) mode abseil to hunter
-# Disable testing as it is currently broken with absl
-set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
-add_subdirectory(third_party/abseil-cpp)
 
 include(cmake/Protobuf.cmake)
 include(cmake/GRPC.cmake)

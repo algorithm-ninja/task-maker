@@ -2,9 +2,9 @@
 #define CORE_FILE_ID_HPP
 #include <atomic>
 #include <functional>
+#include <mutex>
 #include <string>
 
-#include "absl/synchronization/mutex.h"
 #include "core/task_status.hpp"
 #include "util/sha256.hpp"
 
@@ -64,8 +64,8 @@ class FileID {
   std::string store_directory_;
   int64_t id_;
   bool executable_;
-  absl::Mutex hash_mutex_;
-  util::SHA256_t hash_ GUARDED_BY(hash_mutex_) = {};
+  std::mutex hash_mutex_;
+  util::SHA256_t hash_ = {};
   std::function<bool(const TaskStatus&)> callback_;
 
   static std::atomic<int32_t> next_id_;

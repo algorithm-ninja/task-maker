@@ -1,5 +1,4 @@
 #include "executor/local_executor.hpp"
-#include "absl/strings/str_join.h"
 #include "glog/logging.h"
 #include "util/file.hpp"
 
@@ -175,8 +174,7 @@ void LocalExecutor::PrepareFile(const proto::FileInfo& info,
       util::File::ProtoSHAToPath(store_directory_, info.hash());
   std::string target_path = util::File::JoinPath(tmpdir, name);
   util::File::Copy(source_path, target_path);
-  if (info.executable())
-    util::File::MakeExecutable(target_path);
+  if (info.executable()) util::File::MakeExecutable(target_path);
   input_files->push_back(util::File::JoinPath(tmpdir, name));
 }
 

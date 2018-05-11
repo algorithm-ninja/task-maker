@@ -1,7 +1,6 @@
 #ifndef MANAGER_IOI_GENERATION_HPP
 #define MANAGER_IOI_GENERATION_HPP
 
-#include "absl/types/optional.h"
 #include "core/core.hpp"
 #include "core/file_id.hpp"
 #include "manager/event_queue.hpp"

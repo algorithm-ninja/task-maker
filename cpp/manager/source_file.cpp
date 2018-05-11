@@ -12,10 +12,10 @@ class CompiledSourceFile : public SourceFile {
  public:
   CompiledSourceFile(EventQueue* queue, core::Core* core,
                      const proto::SourceFile& source, const std::string& name,
-                     const std::string& exe_name,
-                     const absl::optional<proto::GraderInfo>& grader,
-                     bool fatal_failures, bool keep_sandbox,
-                     proto::CacheMode cache_mode, const std::string& executor);
+                     const std::string& exe_name, bool fatal_failures,
+                     bool keep_sandbox, proto::CacheMode cache_mode,
+                     const std::string& executor,
+                     const proto::GraderInfo* grader = nullptr);
 
   core::Execution* execute(const std::string& description,
                            const std::vector<std::string>& args,
@@ -55,9 +55,8 @@ class NotCompiledSourceFile : public SourceFile {
 // static
 std::unique_ptr<SourceFile> SourceFile::FromProto(
     EventQueue* queue, core::Core* core, const proto::SourceFile& source,
-    const absl::optional<proto::GraderInfo>& grader, bool fatal_failures,
-    bool keep_sandbox, proto::CacheMode cache_mode,
-    const std::string& executor) {
+    bool fatal_failures, bool keep_sandbox, proto::CacheMode cache_mode,
+    const std::string& executor, const proto::GraderInfo* grader) {
   // the name of the source file is mainly used in the evaluation process, it
   // will be sent to the queue
   std::string name =
@@ -73,11 +72,11 @@ std::unique_ptr<SourceFile> SourceFile::FromProto(
     case proto::C:
     case proto::PASCAL:
     case proto::RUST:
-      return absl::make_unique<CompiledSourceFile>(
-          queue, core, source, std::move(name), std::move(exe_name), grader,
-          fatal_failures, keep_sandbox, cache_mode, executor);
+      return std::make_unique<CompiledSourceFile>(
+          queue, core, source, std::move(name), std::move(exe_name),
+          fatal_failures, keep_sandbox, cache_mode, executor, grader);
     default:
-      return absl::make_unique<NotCompiledSourceFile>(
+      return std::make_unique<NotCompiledSourceFile>(
           queue, core, source, std::move(name), std::move(exe_name),
           fatal_failures);
   }
@@ -85,9 +84,9 @@ std::unique_ptr<SourceFile> SourceFile::FromProto(
 
 CompiledSourceFile::CompiledSourceFile(
     EventQueue* queue, core::Core* core, const proto::SourceFile& source,
-    const std::string& name, const std::string& exe_name,
-    const absl::optional<proto::GraderInfo>& grader, bool fatal_failures,
-    bool keep_sandbox, proto::CacheMode cache_mode, const std::string& executor)
+    const std::string& name, const std::string& exe_name, bool fatal_failures,
+    bool keep_sandbox, proto::CacheMode cache_mode, const std::string& executor,
+    const proto::GraderInfo* grader)
     : SourceFile(core, queue, name, exe_name, fatal_failures) {
   std::string compiler;
   std::vector<std::string> args;

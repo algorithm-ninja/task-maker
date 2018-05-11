@@ -1,11 +1,9 @@
 #ifndef MANAGER_EVENT_QUEUE_HPP
 #define MANAGER_EVENT_QUEUE_HPP
 
+#include <condition_variable>
 #include <queue>
 
-#include "absl/base/thread_annotations.h"
-#include "absl/synchronization/mutex.h"
-#include "absl/types/optional.h"
 #include "proto/event.pb.h"
 #include "proto/manager.grpc.pb.h"
 
@@ -117,8 +115,7 @@ class EventQueue {
   }
   void TerryChecked(const std::string& solution,
                     proto::TerryEvaluationResult result, bool from_cache) {
-    TerryCheck(solution, proto::EventStatus::DONE, "", std::move(result),
-               from_cache);
+    TerryCheck(solution, proto::EventStatus::DONE, "", &result, from_cache);
   }
   void TerryCheckingFailure(const std::string& solution,
                             const std::string& errors, bool from_cache) {
@@ -133,7 +130,7 @@ class EventQueue {
     result.set_cpu_time_used(cpu_time);
     result.set_wall_time_used(wall_time);
     result.set_memory_used_kb(memory);
-    Evaluation(solution, testcase, proto::EventStatus::DONE, std::move(result),
+    Evaluation(solution, testcase, proto::EventStatus::DONE, &result,
                from_cache);
   }
   void EvaluationFailure(const std::string& solution, int64_t testcase,
@@ -144,8 +141,8 @@ class EventQueue {
     result.set_cpu_time_used(cpu_time);
     result.set_wall_time_used(wall_time);
     result.set_memory_used_kb(memory);
-    Evaluation(solution, testcase, proto::EventStatus::FAILURE,
-               std::move(result), from_cache);
+    Evaluation(solution, testcase, proto::EventStatus::FAILURE, &result,
+               from_cache);
   }
   void TerryEvaluationFailure(const std::string& solution,
                               const std::string& errors, bool from_cache) {
@@ -155,14 +152,15 @@ class EventQueue {
   void BindWriter(grpc::ServerWriter<proto::Event>* writer, std::mutex* mutex);
   void BindWriterUnlocked(grpc::ServerWriter<proto::Event>* writer);
   void Enqueue(proto::Event&& event);
-  absl::optional<proto::Event> Dequeue();
+  bool Dequeue(proto::Event* out);
   void Stop();
   bool IsStopped() { return stopped_; }
 
  private:
-  absl::Mutex queue_mutex_;
-  std::queue<proto::Event> queue_ GUARDED_BY(queue_mutex_);
-  bool stopped_ GUARDED_BY(queue_mutex_) = false;
+  std::mutex queue_mutex_;
+  std::condition_variable queue_cv_;
+  std::queue<proto::Event> queue_;
+  bool stopped_ = false;
   void Compilation(const std::string& filename, proto::EventStatus status,
                    const std::string& errors = "", bool from_cache = false) {
     proto::Event event;
@@ -200,7 +198,7 @@ class EventQueue {
   }
   void Evaluation(const std::string& solution, int64_t testcase,
                   proto::EventStatus status,
-                  absl::optional<proto::EvaluationResult>&& result = {},
+                  proto::EvaluationResult* result = nullptr,
                   bool from_cache = false) {
     proto::Event event;
     auto* sub_event = event.mutable_evaluation();
@@ -208,8 +206,8 @@ class EventQueue {
     sub_event->set_testcase(testcase);
     sub_event->set_status(status);
     sub_event->set_from_cache(from_cache);
-    if (result.has_value()) {
-      sub_event->mutable_result()->Swap(&result.value());
+    if (result) {
+      sub_event->mutable_result()->Swap(result);
     }
     Enqueue(std::move(event));
   }
@@ -226,7 +224,7 @@ class EventQueue {
   }
   void TerryCheck(const std::string& solution, proto::EventStatus status,
                   const std::string& errors = "",
-                  absl::optional<proto::TerryEvaluationResult>&& result = {},
+                  proto::TerryEvaluationResult* result = nullptr,
                   bool from_cache = false) {
     proto::Event event;
     auto* sub_event = event.mutable_terry_check();
@@ -234,7 +232,9 @@ class EventQueue {
     sub_event->set_status(status);
     sub_event->set_from_cache(from_cache);
     if (!errors.empty()) sub_event->set_errors(errors);
-    if (result.has_value()) sub_event->mutable_result()->Swap(&result.value());
+    if (result) {
+      sub_event->mutable_result()->Swap(result);
+    }
     Enqueue(std::move(event));
   }
 };

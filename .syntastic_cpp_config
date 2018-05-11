@@ -1,5 +1,2 @@
 -Icpp
--Ibuild/glog/
--Ibuild/proto/
--Iabsl/
--Inlohmann_json/single_include/
+-Ibuild/proto

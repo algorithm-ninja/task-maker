@@ -5,19 +5,19 @@
 namespace manager {
 EvaluationInfo setup_request(const proto::EvaluateTerryTaskRequest& request) {
   EvaluationInfo info{};
-  info.core = absl::make_unique<core::Core>();
+  info.core = std::make_unique<core::Core>();
   info.core->SetStoreDirectory(request.store_dir());
   info.core->SetTempDirectory(request.temp_dir());
   info.core->SetNumCores(request.num_cores());
 
-  info.queue = absl::make_unique<manager::EventQueue>();
+  info.queue = std::make_unique<manager::EventQueue>();
   info.is_remote = !request.evaluate_on().empty();
 
   try {
-    info.generation = absl::make_unique<manager::TerryGeneration>(
+    info.generation = std::make_unique<manager::TerryGeneration>(
         info.queue.get(), info.core.get(), request.task(), request.cache_mode(),
         request.evaluate_on(), request.keep_sandbox());
-    info.evaluation = absl::make_unique<manager::TerryEvaluation>(
+    info.evaluation = std::make_unique<manager::TerryEvaluation>(
         info.queue.get(), info.core.get(),
         reinterpret_cast<manager::TerryGeneration*>(info.generation.get()),
         request.task(), request.exclusive(), request.cache_mode(),
@@ -27,7 +27,7 @@ EvaluationInfo setup_request(const proto::EvaluateTerryTaskRequest& request) {
       const proto::SourceFile& source = solution.solution();
       int64_t seed = solution.seed();
       info.source_files[source.path()] = manager::SourceFile::FromProto(
-          info.queue.get(), info.core.get(), source, {}, false,
+          info.queue.get(), info.core.get(), source, false,
           request.keep_sandbox(), request.cache_mode(), request.evaluate_on());
       auto* evaluation =
           reinterpret_cast<manager::TerryEvaluation*>(info.evaluation.get());
