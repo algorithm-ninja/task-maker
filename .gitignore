@@ -10,3 +10,4 @@ __pycache__/
 release/*.zip
 .cache
 cmake-build-debug/
+.pytest_cache

@@ -11,6 +11,8 @@ HunterGate(
 
 project(task-maker VERSION 1.0.2)
 
+find_package(PythonInterp 3.5 REQUIRED)
+
 # Enable colors in ninja
 set(CMAKE_CXX_FLAGS "-fdiagnostics-color=always -Wall -Wextra -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")

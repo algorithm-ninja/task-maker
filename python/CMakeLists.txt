@@ -17,6 +17,7 @@ file(MAKE_DIRECTORY ${TESTS_MODULE})
 file(MAKE_DIRECTORY ${PROTOS_MODULE})
 file(MAKE_DIRECTORY ${BIN_DIRECTORY})
 file(WRITE "${PROTOS_MODULE}/__init__.py" "")
+file(WRITE "${TESTS_MODULE}/__init__.py" "")
 file(WRITE "${BIN_DIRECTORY}/__init__.py" "")
 
 string(REGEX REPLACE "[^;]*/" "${PROTOS_MODULE}/" PROTOS_PY_TGT "${PROTOS_PY}")
