@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 export TEST_TMPDIR=/tmp/task_maker_testdir
+export PYTHONPATH=$(pwd)/build/python:$PYTHONPATH
 mkdir -p ${TEST_TMPDIR}
 
 cleanup() {
