@@ -103,6 +103,10 @@ install:
   - 'export PATH=/tmp/bin:$PATH'
 
 script:
+  - $CC --version
+  - $CXX --version
+  # invalidate the cache of our build for now
+  - rm -rf build
   - cmake -H. -Bbuild -DHUNTER_ROOT=hunter-root
   - cmake --build build
   - python build/python/setup.py install
