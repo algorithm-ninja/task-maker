@@ -1,6 +1,25 @@
-# task-maker [![CircleCI](https://circleci.com/gh/algorithm-ninja/task-maker.svg?style=svg)](https://circleci.com/gh/algorithm-ninja/task-maker)
+# task-maker [![Build Status](https://travis-ci.org/algorithm-ninja/task-maker.svg?branch=master)](https://travis-ci.org/algorithm-ninja/task-maker)
 
 The new cmsMake!
+
+## Installation
+You have to have some dependencies installed in order to use task-maker.
+This is a python3 project, you need to have Python>=3.5 as default python
+environment (running `python --version`), the easiest way to achieve this is
+via virtualenv.
+
+There are some python dependencies that can be installed either from PyPI or
+from the system package manager:
+- `grpcio==1.9`
+- `pytest==3.2.3`
+- `PyYAML==3.12`
+- `python-daemon==2.1.2`
+- `typing==3.6.4`
+
+Note that there is a `requirements.txt` file to install all the dependencies
+with `pip install -r requirements.txt`.
+
+On Archlinux the system package versions are new enough but not on Ubuntu 16.04.  
 
 ## Usage
 
@@ -89,22 +108,25 @@ the manager, a daemon spawned by task-maker.
 ## Compilation
 If you want to compile tak-maker yourself you need the following dependencies:
 ```
-bazel python3-dev python3-setuptools python3-wheel g++
+g++ make cmake
 ```
 
-You also need a compiler capable of compiling C++11.
-
-This is also a python3 project, you need to have Python>=3.5 as default python
-environment (running `python --version`), the easiest way to achieve this is
-via virtualenv.
+You also need a compiler capable of compiling C++14.
 
 To start the compilation simply run:
 ```
-bazel build ...
+mkdir -p build
+cd build
+cmake ..
+make
 ```
 
 This will pull all the dependencies and compile everything. If you want to
-enable the optimization remember to put `-c opt` to the above command.
+speedup the compilation you may want to add `-j X` (with X the number of cores)
+to `make`.
+
+If you want to enable the optimization remember to put
+`-DCMAKE_BUILD_TYPE=Release` to the `cmake` command.
 
 ## Arch Linux
 If you are using Arch Linux you may want to install task-maker from the AUR:
