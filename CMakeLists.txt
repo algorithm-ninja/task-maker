@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.2)
 
-include("cmake/HunterGate.cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
+ENABLE_LANGUAGE(CXX)
+
+include(HunterGate)
+include(ThreadSanitizer)
+include(Protobuf)
+include(GRPC)
 
 HunterGate(
     URL "https://github.com/ruslo/hunter/archive/v0.20.69.tar.gz"
@@ -16,8 +23,6 @@ find_package(PythonInterp 3.5 REQUIRED)
 # Enable colors in ninja
 set(CMAKE_CXX_FLAGS "-fdiagnostics-color=always -Wall -Wextra -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 hunter_add_package(gRPC)
 find_package(gRPC CONFIG REQUIRED)
@@ -41,8 +46,6 @@ find_package(nlohmann_json CONFIG REQUIRED)
 hunter_add_package(Protobuf)
 find_package(Protobuf CONFIG REQUIRED)
 
-include(cmake/Protobuf.cmake)
-include(cmake/GRPC.cmake)
 
 add_subdirectory(proto)
 add_subdirectory(cpp)
