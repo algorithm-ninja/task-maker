@@ -47,6 +47,7 @@ matrix:
             - llvm-toolchain-precise-3.6
             - sourceline: "ppa:jonathonf/python-3.6"
           packages:
+            - libstdc++-4.9-dev
             - clang-3.6
             - git
             - make
@@ -65,6 +66,7 @@ matrix:
             - llvm-toolchain-trusty-5.0
             - sourceline: "ppa:jonathonf/python-3.6"
           packages:
+            - libstdc++-4.9-dev
             - clang-5.0
             - git
             - make
