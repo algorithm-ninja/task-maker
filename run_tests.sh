@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
+HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 export TEST_TMPDIR=/tmp/task_maker_testdir
-export PYTHONPATH=$(pwd)/build/python:$PYTHONPATH
+export PYTHONPATH=$HERE/build/python:$PYTHONPATH
 mkdir -p ${TEST_TMPDIR}
 
 cleanup() {
@@ -11,7 +13,7 @@ cleanup() {
 trap cleanup EXIT
 
 test_sandbox() {
-    ( cd build/cpp && ./sandbox_unix_test )
+    ( cd $HERE/build/cpp && ./sandbox_unix_test )
     return $?
 }
 
@@ -22,13 +24,11 @@ test_task() {
     echo "-------------------- TESTING $1 --------------------"
     python $1.py
     code=$?
-    # kill the manager before starting the next test
-    pkill -x manager
     return $code
 }
 
 test_all_tasks() {
-    ( cd python/tests &&
+    ( cd $HERE/python/tests &&
         failed=0
         for task in *.py; do
             task_name=${task%???}
