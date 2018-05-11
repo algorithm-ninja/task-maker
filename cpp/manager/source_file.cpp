@@ -1,4 +1,5 @@
 #include <sys/stat.h>
+#include <memory>
 
 #include "glog/logging.h"
 #include "manager/source_file.hpp"
