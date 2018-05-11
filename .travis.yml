@@ -63,6 +63,7 @@ matrix:
       addons:
         apt:
           sources:
+            - ubuntu-toolchain-r-test
             - llvm-toolchain-trusty-5.0
             - sourceline: "ppa:jonathonf/python-3.6"
           packages:
