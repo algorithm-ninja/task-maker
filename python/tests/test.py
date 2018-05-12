@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
+
+from task_maker.syspath_patch import patch_sys_path
+patch_sys_path()
+
 import os.path
 import shutil
 import sys
 from typing import List
 
 import pytest
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "proto"))
 
 from task_maker.args import UIS
 from task_maker.uis.silent_ui import SilentUI

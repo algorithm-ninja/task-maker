@@ -102,7 +102,6 @@ install:
   - source /tmp/venv/bin/activate
   - wget https://bootstrap.pypa.io/get-pip.py
   - python get-pip.py
-  - pip install protobuf grpcio python-daemon pytest typing PyYAML
   # fix missing commands
   - mkdir -p /tmp/bin
   - ln -sf $(which $CXX) /tmp/bin/c++

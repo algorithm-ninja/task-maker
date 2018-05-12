@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), 'proto'))
+from task_maker.syspath_patch import patch_sys_path
+patch_sys_path()
 
+import os
 import signal
 from typing import Any
 
