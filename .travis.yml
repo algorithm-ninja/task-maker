@@ -1,4 +1,6 @@
 language: cpp
+# adds more ram to the build
+sudo: required
 
 matrix:
   include:
