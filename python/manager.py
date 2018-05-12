@@ -1,14 +1,10 @@
 #!/usr/bin/python3
 
-import multiprocessing
+import os.path
 import subprocess
 import time
-from typing import Any
 
-import daemon
 import grpc
-import os.path
-
 import manager_pb2_grpc
 
 
@@ -30,36 +26,18 @@ def get_worker_path():
     return os.path.abspath(worker)
 
 
-def manager_process(pipe: Any, manager: str, port: int) -> None:
-    try:
-        manager_proc = subprocess.Popen(
-            [manager, "--port", str(port)],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL)
-        pipe.send(None)
-    except Exception as exc:  # pylint: disable=broad-except
-        pipe.send(exc)
-    with daemon.DaemonContext(detach_process=True, working_directory="/tmp"):
-        manager_proc.wait()
-
-
 def spawn_manager(port: int) -> None:
     manager = get_manager_path()
-    parent_conn, child_conn = multiprocessing.Pipe()
-    proc = multiprocessing.Process(
-        target=manager_process, args=(child_conn, manager, port))
-    proc.start()
-    exc = parent_conn.recv()
-    if exc:
-        raise exc
-    proc.join()
+    subprocess.run([manager, "-port", str(port), "-daemon"],
+                   stdin=subprocess.DEVNULL,
+                   stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL)
 
 
 def get_manager(args):
     manager_spawned = False
     max_attempts = 10
-    connect_timeout = 5
+    connect_timeout = 1
     for attempt in range(max_attempts):
         channel = grpc.insecure_channel("localhost:" + str(args.manager_port))
         ready_future = grpc.channel_ready_future(channel)

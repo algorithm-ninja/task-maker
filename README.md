@@ -13,7 +13,6 @@ from the system package manager:
 - `grpcio==1.9`
 - `pytest==3.2.3`
 - `PyYAML==3.12`
-- `python-daemon==2.1.2`
 - `typing==3.6.4`
 
 Note that there is a `requirements.txt` file to install all the dependencies
