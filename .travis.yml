@@ -4,7 +4,6 @@ sudo: required
 
 matrix:
   include:
-    # works on Precise and Trusty
     - os: linux
       addons:
         apt:
@@ -18,13 +17,13 @@ matrix:
             - python3.6
             - python3.6-dev
             - wget
+            # only for tests
             - rustc
             # needed for the release
             - zip
       env:
          - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
 
-    # works on Precise and Trusty
     - os: linux
       addons:
         apt:
@@ -38,11 +37,11 @@ matrix:
             - python3.6
             - python3.6-dev
             - wget
+            # only for tests
             - rustc
       env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
-    # works on Precise and Trusty
     - os: linux
       addons:
         apt:
@@ -58,11 +57,11 @@ matrix:
             - python3.6
             - python3.6-dev
             - wget
+            # only for tests
             - rustc
       env:
         - MATRIX_EVAL="CC=clang-3.6 && CXX=clang++-3.6"
 
-    # works on Trusty
     - os: linux
       addons:
         apt:
@@ -78,6 +77,7 @@ matrix:
             - python3.6
             - python3.6-dev
             - wget
+            # only for tests
             - rustc
       env:
         - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
@@ -128,13 +128,13 @@ before_deploy:
   - strip -s build_rel/python/task_maker/bin/server
   - strip -s build_rel/python/task_maker/bin/worker
   - chmod +x build_rel/python/setup.py
-  - ( cd build_rel/python && zip -r task-maker.zip requirements.txt setup.py task_maker )
+  - ( cd build_rel/python && zip -r task-maker-$TRAVIS_TAG.zip requirements.txt setup.py task_maker )
 
 deploy:
   provider: releases
   api_key:
     secure: HVF8CkBTelG3qd0R9D8ODEwzYcwU8Sk7wKZ5vDTZajdqSFcHllJfY8UUBJQ2iXH1a2Q9vFqcbd+O44mvKyk/6KGg5xfoxgo4SQvXqvQ/s9AsrMEEOOT/++MMwDEZM6NCSL6CvoH9EOGRw6Dd+XEgS2EiotgvvTi3W9oeq3/qt7UqPqxVgTcqY4ZdIsEHDwPcjcd/B8YZ9G4aq/gRWHoS9OD5exfsMWd+FbN/BD00QJxzVz96IrPXu80d7HpTis34ROO1D+tSBNBqTovfHwTa1A99LLygismY70BofXwrxuanFQH4Jq3kXvMnmZCHFYFqdAw2k5y49yJTwlkf4gmwXQXDfHsos+fSdm5xmuEpUT2asW+riWYcyQ9s0ygZx7FBa3fgamiBSxaP5ogwWX2k41IqV/nPp5S9uATaquyBgSTEQga6xQP68+1igpWi/na77DkH3QS3Fa4UMs6Lef1QTiUkNDSXwdLXV0ljrr3wye6vqz1g6C9/7lPF3Nm5uDy/mYjqZdF/H2mjg+G9smEkSI1/xciDJaTZRxly+SEZRoo1FX7Gk0e58EDgCXHI7Kb8X7ju82hHFpCIgzqDbfxAnmWujBRhy4Qka2wHnezAKOOu7zWqpDUPabcMXg/6eMWtj5h63YAXsalrkYwV4gtyzhOmtICT4MfhzzU0/DmU84U=
-  file: build_rel/python/task-maker.zip
+  file: build_rel/python/task-maker-$TRAVIS_TAG.zip
   skip_cleanup: true
   on:
     tags: true
