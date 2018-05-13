@@ -45,15 +45,13 @@ inline void daemonize(std::string pidfile) {
     exit(1);
   }
 
-  // close all open file descriptors
-  for (int fd = sysconf(_SC_OPEN_MAX); fd >= 0; fd--) close(fd);
-
   // save the pid to a pidfile
   if (pidfile.empty()) {
     uid_t uid = getuid();
     pidfile = "/tmp/task-maker-manager-" + std::to_string(uid) + ".pid";
   }
 
+  remove(pidfile.c_str());
   pid = getpid();
   std::ofstream file(pidfile);
   file << pid << std::endl;
