@@ -12,8 +12,8 @@ include(Protobuf)
 include(GRPC)
 
 HunterGate(
-    URL "https://github.com/ruslo/hunter/archive/v0.20.69.tar.gz"
-    SHA1 "e02d106c762c81efb215587c5516c11416c00b52"
+    URL "https://github.com/edomora97/hunter/archive/v0.20.73-p2.tar.gz"
+    SHA1 "dbc2186106ced6cb557f3927c0b19f4bd61d8801"
     # Needed to compile gRPC because it needs -fPIC
     FILEPATH ${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake
 )
