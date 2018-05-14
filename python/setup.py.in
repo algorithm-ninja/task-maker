@@ -1,0 +1,23 @@
+import glob
+import os
+from setuptools import setup
+
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+venv = glob.glob("task_maker/venv/*/**", recursive=True)
+
+setup(
+    name='task_maker',
+    version='${PROJECT_VERSION}',
+    packages=[
+        'task_maker', 'task_maker.uis', 'task_maker.proto', 'task_maker.bin',
+        'task_maker.venv',
+    ],
+    zip_safe=False,
+    package_data={
+        'task_maker.bin': ['*'],
+        'task_maker.venv': [test[len("task_maker/venv/"):] for test in venv],
+    },
+    entry_points={
+        "console_scripts": ["task-maker = task_maker.task_maker:main"]
+    })

@@ -4,7 +4,7 @@ import os
 from itertools import chain
 from typing import List
 
-from proto.task_pb2 import CPP, C, PASCAL, PYTHON, BASH, RUBY, ERLANG,\
+from task_pb2 import CPP, C, PASCAL, PYTHON, BASH, RUBY, ERLANG,\
     RUST, INVALID_LANGUAGE
 
 EXTENSIONS = {

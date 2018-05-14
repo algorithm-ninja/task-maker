@@ -3,12 +3,12 @@
 import argparse
 import os.path
 
-from proto.manager_pb2 import ALL, GENERATION, NOTHING
-from proto.task_pb2 import DEFAULT, X86_64, I686
+from manager_pb2 import ALL, GENERATION, NOTHING
+from task_pb2 import DEFAULT, X86_64, I686
 
-from python.uis.curses_ui import CursesUI
-from python.uis.print_ui import PrintUI
-from python.uis.silent_ui import SilentUI
+from task_maker.uis.curses_ui import CursesUI
+from task_maker.uis.print_ui import PrintUI
+from task_maker.uis.silent_ui import SilentUI
 
 UIS = {"curses": CursesUI, "print": PrintUI, "silent": SilentUI}
 
@@ -38,8 +38,8 @@ def _validate_arch(arch: str) -> int:
     try:
         return ARCHS[arch]
     except ValueError:
-        raise argparse.ArgumentTypeError("Not valid target architecture %s" %
-                                         arch)
+        raise argparse.ArgumentTypeError(
+            "Not valid target architecture %s" % arch)
 
 
 def add_generic_group(parser: argparse.ArgumentParser):
@@ -165,8 +165,8 @@ def add_terry_group(parser: argparse.ArgumentParser):
     group = parser.add_argument_group("Terry options")
     group.add_argument(
         "--arch",
-        help="Architecture to target the managers in Terry format (%s)"
-             % "|".join(ARCHS.keys()),
+        help="Architecture to target the managers in Terry format (%s)" %
+        "|".join(ARCHS.keys()),
         action="store",
         type=_validate_arch,
         default="default")

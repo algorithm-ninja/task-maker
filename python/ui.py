@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 
-from proto.event_pb2 import Event, EventStatus, EvaluationResult,\
+from event_pb2 import Event, EventStatus, EvaluationResult,\
     RunningTaskInfo
 
 

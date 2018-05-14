@@ -6,12 +6,12 @@ import threading
 from typing import List
 from typing import Optional
 
-from proto.event_pb2 import EventStatus, EvaluationResult, WAITING, RUNNING, \
+from event_pb2 import EventStatus, EvaluationResult, WAITING, RUNNING, \
     FAILURE, GENERATING, GENERATED, VALIDATING, VALIDATED, EXECUTING, \
     EXECUTED, CHECKING, SOLVING, DONE, MISSING, CORRECT, WRONG
 
-from python.printer import Printer, CursesPrinter, StdoutPrinter
-from python.uis.silent_ui import SilentUI, SolutionStatus
+from task_maker.printer import Printer, CursesPrinter, StdoutPrinter
+from task_maker.uis.silent_ui import SilentUI, SolutionStatus
 
 
 class CursesUI(SilentUI):

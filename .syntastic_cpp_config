@@ -1,11 +1,2 @@
--I.
--Ibazel-genfiles
--Ibazel-task-maker/external/googletest/googletest/include
--Ibazel-task-maker/external/googletest/googlemock/include
--Ibazel-genfiles/external/com_github_gflags_gflags/include/
--Ibazel-genfiles/external/glog_repo/
--Ibazel-task-maker/external/com_google_grpc/include
--Ibazel-task-maker/external/glog_repo/src/
--Ibazel-task-maker/external/com_google_protobuf/src/
--Ibazel-task-maker/external/com_google_absl/
--Ibazel-task-maker/external/com_googlesource_code_cctz/include/
+-Icpp
+-Ibuild/proto

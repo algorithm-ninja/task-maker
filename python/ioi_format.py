@@ -7,19 +7,19 @@ from typing import Dict, List, Any, Tuple
 from typing import Optional
 
 import yaml
-from proto.manager_pb2 import EvaluateTaskRequest
-from proto.task_pb2 import Dependency
-from proto.task_pb2 import GraderInfo
-from proto.task_pb2 import SUM, MIN  # ScoreMode
-from proto.task_pb2 import Subtask
-from proto.task_pb2 import Task
-from proto.task_pb2 import TestCase
+from manager_pb2 import EvaluateTaskRequest
+from task_pb2 import Dependency
+from task_pb2 import GraderInfo
+from task_pb2 import SUM, MIN  # ScoreMode
+from task_pb2 import Subtask
+from task_pb2 import Task
+from task_pb2 import TestCase
 
-from python.absolutize import absolutize_request
-from python.dependency_finder import find_dependency
-from python.language import grader_from_file, valid_extensions
-from python.sanitize import sanitize_command
-from python.source_file import from_file
+from task_maker.absolutize import absolutize_request
+from task_maker.dependency_finder import find_dependency
+from task_maker.language import grader_from_file, valid_extensions
+from task_maker.sanitize import sanitize_command
+from task_maker.source_file import from_file
 
 
 def list_files(patterns: List[str],
@@ -29,9 +29,8 @@ def list_files(patterns: List[str],
     files = [_file for pattern in patterns
              for _file in glob.glob(pattern)]  # type: List[str]
     return [
-        res for res in files
-        if res not in exclude
-           and os.path.splitext(res)[1] in valid_extensions()
+        res for res in files if res not in exclude
+        and os.path.splitext(res)[1] in valid_extensions()
     ]
 
 
@@ -61,8 +60,8 @@ def get_generator() -> Optional[str]:
     return None
 
 
-def gen_testcases(copy_compiled: bool) -> Tuple[
-    Optional[str], Dict[int, Subtask]]:
+def gen_testcases(
+        copy_compiled: bool) -> Tuple[Optional[str], Dict[int, Subtask]]:
     validator = None  # type: Optional[str]
     subtasks = {}  # type: Dict[int, Subtask]
     official_solution = None  # type: Optional[str]
@@ -155,8 +154,8 @@ def get_options(data: Dict[str, Any],
         if name in data:
             return data[name]
     if not default:
-        raise ValueError("Non optional field %s missing from task.yaml"
-                         % "|".join(names))
+        raise ValueError(
+            "Non optional field %s missing from task.yaml" % "|".join(names))
     return default
 
 
@@ -212,8 +211,8 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
     official_solution, subtasks = gen_testcases(copy_compiled)
     if official_solution:
         task.official_solution.CopyFrom(
-            from_file(official_solution,
-                      copy_compiled and "bin/official_solution"))
+            from_file(official_solution, copy_compiled
+                      and "bin/official_solution"))
 
     if checker is not None:
         task.checker.CopyFrom(
@@ -222,12 +221,13 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
         info = GraderInfo()
         info.for_language = grader_from_file(grader)
         name = os.path.basename(grader)
-        info.files.extend([Dependency(name=name, path=grader)] +
-                          find_dependency(grader))
+        info.files.extend(
+            [Dependency(name=name, path=grader)] + find_dependency(grader))
         task.grader_info.extend([info])
     for subtask_num, subtask in subtasks.items():
         task.subtasks[subtask_num].CopyFrom(subtask)
-    num_testcases = sum(len(subtask.testcases) for subtask in subtasks.values())
+    num_testcases = sum(
+        len(subtask.testcases) for subtask in subtasks.values())
 
     request = EvaluateTaskRequest()
     request.task.CopyFrom(task)
@@ -262,7 +262,8 @@ def clean():
         try:
             os.rmdir(path)
         except OSError:
-            print("Directory %s not empty, kept non-%s files" % (path, pattern))
+            print("Directory %s not empty, kept non-%s files" % (path,
+                                                                 pattern))
 
     def remove_file(path: str) -> None:
         try:

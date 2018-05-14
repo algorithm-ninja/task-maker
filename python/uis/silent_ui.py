@@ -3,10 +3,10 @@ from typing import Dict, Set, Tuple
 from typing import List, Optional
 
 import os.path
-from proto.event_pb2 import EvaluationResult, TerryEvaluationResult, \
+from event_pb2 import EvaluationResult, TerryEvaluationResult, \
     EventStatus, RunningTaskInfo, WAITING
 
-from python.ui import UI
+from task_maker.ui import UI
 
 
 class SolutionStatus:
@@ -17,6 +17,11 @@ class SolutionStatus:
         self.subtask_scores = dict()  # type: Dict[int, float]
         self.score = None  # type: Optional[float]
         self.compiled = False
+
+    def __repr__(self):
+        return "<SolutionStatus [%s]>" % (", ".join(
+            "%d: %.1f" % (i, tc.score) for i, tc in
+            self.testcase_result.items()))
 
 
 class TerryStatus:

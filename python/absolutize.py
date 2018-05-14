@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import os.path
-from proto.manager_pb2 import EvaluateTaskRequest
-from proto.task_pb2 import Task, Subtask, TestCase, SourceFile, GraderInfo
+from manager_pb2 import EvaluateTaskRequest
+from task_pb2 import Task, Subtask, TestCase, SourceFile, GraderInfo
 
 
 def absolutize_path(path: str) -> str:

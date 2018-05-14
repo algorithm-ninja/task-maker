@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package proto;
 
-import "proto/file.proto";
-import "proto/resources.proto";
+import "file.proto";
+import "resources.proto";
 
 message FifoInfo {
   string id = 1;
