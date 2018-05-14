@@ -86,7 +86,6 @@ cache:
   directories:
     - hunter-root
     - build
-    - /tmp/cmake
 
 
 before_install:
@@ -94,9 +93,8 @@ before_install:
 
 install:
   # install cmake
-  - '[ -d /tmp/cmake ] || wget -O /tmp/cmake.tar.gz "https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz"'
-  - '[ -d /tmp/cmake ] || (mkdir /tmp/cmake && tar xf /tmp/cmake.tar.gz -C /tmp/cmake)'
-  - alias cmake=$(find /tmp/cmake -name "cmake" -type f -executable)
+  - 'wget -O /tmp/cmake.tar.gz "https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz"'
+  - '(mkdir /tmp/cmake && tar xf /tmp/cmake.tar.gz -C /tmp/cmake)'
   # install python and pull all the dependencies
   - python3.6 -m venv /tmp/venv --without-pip
   - source /tmp/venv/bin/activate
@@ -104,13 +102,15 @@ install:
   - python get-pip.py
   # fix missing commands
   - mkdir -p /tmp/bin
+  - ln -s $(find /tmp/cmake -name "cmake" -type f -executable) /tmp/bin/cmake
   - ln -sf $(which $CXX) /tmp/bin/c++
   - ln -sf $(which $CC) /tmp/bin/cc
   - 'export PATH=/tmp/bin:$PATH'
-
-script:
   - $CC --version
   - $CXX --version
+  - cmake --version
+
+script:
   # invalidate the cache of our build for now
   - rm -rf build
   - cmake -H. -Bbuild -DHUNTER_ROOT=hunter-root

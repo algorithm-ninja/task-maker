@@ -30,9 +30,6 @@ test_all_tasks() {
 
 failed=0
 
-test_sandbox
-failed=$(($failed+$?))
-
 test_all_tasks
 failed=$(($failed+$?))
 
