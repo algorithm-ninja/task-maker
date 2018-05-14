@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <cstdlib>
 #include <memory>
 #include "gmock/gmock.h"
@@ -7,6 +8,8 @@
 #include "sandbox/sandbox.hpp"
 
 namespace {
+
+const std::string TEST_TMPDIR = "/tmp/task_maker_testdir";
 
 using ::testing::AnyOf;
 using ::testing::Eq;
@@ -208,7 +211,8 @@ TEST(UnixTest, TestIORedirect) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "copy_int");
-  const char* test_tmpdir = getenv("TEST_TMPDIR");
+  const char* test_tmpdir = TEST_TMPDIR.c_str();
+  mkdir(test_tmpdir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
   std::string input_file = test_tmpdir;
   input_file += "/in";
 

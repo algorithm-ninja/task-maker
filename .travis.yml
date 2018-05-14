@@ -116,6 +116,8 @@ script:
   - cmake -H. -Bbuild -DHUNTER_ROOT=hunter-root
   - cmake --build build
   - python build/python/setup.py install
+  # run the tests
+  - ( cd build && make test )
   - ./run_tests.sh
 
 after_success:

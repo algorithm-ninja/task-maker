@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.10)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
@@ -19,6 +19,10 @@ HunterGate(
 )
 
 project(task-maker VERSION 1.0.2)
+
+include(CTest)
+enable_testing()
+include(GoogleTest)
 
 find_package(PythonInterp 3.5 REQUIRED)
 

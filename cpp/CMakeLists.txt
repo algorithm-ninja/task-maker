@@ -128,3 +128,5 @@ target_link_libraries(worker
   ${CPP_SANDBOXES}
   cpp_executor
 )
+
+gtest_discover_tests(sandbox_unix_test)
