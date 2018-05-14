@@ -118,7 +118,6 @@ script:
   - python build/python/setup.py install
   # run the tests
   - ( cd build && make test )
-  - ./run_tests.sh
 
 after_success:
   - ./build/cpp/manager -help
