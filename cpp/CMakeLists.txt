@@ -113,6 +113,7 @@ target_link_libraries(manager
   ${CPP_SANDBOXES}
   cpp_manager_lib
 )
+target_compile_definitions(manager PRIVATE TASK_MAKER_VERSION="${GIT_FULL_VERSION}")
 
 add_executable(server
   remote/server.cpp

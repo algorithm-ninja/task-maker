@@ -18,7 +18,25 @@ HunterGate(
     FILEPATH ${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake
 )
 
-project(task-maker VERSION 1.0.2)
+
+# extract project version from git tag
+execute_process(
+  COMMAND git describe --tags
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_FULL_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+# cmake project version must be major.minor.patch with all
+# integers. GIT_FULL_VERSION is accurate even for branch not tagged
+execute_process(
+  COMMAND echo ${GIT_FULL_VERSION}
+  COMMAND grep -o "[0-9.]*"
+  COMMAND head -n 1
+  OUTPUT_VARIABLE GIT_LAST_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+project(task-maker VERSION ${GIT_LAST_VERSION})
 
 include(CTest)
 enable_testing()

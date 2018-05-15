@@ -14,6 +14,7 @@
 #include "manager/terry_format/terry_format.hpp"
 #include "proto/manager.grpc.pb.h"
 #include "util/daemon.hpp"
+#include "util/version.hpp"
 
 DEFINE_int32(port, 7071, "port to listen on");  // NOLINT
 DEFINE_bool(daemon, false, "become a daemon");  // NOLINT
@@ -201,12 +202,13 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 }  // namespace manager
 
 int main(int argc, char** argv) {
+  gflags::SetUsageMessage("Manager for task-maker");
+  gflags::SetVersionString(util::version);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);  // NOLINT
   google::InstallFailureSignalHandler();
 
-  if (FLAGS_daemon)
-    util::daemonize(FLAGS_pidfile);
+  if (FLAGS_daemon) util::daemonize(FLAGS_pidfile);
 
   std::string server_address = "127.0.0.1:" + std::to_string(FLAGS_port);
   manager::TaskMakerManagerImpl service;
