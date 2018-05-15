@@ -38,6 +38,7 @@ string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/uis" "${UIS_MODULE}" UIS_PY_TG
 string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/tests" "${TESTS_MODULE}" TESTS_PY_TGT "${TESTS_PY}")
 string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/tests" "${TESTS_MODULE}" TESTS_TASKS_TGT "${TESTS_TASKS}")
 SET(SETUP_PY ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
+SET(VERSION_PY ${SOURCES_MODULE}/version.py)
 SET(REQUIREMENTS_TXT_TGT "${CMAKE_CURRENT_BINARY_DIR}/requirements.txt")
 SET(CPP_EXECUTABLES
   "${BIN_DIRECTORY}/manager"
@@ -97,6 +98,7 @@ add_custom_command(OUTPUT ${BIN_DIRECTORY}/server ${BIN_DIRECTORY}/worker ${BIN_
 )
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in ${SETUP_PY})
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.py.in ${VERSION_PY})
 
 # Install the python dependencies
 execute_process(

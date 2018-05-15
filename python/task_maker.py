@@ -14,6 +14,7 @@ from task_maker.args import get_parser, UIS
 from task_maker.detect_format import find_task_dir
 from task_maker.manager import get_manager, became_manager, became_server, \
     became_worker
+from task_maker.version import TASK_MAKER_VERSION
 
 
 def manager_clean(args):
