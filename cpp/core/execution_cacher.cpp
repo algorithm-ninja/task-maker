@@ -48,6 +48,7 @@ std::size_t RequestHasher::operator()(const proto::Request& request) const {
   hash = hash_combine(hash, request.resource_limit().mlock());
   hash = hash_combine(hash, request.resource_limit().stack());
   hash = hash_combine(hash, request.exclusive());
+  hash = hash_combine(hash, request.extra_time());
   return hash;
 }
 

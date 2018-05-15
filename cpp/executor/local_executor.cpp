@@ -51,8 +51,8 @@ proto::Response LocalExecutor::Execute(
 
   // Limits.
   // Scale up time limits to have a good margin for random occurrences.
-  exec_options.cpu_limit_millis = request.resource_limit().cpu_time() * 1200;
-  exec_options.wall_limit_millis = request.resource_limit().wall_time() * 1200;
+  exec_options.cpu_limit_millis = request.resource_limit().cpu_time() * 1200 + request.extra_time();
+  exec_options.wall_limit_millis = request.resource_limit().wall_time() * 1200 + request.extra_time();
   exec_options.memory_limit_kb = request.resource_limit().memory() * 1.2;
   exec_options.max_files = request.resource_limit().nfiles();
   exec_options.max_procs = request.resource_limit().processes();

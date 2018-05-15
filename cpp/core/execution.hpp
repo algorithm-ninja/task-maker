@@ -41,6 +41,7 @@ class Execution {
   void FileSizeLimit(int64_t kb) { resource_limits_.set_fsize(kb); }
   void MemoryLockLimit(int64_t limit) { resource_limits_.set_mlock(limit); }
   void StackLimit(int64_t limit) { resource_limits_.set_stack(limit); }
+  void ExtraTime(float extra_time) { extra_time_ = extra_time; }
 
   void SetExclusive() { exclusive_ = true; }
   void SetCachingMode(CachingMode mode) { caching_mode_ = mode; }
@@ -131,6 +132,7 @@ class Execution {
 
   proto::Response response_;
   proto::Resources resource_limits_;
+  float extra_time_ = 0;
 
   std::function<bool(const TaskStatus&)> callback_;
 };

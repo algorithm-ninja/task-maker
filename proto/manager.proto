@@ -25,6 +25,7 @@ message EvaluateTaskRequest {
   string evaluate_on = 11;
   bool exclusive = 12;
   bool keep_sandbox = 13;
+  float extra_time = 14;
 }
 
 message TerrySolution {

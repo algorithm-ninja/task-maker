@@ -130,6 +130,12 @@ def add_execution_group(parser: argparse.ArgumentParser):
         action="store_true",
         default=False)
     group.add_argument(
+        "--extra-time",
+        help="Add some time to the evaluation of the solutions",
+        action="store",
+        type=float,
+        default=0)
+    group.add_argument(
         "--temp-dir",
         help="Where the sandboxes should be created",
         action="store",

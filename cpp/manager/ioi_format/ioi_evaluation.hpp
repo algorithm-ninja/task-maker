@@ -16,7 +16,7 @@ class IOIEvaluation : public Evaluation {
   IOIEvaluation() = default;
 
   IOIEvaluation(EventQueue* queue, core::Core* core, IOIGeneration* generation,
-                const proto::Task& task, bool exclusive,
+                const proto::Task& task, bool exclusive, float extra_time,
                 proto::CacheMode cache_mode, std::string executor,
                 bool keep_sandbox);
 
@@ -34,6 +34,7 @@ class IOIEvaluation : public Evaluation {
   IOIGeneration* generation_ = nullptr;
   proto::Task task_;
   bool exclusive_ = false;
+  float extra_time_ = 0;
   proto::CacheMode cache_mode_ = proto::CacheMode::ALL;
   std::string executor_;
   bool keep_sandbox_ = false;

@@ -6,13 +6,15 @@ namespace manager {
 
 IOIEvaluation::IOIEvaluation(EventQueue* queue, core::Core* core,
                              IOIGeneration* generation, const proto::Task& task,
-                             bool exclusive, proto::CacheMode cache_mode,
-                             std::string executor, bool keep_sandbox)
+                             bool exclusive, float extra_time,
+                             proto::CacheMode cache_mode, std::string executor,
+                             bool keep_sandbox)
     : queue_(queue),
       core_(core),
       generation_(generation),
       task_(task),
       exclusive_(exclusive),
+      extra_time_(extra_time),
       cache_mode_(cache_mode),
       executor_(std::move(executor)),
       keep_sandbox_(keep_sandbox) {
@@ -47,6 +49,7 @@ void IOIEvaluation::evaluate_testcase_(int64_t subtask_num,
   execution->CpuLimit(task_.time_limit());
   execution->WallLimit(task_.time_limit() * 1.5f);
   execution->MemoryLimit(task_.memory_limit_kb());
+  execution->ExtraTime(1000 * extra_time_);
   if (exclusive_) execution->SetExclusive();
   if (cache_mode_ == proto::ALL)
     execution->SetCachingMode(core::Execution::SAME_EXECUTOR);
