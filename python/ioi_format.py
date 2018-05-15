@@ -192,10 +192,10 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
 
     graders = list_files(["sol/grader.*"])
     if args.solutions:
-        solutions = [
-            sol if sol.startswith("sol/") else "sol/" + sol
+        solutions = list_files([
+            sol + "*" if sol.startswith("sol/") else "sol/" + sol + "*"
             for sol in args.solutions
-        ]
+        ])
     else:
         solutions = list_files(
             ["sol/*"], exclude=graders + ["sol/__init__.py"])
