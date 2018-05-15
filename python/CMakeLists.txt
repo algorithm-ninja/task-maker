@@ -87,7 +87,9 @@ foreach(task ${TESTS_TASKS})
     DEPENDS "${TEST_SRC_DIR}/task_${task_name}"
   )
 
-  file(COPY ${TEST_SRC_DIR}/${task_name}.py DESTINATION ${TEST_DST_DIR} FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ)
+  file(COPY ${TEST_SRC_DIR}/${task_name}.py DESTINATION ${TEST_DST_DIR}
+    FILE_PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_READ WORLD_EXECUTE
+  )
 
   add_test(NAME pytest.${task_name} COMMAND env PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR} "${TEST_DST_DIR}/${task_name}.py")
 endforeach(task)
@@ -97,7 +99,11 @@ add_custom_command(OUTPUT ${BIN_DIRECTORY}/server ${BIN_DIRECTORY}/worker ${BIN_
   DEPENDS server worker manager
 )
 
+# generate setup.py
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in ${SETUP_PY})
+execute_process(COMMAND chmod 555 ${SETUP_PY})
+
+# generate version.py
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.py.in ${VERSION_PY})
 
 # Install the python dependencies
