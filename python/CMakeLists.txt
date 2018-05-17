@@ -1,5 +1,5 @@
 # External commands
-find_program(PIP_EXE NAMES pip)
+find_program(PIP_EXE NAMES pip3 pip)
 find_program(STRIP_EXE NAMES strip)
 find_program(XARGS_EXE NAMES xargs)
 find_program(FIND_EXE NAMES find)
@@ -107,13 +107,14 @@ execute_process(COMMAND chmod 555 ${SETUP_PY})
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.py.in ${VERSION_PY})
 
 # Install the python dependencies
+# TODO(edomora97): on osx with Python installed with Brew pip cannot install with --target
 execute_process(
   COMMAND ${PIP_EXE} install --ignore-installed --target=${VENV_DIRECTORY} -r ${REQUIREMENTS_TXT}
 )
 
 # Strip away the symbols from the python modules
 execute_process(
-  COMMAND ${FIND_EXE} -name "*.so"
+  COMMAND ${FIND_EXE} . -name "*.so"
   COMMAND ${XARGS_EXE} ${STRIP_EXE} -s
   WORKING_DIRECTORY ${VENV_DIRECTORY}
 )

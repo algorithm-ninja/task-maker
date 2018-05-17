@@ -32,7 +32,7 @@ char* mystrerror(int err, char* buf, size_t buf_size) {
 int GetProcessMemoryUsageFromProc(pid_t pid, int64_t* memory_usage_kb) {
   int fd = open(("/proc/" + std::to_string(pid) + "/statm").c_str(),  // NOLINT
                 O_RDONLY | O_CLOEXEC);
-  if (fd == -1) return fd;
+  if (fd == -1) return -1;
   char buf[64 * 1024] = {};
   size_t num_read = 0;
   ssize_t cur = 0;
@@ -81,7 +81,7 @@ int GetProcessMemoryUsage(pid_t pid, int64_t* memory_usage_kb) {
   };
   add_arg("ps");
   add_arg("-o");
-  add_arg("vsz=");
+  add_arg("rss=");
   add_arg(std::to_string(pid));
 
   std::vector<char*> args_list(args.size()+1);
