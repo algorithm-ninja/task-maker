@@ -128,6 +128,9 @@ script:
 after_success:
   - ./build/cpp/manager -help
 
+after_failure:
+  - ( cd build && ctest -VV )
+
 before_deploy:
   - cmake -H. -Bbuild_rel -DHUNTER_ROOT=hunter-root -DCMAKE_BUILD_TYPE=Release
   - cmake --build build_rel
