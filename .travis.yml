@@ -81,6 +81,10 @@ matrix:
             - rustc
       env:
         - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
+    - os: osx
+      before_install:
+        - brew install python wget
+
 
 cache:
   directories:
@@ -88,10 +92,8 @@ cache:
     - build
 
 
-before_install:
-  - eval "${MATRIX_EVAL}"
-
 install:
+  - eval "${MATRIX_EVAL}"
   # install cmake
   - 'wget -O /tmp/cmake.tar.gz "https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz"'
   - '(mkdir /tmp/cmake && tar xf /tmp/cmake.tar.gz -C /tmp/cmake)'
@@ -102,7 +104,7 @@ install:
   - python get-pip.py
   # fix missing commands
   - mkdir -p /tmp/bin
-  - ln -s $(find /tmp/cmake -name "cmake" -type f -executable) /tmp/bin/cmake
+  - ln -sf $(find /tmp/cmake -name "cmake" -type f -perm -a=x) /tmp/bin/cmake
   - ln -sf $(which $CXX) /tmp/bin/c++
   - ln -sf $(which $CC) /tmp/bin/cc
   - 'export PATH=/tmp/bin:$PATH'
