@@ -139,7 +139,7 @@ TEST(UnixTest, TestMemoryLimitNotOk) {
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
   EXPECT_EQ(error_msg, "");
-  EXPECT_EQ(info.signal, SIGSEGV);
+  EXPECT_TRUE(info.signal == SIGSEGV || info.signal == SIGKILL);
   EXPECT_EQ(info.status_code, 0);
 }
 
