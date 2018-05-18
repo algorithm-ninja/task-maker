@@ -4,64 +4,64 @@ sudo: required
 
 matrix:
   include:
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - sourceline: "ppa:jonathonf/python-3.6"
-          packages:
-            - g++-4.9
-            - git
-            - make
-            - python3.6
-            - python3.6-dev
-            - wget
-            # only for tests
-            - rustc
-            # needed for the release
-            - zip
-      env:
-         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
-
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - sourceline: "ppa:jonathonf/python-3.6"
-          packages:
-            - g++-7
-            - git
-            - make
-            - python3.6
-            - python3.6-dev
-            - wget
-            # only for tests
-            - rustc
-      env:
-        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
-
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.6
-            - sourceline: "ppa:jonathonf/python-3.6"
-          packages:
-            - libstdc++-4.9-dev
-            - clang-3.6
-            - git
-            - make
-            - python3.6
-            - python3.6-dev
-            - wget
-            # only for tests
-            - rustc
-      env:
-        - MATRIX_EVAL="CC=clang-3.6 && CXX=clang++-3.6"
-
+#    - os: linux
+#      addons:
+#        apt:
+#          sources:
+#            - ubuntu-toolchain-r-test
+#            - sourceline: "ppa:jonathonf/python-3.6"
+#          packages:
+#            - g++-4.9
+#            - git
+#            - make
+#            - python3.6
+#            - python3.6-dev
+#            - wget
+#            # only for tests
+#            - rustc
+#            # needed for the release
+#            - zip
+#      env:
+#         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
+#
+#    - os: linux
+#      addons:
+#        apt:
+#          sources:
+#            - ubuntu-toolchain-r-test
+#            - sourceline: "ppa:jonathonf/python-3.6"
+#          packages:
+#            - g++-7
+#            - git
+#            - make
+#            - python3.6
+#            - python3.6-dev
+#            - wget
+#            # only for tests
+#            - rustc
+#      env:
+#        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+#
+#    - os: linux
+#      addons:
+#        apt:
+#          sources:
+#            - ubuntu-toolchain-r-test
+#            - llvm-toolchain-precise-3.6
+#            - sourceline: "ppa:jonathonf/python-3.6"
+#          packages:
+#            - libstdc++-4.9-dev
+#            - clang-3.6
+#            - git
+#            - make
+#            - python3.6
+#            - python3.6-dev
+#            - wget
+#            # only for tests
+#            - rustc
+#      env:
+#        - MATRIX_EVAL="CC=clang-3.6 && CXX=clang++-3.6"
+#
     - os: linux
       addons:
         apt:
@@ -81,9 +81,10 @@ matrix:
             - rustc
       env:
         - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
+
     - os: osx
       before_install:
-        - brew upgrade python wget
+        - brew upgrade python wget cmake
 
 
 cache:
@@ -94,17 +95,20 @@ cache:
 
 install:
   - eval "${MATRIX_EVAL}"
+  - mkdir -p /tmp/bin
   # install cmake
-  - 'wget -O /tmp/cmake.tar.gz "https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz"'
-  - '(mkdir /tmp/cmake && tar xf /tmp/cmake.tar.gz -C /tmp/cmake)'
+  - |
+    if [ ! $TRAVIS_OS_NAME == "linux" ]; then
+      wget -O /tmp/cmake.tar.gz "https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz"
+      (mkdir /tmp/cmake && tar xf /tmp/cmake.tar.gz -C /tmp/cmake)
+      ln -sf $(find /tmp/cmake -name "cmake" -type f -perm -a=x) /tmp/bin/cmake
+    fi
   # install python and pull all the dependencies
   - python3.6 -m venv /tmp/venv --without-pip
   - source /tmp/venv/bin/activate
   - wget https://bootstrap.pypa.io/get-pip.py
   - python get-pip.py
   # fix missing commands
-  - mkdir -p /tmp/bin
-  - ln -sf $(find /tmp/cmake -name "cmake" -type f -perm -a=x) /tmp/bin/cmake
   - ln -sf $(which $CXX) /tmp/bin/c++
   - ln -sf $(which $CC) /tmp/bin/cc
   - 'export PATH=/tmp/bin:$PATH'
