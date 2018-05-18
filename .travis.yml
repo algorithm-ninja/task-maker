@@ -83,7 +83,7 @@ matrix:
         - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
     - os: osx
       before_install:
-        - brew install python wget
+        - brew upgrade python wget
 
 
 cache:
