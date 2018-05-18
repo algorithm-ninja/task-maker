@@ -98,7 +98,7 @@ install:
   - mkdir -p /tmp/bin
   # install cmake
   - |
-    if [ ! $TRAVIS_OS_NAME == "linux" ]; then
+    if [ $TRAVIS_OS_NAME == "linux" ]; then
       wget -O /tmp/cmake.tar.gz "https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz"
       (mkdir /tmp/cmake && tar xf /tmp/cmake.tar.gz -C /tmp/cmake)
       ln -sf $(find /tmp/cmake -name "cmake" -type f -perm -a=x) /tmp/bin/cmake
