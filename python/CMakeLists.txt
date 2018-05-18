@@ -3,6 +3,11 @@ find_program(PIP_EXE NAMES pip3 pip)
 find_program(STRIP_EXE NAMES strip)
 find_program(XARGS_EXE NAMES xargs)
 find_program(FIND_EXE NAMES find)
+find_program(CP_EXE NAMES cp)
+find_program(SED_EXE NAMES sed)
+find_program(TR_EXE NAMES tr)
+find_program(LS_EXE NAMES ls)
+find_program(RM_EXE NAMES rm)
 
 # Sources
 file(GLOB SOURCES_PY "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
@@ -18,6 +23,7 @@ SET(TESTS_MODULE "${SOURCES_MODULE}/tests")
 SET(PROTOS_MODULE "${SOURCES_MODULE}/proto")
 SET(BIN_DIRECTORY "${SOURCES_MODULE}/bin")
 SET(VENV_DIRECTORY "${SOURCES_MODULE}/venv")
+SET(TEMP_DIRECTORY "${SOURCES_MODULE}/temp")
 
 # Create the install directories
 file(MAKE_DIRECTORY ${SOURCES_MODULE})
@@ -107,17 +113,33 @@ execute_process(COMMAND chmod 555 ${SETUP_PY})
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.py.in ${VERSION_PY})
 
 # Install the python dependencies
-# TODO(edomora97): on osx with Python installed with Brew pip cannot install with --target
 execute_process(
-  COMMAND ${PIP_EXE} install --ignore-installed --target=${VENV_DIRECTORY} -r ${REQUIREMENTS_TXT}
+  COMMAND ${PIP_EXE} install --ignore-installed --root=${TEMP_DIRECTORY} -r ${REQUIREMENTS_TXT}
 )
+execute_process(
+  COMMAND ${FIND_EXE} ${TEMP_DIRECTORY} -name site-packages
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  OUTPUT_VARIABLE SITE_PACKAGES_PATH
+)
+execute_process(
+  COMMAND ${LS_EXE} "${SITE_PACKAGES_PATH}"
+  COMMAND ${SED_EXE} "s|^|${SITE_PACKAGES_PATH}/|g"
+  COMMAND ${TR_EXE} "\n" ";"
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  OUTPUT_VARIABLE SITE_PACKAGES_FILES_PATH
+)
+foreach(package ${SITE_PACKAGES_FILES_PATH})
+  execute_process(COMMAND ${CP_EXE} -rf ${package} ${VENV_DIRECTORY})
+endforeach()
 
 # Strip away the symbols from the python modules
-execute_process(
-  COMMAND ${FIND_EXE} . -name "*.so"
-  COMMAND ${XARGS_EXE} ${STRIP_EXE} -s
-  WORKING_DIRECTORY ${VENV_DIRECTORY}
-)
+if (NOT APPLE)
+  execute_process(
+    COMMAND ${FIND_EXE} . -name "*.so"
+    COMMAND ${XARGS_EXE} ${STRIP_EXE} -s
+    WORKING_DIRECTORY ${VENV_DIRECTORY}
+  )
+endif()
 
 add_custom_target(module_files ALL
   DEPENDS ${PROTOS_PY_TGT} ${GRPC_PY_TGT} ${UIS_PY_TGT} ${REQUIREMENTS_TXT_TGT} ${TESTS_PY_TGT} "${TESTS_TASKS_TGT}" ${SOURCES_PY_TGT} ${CPP_EXECUTABLES}

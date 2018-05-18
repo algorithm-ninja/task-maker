@@ -28,10 +28,11 @@ execute_process(
 )
 # cmake project version must be major.minor.patch with all
 # integers. GIT_FULL_VERSION is accurate even for branch not tagged
+# the format of GIT_FULL_VERSION is v1.2.3-gsha1 or v1.2.3
 execute_process(
   COMMAND echo ${GIT_FULL_VERSION}
-  COMMAND grep -o "[0-9.]*"
-  COMMAND head -n 1
+  COMMAND cut -d- -f1
+  COMMAND cut -dv -f2
   OUTPUT_VARIABLE GIT_LAST_VERSION
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
