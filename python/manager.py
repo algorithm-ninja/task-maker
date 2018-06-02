@@ -18,7 +18,10 @@ def spawn_manager(port: int) -> None:
     manager = get_task_maker_path()
     subprocess.run(
         [manager, "-mode", "manager", "-port",
-         str(port), "-daemon"])
+         str(port), "-daemon"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL)
 
 
 def get_manager(args):
