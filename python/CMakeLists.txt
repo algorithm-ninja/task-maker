@@ -40,9 +40,7 @@ string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/tests" "${TESTS_MODULE}" TESTS
 SET(SETUP_PY ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 SET(REQUIREMENTS_TXT_TGT "${CMAKE_CURRENT_BINARY_DIR}/requirements.txt")
 SET(CPP_EXECUTABLES
-  "${BIN_DIRECTORY}/manager"
-  "${BIN_DIRECTORY}/server"
-  "${BIN_DIRECTORY}/worker"
+  "${BIN_DIRECTORY}/task-maker"
 )
 
 # Copy all the files
@@ -84,9 +82,9 @@ foreach(task ${TESTS_TASKS})
   )
 endforeach(task)
 
-add_custom_command(OUTPUT ${BIN_DIRECTORY}/server ${BIN_DIRECTORY}/worker ${BIN_DIRECTORY}/manager
-  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:server> $<TARGET_FILE:worker> $<TARGET_FILE:manager> ${BIN_DIRECTORY}
-  DEPENDS server worker manager
+add_custom_command(OUTPUT ${BIN_DIRECTORY}/task-maker
+  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:task-maker> ${BIN_DIRECTORY}
+  DEPENDS task-maker
 )
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in ${SETUP_PY})

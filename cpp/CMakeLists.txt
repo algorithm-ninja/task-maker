@@ -20,6 +20,7 @@ add_library(cpp_core
 )
 target_link_libraries(cpp_core
   cpp_util
+  cpp_remote
 )
 
 
@@ -106,25 +107,14 @@ target_link_libraries(cpp_manager_lib
   nlohmann_json
 )
 
-add_executable(manager
+add_executable(task-maker
   manager/manager.cpp
+  remote/server.cpp
+  remote/worker.cpp
+  util/flags.cpp
+  main.cpp
 )
-target_link_libraries(manager
+target_link_libraries(task-maker
   ${CPP_SANDBOXES}
   cpp_manager_lib
-)
-
-add_executable(server
-  remote/server.cpp
-)
-target_link_libraries(server
-  cpp_remote
-)
-
-add_executable(worker
-  remote/worker.cpp
-)
-target_link_libraries(worker
-  ${CPP_SANDBOXES}
-  cpp_executor
 )

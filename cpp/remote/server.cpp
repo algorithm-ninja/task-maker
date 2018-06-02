@@ -1,19 +1,13 @@
 #include <future>
 #include <queue>
 
-#include "gflags/gflags.h"
-#include "glog/logging.h"
 #include "grpc++/security/server_credentials.h"
 #include "grpc++/server.h"
 #include "grpc++/server_builder.h"
 #include "grpc++/server_context.h"
 #include "proto/server.grpc.pb.h"
 #include "util/file.hpp"
-
-DEFINE_string(address, "0.0.0.0", "address to listen on");  // NOLINT
-DEFINE_int32(port, 7070, "port to listen on");              // NOLINT
-DEFINE_string(store_directory, "files",                     // NOLINT
-              "Where files should be stored");
+#include "util/flags.hpp"
 
 class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
  public:
@@ -165,10 +159,7 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
   std::string store_directory_;
 };
 
-int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  google::InitGoogleLogging(argv[0]);  // NOLINT
-  google::InstallFailureSignalHandler();
+int server_main() {
   std::string server_address = FLAGS_address + ":" + std::to_string(FLAGS_port);
   TaskMakerServerImpl service(FLAGS_store_directory);
   grpc::ServerBuilder builder;
@@ -177,4 +168,5 @@ int main(int argc, char** argv) {
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   std::cout << "Server listening on " << server_address << std::endl;
   server->Wait();
+  return 0;
 }
