@@ -44,8 +44,9 @@ def get_manager(args):
 def became_manager(args):
     print("Spawning manager")
     manager_args = args.run_manager
-    os.execv(get_task_maker_path(),
-             ["task-maker", "-mode", "manager"] + manager_args)
+    os.execv(
+        get_task_maker_path(),
+        ["task-maker", "-mode", "manager", "-port", "7071"] + manager_args)
 
 
 def became_server(args):
