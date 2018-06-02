@@ -1,6 +1,14 @@
 #include "sandbox/unix.hpp"
 #include "glog/logging.h"
 
+#include <fcntl.h>
+#include <spawn.h>
+#include <sys/resource.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #include <atomic>
 #include <cerrno>
 #include <chrono>
@@ -9,15 +17,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
-#include <fcntl.h>
-#include <spawn.h>
-#include <sys/resource.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <thread>
-#include <unistd.h>
 
 namespace {
 char* mystrerror(int err, char* buf, size_t buf_size) {
@@ -45,9 +45,9 @@ int GetProcessMemoryUsageFromProc(pid_t pid, int64_t* memory_usage_kb) {
     num_read += cur;
   } while (cur > 0);
   close(fd);
-  if (sscanf(buf, "%" SCNd64, memory_usage_kb) != 1) {  // NOLINT
+  if (sscanf(buf, "%" SCNd64, memory_usage_kb) != 1) {            // NOLINT
     fprintf(stderr, "Unable to get memory usage from /proc: %s",  // NOLINT
-            buf);  // NOLINT
+            buf);                                                 // NOLINT
     exit(1);
   }
   *memory_usage_kb *= 4;
@@ -74,7 +74,7 @@ int GetProcessMemoryUsage(pid_t pid, int64_t* memory_usage_kb) {
   if (ret != 0) return ret;
   std::vector<std::vector<char>> args;
   auto add_arg = [&args](std::string s) {
-    std::vector<char> arg(s.size()+1);
+    std::vector<char> arg(s.size() + 1);
     std::copy(s.begin(), s.end(), arg.begin());
     arg.back() = '\0';
     args.push_back(std::move(arg));
@@ -84,9 +84,8 @@ int GetProcessMemoryUsage(pid_t pid, int64_t* memory_usage_kb) {
   add_arg("vsz=");
   add_arg(std::to_string(pid));
 
-  std::vector<char*> args_list(args.size()+1);
-  for (size_t i = 0; i < args.size(); i++)
-    args_list[i] = args[i].data();
+  std::vector<char*> args_list(args.size() + 1);
+  for (size_t i = 0; i < args.size(); i++) args_list[i] = args[i].data();
   args_list.back() = nullptr;
 
   char** environ = {nullptr};
@@ -187,7 +186,7 @@ void Unix::Child() {
     strncat(buf, prefix, 64);             // NOLINT
     strncat(buf, ": ", 3);                // NOLINT
     strncat(buf, err, kStrErrorBufSize);  // NOLINT
-    ssize_t len = strlen(buf);                // NOLINT
+    ssize_t len = strlen(buf);            // NOLINT
     CHECK(write(pipe_fds_[1], &len, sizeof(len)) == sizeof(len));
     CHECK(write(pipe_fds_[1], buf, len) == len);  // NOLINT
     close(pipe_fds_[1]);
@@ -275,6 +274,7 @@ void Unix::Child() {
   SET_RLIM(MEMLOCK, options_->max_mlock_kb * 1024);
   SET_RLIM(NOFILE, options_->max_files);
   SET_RLIM(NPROC, options_->max_procs);
+  SET_RLIM(CORE, 0);
 
   // Setting stack size does not seem to work on MAC.
 #ifndef __APPLE__
@@ -290,8 +290,7 @@ void Unix::Child() {
   int count = 0;
   do {
     execv(options_->executable.c_str(), args.data());
-    if (errno == ETXTBSY)
-      usleep(100000);
+    if (errno == ETXTBSY) usleep(100000);
     // We try at most 16 times to avoid livelocks (which should not be possible,
     // but better safe than sorry).
   } while (errno == ETXTBSY && count++ < 16);
@@ -306,7 +305,7 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
   if (read(pipe_fds_[0], &error_len, sizeof(error_len)) == sizeof(error_len)) {
     char error[PIPE_BUF] = {};
     CHECK(read(pipe_fds_[0], error, error_len) == error_len);  // NOLINT
-    *error_msg = error;                    // NOLINT
+    *error_msg = error;                                        // NOLINT
     return false;
   }
   std::atomic<int64_t> memory_usage{0};
