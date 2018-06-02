@@ -10,18 +10,15 @@ import manager_pb2_grpc
 
 def get_task_maker_path():
     task_maker = os.path.dirname(__file__)
-    task_maker = os.path.join(manager, "bin", "task-maker")
+    task_maker = os.path.join(task_maker, "bin", "task-maker")
     return os.path.abspath(task_maker)
 
 
 def spawn_manager(port: int) -> None:
-    manager = get_manager_path()
+    manager = get_task_maker_path()
     subprocess.run(
-        [manager, "-mode", "manager"
-         "-port", str(port), "-daemon"],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL)
+        [manager, "-mode", "manager", "-port",
+         str(port), "-daemon"])
 
 
 def get_manager(args):
@@ -47,19 +44,19 @@ def get_manager(args):
 def became_manager(args):
     print("Spawning manager")
     manager_args = args.run_manager
-    os.execv(get_manager_path(), ["task-maker"],
-             ["-mode", "manager"] + manager_args)
+    os.execv(get_task_maker_path(),
+             ["task-maker", "-mode", "manager"] + manager_args)
 
 
 def became_server(args):
     print("Spawning server")
     server_args = args.run_server
-    os.execv(get_manager_path(), ["task-maker"],
-             ["-mode", "server"] + server_args)
+    os.execv(get_task_maker_path(),
+             ["task-maker", "-mode", "server"] + server_args)
 
 
 def became_worker(args):
     print("Spawning worker")
     worker_args = args.run_worker
-    os.execv(get_manager_path(), ["task-maker"],
-             ["-mode", "worker"] + worker_args)
+    os.execv(get_task_maker_path(),
+             ["task-maker", "-mode", "worker"] + worker_args)
