@@ -92,7 +92,7 @@ TEST(UnixTest, TestBusyWaitArg1) {
   EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 150);
   EXPECT_GE(info.wall_time_millis, 70);
   EXPECT_LE(info.wall_time_millis, 150);
-  EXPECT_LE(info.sys_time_millis, 30);
+  EXPECT_LE(info.sys_time_millis, 45);
 }
 
 TEST(UnixTest, TestMallocArg1) {
