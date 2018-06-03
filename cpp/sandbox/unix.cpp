@@ -117,6 +117,7 @@ int GetProcessMemoryUsage(pid_t pid, int64_t* memory_usage_kb) {
     *memory_usage_kb = 0;
   }
   return 0;
+}
 #endif
 }  // namespace
 
@@ -322,7 +323,8 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
   int child_status = 0;
   bool has_exited = false;
   struct rusage rusage {};
-  while (!options_->wall_limit_millis || elapsed_millis() < options_->wall_limit_millis) {
+  while (!options_->wall_limit_millis ||
+         elapsed_millis() < options_->wall_limit_millis) {
     if (options_->memory_limit_kb != 0 &&
         memory_usage > options_->memory_limit_kb)
       break;
@@ -340,8 +342,9 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   if (!has_exited) {
-    if (options_->wall_limit_millis != 0 || (options_->memory_limit_kb != 0 &&
-        memory_usage > options_->memory_limit_kb)) {
+    if (options_->wall_limit_millis != 0 ||
+        (options_->memory_limit_kb != 0 &&
+         memory_usage > options_->memory_limit_kb)) {
       if (kill(child_pid_, SIGKILL) == -1) {
         // This should never happen.
         perror("kill");
