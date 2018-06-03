@@ -65,13 +65,16 @@ class Core {
  private:
   std::atomic<bool> quitting_{false};
   std::atomic<bool> failed_{false};
+  std::atomic<size_t> task_id_{0};
 
   std::vector<std::unique_ptr<Job>> jobs_;
   std::unordered_set<Job*> waiting_jobs_;
   std::queue<ReadyTask> ready_tasks_;
-  std::deque<RunningTask> running_jobs_;
+  std::unordered_map<size_t, RunningTask> running_jobs_;
+  std::deque<RunningTask> completed_jobs_;
   mutable std::mutex job_mutex_;
   std::condition_variable task_ready_;
+  std::condition_variable task_complete_;
 
   std::vector<std::unique_ptr<FileID>> files_to_load_;
   std::vector<std::unique_ptr<Execution>> executions_;
