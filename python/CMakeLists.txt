@@ -14,16 +14,16 @@ file(GLOB SOURCES_PY "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
 file(GLOB UIS_PY "${CMAKE_CURRENT_SOURCE_DIR}/uis/*.py")
 file(GLOB TESTS_PY "${CMAKE_CURRENT_SOURCE_DIR}/tests/test.py" "${CMAKE_CURRENT_SOURCE_DIR}/tests/utils.py")
 file(GLOB TESTS_TASKS "${CMAKE_CURRENT_SOURCE_DIR}/tests/task_*")
-SET(REQUIREMENTS_TXT "${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt")
+set(REQUIREMENTS_TXT "${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt")
 
 # Install directories
-SET(SOURCES_MODULE "${CMAKE_CURRENT_BINARY_DIR}/task_maker")
-SET(UIS_MODULE "${SOURCES_MODULE}/uis")
-SET(TESTS_MODULE "${SOURCES_MODULE}/tests")
-SET(PROTOS_MODULE "${SOURCES_MODULE}/proto")
-SET(BIN_DIRECTORY "${SOURCES_MODULE}/bin")
-SET(VENV_DIRECTORY "${SOURCES_MODULE}/venv")
-SET(TEMP_DIRECTORY "${SOURCES_MODULE}/temp")
+set(SOURCES_MODULE "${CMAKE_CURRENT_BINARY_DIR}/task_maker")
+set(UIS_MODULE "${SOURCES_MODULE}/uis")
+set(TESTS_MODULE "${SOURCES_MODULE}/tests")
+set(PROTOS_MODULE "${SOURCES_MODULE}/proto")
+set(BIN_DIRECTORY "${SOURCES_MODULE}/bin")
+set(VENV_DIRECTORY "${SOURCES_MODULE}/venv")
+set(TEMP_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/temp")
 
 # Create the install directories
 file(MAKE_DIRECTORY ${SOURCES_MODULE})
@@ -43,10 +43,10 @@ string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "${SOURCES_MODULE}" SOURCES_P
 string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/uis" "${UIS_MODULE}" UIS_PY_TGT "${UIS_PY}")
 string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/tests" "${TESTS_MODULE}" TESTS_PY_TGT "${TESTS_PY}")
 string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/tests" "${TESTS_MODULE}" TESTS_TASKS_TGT "${TESTS_TASKS}")
-SET(SETUP_PY ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
-SET(VERSION_PY ${SOURCES_MODULE}/version.py)
-SET(REQUIREMENTS_TXT_TGT "${CMAKE_CURRENT_BINARY_DIR}/requirements.txt")
-SET(CPP_EXECUTABLES
+set(SETUP_PY ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
+set(VERSION_PY ${SOURCES_MODULE}/version.py)
+set(REQUIREMENTS_TXT_TGT "${CMAKE_CURRENT_BINARY_DIR}/requirements.txt")
+set(CPP_EXECUTABLES
   "${BIN_DIRECTORY}/task-maker"
 )
 
@@ -110,37 +110,53 @@ execute_process(COMMAND chmod 555 ${SETUP_PY})
 # generate version.py
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.py.in ${VERSION_PY})
 
-# Install the python dependencies
-execute_process(
-  COMMAND ${PIP_EXE} install --ignore-installed --root=${TEMP_DIRECTORY} -r ${REQUIREMENTS_TXT}
+# Install the python dependencies, it would be nice to use --user and --prefix but
+# if python is installed with brew on mac it doesn't work...
+# An entire linux root is created in TEMP_DIRECTORY and then the site-packages files
+# are copied to the venv directory
+add_custom_command(
+  OUTPUT ${TEMP_DIRECTORY}/root
+  COMMAND ${PIP_EXE}
+  ARGS install --ignore-installed --no-warn-script-location --root=${TEMP_DIRECTORY}/root -r ${REQUIREMENTS_TXT}
+  DEPENDS ${REQUIREMENTS_TXT}
+  COMMENT "Installing python dependencies"
+  VERBATIM
 )
-execute_process(
-  COMMAND ${FIND_EXE} ${TEMP_DIRECTORY} -name site-packages
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  OUTPUT_VARIABLE SITE_PACKAGES_PATH
+
+add_custom_command(
+  OUTPUT ${TEMP_DIRECTORY}/not_stripped
+  COMMAND bash
+  ARGS -c "cp -rf $(ls $(find ${TEMP_DIRECTORY} -name site-packages) | sed \"s|^|$(find ${TEMP_DIRECTORY} -name site-packages)/|g\") ${VENV_DIRECTORY} && touch ${TEMP_DIRECTORY}/not_stripped"
+  WORKING_DIRECTORY ${VENV_DIRECTORY}
+  COMMENT "Fixing python dependencies path"
+  DEPENDS ${TEMP_DIRECTORY}/root
+  VERBATIM
 )
-execute_process(
-  COMMAND ${LS_EXE} "${SITE_PACKAGES_PATH}"
-  COMMAND ${SED_EXE} "s|^|${SITE_PACKAGES_PATH}/|g"
-  COMMAND ${TR_EXE} "\n" ";"
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  OUTPUT_VARIABLE SITE_PACKAGES_FILES_PATH
-)
-foreach(package ${SITE_PACKAGES_FILES_PATH})
-  execute_process(COMMAND ${CP_EXE} -rf ${package} ${VENV_DIRECTORY})
-endforeach()
 
 # Strip away the symbols from the python modules
 if (NOT APPLE)
-  execute_process(
-    COMMAND ${FIND_EXE} . -name "*.so"
-    COMMAND ${XARGS_EXE} ${STRIP_EXE} -s
+  add_custom_command(
+    OUTPUT ${TEMP_DIRECTORY}/stripped
+    COMMAND bash
+    ARGS -c "strip -s $(find . -name '*.so') || true && touch ${TEMP_DIRECTORY}/stripped"
     WORKING_DIRECTORY ${VENV_DIRECTORY}
+    COMMENT "Stripping .so of python dependencies"
+    DEPENDS ${TEMP_DIRECTORY}/not_stripped
+    VERBATIM
+  )
+else ()
+  add_custom_command(
+    OUTPUT ${TEMP_DIRECTORY}/stripped
+    COMMAND bash
+    ARGS -c "touch ${TEMP_DIRECTORY}/stripped"
+    DEPENDS ${TEMP_DIRECTORY}/not_stripped
+    VERBATIM
   )
 endif()
 
 add_custom_target(module_files ALL
   DEPENDS ${PROTOS_PY_TGT} ${GRPC_PY_TGT} ${UIS_PY_TGT} ${REQUIREMENTS_TXT_TGT} ${TESTS_PY_TGT} "${TESTS_TASKS_TGT}" ${SOURCES_PY_TGT} ${CPP_EXECUTABLES}
+  ${TEMP_DIRECTORY}/stripped
 )
 
 add_custom_target(develop

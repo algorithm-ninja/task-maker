@@ -134,3 +134,23 @@ If you are using Arch Linux you may want to install task-maker from the AUR:
 [task-maker](https://aur.archlinux.org/packages/task-maker)
 or
 [task-maker-git](https://aur.archlinux.org/packages/task-maker-git).
+
+### Manual build
+We support build without Hunter (ie using system packages) only on Arch Linux,
+there are some dependencies to be installed:
+
+- `community/gflags`
+- `community/gmock`
+- `community/google-glog`
+- `community/gtest`
+- `extra/protobuf`
+- `aur/grpc`
+- `aur/nlohmann-json`
+
+To compile the project issue:
+```bash
+mkdir -p build
+cd build
+cmake .. -DHUNTER_ENABLED=OFF
+make
+```
