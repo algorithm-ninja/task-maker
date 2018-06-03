@@ -196,14 +196,14 @@ TEST(UnixTest, TestCpuLimitNotOk) {
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "busywait_arg1");
   options.SetArgs({"10"});
-  options.cpu_limit_millis = 1000;
+  options.cpu_limit_millis = 800;
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
   EXPECT_EQ(error_msg, "");
   EXPECT_THAT(info.signal, AnyOf(Eq(SIGKILL), Eq(SIGXCPU)));
   EXPECT_EQ(info.status_code, 0);
-  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 900);
+  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 700);
   EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 1200);
 }
 
