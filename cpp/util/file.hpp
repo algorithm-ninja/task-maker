@@ -60,6 +60,9 @@ class File {
   // Make a file executable
   static void MakeExecutable(const std::string& path);
 
+  // Make a file immutable
+  static void MakeImmutable(const std::string& path);
+
   // Computes the path for a file with the given hash.
   static std::string PathForHash(const SHA256_t& hash);
 
