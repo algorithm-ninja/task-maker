@@ -13,12 +13,7 @@
 #include "manager/ioi_format/ioi_format.hpp"
 #include "manager/terry_format/terry_format.hpp"
 #include "proto/manager.grpc.pb.h"
-#include "util/daemon.hpp"
-#include "util/version.hpp"
-
-DEFINE_int32(port, 7071, "port to listen on");  // NOLINT
-DEFINE_bool(daemon, false, "become a daemon");  // NOLINT
-DEFINE_string(pidfile, "", "path where to store the pidfile");
+#include "util/flags.hpp"
 
 namespace {
 const auto RUNNING_TASK_POLL_INTERVAL = std::chrono::seconds(1);  // NOLINT
@@ -201,15 +196,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 };
 }  // namespace manager
 
-int main(int argc, char** argv) {
-  gflags::SetUsageMessage("Manager for task-maker");
-  gflags::SetVersionString(util::version);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  google::InitGoogleLogging(argv[0]);  // NOLINT
-  google::InstallFailureSignalHandler();
-
-  if (FLAGS_daemon) util::daemonize(FLAGS_pidfile);
-
+int manager_main() {
   std::string server_address = "127.0.0.1:" + std::to_string(FLAGS_port);
   manager::TaskMakerManagerImpl service;
   grpc::ServerBuilder builder;
@@ -223,4 +210,5 @@ int main(int argc, char** argv) {
   LOG(WARNING) << "Shutting down the server, goodbye";
   server->Shutdown();
   serving_thread.join();
+  return 0;
 }

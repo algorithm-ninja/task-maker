@@ -41,7 +41,7 @@ TEST(UnixTest, TestReturnArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "return_arg1");
-  options.args.push_back("15");
+  options.SetArgs({"15"});
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
@@ -54,7 +54,7 @@ TEST(UnixTest, TestSignalArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "signal_arg1");
-  options.args.push_back("6");
+  options.SetArgs({"6"});
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
@@ -67,7 +67,7 @@ TEST(UnixTest, TestWaitArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "wait_arg1");
-  options.args.push_back("0.1");
+  options.SetArgs({"0.1"});
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
@@ -76,15 +76,15 @@ TEST(UnixTest, TestWaitArg1) {
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.wall_time_millis, 70);
   EXPECT_LE(info.wall_time_millis, 250);
-  EXPECT_LE(info.cpu_time_millis, 30);
-  EXPECT_LE(info.sys_time_millis, 30);
+  EXPECT_LE(info.cpu_time_millis, 45);
+  EXPECT_LE(info.sys_time_millis, 45);
 }
 
 TEST(UnixTest, TestBusyWaitArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "busywait_arg1");
-  options.args.push_back("0.1");
+  options.SetArgs({"0.1"});
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
@@ -95,14 +95,14 @@ TEST(UnixTest, TestBusyWaitArg1) {
   EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 200);
   EXPECT_GE(info.wall_time_millis, 70);
   EXPECT_LE(info.wall_time_millis, 250);
-  EXPECT_LE(info.sys_time_millis, 30);
+  EXPECT_LE(info.sys_time_millis, 45);
 }
 
 TEST(UnixTest, TestMallocArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "malloc_arg1");
-  options.args.push_back("10");
+  options.SetArgs({"10"});
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
@@ -117,7 +117,7 @@ TEST(UnixTest, TestMemoryLimitOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "malloc_arg1");
-  options.args.push_back("10");
+  options.SetArgs({"10"});
   options.memory_limit_kb = 20 * sizeof(int) * 1024;
   ExecutionInfo info;
   std::string error_msg;
@@ -133,7 +133,7 @@ TEST(UnixTest, TestMemoryLimitNotOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "malloc_arg1");
-  options.args.push_back("10");
+  options.SetArgs({"10"});
   options.memory_limit_kb = 10 * sizeof(int) * 1024;
   ExecutionInfo info;
   std::string error_msg;
@@ -147,7 +147,7 @@ TEST(UnixTest, TestWallLimitOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "wait_arg1");
-  options.args.push_back("0.1");
+  options.SetArgs({"0.1"});
   options.wall_limit_millis = 200;
   ExecutionInfo info;
   std::string error_msg;
@@ -163,7 +163,7 @@ TEST(UnixTest, TestWallLimitNotOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "wait_arg1");
-  options.args.push_back("1");
+  options.SetArgs({"1"});
   options.wall_limit_millis = 100;
   ExecutionInfo info;
   std::string error_msg;
@@ -179,7 +179,7 @@ TEST(UnixTest, TestCpuLimitOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "busywait_arg1");
-  options.args.push_back("0.1");
+  options.SetArgs({"0.1"});
   options.cpu_limit_millis = 1000;
   ExecutionInfo info;
   std::string error_msg;
@@ -195,7 +195,7 @@ TEST(UnixTest, TestCpuLimitNotOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "busywait_arg1");
-  options.args.push_back("10");
+  options.SetArgs({"10"});
   options.cpu_limit_millis = 1000;
   ExecutionInfo info;
   std::string error_msg;
@@ -213,25 +213,21 @@ TEST(UnixTest, TestIORedirect) {
   ExecutionOptions options("sandbox/test", "copy_int");
   const char* test_tmpdir = TEST_TMPDIR.c_str();
   mkdir(test_tmpdir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-  std::string input_file = test_tmpdir;
-  input_file += "/in";
+  strcpy(options.stdin_file, test_tmpdir);
+  strcat(options.stdin_file, "/in");
 
-  std::string output_file = test_tmpdir;
-  output_file += "/out";
+  strcpy(options.stdout_file, test_tmpdir);
+  strcat(options.stdout_file, "/out");
 
-  std::string err_file = test_tmpdir;
-  err_file += "/err";
+  strcpy(options.stderr_file, test_tmpdir);
+  strcat(options.stderr_file, "/err");
 
   {
-    FILE* in = fopen(input_file.c_str(), "w");
+    FILE* in = fopen(options.stdin_file, "w");
     EXPECT_TRUE(in);
     EXPECT_EQ(fprintf(in, "10"), 2);
     EXPECT_EQ(fclose(in), 0);
   }
-
-  options.stdin_file = input_file;
-  options.stdout_file = output_file;
-  options.stderr_file = err_file;
 
   ExecutionInfo info;
   std::string error_msg;
@@ -244,8 +240,8 @@ TEST(UnixTest, TestIORedirect) {
   int err = 0;
 
   {
-    FILE* fout = fopen(output_file.c_str(), "r");
-    FILE* ferr = fopen(err_file.c_str(), "r");
+    FILE* fout = fopen(options.stdout_file, "r");
+    FILE* ferr = fopen(options.stderr_file, "r");
     EXPECT_TRUE(fout);
     EXPECT_TRUE(ferr);
     EXPECT_EQ(fscanf(fout, "%d", &out), 1);

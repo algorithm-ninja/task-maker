@@ -8,30 +8,20 @@ import grpc
 import manager_pb2_grpc
 
 
-def get_manager_path():
-    manager = os.path.dirname(__file__)
-    manager = os.path.join(manager, "bin", "manager")
-    return os.path.abspath(manager)
-
-
-def get_server_path():
-    server = os.path.dirname(__file__)
-    server = os.path.join(server, "bin", "server")
-    return os.path.abspath(server)
-
-
-def get_worker_path():
-    worker = os.path.dirname(__file__)
-    worker = os.path.join(worker, "bin", "worker")
-    return os.path.abspath(worker)
+def get_task_maker_path():
+    task_maker = os.path.dirname(__file__)
+    task_maker = os.path.join(task_maker, "bin", "task-maker")
+    return os.path.abspath(task_maker)
 
 
 def spawn_manager(port: int) -> None:
-    manager = get_manager_path()
-    subprocess.run([manager, "-port", str(port), "-daemon"],
-                   stdin=subprocess.DEVNULL,
-                   stdout=subprocess.DEVNULL,
-                   stderr=subprocess.DEVNULL)
+    manager = get_task_maker_path()
+    subprocess.run(
+        [manager, "-mode", "manager", "-port",
+         str(port), "-daemon"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL)
 
 
 def get_manager(args):
@@ -57,16 +47,20 @@ def get_manager(args):
 def became_manager(args):
     print("Spawning manager")
     manager_args = args.run_manager
-    os.execv(get_manager_path(), ["manager"] + manager_args)
+    os.execv(
+        get_task_maker_path(),
+        ["task-maker", "-mode", "manager", "-port", "7071"] + manager_args)
 
 
 def became_server(args):
     print("Spawning server")
     server_args = args.run_server
-    os.execv(get_server_path(), ["server"] + server_args)
+    os.execv(get_task_maker_path(),
+             ["task-maker", "-mode", "server"] + server_args)
 
 
 def became_worker(args):
     print("Spawning worker")
     worker_args = args.run_worker
-    os.execv(get_worker_path(), ["worker"] + worker_args)
+    os.execv(get_task_maker_path(),
+             ["task-maker", "-mode", "worker"] + worker_args)

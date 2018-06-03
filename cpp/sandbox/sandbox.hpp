@@ -1,15 +1,20 @@
 #ifndef SANDBOX_SANDBOX_HPP
 #define SANDBOX_SANDBOX_HPP
 
+#include <string.h>
 #include <functional>
 #include <memory>
 #include <string>
 #include <vector>
+#include "util/file.hpp"
 
 namespace sandbox {
 
 // Settings to execute the program in the sandbox.
 struct ExecutionOptions {
+  static const constexpr size_t str_len = 1024;
+  static const constexpr size_t narg = 16;
+
   // Optional values
   int64_t cpu_limit_millis = 0;
   int64_t wall_limit_millis = 0;
@@ -20,16 +25,41 @@ struct ExecutionOptions {
   int64_t max_mlock_kb = 0;
   int64_t max_stack_kb = 0;
 
-  std::string stdin_file = "";
-  std::string stdout_file = "";
-  std::string stderr_file = "";
-  std::vector<std::string> args;
+  char stdin_file[str_len] = {};
+  char stdout_file[str_len] = {};
+  char stderr_file[str_len] = {};
+  char args[narg][str_len] = {};
 
   // Required values
-  std::string root = "";
-  std::string executable = "";
-  ExecutionOptions(std::string root, std::string executable)
-      : root(std::move(root)), executable(std::move(executable)) {}
+  char root[str_len] = {};
+  char executable[str_len] = {};
+  bool prepare_executable = false;
+  ExecutionOptions(std::string root_, std::string executable_) {
+    stringcpy(root, root_.c_str());
+    stringcpy(executable, executable_.c_str());
+    strcpy(&args[0][0], executable);
+  }
+  template <typename T>
+  void SetArgs(const T& a_) {
+    size_t i = 1;
+    for (const std::string& s : a_) {
+      stringcpy(&args[i][0], s);
+      if (i++ >= narg) throw std::runtime_error("Too many arguments");
+    }
+  }
+  void SetArgs(const std::initializer_list<const char*>& a_) {
+    size_t i = 1;
+    for (const char* s : a_) {
+      if (strlen(s) >= str_len) throw std::runtime_error("string too long");
+      strcpy(&args[i][0], s);
+      if (i++ >= narg) throw std::runtime_error("Too many arguments");
+    }
+  }
+
+  static void stringcpy(char* dst, const std::string& s) {
+    if (s.size() >= str_len) throw std::runtime_error("string too long");
+    strcpy(dst, s.c_str());
+  }
 };
 
 // Results of the execution.
@@ -40,7 +70,7 @@ struct ExecutionInfo {
   int64_t memory_usage_kb = 0;
   int32_t status_code = 0;
   int32_t signal = 0;
-  std::string message = "";
+  char message[8192] = {};
 };
 
 // Sandbox interface. Implementations need to register themselves by creating a
@@ -58,18 +88,20 @@ class Sandbox {
   using score_t = std::function<int()>;
   static std::unique_ptr<Sandbox> Create();
 
-  // Prepares a newly-created file for execution. Returns false on error,
-  // and sets error_msg.
-  virtual bool PrepareForExecution(const std::string& executable,
-                                   std::string* error_msg) {
-    return true;
-  }
-
   // Runs the specified command. Returns true if the program was started,
   // and sets fields in info. Otherwise, returns false and sets error_msg.
   // Implementations of this function may not be thread safe.
-  virtual bool Execute(const ExecutionOptions& options, ExecutionInfo* info,
-                       std::string* error_msg) = 0;
+  bool Execute(const ExecutionOptions& options, ExecutionInfo* info,
+               std::string* error_msg) {
+    if (options.prepare_executable) {
+      if (!PrepareForExecution(
+              util::File::JoinPath(options.root, options.executable),
+              error_msg)) {
+        return false;
+      }
+    }
+    return ExecuteInternal(options, info, error_msg);
+  }
 
   // Constructor and destructors
   virtual ~Sandbox() = default;
@@ -84,6 +116,17 @@ class Sandbox {
    public:
     Register() { Sandbox::Register_(&T::Create, &T::Score); }
   };
+
+ protected:
+  virtual bool ExecuteInternal(const ExecutionOptions& options,
+                               ExecutionInfo* info, std::string* error_msg) = 0;
+
+  // Prepares a newly-created file for execution. Returns false on error,
+  // and sets error_msg.
+  virtual bool PrepareForExecution(const std::string& executable,
+                                   std::string* error_msg) {
+    return true;
+  }
 
  private:
   using store_t = std::vector<std::pair<create_t, score_t>>;

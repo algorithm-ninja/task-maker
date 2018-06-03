@@ -4,12 +4,13 @@
 
 namespace sandbox {
 
-bool Echo::Execute(const ExecutionOptions& options, ExecutionInfo* info,
-                   std::string* /*error_msg*/) {
+bool Echo::ExecuteInternal(const ExecutionOptions& options, ExecutionInfo* info,
+                           std::string* /*error_msg*/) {
   std::cout << "[FAKE] Executing ";
   std::cout << options.executable;
-  for (const std::string& arg : options.args) {
-    std::cout << " " << arg;
+  for (size_t i = 0; i < ExecutionOptions::narg; i++) {
+    if (!options.args[i][0]) break;
+    std::cout << " " << &options.args[i][0];
   }
   std::cout << std::endl;
   std::cout << "Inside folder: " << options.root << std::endl;

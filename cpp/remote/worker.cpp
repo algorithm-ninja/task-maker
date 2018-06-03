@@ -10,17 +10,7 @@
 #include "grpc++/create_channel.h"
 #include "proto/server.grpc.pb.h"
 #include "remote/common.hpp"
-
-DEFINE_string(server, "", "server to connect to");  // NOLINT
-DEFINE_string(name, "unnamed_worker",               // NOLINT
-              "name that identifies this worker");
-DEFINE_int32(                                       // NOLINT
-    num_cores, 0,
-    "Number of cores to use for the local executor. If unset, autodetect");
-DEFINE_string(store_directory, "files",             // NOLINT
-              "Where files should be stored");
-DEFINE_string(temp_directory, "temp",               // NOLINT
-              "Where the sandboxes should be created");
+#include "util/flags.hpp"
 
 void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
   grpc::ClientContext context;
@@ -78,10 +68,7 @@ void worker(const std::string& server, const std::string& name) {
   }
 }
 
-int main(int argc, char** argv) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  google::InitGoogleLogging(argv[0]);  // NOLINT
-  google::InstallFailureSignalHandler();
+int worker_main() {
   CHECK_NE(FLAGS_server, "") << "You need to specify a server!";
 
   if (FLAGS_num_cores == 0)
@@ -95,4 +82,5 @@ int main(int argc, char** argv) {
   for (int i = 0; i < FLAGS_num_cores; i++) {
     worker_threads[i].join();
   }
+  return 0;
 }

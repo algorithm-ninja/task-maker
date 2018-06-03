@@ -47,9 +47,7 @@ SET(SETUP_PY ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 SET(VERSION_PY ${SOURCES_MODULE}/version.py)
 SET(REQUIREMENTS_TXT_TGT "${CMAKE_CURRENT_BINARY_DIR}/requirements.txt")
 SET(CPP_EXECUTABLES
-  "${BIN_DIRECTORY}/manager"
-  "${BIN_DIRECTORY}/server"
-  "${BIN_DIRECTORY}/worker"
+  "${BIN_DIRECTORY}/task-maker"
 )
 
 # Copy all the files
@@ -100,9 +98,9 @@ foreach(task ${TESTS_TASKS})
   add_test(NAME pytest.${task_name} COMMAND env PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR} "${TEST_DST_DIR}/${task_name}.py")
 endforeach(task)
 
-add_custom_command(OUTPUT ${BIN_DIRECTORY}/server ${BIN_DIRECTORY}/worker ${BIN_DIRECTORY}/manager
-  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:server> $<TARGET_FILE:worker> $<TARGET_FILE:manager> ${BIN_DIRECTORY}
-  DEPENDS server worker manager
+add_custom_command(OUTPUT ${BIN_DIRECTORY}/task-maker
+  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:task-maker> ${BIN_DIRECTORY}
+  DEPENDS task-maker
 )
 
 # generate setup.py

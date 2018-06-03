@@ -22,7 +22,7 @@ bool MkDir(const std::string& dir) {
          errno == EEXIST;
 }
 
-bool OsRemove(const std::string& path) { return remove(path.c_str()) == -1; }
+bool OsRemove(const std::string& path) { return remove(path.c_str()) != -1; }
 
 bool OsRemoveTree(const std::string& path) {
   return nftw(path.c_str(),
@@ -33,6 +33,10 @@ bool OsRemoveTree(const std::string& path) {
 
 bool OsMakeExecutable(const std::string& path) {
   return chmod(path.c_str(), S_IRUSR | S_IXUSR) != -1;
+}
+
+bool OsMakeImmutable(const std::string& path) {
+  return chmod(path.c_str(), S_IRUSR) != -1;
 }
 
 const size_t max_path_len = 1 << 15;
@@ -81,6 +85,26 @@ int OsAtomicMove(const std::string& src, const std::string& dst,
     return 0;
   }
   if (remove(src.c_str()) == -1) return errno != ENOENT ? errno : 0;
+  return 0;
+}
+
+bool OsIsLink(const std::string& path) {
+  struct stat buf;
+  if (lstat(path.c_str(), &buf) == -1) return false;
+  return S_ISLNK(buf.st_mode);
+}
+
+// Returns errno, or 0 on success.
+int OsAtomicCopy(const std::string& src, const std::string& dst,
+                 bool overwrite = false, bool exist_ok = true) {
+  if (link(src.c_str(), dst.c_str()) == -1) {
+    if (errno != EEXIST) return errno;
+    if (exist_ok) return 0;
+    if (!overwrite) return errno;
+    if (!OsRemove(dst)) return errno;
+    if (link(src.c_str(), dst.c_str()) == -1) return errno;
+    return 0;
+  }
   return 0;
 }
 
@@ -185,13 +209,16 @@ void File::MakeDirs(const std::string& path) {
 
 void File::Copy(const std::string& from, const std::string& to, bool overwrite,
                 bool exist_ok) {
-  using std::placeholders::_1;
-  Write(to, std::bind(Read, from, _1), overwrite, exist_ok);
+  MakeDirs(BaseDir(to));
+  if (OsIsLink(from) || !OsAtomicCopy(from, to, overwrite, exist_ok)) {
+    using std::placeholders::_1;
+    Write(to, std::bind(Read, from, _1), overwrite, exist_ok);
+  }
 }
 
 void File::Move(const std::string& from, const std::string& to, bool overwrite,
                 bool exist_ok) {
-  if (OsAtomicMove(from, to, overwrite, exist_ok) == 0) {
+  if (OsIsLink(from) || !OsAtomicMove(from, to, overwrite, exist_ok)) {
     Copy(from, to, overwrite, exist_ok);
     Remove(from);
   }
@@ -209,6 +236,11 @@ void File::RemoveTree(const std::string& path) {
 
 void File::MakeExecutable(const std::string& path) {
   if (!OsMakeExecutable(path))
+    throw std::system_error(errno, std::system_category(), "chmod");
+}
+
+void File::MakeImmutable(const std::string& path) {
+  if (!OsMakeImmutable(path))
     throw std::system_error(errno, std::system_category(), "chmod");
 }
 

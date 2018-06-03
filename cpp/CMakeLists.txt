@@ -20,12 +20,15 @@ add_library(cpp_core
 )
 target_link_libraries(cpp_core
   cpp_util
+  cpp_remote
 )
 
 
 add_library(cpp_sandbox
   sandbox/sandbox.cpp
+  sandbox/sandbox_manager.cpp
 )
+
 target_link_libraries(cpp_sandbox
   cpp_util
 )
@@ -83,6 +86,7 @@ add_library(cpp_executor
   executor/local_executor.cpp
   executor/remote_executor.cpp
 )
+
 target_link_libraries(cpp_executor
   cpp_sandbox
   cpp_util
@@ -106,28 +110,17 @@ target_link_libraries(cpp_manager_lib
   nlohmann_json
 )
 
-add_executable(manager
+add_executable(task-maker
   manager/manager.cpp
+  remote/server.cpp
+  remote/worker.cpp
+  util/flags.cpp
+  main.cpp
 )
-target_link_libraries(manager
+target_link_libraries(task-maker
   ${CPP_SANDBOXES}
   cpp_manager_lib
 )
-target_compile_definitions(manager PRIVATE TASK_MAKER_VERSION="${GIT_FULL_VERSION}")
-
-add_executable(server
-  remote/server.cpp
-)
-target_link_libraries(server
-  cpp_remote
-)
-
-add_executable(worker
-  remote/worker.cpp
-)
-target_link_libraries(worker
-  ${CPP_SANDBOXES}
-  cpp_executor
-)
+target_compile_definitions(task-maker PRIVATE TASK_MAKER_VERSION="${GIT_FULL_VERSION}")
 
 gtest_discover_tests(sandbox_unix_test)
