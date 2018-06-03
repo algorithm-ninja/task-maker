@@ -62,9 +62,6 @@ find_package(gflags CONFIG REQUIRED)
 hunter_add_package(glog)
 find_package(glog CONFIG REQUIRED)
 
-hunter_add_package(gRPC)
-find_package(gRPC CONFIG REQUIRED)
-
 hunter_add_package(nlohmann_json)
 find_package(nlohmann_json CONFIG REQUIRED)
 
