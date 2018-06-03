@@ -4,7 +4,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <stdexcept>
-#include <type_traits>
+//#include <type_traits>
 
 #ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON
@@ -25,8 +25,8 @@ class SharedQueue {
 
  public:
   SharedQueue(size_t size) : size_(size) {
-    static_assert(std::is_trivially_copyable<T>::value,
-                  "T must be trivially copiable!");
+    // static_assert(std::is_trivially_copyable<T>::value,
+    //              "T must be trivially copiable!");
     shm_ = (char*)mmap(nullptr, MemSize(size), PROT_READ | PROT_WRITE,
                        MAP_ANONYMOUS | MAP_SHARED, -1, 0);
     if (shm_ == MAP_FAILED)
