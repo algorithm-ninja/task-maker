@@ -2,10 +2,12 @@
 #include "remote/server.hpp"
 #include "remote/worker.hpp"
 #include "sandbox/sandbox_manager.hpp"
+#include "util/daemon.hpp"
 #include "util/flags.hpp"
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  if (FLAGS_daemon) util::daemonize(FLAGS_pidfile);
   if (FLAGS_mode == "manager") {
     sandbox::SandboxManager::Start();
     google::InitGoogleLogging(argv[0]);  // NOLINT

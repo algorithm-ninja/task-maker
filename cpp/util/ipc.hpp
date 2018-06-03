@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <stdexcept>
+#include <type_traits>
 
 #ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON

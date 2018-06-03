@@ -29,6 +29,7 @@ char* mystrerror(int err, char* buf, size_t buf_size) {
 #endif
 }
 
+#ifdef __APPLE__
 int GetProcessMemoryUsageFromProc(pid_t pid, int64_t* memory_usage_kb) {
   int fd = open(("/proc/" + std::to_string(pid) + "/statm").c_str(),  // NOLINT
                 O_RDONLY | O_CLOEXEC);
@@ -55,9 +56,6 @@ int GetProcessMemoryUsageFromProc(pid_t pid, int64_t* memory_usage_kb) {
 }
 
 int GetProcessMemoryUsage(pid_t pid, int64_t* memory_usage_kb) {
-#ifndef __APPLE__
-  return GetProcessMemoryUsageFromProc(pid, memory_usage_kb);
-#else
   if (GetProcessMemoryUsageFromProc(pid, memory_usage_kb) == 0) return 0;
   int pipe_fds[2];
   if (pipe(pipe_fds) == -1) return errno;
@@ -120,7 +118,6 @@ int GetProcessMemoryUsage(pid_t pid, int64_t* memory_usage_kb) {
   }
   return 0;
 #endif
-}
 }  // namespace
 
 namespace sandbox {
@@ -282,13 +279,7 @@ void Unix::Child() {
   if (!OnChild(buf, kStrErrorBufSize)) {  // NOLINT
     die2("OnChild", buf);                 // NOLINT
   }
-  //  int count = 0;
-  //  do {
   execv(options_->executable, argsp);
-  //    if (errno == ETXTBSY) usleep(100000);
-  // We try at most 16 times to avoid livelocks (which should not be possible,
-  // but better safe than sorry).
-  //  } while (errno == ETXTBSY && count++ < 16);
   die("exec", errno);
   // [[noreturn]] does not work on lambdas...
   _Exit(1);
@@ -304,6 +295,7 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
     return false;
   }
   std::atomic<int64_t> memory_usage{0};
+#ifdef __APPLE__
   bool done = false;
   std::thread memory_watcher(
       [&memory_usage, &done](int pid) {
@@ -316,6 +308,7 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
         }
       },
       child_pid_);
+#endif
 
   close(pipe_fds_[0]);
 
@@ -326,10 +319,6 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
         .count();
   };
 
-  // TODO(veluca): wait4 is marked as obsolete and replaced by waitpid, but
-  // waitpid does not return the resource usage of the child. Moreover,
-  // getrusage() may not work for that purpose as other children may have exited
-  // in the meantime.
   int child_status = 0;
   bool has_exited = false;
   struct rusage rusage {};
@@ -337,13 +326,14 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
     if (options_->memory_limit_kb != 0 &&
         memory_usage > options_->memory_limit_kb)
       break;
-    int ret = wait4(child_pid_, &child_status, WNOHANG, &rusage);
+    int ret = waitpid(child_pid_, &child_status, WNOHANG);
     if (ret == -1) {
       // This should never happen.
-      perror("wait4");
+      perror("waitpid");
       exit(1);
     }
     if (ret == child_pid_) {
+      getrusage(RUSAGE_CHILDREN, &rusage);
       has_exited = true;
       break;
     }
@@ -357,15 +347,20 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
         exit(1);
       }
     }
-    if (wait4(child_pid_, &child_status, 0, &rusage) != child_pid_) {
+    if (waitpid(child_pid_, &child_status, 0) != child_pid_) {
       // This should never happen.
-      perror("wait4");
+      perror("waitpid");
       exit(1);
     }
+    getrusage(RUSAGE_CHILDREN, &rusage);
   }
+#ifdef __APPLE__
   done = true;
   memory_watcher.join();
-  info->memory_usage_kb = memory_usage;
+  info->memory_usage_kb = rusage.ru_maxrss / 1024;
+#else
+  info->memory_usage_kb = rusage.ru_maxrss;
+#endif
   info->status_code = WIFEXITED(child_status) ? WEXITSTATUS(child_status) : 0;
   info->signal = WIFSIGNALED(child_status) ? WTERMSIG(child_status) : 0;
   info->wall_time_millis = elapsed_millis();

@@ -13,7 +13,6 @@
 #include "manager/ioi_format/ioi_format.hpp"
 #include "manager/terry_format/terry_format.hpp"
 #include "proto/manager.grpc.pb.h"
-#include "util/daemon.hpp"
 #include "util/flags.hpp"
 
 namespace {
@@ -198,8 +197,6 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 }  // namespace manager
 
 int manager_main() {
-  if (FLAGS_daemon) util::daemonize(FLAGS_pidfile);
-
   std::string server_address = "127.0.0.1:" + std::to_string(FLAGS_port);
   manager::TaskMakerManagerImpl service;
   grpc::ServerBuilder builder;
