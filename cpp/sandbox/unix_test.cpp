@@ -76,8 +76,8 @@ TEST(UnixTest, TestWaitArg1) {
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.wall_time_millis, 70);
   EXPECT_LE(info.wall_time_millis, 250);
-  EXPECT_LE(info.cpu_time_millis, 30);
-  EXPECT_LE(info.sys_time_millis, 30);
+  EXPECT_LE(info.cpu_time_millis, 45);
+  EXPECT_LE(info.sys_time_millis, 45);
 }
 
 TEST(UnixTest, TestBusyWaitArg1) {
