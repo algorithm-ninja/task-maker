@@ -67,35 +67,35 @@ TEST(UnixTest, TestWaitArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "wait_arg1");
-  options.SetArgs({"0.1"});
+  options.SetArgs({"0.3"});
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
   EXPECT_EQ(error_msg, "");
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
-  EXPECT_GE(info.wall_time_millis, 70);
-  EXPECT_LE(info.wall_time_millis, 250);
-  EXPECT_LE(info.cpu_time_millis, 45);
-  EXPECT_LE(info.sys_time_millis, 45);
+  EXPECT_GE(info.wall_time_millis, 250);
+  EXPECT_LE(info.wall_time_millis, 750);
+  EXPECT_LE(info.cpu_time_millis, 60);
+  EXPECT_LE(info.sys_time_millis, 60);
 }
 
 TEST(UnixTest, TestBusyWaitArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "busywait_arg1");
-  options.SetArgs({"0.1"});
+  options.SetArgs({"0.3"});
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
   EXPECT_EQ(error_msg, "");
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
-  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 70);
-  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 200);
-  EXPECT_GE(info.wall_time_millis, 70);
-  EXPECT_LE(info.wall_time_millis, 250);
-  EXPECT_LE(info.sys_time_millis, 45);
+  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 250);
+  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 750);
+  EXPECT_GE(info.wall_time_millis, 250);
+  EXPECT_LE(info.wall_time_millis, 750);
+  EXPECT_LE(info.sys_time_millis, 100);
 }
 
 TEST(UnixTest, TestMallocArg1) {
