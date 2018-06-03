@@ -282,13 +282,13 @@ void Unix::Child() {
   if (!OnChild(buf, kStrErrorBufSize)) {  // NOLINT
     die2("OnChild", buf);                 // NOLINT
   }
-  int count = 0;
-  do {
-    execv(options_->executable, argsp);
-    if (errno == ETXTBSY) usleep(100000);
-    // We try at most 16 times to avoid livelocks (which should not be possible,
-    // but better safe than sorry).
-  } while (errno == ETXTBSY && count++ < 16);
+  //  int count = 0;
+  //  do {
+  execv(options_->executable, argsp);
+  //    if (errno == ETXTBSY) usleep(100000);
+  // We try at most 16 times to avoid livelocks (which should not be possible,
+  // but better safe than sorry).
+  //  } while (errno == ETXTBSY && count++ < 16);
   die("exec", errno);
   // [[noreturn]] does not work on lambdas...
   _Exit(1);

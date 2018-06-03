@@ -17,16 +17,16 @@ class SharedQueue {
     cur += sizeof(U);
   }
 
-  static const constexpr size_t MemSize(size_t size) {
+  static constexpr size_t MemSize(size_t size) {
     return sizeof(pthread_mutex_t) + 2 * sizeof(pthread_cond_t) +
-           sizeof(size_t) + size * sizeof(T);
+           sizeof(size_t) + sizeof(bool) + size * sizeof(T);
   }
 
  public:
   SharedQueue(size_t size) : size_(size) {
     static_assert(std::is_trivially_copyable<T>::value,
                   "T must be trivially copiable!");
-    shm_ = (char*)mmap(nullptr, PROT_READ | PROT_WRITE, MemSize(size),
+    shm_ = (char*)mmap(nullptr, MemSize(size), PROT_READ | PROT_WRITE,
                        MAP_ANONYMOUS | MAP_SHARED, -1, 0);
     if (shm_ == MAP_FAILED)
       throw std::runtime_error(std::string("mmap: ") + strerror(errno));
@@ -35,8 +35,10 @@ class SharedQueue {
     SetUp(empty_, cur);
     SetUp(full_, cur);
     SetUp(current_size_, cur);
+    SetUp(stopping_, cur);
     SetUp(data_, cur);
-    current_size_ = 0;
+    *current_size_ = 0;
+    *stopping_ = false;
     // Initialize synchronization structures.
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
@@ -56,26 +58,46 @@ class SharedQueue {
     munmap(shm_, MemSize(size_));
   }
 
-  // Blocks until there is something to dequeue.
-  void Dequeue(T* out) {
+  // Blocks until there is something to dequeue, returns false if stopped
+  bool Dequeue(T* out) {
     pthread_mutex_lock(mutex_);
-    while (*current_size_ == 0) {
-      pthread_cond_wait(empty_);
+    while (*current_size_ == 0 && !*stopping_) {
+      pthread_cond_wait(empty_, mutex_);
+    }
+    if (*stopping_) {
+      pthread_mutex_unlock(mutex_);
+      return false;
     }
     (*current_size_)--;
-    memcpy(out, &data_[current_size_], sizeof(T));
+    memcpy(out, &data_[*current_size_], sizeof(T));
     pthread_cond_broadcast(full_);
+    pthread_mutex_unlock(mutex_);
+    return true;
   }
 
-  // Blocks if the queue is full
-  void Enqueue(const T& in) {
+  // Blocks if the queue is full, returns false if stopped
+  bool Enqueue(const T& in) {
     pthread_mutex_lock(mutex_);
-    while (*current_size_ == size_) {
-      pthread_cond_wait(full_);
+    while (*current_size_ == size_ && !*stopping_) {
+      pthread_cond_wait(full_, mutex_);
     }
-    memcpy(&data_[current_size_], &in, sizeof(T));
+    if (*stopping_) {
+      pthread_mutex_unlock(mutex_);
+      return false;
+    }
+    memcpy(&data_[*current_size_], &in, sizeof(T));
     (*current_size_)++;
     pthread_cond_broadcast(empty_);
+    pthread_mutex_unlock(mutex_);
+    return true;
+  }
+
+  void Stop() {
+    pthread_mutex_lock(mutex_);
+    *stopping_ = true;
+    pthread_cond_broadcast(empty_);
+    pthread_cond_broadcast(full_);
+    pthread_mutex_unlock(mutex_);
   }
 
   SharedQueue(const SharedQueue&) = delete;
@@ -90,6 +112,7 @@ class SharedQueue {
   pthread_cond_t* empty_;
   pthread_cond_t* full_;
   size_t* current_size_;
+  bool* stopping_;
   T* data_;
 };
 

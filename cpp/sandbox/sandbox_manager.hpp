@@ -7,13 +7,10 @@ namespace sandbox {
 class SandboxManager {
  public:
   static void Start();
+  static void Stop();
+  static void ChangeNumBoxes(size_t num);
   static bool Execute(const ExecutionOptions& options, ExecutionInfo* info,
                       std::string* error_msg);
-
- private:
-  static void ResponseReceiver();
-  static void Manager();
-  static void Sandbox();
 };
 
 }  // namespace sandbox
