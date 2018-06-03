@@ -77,10 +77,11 @@ def get_request(args: argparse.Namespace):
         absolutize_source_file(task.solution)
 
     if args.solutions:
-        solutions = [
-            sol if sol.startswith("solutions/") else "solutions/" + sol
+        solutions = list_files([
+            sol +
+            "*" if sol.startswith("solutions/") else "solutions/" + sol + "*"
             for sol in args.solutions
-        ]
+        ])
     else:
         solutions = list_files(
             ["solutions/*"], exclude=["solutions/__init__.py"])

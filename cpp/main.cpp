@@ -4,8 +4,11 @@
 #include "sandbox/sandbox_manager.hpp"
 #include "util/daemon.hpp"
 #include "util/flags.hpp"
+#include "util/version.hpp"
 
 int main(int argc, char** argv) {
+  gflags::SetUsageMessage("task-maker binary main command");
+  gflags::SetVersionString(util::version);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   if (FLAGS_daemon) util::daemonize(FLAGS_pidfile);
   if (FLAGS_mode == "manager") {

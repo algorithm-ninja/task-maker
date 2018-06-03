@@ -121,3 +121,6 @@ target_link_libraries(task-maker
   ${CPP_SANDBOXES}
   cpp_manager_lib
 )
+target_compile_definitions(task-maker PRIVATE TASK_MAKER_VERSION="${GIT_FULL_VERSION}")
+
+gtest_discover_tests(sandbox_unix_test)

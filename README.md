@@ -43,6 +43,9 @@ compilation and cleaning a bit the output:
 ```bash
 task-maker sol1.cpp sol2.py
 ```
+Note that you may or may not specify the folder of the solution (sol/ or
+solution/). You can specify only the prefix of the name of the solutions you
+want to check.
 
 ### Disable multithreading
 If you want to be extra sure about the timings you can disable multithreading,
@@ -80,15 +83,13 @@ a worker is the program that executes a command, a client is you!
 
 First start a server:
 ```bash
-bazel-bin/remote/server
+task-maker --run-server --logtostderr
 ```
 
 Then start a worker in each machine, specifying the server to connect to:
 ```bash
-bazel-bin/remote/worker -server server_ip:7070
+task-maker --run-worker --server server_ip:7070 --logtostderr
 ```
-
-If you want to see the logs from these two commands pass them `-logtostderr`.
 
 To run the execution remotely just pass:
 ```bash
@@ -102,6 +103,7 @@ via the Internet.
 ### Something went wrong
 If something went wrong and you want to kill task-maker you have also to kill
 the manager, a daemon spawned by task-maker.
+You may find the pid of the process looking in /tmp/task-maker-manager-*.pid
 
 
 ## Compilation

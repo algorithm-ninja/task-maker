@@ -9,6 +9,7 @@ from task_pb2 import DEFAULT, X86_64, I686
 from task_maker.uis.curses_ui import CursesUI
 from task_maker.uis.print_ui import PrintUI
 from task_maker.uis.silent_ui import SilentUI
+from task_maker.version import TASK_MAKER_VERSION
 
 UIS = {"curses": CursesUI, "print": PrintUI, "silent": SilentUI}
 
@@ -130,6 +131,12 @@ def add_execution_group(parser: argparse.ArgumentParser):
         action="store_true",
         default=False)
     group.add_argument(
+        "--extra-time",
+        help="Add some time to the evaluation of the solutions",
+        action="store",
+        type=float,
+        default=0)
+    group.add_argument(
         "--temp-dir",
         help="Where the sandboxes should be created",
         action="store",
@@ -181,6 +188,7 @@ def add_terry_group(parser: argparse.ArgumentParser):
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="The new cmsMake!")
+    parser.add_argument("--version", action="version", version=TASK_MAKER_VERSION)
     add_generic_group(parser)
     add_remote_group(parser)
     add_execution_group(parser)

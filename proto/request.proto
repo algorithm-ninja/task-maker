@@ -40,6 +40,11 @@ message Request {
   // requests.
   bool exclusive = 7;
 
-  // Do not drop the sandbox directory
+  // Do not drop the sandbox directory.
   bool keep_sandbox = 8;
+
+  // Extra time in seconds for the evaluation. This does not affect the limit
+  // of the task, a solution will receive TLE if it uses more than cpu_time
+  // without adding this extra_time.
+  float extra_time = 9;
 }

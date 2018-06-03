@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.10)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
@@ -18,7 +18,30 @@ HunterGate(
     FILEPATH ${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake
 )
 
-project(task-maker VERSION 1.0.2)
+
+# extract project version from git tag
+execute_process(
+  COMMAND git describe --tags
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_FULL_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+# cmake project version must be major.minor.patch with all
+# integers. GIT_FULL_VERSION is accurate even for branch not tagged
+# the format of GIT_FULL_VERSION is v1.2.3-gsha1 or v1.2.3
+execute_process(
+  COMMAND echo ${GIT_FULL_VERSION}
+  COMMAND cut -d- -f1
+  COMMAND cut -dv -f2
+  OUTPUT_VARIABLE GIT_LAST_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+project(task-maker VERSION ${GIT_LAST_VERSION})
+
+include(CTest)
+enable_testing()
+include(GoogleTest)
 
 find_package(PythonInterp 3.5 REQUIRED)
 

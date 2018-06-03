@@ -29,7 +29,7 @@ def get_manager(args):
     max_attempts = 10
     connect_timeout = 1
     for attempt in range(max_attempts):
-        channel = grpc.insecure_channel("localhost:" + str(args.manager_port))
+        channel = grpc.insecure_channel("127.0.0.1:" + str(args.manager_port))
         ready_future = grpc.channel_ready_future(channel)
         try:
             ready_future.result(timeout=connect_timeout)

@@ -64,7 +64,6 @@ proto::Response Execution::RunWithCache(executor::Executor* executor,
 void Execution::Run(
     const std::function<util::SHA256_t(int64_t)>& get_hash,
     const std::function<void(int64_t, const util::SHA256_t&)>& set_hash) {
-  // TODO(veluca): change this when we implement remote executors.
   std::unique_ptr<executor::Executor> executor;
   if (executor_.empty()) {
     executor.reset(new executor::LocalExecutor(store_directory_,
@@ -100,6 +99,7 @@ void Execution::Run(
 
   // Resource limits and exclusivity.
   *request.mutable_resource_limit() = resource_limits_;
+  request.set_extra_time(extra_time_);
   request.set_exclusive(exclusive_);
 
   // TODO(veluca): FIFO, as soon as we support them anywhere.

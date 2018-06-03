@@ -34,7 +34,7 @@ class TestSolutionCompile(TestSolution):
                 score, message = outcome
                 testcase = solution.testcase_result[num]
                 assert testcase.score == score
-                assert testcase.message.strip() == message
+                assert message in testcase.message.strip()
                 if message == "CPU limit exeeded":
                     assert testcase.cpu_time_used > self.task.timelimit
                     assert testcase.wall_time_used > self.task.timelimit

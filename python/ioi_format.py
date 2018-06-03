@@ -192,10 +192,10 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
 
     graders = list_files(["sol/grader.*"])
     if args.solutions:
-        solutions = [
-            sol if sol.startswith("sol/") else "sol/" + sol
+        solutions = list_files([
+            sol + "*" if sol.startswith("sol/") else "sol/" + sol + "*"
             for sol in args.solutions
-        ]
+        ])
     else:
         solutions = list_files(
             ["sol/*"], exclude=graders + ["sol/__init__.py"])
@@ -238,6 +238,7 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
     request.store_dir = args.store_dir
     request.temp_dir = args.temp_dir
     request.exclusive = args.exclusive
+    request.extra_time = args.extra_time
     request.keep_sandbox = args.keep_sandbox
     for testcase in range(num_testcases):
         request.write_inputs_to[testcase] = "input/input%d.txt" % testcase

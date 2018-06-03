@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <cstdlib>
 #include <memory>
 #include "gmock/gmock.h"
@@ -7,6 +8,8 @@
 #include "sandbox/sandbox.hpp"
 
 namespace {
+
+const std::string TEST_TMPDIR = "/tmp/task_maker_testdir";
 
 using ::testing::AnyOf;
 using ::testing::Eq;
@@ -72,7 +75,7 @@ TEST(UnixTest, TestWaitArg1) {
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.wall_time_millis, 70);
-  EXPECT_LE(info.wall_time_millis, 140);
+  EXPECT_LE(info.wall_time_millis, 250);
   EXPECT_LE(info.cpu_time_millis, 30);
   EXPECT_LE(info.sys_time_millis, 30);
 }
@@ -89,9 +92,9 @@ TEST(UnixTest, TestBusyWaitArg1) {
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 70);
-  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 150);
+  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 200);
   EXPECT_GE(info.wall_time_millis, 70);
-  EXPECT_LE(info.wall_time_millis, 150);
+  EXPECT_LE(info.wall_time_millis, 250);
   EXPECT_LE(info.sys_time_millis, 45);
 }
 
@@ -136,7 +139,7 @@ TEST(UnixTest, TestMemoryLimitNotOk) {
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
   EXPECT_EQ(error_msg, "");
-  EXPECT_EQ(info.signal, SIGSEGV);
+  EXPECT_TRUE(info.signal == SIGSEGV || info.signal == SIGKILL);
   EXPECT_EQ(info.status_code, 0);
 }
 
@@ -153,7 +156,7 @@ TEST(UnixTest, TestWallLimitOk) {
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.wall_time_millis, 70);
-  EXPECT_LE(info.wall_time_millis, 150);
+  EXPECT_LE(info.wall_time_millis, 250);
 }
 
 TEST(UnixTest, TestWallLimitNotOk) {
@@ -208,7 +211,8 @@ TEST(UnixTest, TestIORedirect) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "copy_int");
-  const char* test_tmpdir = getenv("TEST_TMPDIR");
+  const char* test_tmpdir = TEST_TMPDIR.c_str();
+  mkdir(test_tmpdir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
   strcpy(options.stdin_file, test_tmpdir);
   strcat(options.stdin_file, "/in");
 

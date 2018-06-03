@@ -21,8 +21,8 @@ EvaluationInfo setup_request(const proto::EvaluateTaskRequest& request) {
     info.evaluation = std::make_unique<manager::IOIEvaluation>(
         info.queue.get(), info.core.get(),
         reinterpret_cast<manager::IOIGeneration*>(info.generation.get()),
-        request.task(), request.exclusive(), request.cache_mode(),
-        request.evaluate_on(), request.keep_sandbox());
+        request.task(), request.exclusive(), request.extra_time(),
+        request.cache_mode(), request.evaluate_on(), request.keep_sandbox());
 
     std::map<proto::Language, proto::GraderInfo> graders;
     for (const proto::GraderInfo& grader : request.task().grader_info())
