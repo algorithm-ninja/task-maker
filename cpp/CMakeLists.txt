@@ -26,7 +26,9 @@ target_link_libraries(cpp_core
 
 add_library(cpp_sandbox
   sandbox/sandbox.cpp
+  sandbox/sandbox_manager.cpp
 )
+
 target_link_libraries(cpp_sandbox
   cpp_util
 )
@@ -84,6 +86,7 @@ add_library(cpp_executor
   executor/local_executor.cpp
   executor/remote_executor.cpp
 )
+
 target_link_libraries(cpp_executor
   cpp_sandbox
   cpp_util

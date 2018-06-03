@@ -1,5 +1,6 @@
 #include "executor/local_executor.hpp"
 #include "glog/logging.h"
+#include "sandbox/sandbox_manager.hpp"
 #include "util/file.hpp"
 
 #include <cctype>
@@ -45,9 +46,7 @@ proto::Response LocalExecutor::Execute(
 
   // Folder and arguments.
   sandbox::ExecutionOptions exec_options(sandbox_dir, request.executable());
-  for (const std::string& arg : request.arg()) {
-    exec_options.args.push_back(arg);
-  }
+  exec_options.SetArgs(request.arg());
 
   // Limits.
   // Scale up time limits to have a good margin for random occurrences.
@@ -61,12 +60,11 @@ proto::Response LocalExecutor::Execute(
   exec_options.max_stack_kb = request.resource_limit().stack();
 
   // Input files.
-  bool loaded_executable = false;
   std::vector<std::string> input_files;
   for (const auto& input : request.input()) {
     PrepareFile(input, tmp.Path(), &exec_options, &input_files);
     if (input.name() == request.executable()) {
-      loaded_executable = true;
+      exec_options.prepare_executable = true;
       // Do not call MakeImmutable on the main executable, as
       // PrepareForExecution will take care of immutability either way and
       // doing so could cause race conditions because of hardlinks.
@@ -75,22 +73,17 @@ proto::Response LocalExecutor::Execute(
   }
 
   // Stdout/err files.
-  exec_options.stdout_file = util::File::JoinPath(tmp.Path(), "stdout");
-  exec_options.stderr_file = util::File::JoinPath(tmp.Path(), "stderr");
+  sandbox::ExecutionOptions::stringcpy(
+      exec_options.stdout_file, util::File::JoinPath(tmp.Path(), "stdout"));
+  sandbox::ExecutionOptions::stringcpy(
+      exec_options.stderr_file, util::File::JoinPath(tmp.Path(), "stderr"));
 
   std::string error_msg;
-  std::unique_ptr<sandbox::Sandbox> sb = sandbox::Sandbox::Create();
 
-  if (loaded_executable &&
-      !sb->PrepareForExecution(
-          util::File::JoinPath(sandbox_dir, request.executable()),
-          &error_msg)) {
-    throw std::runtime_error(error_msg);
-  }
   // Actual execution.
   {
     ThreadGuard guard(/*exclusive = */ request.exclusive());
-    if (!sb->Execute(exec_options, &result, &error_msg)) {
+    if (!sandbox::SandboxManager::Execute(exec_options, &result, &error_msg)) {
       throw std::runtime_error(error_msg);
     }
   }
@@ -163,7 +156,8 @@ void LocalExecutor::PrepareFile(const proto::FileInfo& info,
   std::string name = info.name();
   if (info.type() == proto::FileType::STDIN) {
     name = "stdin";
-    options->stdin_file = util::File::JoinPath(tmpdir, name);
+    sandbox::ExecutionOptions::stringcpy(options->stdin_file,
+                                         util::File::JoinPath(tmpdir, name));
   } else {
     if (std::find_if(name.begin(), name.end(), IsIllegalChar) != name.end()) {
       throw std::runtime_error("Invalid file name: " + name);

@@ -13,6 +13,7 @@
 #include "manager/ioi_format/ioi_format.hpp"
 #include "manager/terry_format/terry_format.hpp"
 #include "proto/manager.grpc.pb.h"
+#include "sandbox/sandbox_manager.hpp"
 #include "util/daemon.hpp"
 #include "util/flags.hpp"
 
@@ -198,6 +199,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 }  // namespace manager
 
 int manager_main() {
+  sandbox::SandboxManager::Start();
   if (FLAGS_daemon) util::daemonize(FLAGS_pidfile);
 
   std::string server_address = "127.0.0.1:" + std::to_string(FLAGS_port);

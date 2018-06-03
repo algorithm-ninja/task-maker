@@ -72,7 +72,7 @@ int GetProcessMemoryUsage(pid_t pid, int64_t* memory_usage_kb) {
   if (ret != 0) return ret;
   ret = posix_spawn_file_actions_addclose(&actions, pipe_fds[1]);
   if (ret != 0) return ret;
-  std::vector<std::vector<char>> args;
+  std::vector<std::vector<char> > args;
   auto add_arg = [&args](std::string s) {
     std::vector<char> arg(s.size() + 1);
     std::copy(s.begin(), s.end(), arg.begin());
@@ -138,8 +138,8 @@ bool Unix::PrepareForExecution(const std::string& executable,
   return true;
 }
 
-bool Unix::Execute(const ExecutionOptions& options, ExecutionInfo* info,
-                   std::string* error_msg) {
+bool Unix::ExecuteInternal(const ExecutionOptions& options, ExecutionInfo* info,
+                           std::string* error_msg) {
   options_ = &options;
   if (!Setup(error_msg)) return false;
   if (!DoFork(error_msg)) return false;
@@ -204,40 +204,35 @@ void Unix::Child() {
   int stdin_fd = -1;
   int stdout_fd = -1;
   int stderr_fd = -1;
-  if (!options_->stdin_file.empty()) {
-    stdin_fd =
-        open(options_->stdin_file.c_str(), O_RDONLY | O_CLOEXEC);  // NOLINT
+  if (options_->stdin_file[0]) {
+    stdin_fd = open(options_->stdin_file, O_RDONLY | O_CLOEXEC);
     if (stdin_fd == -1) die("open", errno);
   }
-  if (!options_->stdout_file.empty()) {
+  if (options_->stdout_file[0]) {
     stdout_fd =
-        open(options_->stdout_file.c_str(),  // NOLINT
-             O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, S_IRUSR | S_IWUSR);
+        open(options_->stdout_file, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
+             S_IRUSR | S_IWUSR);
     if (stdout_fd == -1) die("open", errno);
   }
-  if (!options_->stderr_file.empty()) {
+  if (options_->stderr_file[0]) {
     stderr_fd =
-        open(options_->stderr_file.c_str(),  // NOLINT
-             O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, S_IRUSR | S_IWUSR);
+        open(options_->stderr_file, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
+             S_IRUSR | S_IWUSR);
     if (stderr_fd == -1) die("open", errno);
   }
 
-  if (chdir(options_->root.c_str()) == -1) {
+  if (chdir(options_->root) == -1) {
     die("chdir", errno);
   }
 
-  // TODO(veluca): do not use dynamic memory allocation here.
-  // Prepare args.
-  std::vector<std::vector<char>> vec_args;
-  auto add_arg = [&vec_args](const std::string& arg) {
-    vec_args.emplace_back(arg.begin(), arg.end());
-    vec_args.back().push_back(0);
-  };
-  add_arg(options_->executable);
-  for (const std::string& arg : options_->args) add_arg(arg);
-  std::vector<char*> args(options_->args.size() + 2);
-  for (size_t i = 0; i < vec_args.size(); i++) args[i] = vec_args[i].data();
-  args.back() = nullptr;
+  decltype(options_->args) args = {};
+  memcpy(args, options_->args, sizeof(args));
+  char* argsp[ExecutionOptions::narg + 1] = {};
+  size_t narg = 0;
+  for (size_t i = 0; i < ExecutionOptions::narg; i++) {
+    if (!args[i][0]) break;
+    argsp[narg++] = &args[i][0];
+  }
 
   // Handle I/O redirection.
 #define DUP(field, fd)                          \
@@ -289,7 +284,7 @@ void Unix::Child() {
   }
   int count = 0;
   do {
-    execv(options_->executable.c_str(), args.data());
+    execv(options_->executable, argsp);
     if (errno == ETXTBSY) usleep(100000);
     // We try at most 16 times to avoid livelocks (which should not be possible,
     // but better safe than sorry).
@@ -379,9 +374,9 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
   info->sys_time_millis =
       rusage.ru_stime.tv_sec * 1000LL + rusage.ru_stime.tv_usec / 1000;
   if (info->signal != 0) {
-    info->message = strsignal(info->signal);
+    strcpy(info->message, strsignal(info->signal));
   } else if (info->status_code != 0) {
-    info->message = "Non-zero return code";
+    strcpy(info->message, "Non-zero return code");
   }
   OnFinish(info);
   return true;

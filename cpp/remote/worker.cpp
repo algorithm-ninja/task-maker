@@ -10,6 +10,7 @@
 #include "grpc++/create_channel.h"
 #include "proto/server.grpc.pb.h"
 #include "remote/common.hpp"
+#include "sandbox/sandbox_manager.hpp"
 #include "util/flags.hpp"
 
 void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
@@ -69,6 +70,7 @@ void worker(const std::string& server, const std::string& name) {
 }
 
 int worker_main() {
+  sandbox::SandboxManager::Start();
   CHECK_NE(FLAGS_server, "") << "You need to specify a server!";
 
   if (FLAGS_num_cores == 0)
