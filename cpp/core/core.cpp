@@ -4,8 +4,6 @@
 namespace core {
 
 bool Core::Run() {
-  const auto TASK_WAIT_TIME = std::chrono::microseconds(100);
-
   std::vector<std::thread> threads;
 
   auto tear_down = [this, &threads] {
@@ -29,26 +27,20 @@ bool Core::Run() {
 
   while (!quitting_) {
     std::unique_lock<std::mutex> lck(job_mutex_);
-    if (waiting_jobs_.empty() && ready_tasks_.empty() && running_jobs_.empty())
+    if (waiting_jobs_.empty() && ready_tasks_.empty() &&
+        running_jobs_.empty() && completed_jobs_.empty())
       break;
-    std::deque<RunningTask> temp;
-    while (!running_jobs_.empty()) {
-      RunningTask task = std::move(running_jobs_.front());
-      running_jobs_.pop_front();
-      // TODO(edomora97) instead of keeping the futures and check them
-      // continually maybe the thread can move the job in another queue when
-      // completed and the main thread can wait with a conditional_variable
-      if (task.future.wait_for(TASK_WAIT_TIME) == std::future_status::ready) {
-        if (!ProcessTaskCompleted(&task)) {
-          lck.unlock();
-          tear_down();
-          return false;
-        }
-      } else {
-        temp.push_back(std::move(task));
-      }
+    while (completed_jobs_.empty() && !quitting_) {
+      task_complete_.wait(lck);
     }
-    std::swap(temp, running_jobs_);
+    if (quitting_) break;
+    RunningTask task = std::move(completed_jobs_.front());
+    completed_jobs_.pop_front();
+    if (!ProcessTaskCompleted(&task)) {
+      lck.unlock();
+      tear_down();
+      return false;
+    }
   }
   tear_down();
   for (const auto& file : files_to_load_)
@@ -77,9 +69,14 @@ void Core::ThreadBody() {
     }
     RunningTask running_task{RunningTaskInfo(task.job->execution), task.job,
                              task.task.get_future()};
-    running_jobs_.push_back(std::move(running_task));
+    size_t id = task_id_++;
+    running_jobs_.emplace(id, std::move(running_task));
     lck.unlock();
     task.task();
+    lck.lock();
+    completed_jobs_.push_back(std::move(running_jobs_.at(id)));
+    running_jobs_.erase(id);
+    task_complete_.notify_all();
   }
 }
 
@@ -223,7 +220,7 @@ bool Core::ProcessTaskCompleted(RunningTask* task) {
 std::vector<RunningTaskInfo> Core::RunningTasks() const {
   std::lock_guard<std::mutex> lck(job_mutex_);
   std::vector<RunningTaskInfo> tasks;
-  for (const RunningTask& task : running_jobs_) tasks.emplace_back(task.info);
+  for (const auto& task : running_jobs_) tasks.emplace_back(task.second.info);
   return tasks;
 }
 
