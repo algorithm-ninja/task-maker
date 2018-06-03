@@ -204,7 +204,7 @@ TEST(UnixTest, TestCpuLimitNotOk) {
   EXPECT_THAT(info.signal, AnyOf(Eq(SIGKILL), Eq(SIGXCPU)));
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 700);
-  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 1200);
+  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 1600);
 }
 
 TEST(UnixTest, TestIORedirect) {
