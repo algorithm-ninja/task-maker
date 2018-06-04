@@ -83,8 +83,10 @@ matrix:
         - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
 
     - os: linux
+      install: []
       script:
         - "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
+      after_success: []
       env:
         - MATRIX_EVAL="ARCHLINUX=1"
 
