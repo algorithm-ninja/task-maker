@@ -17,7 +17,7 @@ FileID* Execution::Output(const std::string& name,
 
 std::vector<int64_t> Execution::Deps() const {
   std::vector<int64_t> result;
-  if (stdin_ != 0) result.push_back(stdin_->ID());
+  if (stdin_ != nullptr) result.push_back(stdin_->ID());
   for (const auto& in : inputs_) result.push_back(in.second->ID());
   return result;
 }

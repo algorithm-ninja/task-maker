@@ -140,9 +140,19 @@ CompiledSourceFile::CompiledSourceFile(
                               ": unknown language");
   }
   if (compiler.empty()) {
-    throw std::domain_error(
-        "Cannot compile " + source.path() + ": compiler for " +
-        proto::Language_Name(source.language()) + " not found");
+    compilation_ = core->AddExecution("Compilation of " + source.path(),
+                                      "/bin/false", {}, keep_sandbox);
+    compilation_->SetCallback([this, queue, source, name, use_compiler_cache](
+                                  const core::TaskStatus& status) {
+      queue->CompilationFailure(
+          name,
+          "Cannot compile " + source.path() + ": compiler for " +
+              proto::Language_Name(source.language()) + " not found",
+          use_compiler_cache);
+      return !fatal_failures_;
+    });
+    executable_ = compilation_->Output("NOT_COMPILED");
+    return;
   }
   if (grader) {
     switch (source.language()) {
