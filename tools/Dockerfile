@@ -26,7 +26,8 @@ RUN cd /tmp && \
 
 # install dependencies
 RUN yaourt -Syua --needed --noconfirm \
-    python python-pip cmake rust gflags gmock google-glog gtest protobuf \
+    python python-pip cmake rust gflags gmock google-glog gtest protobuf fpc \
+    erlang \
     grpc nlohmann-json-bin
 
 RUN sudo mkdir -p /build
