@@ -83,9 +83,10 @@ matrix:
         - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
 
     - os: linux
+      cache:
       install: []
       script:
-        - "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
+        - docker run --rm -v $(pwd):/build edomora97/task-maker-builder /build/tools/compile_and_test.sh
       after_success: []
       env:
         - MATRIX_EVAL="ARCHLINUX=1"
@@ -134,30 +135,6 @@ script:
   - cmake --build build
   - python build/python/setup.py install
   # run the tests
-  - ( cd build && ctest -VV )
-
-arch:
-  packages:
-  - python
-  - python-pip
-  - cmake
-  - rust
-  # external dependencies
-  - gflags
-  - gmock
-  - google-glog
-  - gtest
-  - protobuf
-  - grpc
-  - nlohmann-json-bin
-  script:
-  - gcc --version
-  - cmake --version
-  - rm -rf build
-  - cmake -H. -Bbuild -DHUNTER_ENABLED=OFF
-  - cmake --build build
-  # yee sudo setup.py install!! it's on a container, so... ¯\_(ツ)_/¯
-  - sudo python build/python/setup.py install
   - ( cd build && ctest -VV )
 
 after_success:
