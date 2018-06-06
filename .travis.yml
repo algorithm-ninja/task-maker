@@ -89,7 +89,12 @@ matrix:
       cache:
       install: []
       script:
-        - docker run --rm -v $(pwd):/build edomora97/task-maker-builder /build/tools/compile_and_test.sh
+        - docker run --rm
+            -e TRAVIS=true
+            -e CI=true
+            -v $(pwd):/build
+            edomora97/task-maker-builder
+            /build/tools/compile_and_test.sh
       after_success: []
       env:
         - MATRIX_EVAL="ARCHLINUX=1"

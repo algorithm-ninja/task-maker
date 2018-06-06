@@ -11,6 +11,11 @@ target_link_libraries(cpp_util
   glog::glog
   gflags
 )
+# this flag is needed on travis
+if (TRAVIS)
+  target_compile_definitions(cpp_util PRIVATE REMOVE_ALSO_MOUNT_POINTS=1)
+endif()
+
 
 add_library(cpp_core
   core/core.cpp
