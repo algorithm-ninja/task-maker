@@ -28,7 +28,7 @@ bool OsRemoveTree(const std::string& path) {
   return nftw(path.c_str(),
               [](const char* fpath, const struct stat* sb, int typeflags,
                  struct FTW* ftwbuf) { return remove(fpath); },
-              64, FTW_DEPTH | FTW_PHYS | FTW_MOUNT) != -1;
+              64, FTW_DEPTH | FTW_PHYS) != -1;
 }
 
 bool OsMakeExecutable(const std::string& path) {
