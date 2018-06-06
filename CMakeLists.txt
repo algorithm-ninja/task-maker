@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 ENABLE_LANGUAGE(CXX)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,8 +9,6 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(HunterGate)
 include(ThreadSanitizer)
-include(Protobuf)
-include(GRPC)
 
 HunterGate(
     URL "https://github.com/edomora97/hunter/archive/v0.20.73-p2.tar.gz"
@@ -17,7 +16,6 @@ HunterGate(
     # Needed to compile gRPC because it needs -fPIC
     FILEPATH ${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake
 )
-
 
 # extract project version from git tag
 execute_process(
@@ -49,25 +47,27 @@ find_package(PythonInterp 3.5 REQUIRED)
 set(CMAKE_CXX_FLAGS "-fdiagnostics-color=always -Wall -Wextra -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-hunter_add_package(gRPC)
-find_package(gRPC CONFIG REQUIRED)
-
-hunter_add_package(GTest)
-find_package(GTest CONFIG REQUIRED)
-find_package(GMock CONFIG REQUIRED)
-
+# if hunter is disabled all these lines are noop
 hunter_add_package(gflags)
-find_package(gflags CONFIG REQUIRED)
-
+hunter_add_package(gRPC)
+hunter_add_package(GTest)
 hunter_add_package(glog)
-find_package(glog CONFIG REQUIRED)
-
 hunter_add_package(nlohmann_json)
+hunter_add_package(Protobuf)
+
+# these finders are bundled with cmake
+find_package(gflags CONFIG REQUIRED)
+find_package(GTest REQUIRED)
+find_package(Protobuf REQUIRED)
+
+# these finders are provided by hunter, when hunter is disabled the ones in cmake are used
+find_package(gRPC CONFIG REQUIRED)
+find_package(GMock CONFIG REQUIRED)
+find_package(glog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-hunter_add_package(Protobuf)
-find_package(Protobuf CONFIG REQUIRED)
-
+include(Protobuf)
+include(GRPC)
 
 add_subdirectory(proto)
 add_subdirectory(cpp)

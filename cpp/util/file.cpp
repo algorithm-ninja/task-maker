@@ -13,6 +13,14 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+// if REMOVE_ALSO_MOUNT_POINTS is set remove also the mount points mounted in
+// the sandbox when cleaning
+#ifdef REMOVE_ALSO_MOUNT_POINTS
+#define NFTW_EXTRA_FLAGS 0
+#else
+#define NFTW_EXTRA_FLAGS FTW_MOUNT
+#endif
+
 namespace {
 
 const constexpr char* kPathSeparators = "/";
@@ -28,7 +36,7 @@ bool OsRemoveTree(const std::string& path) {
   return nftw(path.c_str(),
               [](const char* fpath, const struct stat* sb, int typeflags,
                  struct FTW* ftwbuf) { return remove(fpath); },
-              64, FTW_DEPTH | FTW_PHYS | FTW_MOUNT) != -1;
+              64, FTW_DEPTH | FTW_PHYS | NFTW_EXTRA_FLAGS) != -1;
 }
 
 bool OsMakeExecutable(const std::string& path) {

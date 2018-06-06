@@ -15,7 +15,7 @@ DEFINE_string(temp_directory, "temp",  // NOLINT
               "Where the sandboxes should be created");
 
 DEFINE_string(address, "0.0.0.0", "address to listen on");  // NOLINT
-DEFINE_int32(port, 7070, "port to listen on");              // NOLINT
+DEFINE_int32(port, 7071, "port to listen on");              // NOLINT
 
 DEFINE_string(
     mode, "",

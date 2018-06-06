@@ -67,35 +67,35 @@ TEST(UnixTest, TestWaitArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "wait_arg1");
-  options.SetArgs({"0.3"});
+  options.SetArgs({"1"});
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
   EXPECT_EQ(error_msg, "");
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
-  EXPECT_GE(info.wall_time_millis, 250);
-  EXPECT_LE(info.wall_time_millis, 750);
-  EXPECT_LE(info.cpu_time_millis, 100);
-  EXPECT_LE(info.sys_time_millis, 100);
+  EXPECT_GE(info.wall_time_millis, 900);
+  EXPECT_LE(info.wall_time_millis, 1500);
+  EXPECT_LE(info.cpu_time_millis, 300);
+  EXPECT_LE(info.sys_time_millis, 300);
 }
 
 TEST(UnixTest, TestBusyWaitArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "busywait_arg1");
-  options.SetArgs({"0.3"});
+  options.SetArgs({"1"});
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
   EXPECT_EQ(error_msg, "");
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
-  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 250);
-  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 750);
-  EXPECT_GE(info.wall_time_millis, 250);
-  EXPECT_LE(info.wall_time_millis, 750);
-  EXPECT_LE(info.sys_time_millis, 100);
+  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 900);
+  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 1500);
+  EXPECT_GE(info.wall_time_millis, 900);
+  EXPECT_LE(info.wall_time_millis, 1500);
+  EXPECT_LE(info.sys_time_millis, 500);
 }
 
 TEST(UnixTest, TestMallocArg1) {
@@ -147,16 +147,16 @@ TEST(UnixTest, TestWallLimitOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "wait_arg1");
-  options.SetArgs({"0.1"});
-  options.wall_limit_millis = 200;
+  options.SetArgs({"1"});
+  options.wall_limit_millis = 2000;
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
   EXPECT_EQ(error_msg, "");
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
-  EXPECT_GE(info.wall_time_millis, 70);
-  EXPECT_LE(info.wall_time_millis, 250);
+  EXPECT_GE(info.wall_time_millis, 900);
+  EXPECT_LE(info.wall_time_millis, 1500);
 }
 
 TEST(UnixTest, TestWallLimitNotOk) {
@@ -164,7 +164,7 @@ TEST(UnixTest, TestWallLimitNotOk) {
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "wait_arg1");
   options.SetArgs({"1"});
-  options.wall_limit_millis = 100;
+  options.wall_limit_millis = 200;
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
@@ -172,23 +172,23 @@ TEST(UnixTest, TestWallLimitNotOk) {
   EXPECT_EQ(info.signal, SIGKILL);
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.wall_time_millis, 100);
-  EXPECT_LE(info.wall_time_millis, 150);
+  EXPECT_LE(info.wall_time_millis, 800);
 }
 
 TEST(UnixTest, TestCpuLimitOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "busywait_arg1");
-  options.SetArgs({"0.1"});
-  options.cpu_limit_millis = 1000;
+  options.SetArgs({"1"});
+  options.cpu_limit_millis = 2000;
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
   EXPECT_EQ(error_msg, "");
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
-  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 80);
-  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 150);
+  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 900);
+  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 1500);
 }
 
 TEST(UnixTest, TestCpuLimitNotOk) {
@@ -196,15 +196,15 @@ TEST(UnixTest, TestCpuLimitNotOk) {
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "busywait_arg1");
   options.SetArgs({"10"});
-  options.cpu_limit_millis = 800;
+  options.cpu_limit_millis = 1000;
   ExecutionInfo info;
   std::string error_msg;
   EXPECT_TRUE(sandbox->Execute(options, &info, &error_msg));
   EXPECT_EQ(error_msg, "");
   EXPECT_THAT(info.signal, AnyOf(Eq(SIGKILL), Eq(SIGXCPU)));
   EXPECT_EQ(info.status_code, 0);
-  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 700);
-  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 1600);
+  EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 900);
+  EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 1500);
 }
 
 TEST(UnixTest, TestIORedirect) {

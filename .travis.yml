@@ -1,151 +1,68 @@
 language: cpp
-# adds more ram to the build
 sudo: required
+services:
+  - docker
 
 matrix:
   include:
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - sourceline: "ppa:jonathonf/python-3.6"
-          packages:
-            - g++-4.9
-            - git
-            - make
-            - python3.6
-            - python3.6-dev
-            - wget
-            # only for tests
-            - rustc
-            # needed for the release
-            - zip
-      env:
-         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9 && DEPLOY=1"
-
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - sourceline: "ppa:jonathonf/python-3.6"
-          packages:
-            - g++-7
-            - git
-            - make
-            - python3.6
-            - python3.6-dev
-            - wget
-            # only for tests
-            - rustc
-      env:
-        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
-
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.6
-            - sourceline: "ppa:jonathonf/python-3.6"
-          packages:
-            - libstdc++-4.9-dev
-            - clang-3.6
-            - git
-            - make
-            - python3.6
-            - python3.6-dev
-            - wget
-            # only for tests
-            - rustc
-      env:
-        - MATRIX_EVAL="CC=clang-3.6 && CXX=clang++-3.6"
-
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-5.0
-            - sourceline: "ppa:jonathonf/python-3.6"
-          packages:
-            - libstdc++-4.9-dev
-            - clang-5.0
-            - git
-            - make
-            - python3.6
-            - python3.6-dev
-            - wget
-            # only for tests
-            - rustc
-      env:
-        - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
-
+    - env:
+       - TOOLCHAIN=ubuntu14.04-gcc4.9 DEPLOY=1
+    - env:
+       - TOOLCHAIN=ubuntu14.04-gcc7
+    - env:
+       - TOOLCHAIN=ubuntu14.04-clang3.6
+    - env:
+       - TOOLCHAIN=ubuntu14.04-clang5.0
+    - env:
+        - TOOLCHAIN=archlinux
     - os: osx
-      before_install:
+      env:
+        - DEPLOY=1
+      install:
         - brew upgrade python wget cmake
         - brew install rust
-      env:
-        - MATRIX_EVAL="DEPLOY=1"
-
-
-cache:
-  directories:
-    - hunter-root
-    - build
-
-
-install:
-  - eval "${MATRIX_EVAL}"
-  - mkdir -p /tmp/bin
-  # install cmake
-  - |
-    if [ $TRAVIS_OS_NAME == "linux" ]; then
-      wget -O /tmp/cmake.tar.gz "https://cmake.org/files/v3.11/cmake-3.11.1-Linux-x86_64.tar.gz"
-      (mkdir /tmp/cmake && tar xf /tmp/cmake.tar.gz -C /tmp/cmake)
-      ln -sf $(find /tmp/cmake -name "cmake" -type f -perm -a=x) /tmp/bin/cmake
-    fi
-  # install python and pull all the dependencies
-  - python3.6 -m venv /tmp/venv --without-pip
-  - source /tmp/venv/bin/activate
-  - wget https://bootstrap.pypa.io/get-pip.py
-  - python get-pip.py
-  # fix missing commands
-  - ln -sf $(which $CXX) /tmp/bin/c++
-  - ln -sf $(which $CC) /tmp/bin/cc
-  - 'export PATH=/tmp/bin:$PATH'
-  - $CC --version
-  - $CXX --version
-  - cmake --version
+        - python3.6 -m venv /tmp/venv --without-pip
+        - source /tmp/venv/bin/activate
+        - wget -O- https://bootstrap.pypa.io/get-pip.py | python3
+        - mkdir /tmp/bin
+        - 'export PATH=/tmp/bin:$PATH'
+        - cmake --version
+      script:
+        - rm -rf build
+        - cmake -H. -Bbuild -DHUNTER_ROOT=hunter-root
+        - cmake --build build
+        - python build/python/setup.py install
+        # run the tests
+        - ( cd build && ctest -VV )
+      before_deploy:
+        ./tools/make_release.sh
+      cache:
+        directories:
+          - hunter-root
+          - build
 
 script:
-  # invalidate the cache of our build for now
-  - rm -rf build
-  - cmake -H. -Bbuild -DHUNTER_ROOT=hunter-root
-  - cmake --build build
-  - python build/python/setup.py install
-  # run the tests
-  - ( cd build && ctest -VV )
-
-after_success:
-  - ./build/cpp/manager -help
+  - docker pull edomora97/task-maker-builder-$TOOLCHAIN:latest
+  - docker run --rm
+      -e TRAVIS=true
+      -e CI=true
+      -e TOOLCHAIN=$TOOLCHAIN
+      -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME
+      -e TRAVIS_TAG=$TRAVIS_TAG
+      -v $(pwd):/build
+      edomora97/task-maker-builder-$TOOLCHAIN:latest
+      /build/tools/compile_and_test.sh
 
 before_deploy:
-  - cmake -H. -Bbuild_rel -DHUNTER_ROOT=hunter-root -DCMAKE_BUILD_TYPE=Release
-  - cmake --build build_rel
-  - |
-    if [ $TRAVIS_OS_NAME == "linux" ]; then
-      strip -s build_rel/python/task_maker/bin/manager
-      strip -s build_rel/python/task_maker/bin/server
-      strip -s build_rel/python/task_maker/bin/worker
-    else
-      strip build_rel/python/task_maker/bin/manager
-      strip build_rel/python/task_maker/bin/server
-      strip build_rel/python/task_maker/bin/worker
-    fi
-  - chmod +x build_rel/python/setup.py
-  - ( cd build_rel/python && zip -r task-maker-$TRAVIS_TAG-$TRAVIS_OS_NAME.zip requirements.txt setup.py task_maker )
+  - docker run --rm
+      -e TRAVIS=true
+      -e CI=true
+      -e TOOLCHAIN=$TOOLCHAIN
+      -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME
+      -e TRAVIS_TAG=$TRAVIS_TAG
+      -v $(pwd):/build
+      edomora97/task-maker-builder-$TOOLCHAIN:latest
+      /build/tools/make_release.sh
 
 deploy:
   provider: releases

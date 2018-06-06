@@ -11,6 +11,11 @@ target_link_libraries(cpp_util
   glog::glog
   gflags
 )
+# this flag is needed on travis
+if (TRAVIS)
+  target_compile_definitions(cpp_util PRIVATE REMOVE_ALSO_MOUNT_POINTS=1)
+endif()
+
 
 add_library(cpp_core
   core/core.cpp
@@ -40,14 +45,14 @@ target_link_libraries(cpp_sandbox_echo
   cpp_sandbox
 )
 
-IF (APPLE)
+if (APPLE)
   set(CPP_SANDBOXES -Wl,-force_load cpp_sandbox_echo ${CPP_SANDBOXES})
 else()
   set(CPP_SANDBOXES
     -Wl,--whole-archive cpp_sandbox_echo -Wl,--no-whole-archive ${CPP_SANDBOXES})
 endif()
 
-IF (UNIX)
+if (UNIX)
   add_library(cpp_sandbox_unix
     sandbox/unix.cpp
   )
@@ -61,12 +66,12 @@ IF (UNIX)
   )
   target_link_libraries(sandbox_unix_test
     cpp_sandbox
-    GTest::main
+    GTest::Main
     GMock::gmock
   )
 
 
-  IF (APPLE)
+  if (APPLE)
     set(CPP_SANDBOXES -Wl,-force_load cpp_sandbox_unix ${CPP_SANDBOXES})
   else()
     set(CPP_SANDBOXES
