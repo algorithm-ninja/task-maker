@@ -7,6 +7,7 @@ ENV UGID='2000' UGNAME='travis'
 RUN groupadd --gid "$UGID" "$UGNAME" && \
     useradd --create-home --uid "$UGID" --gid "$UGID" "${UGNAME}" && \
     pacman -Syu --needed --noconfirm base-devel git sudo yajl && \
+    pacman -Scc --noconfirm && \
     echo "travis ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$UGNAME
 
 USER $UGNAME
@@ -26,9 +27,10 @@ RUN cd /tmp && \
 
 # install dependencies
 RUN yaourt -Syua --needed --noconfirm \
-    python python-pip cmake rust gflags gmock google-glog gtest protobuf fpc \
-    erlang \
-    grpc nlohmann-json-bin
+        python python-pip cmake rust gflags gmock google-glog gtest protobuf \
+        fpc erlang \
+        grpc nlohmann-json-bin && \
+    sudo pacman -Scc --noconfirm
 
 RUN sudo mkdir -p /build
 

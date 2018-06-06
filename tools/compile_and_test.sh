@@ -5,13 +5,13 @@ if [ "$CI" != "true" ]; then
     exit 1
 fi
 
-cmake -H. -Bbuild -DHUNTER_ENABLED=OFF -DTRAVIS=ON
+if [ "$TOOLCHAIN" == "archlinux" ]; then
+    cmake -H. -Bbuild -DHUNTER_ENABLED=OFF -DTRAVIS=ON
+else
+    cmake -H. -Bbuild -DHUNTER_ROOT=/hunter-root -DTRAVIS=ON
+fi
 cmake --build build
+
 # yee sudo setup.py install!! it's on a container, so... ¯\_(ツ)_/¯
 sudo python build/python/setup.py install
 ( cd build && ctest -VV )
-
-for f in $(find /tmp -name "task-maker.*"); do
-    echo "-------------- $f ------------------"
-    cat $f
-done
