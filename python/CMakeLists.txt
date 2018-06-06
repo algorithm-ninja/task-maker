@@ -117,7 +117,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.py.in ${VERSION_PY})
 add_custom_command(
   OUTPUT ${TEMP_DIRECTORY}/root
   COMMAND ${PIP_EXE}
-  ARGS install --ignore-installed --no-warn-script-location --root=${TEMP_DIRECTORY}/root -r ${REQUIREMENTS_TXT}
+  ARGS install --ignore-installed --root=${TEMP_DIRECTORY}/root -r ${REQUIREMENTS_TXT}
   DEPENDS ${REQUIREMENTS_TXT}
   COMMENT "Installing python dependencies"
   VERBATIM

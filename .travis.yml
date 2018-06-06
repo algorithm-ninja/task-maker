@@ -6,18 +6,70 @@ services:
 matrix:
   include:
     - env:
-       - TOOLCHAIN=ubuntu14.04-gcc4.9
+       - TOOLCHAIN=ubuntu14.04-gcc4.9 DEPLOY=1
+    - env:
+       - TOOLCHAIN=ubuntu14.04-gcc7
+    - env:
+       - TOOLCHAIN=ubuntu14.04-clang3.5
+    - env:
+       - TOOLCHAIN=ubuntu14.04-clang5.0
     - env:
         - TOOLCHAIN=archlinux
+    - os: osx
+      env:
+        - DEPLOY=1
+      install:
+        - brew upgrade python wget cmake
+        - brew install rust
+        - python3.6 -m venv /tmp/venv --without-pip
+        - source /tmp/venv/bin/activate
+        - wget -O- https://bootstrap.pypa.io/get-pip.py | python3
+        - mkdir /tmp/bin
+        - 'export PATH=/tmp/bin:$PATH'
+        - cmake --version
+      script:
+        - rm -rf build
+        - cmake -H. -Bbuild -DHUNTER_ROOT=hunter-root
+        - cmake --build build
+        - python build/python/setup.py install
+        # run the tests
+        - ( cd build && ctest -VV )
+      before_deploy:
+        ./tools/make_release.sh
+      cache:
+        directories:
+          - hunter-root
+          - build
 
 script:
+  - docker pull edomora97/task-maker-builder-$TOOLCHAIN:latest
   - docker run --rm
       -e TRAVIS=true
       -e CI=true
       -e TOOLCHAIN=$TOOLCHAIN
+      -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME
+      -e TRAVIS_TAG=$TRAVIS_TAG
       -v $(pwd):/build
       edomora97/task-maker-builder-$TOOLCHAIN:latest
       /build/tools/compile_and_test.sh
 
-after_success:
-  - ./build/cpp/task-maker -help
+before_deploy:
+  - docker run --rm
+      -e TRAVIS=true
+      -e CI=true
+      -e TOOLCHAIN=$TOOLCHAIN
+      -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME
+      -e TRAVIS_TAG=$TRAVIS_TAG
+      -v $(pwd):/build
+      edomora97/task-maker-builder-$TOOLCHAIN:latest
+      /build/tools/make_release.sh
+
+deploy:
+  provider: releases
+  api_key:
+    secure: HVF8CkBTelG3qd0R9D8ODEwzYcwU8Sk7wKZ5vDTZajdqSFcHllJfY8UUBJQ2iXH1a2Q9vFqcbd+O44mvKyk/6KGg5xfoxgo4SQvXqvQ/s9AsrMEEOOT/++MMwDEZM6NCSL6CvoH9EOGRw6Dd+XEgS2EiotgvvTi3W9oeq3/qt7UqPqxVgTcqY4ZdIsEHDwPcjcd/B8YZ9G4aq/gRWHoS9OD5exfsMWd+FbN/BD00QJxzVz96IrPXu80d7HpTis34ROO1D+tSBNBqTovfHwTa1A99LLygismY70BofXwrxuanFQH4Jq3kXvMnmZCHFYFqdAw2k5y49yJTwlkf4gmwXQXDfHsos+fSdm5xmuEpUT2asW+riWYcyQ9s0ygZx7FBa3fgamiBSxaP5ogwWX2k41IqV/nPp5S9uATaquyBgSTEQga6xQP68+1igpWi/na77DkH3QS3Fa4UMs6Lef1QTiUkNDSXwdLXV0ljrr3wye6vqz1g6C9/7lPF3Nm5uDy/mYjqZdF/H2mjg+G9smEkSI1/xciDJaTZRxly+SEZRoo1FX7Gk0e58EDgCXHI7Kb8X7ju82hHFpCIgzqDbfxAnmWujBRhy4Qka2wHnezAKOOu7zWqpDUPabcMXg/6eMWtj5h63YAXsalrkYwV4gtyzhOmtICT4MfhzzU0/DmU84U=
+  file: build_rel/python/task-maker-$TRAVIS_TAG-$TRAVIS_OS_NAME.zip
+  skip_cleanup: true
+  on:
+    tags: true
+    condition: "$DEPLOY = 1"

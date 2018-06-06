@@ -2,7 +2,7 @@ FROM ubuntu:14.04
 MAINTAINER Edoardo Morassutto <edoardo.morassutto@gmail.com>
 
 ENV UGID='2000' UGNAME='travis'
-ENV CC=gcc-4.9 CXX=g++-4.9 PATH=/cmake/cmake-3.11.1-Linux-x86_64/bin:$PATH
+ENV CC=clang-3.6 CXX=clang++-3.6 PATH=/cmake/cmake-3.11.1-Linux-x86_64/bin:$PATH
 
 # setup the system
 RUN groupadd --gid "$UGID" "$UGNAME" && \
@@ -11,8 +11,12 @@ RUN groupadd --gid "$UGID" "$UGNAME" && \
     apt install -y software-properties-common && \
     apt-add-repository -y ppa:ubuntu-toolchain-r/test && \
     apt-add-repository -y ppa:jonathonf/python-3.6 && \
+    echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.6 main" >> /etc/apt/sources.list && \
+    echo "deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.6 main" >> /etc/apt/sources.list && \
+    apt install -y wget && \
+    wget -O- http://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
     apt update -y && \
-    apt install -y g++-4.9 git make python3.6 python3.6-dev wget rustc zip sudo && \
+    apt install -y libstdc++-4.9-dev clang-3.6 git make python3.6 python3.6-dev rustc zip sudo && \
     apt-get clean && \
     echo "travis ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$UGNAME && \
     ln -sf $(which $CC) /usr/bin/cc && \

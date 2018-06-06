@@ -19,4 +19,6 @@ cmake --build build
 
 python build/python/setup.py install
 
+./build/cpp/task-maker -help
+
 ( cd build && ctest -VV )
