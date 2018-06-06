@@ -33,3 +33,9 @@ RUN . /venv/bin/activate && \
     cmake -H. -Bbuild -DHUNTER_ROOT=/hunter-root && \
     cd / && \
     rm -rf /tmp/task-maker
+
+RUN sudo mkdir -p /build
+
+WORKDIR /build
+
+SHELL

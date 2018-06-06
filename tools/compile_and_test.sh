@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -ex
+
 if [ "$CI" != "true" ]; then
     echo "This script is supposed to run on the CI, it may break your system"
     exit 1
@@ -8,6 +10,7 @@ fi
 if [ "$TOOLCHAIN" == "archlinux" ]; then
     cmake -H. -Bbuild -DHUNTER_ENABLED=OFF -DTRAVIS=ON
 else
+    . /venv/bin/activate
     cmake -H. -Bbuild -DHUNTER_ROOT=/hunter-root -DTRAVIS=ON
 fi
 cmake --build build

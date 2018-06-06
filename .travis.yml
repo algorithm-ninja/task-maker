@@ -20,4 +20,4 @@ script:
       /build/tools/compile_and_test.sh
 
 after_success:
-  - ./build/cpp/manager -help
+  - ./build/cpp/task-maker -help
