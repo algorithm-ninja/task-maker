@@ -10,7 +10,7 @@ matrix:
     - env:
        - TOOLCHAIN=ubuntu14.04-gcc7
     - env:
-       - TOOLCHAIN=ubuntu14.04-clang3.5
+       - TOOLCHAIN=ubuntu14.04-clang3.6
     - env:
        - TOOLCHAIN=ubuntu14.04-clang5.0
     - env:
