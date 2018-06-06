@@ -8,6 +8,8 @@ if [ "$CI" != "true" ]; then
 fi
 
 if [ "$TOOLCHAIN" == "archlinux" ]; then
+    python3 -m venv /tmp/venv
+    . /tmp/venv/bin/activate
     cmake -H. -Bbuild -DHUNTER_ENABLED=OFF -DTRAVIS=ON
 else
     . /venv/bin/activate
@@ -15,6 +17,6 @@ else
 fi
 cmake --build build
 
-# yee sudo setup.py install!! it's on a container, so... ¯\_(ツ)_/¯
-sudo python build/python/setup.py install
+python build/python/setup.py install
+
 ( cd build && ctest -VV )
