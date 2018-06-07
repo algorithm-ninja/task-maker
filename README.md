@@ -140,12 +140,12 @@ We support build without Hunter (ie using system packages) only on Arch Linux,
 there are some dependencies to be installed:
 
 - `community/gmock`
-- `community/google-glog`
 - `community/gtest`
 - `extra/protobuf`
 - `aur/cli11`
 - `aur/grpc`
 - `aur/nlohmann-json`
+- `aur/plog`
 
 To compile the project issue:
 ```bash

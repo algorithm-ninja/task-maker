@@ -1,5 +1,5 @@
 #include "sandbox/unix.hpp"
-#include "glog/logging.h"
+#include "plog/Log.h"
 
 #include <fcntl.h>
 #include <spawn.h>
@@ -185,8 +185,10 @@ void Unix::Child() {
     strncat(buf, ": ", 3);                // NOLINT
     strncat(buf, err, kStrErrorBufSize);  // NOLINT
     ssize_t len = strlen(buf);            // NOLINT
-    CHECK(write(pipe_fds_[1], &len, sizeof(len)) == sizeof(len));
-    CHECK(write(pipe_fds_[1], buf, len) == len);  // NOLINT
+    LOG_FATAL_IF(write(pipe_fds_[1], &len, sizeof(len)) != sizeof(len))
+        << "Failed to write to fd";
+    LOG_FATAL_IF(write(pipe_fds_[1], buf, len) != len)
+        << "Failed to write to fd";
     close(pipe_fds_[1]);
     _Exit(1);
   };
@@ -291,8 +293,9 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
   ssize_t error_len = 0;
   if (read(pipe_fds_[0], &error_len, sizeof(error_len)) == sizeof(error_len)) {
     char error[PIPE_BUF] = {};
-    CHECK(read(pipe_fds_[0], error, error_len) == error_len);  // NOLINT
-    *error_msg = error;                                        // NOLINT
+    LOG_FATAL_IF(read(pipe_fds_[0], error, error_len) != error_len)
+        << "Failed to read from fd";
+    *error_msg = error;
     return false;
   }
   std::atomic<int64_t> memory_usage{0};

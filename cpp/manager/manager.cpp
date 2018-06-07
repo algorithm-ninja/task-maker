@@ -3,7 +3,6 @@
 
 #include "core/core.hpp"
 #include "event_queue.hpp"
-#include "glog/logging.h"
 #include "grpc++/security/server_credentials.h"
 #include "grpc++/server.h"
 #include "grpc++/server_builder.h"
@@ -11,6 +10,7 @@
 #include "manager/evaluation_info.hpp"
 #include "manager/ioi_format/ioi_format.hpp"
 #include "manager/terry_format/terry_format.hpp"
+#include "plog/Log.h"
 #include "proto/manager.grpc.pb.h"
 #include "util/flags.hpp"
 
@@ -28,14 +28,14 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
                             const proto::EvaluateTaskRequest* request,
                             grpc::ServerWriter<proto::Event>* writer) override {
     std::lock_guard<std::mutex> lck(requests_mutex_);
-    VLOG(3) << request->DebugString();
+    LOGV << request->DebugString();
 
     int64_t current_id = evaluation_id_counter_++;
     EvaluationInfo info = manager::setup_request(*request);
 
     if (info.queue->IsStopped()) {
       info.queue->BindWriterUnlocked(writer);
-      LOG(ERROR) << "Deleted request " << current_id;
+      LOGE << "Deleted request " << current_id;
       return grpc::Status::OK;
     }
 
@@ -49,14 +49,14 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
       const proto::EvaluateTerryTaskRequest* request,
       grpc::ServerWriter<proto::Event>* writer) override {
     std::lock_guard<std::mutex> lck(requests_mutex_);
-    VLOG(3) << request->DebugString();
+    LOGV << request->DebugString();
 
     int64_t current_id = evaluation_id_counter_++;
     EvaluationInfo info = manager::setup_request(*request);
 
     if (info.queue->IsStopped()) {
       info.queue->BindWriterUnlocked(writer);
-      LOG(ERROR) << "Deleted request " << current_id;
+      LOGE << "Deleted request " << current_id;
       return grpc::Status::OK;
     }
 
@@ -68,9 +68,9 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
   grpc::Status CleanTask(grpc::ServerContext* /*context*/,
                          const proto::CleanTaskRequest* request,
                          proto::CleanTaskResponse* /*response*/) override {
-    LOG(INFO) << "Cleaning task directories:\n"
-              << "\t" << request->store_dir() << "\n"
-              << "\t" << request->temp_dir();
+    LOGI << "Cleaning task directories:\n"
+         << "\t" << request->store_dir() << "\n"
+         << "\t" << request->temp_dir();
     try {
       util::File::RemoveTree(request->store_dir());
     } catch (const std::system_error&) {
@@ -88,7 +88,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     if (running_.count(request_id) == 0)
       return grpc::Status(grpc::StatusCode::NOT_FOUND, "No such id");
 
-    LOG(WARNING) << "Requesting to stop request " << request_id;
+    LOGW << "Requesting to stop request " << request_id;
     running_[request_id].core->Stop();
     running_[request_id].queue->Stop();
     return grpc::Status::OK;
@@ -96,10 +96,12 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
   grpc::Status Shutdown(grpc::ServerContext* /*context*/,
                         const proto::ShutdownRequest* request,
                         proto::ShutdownResponse* /*response*/) override {
-    LOG(WARNING) << "Requesting to shutdown the server";
-    if (!running_.empty()) LOG(WARNING) << "There is an execution running";
+    LOGW << "Requesting to shutdown the server";
+    if (!running_.empty()) {
+      LOGW << "There is an execution running";
+    }
     if (request->force()) {
-      LOG(WARNING) << " -- FORCING SHUTDOWN --";
+      LOGW << " -- FORCING SHUTDOWN --";
       for (auto& kw : running_) {
         if (kw.second.is_remote)
           return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION,
@@ -186,27 +188,29 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
     poller.join();
 
     // if the queue is empty and stopped we can safely remove the request
-    CHECK(queue->IsStopped()) << "Core exited but the queue is not stopped";
+    LOG_FATAL_IF(!queue->IsStopped())
+        << "Core exited but the queue is not stopped";
     running_[current_id].running_thread.join();
     running_.erase(current_id);
-    LOG(INFO) << "Deallocated request " << current_id;
+    LOGI << "Deallocated request " << current_id;
     return grpc::Status::OK;
   }
 };
 }  // namespace manager
 
 int manager_main() {
-  std::string server_address = "127.0.0.1:" + std::to_string(FLAGS_manager_port);
+  std::string server_address =
+      "127.0.0.1:" + std::to_string(FLAGS_manager_port);
   manager::TaskMakerManagerImpl service;
   grpc::ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.RegisterService(&service);
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   service.RegisterServer(server.get());
-  LOG(INFO) << "Server listening on " << server_address;
+  LOGI << "Server listening on " << server_address;
   std::thread serving_thread([&]() { server->Wait(); });
   do_exit.get_future().wait();
-  LOG(WARNING) << "Shutting down the server, goodbye";
+  LOGW << "Shutting down the server, goodbye";
   server->Shutdown();
   serving_thread.join();
   return 0;

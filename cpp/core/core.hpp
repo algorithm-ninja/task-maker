@@ -11,7 +11,7 @@
 #include "core/file_id.hpp"
 #include "core/running_task.hpp"
 #include "core/task_status.hpp"
-#include "glog/logging.h"
+#include "plog/Log.h"
 
 namespace core {
 
@@ -91,7 +91,7 @@ class Core {
 
   util::SHA256_t GetFile(int64_t id) {
     std::lock_guard<std::mutex> lck(file_lock_);
-    CHECK(known_files_.count(id) != 0u);
+    LOG_FATAL_IF(known_files_.count(id) == 0u) << "Getting non existing file";
     return known_files_.at(id);
   }
 

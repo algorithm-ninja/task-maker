@@ -1,5 +1,5 @@
 #include "executor/local_executor.hpp"
-#include "glog/logging.h"
+#include "plog/Log.h"
 #include "sandbox/sandbox_manager.hpp"
 #include "util/file.hpp"
 
@@ -37,9 +37,9 @@ proto::Response LocalExecutor::Execute(
     cmdline_file << cmdline << std::endl;
   }
 
-  VLOG(2) << "Executing:\n"
-          << "\tCommand:        " << cmdline << "\n"
-          << "\tInside sandbox: " << tmp.Path();
+  LOGV << "Executing:\n"
+       << "\tCommand:        " << cmdline << "\n"
+       << "\tInside sandbox: " << tmp.Path();
 
   std::string sandbox_dir = util::File::JoinPath(tmp.Path(), kBoxDir);
   util::File::MakeDirs(sandbox_dir);

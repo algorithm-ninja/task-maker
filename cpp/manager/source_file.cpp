@@ -1,8 +1,8 @@
 #include <sys/stat.h>
 #include <memory>
 
-#include "glog/logging.h"
 #include "manager/source_file.hpp"
+#include "plog/Log.h"
 #include "util/which.hpp"
 
 namespace manager {
@@ -208,7 +208,7 @@ CompiledSourceFile::CompiledSourceFile(
         if (!source.write_bin_to().empty()) {
           executable_->WriteTo(source.write_bin_to());
           chmod(source.write_bin_to().c_str(), S_IRUSR | S_IXUSR);
-          LOG(INFO) << "Compiled program copied to " << source.write_bin_to();
+          LOGI << "Compiled program copied to " << source.write_bin_to();
         }
       }
     }
@@ -257,7 +257,7 @@ NotCompiledSourceFile::NotCompiledSourceFile(
           if (!source.write_bin_to().empty()) {
             executable_->WriteTo(source.write_bin_to());
             chmod(source.write_bin_to().c_str(), S_IRUSR | S_IXUSR);
-            LOG(INFO) << "Source program copied to " << source.write_bin_to();
+            LOGI << "Source program copied to " << source.write_bin_to();
           }
         }
         return true;

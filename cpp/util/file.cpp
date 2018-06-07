@@ -1,5 +1,5 @@
 #include "util/file.hpp"
-#include "glog/logging.h"
+#include "plog/Log.h"
 #include "util/sha256.hpp"
 
 #include <cstdlib>
@@ -50,7 +50,7 @@ bool OsMakeImmutable(const std::string& path) {
 const size_t max_path_len = 1 << 15;
 std::string OsTempDir(const std::string& path) {
   std::string tmp = util::File::JoinPath(path, "XXXXXX");
-  CHECK_LT(tmp.size(), max_path_len);
+  LOG_FATAL_IF(tmp.size() >= max_path_len) << "Path too long";
   char data[max_path_len + 1];
   data[0] = 0;
   strncat(data, tmp.c_str(), max_path_len - 1);  // NOLINT

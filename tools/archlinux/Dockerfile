@@ -33,7 +33,7 @@ RUN yaourt -Syua --needed --noconfirm \
     sudo pacman -Scc --noconfirm
 
 RUN yaourt -Syua --needed --noconfirm \
-        cli11 && \
+        cli11 plog && \
     sudo pacman -Scc --noconfirm
 
 RUN sudo mkdir -p /build

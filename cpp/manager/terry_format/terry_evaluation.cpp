@@ -1,5 +1,5 @@
 #include "manager/terry_format/terry_evaluation.hpp"
-#include "glog/logging.h"
+#include "plog/Log.h"
 #include "nlohmann/json.hpp"
 
 namespace manager {
@@ -19,7 +19,7 @@ TerryEvaluation::TerryEvaluation(EventQueue* queue, core::Core* core,
 void TerryEvaluation::Evaluate(SourceFile* solution, int64_t seed) {
   std::string name = solution->Name();
   std::string s_seed = std::to_string(seed);
-  LOG(INFO) << "Evaluating " << name << " with seed " << seed;
+  LOGI << "Evaluating " << name << " with seed " << seed;
 
   core::Execution* generation = generation_->GetGenerator()->execute(
       "Generation of input for solution " + name + " with seed " + s_seed,

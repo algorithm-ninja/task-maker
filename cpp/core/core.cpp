@@ -60,8 +60,7 @@ void Core::ThreadBody() {
     ready_tasks_.pop();
     if (!task.job->execution->callback_(
             TaskStatus::Start(task.job->execution))) {
-      LOG(ERROR) << "Failed to start job: "
-                 << task.job->execution->Description();
+      LOGE << "Failed to start job: " << task.job->execution->Description();
       quitting_ = true;
       failed_ = true;
       task_ready_.notify_all();
@@ -112,12 +111,12 @@ void Core::BuildDependencyGraph() {
     else
       waiting_jobs_.insert(job.get());
   }
-  if (VLOG_IS_ON(2)) {
+  IF_LOG(plog::verbose) {
     for (const auto& job : jobs_) {
-      VLOG(2) << job->execution->Description();
+      LOGV << job->execution->Description();
       for (auto id : job->execution->Produces()) {
         for (auto next : dependents_[id])
-          VLOG(2) << "  - [" << id << "] " << next->execution->Description();
+          LOGV << "  - [" << id << "] " << next->execution->Description();
       }
     }
   }
@@ -160,7 +159,7 @@ void Core::MarkAsFailed(int64_t file_id) {
 bool Core::LoadInitialFiles() {
   for (const auto& file : files_to_load_) {
     if (!file->callback_(TaskStatus::Start(file.get()))) {
-      LOG(ERROR) << "Failed to start loading: " << file->Description();
+      LOGE << "Failed to start loading: " << file->Description();
       return false;
     }
     try {
@@ -168,13 +167,13 @@ bool Core::LoadInitialFiles() {
         SetFile(id, hash);
       });
       if (!file->callback_(TaskStatus::Success(file.get()))) {
-        LOG(ERROR) << "Failed to complete loading: " << file->Description();
+        LOGE << "Failed to complete loading: " << file->Description();
         return false;
       }
       MarkAsSuccessful(file->ID());
     } catch (const std::exception& exc) {
       if (!file->callback_(TaskStatus::Failure(file.get(), exc.what()))) {
-        LOG(ERROR) << "Failed loading: " << file->Description();
+        LOGE << "Failed loading: " << file->Description();
         return false;
       }
       MarkAsFailed(file->ID());
@@ -184,7 +183,7 @@ bool Core::LoadInitialFiles() {
 }
 
 bool Core::ProcessTaskCompleted(RunningTask* task) {
-  VLOG(1) << "Task completed: " << task->info.description;
+  LOGV << "Task completed: " << task->info.description;
   TaskStatus answer = task->future.get();
   Job* job = task->job;
   switch (answer.event) {
@@ -197,21 +196,21 @@ bool Core::ProcessTaskCompleted(RunningTask* task) {
       else
         MarkAsFailed(job);
       if (!job->execution->callback_(answer)) {
-        LOG(ERROR) << "Task success callback failed: "
-                   << job->execution->Description();
+        LOGE << "Task success callback failed: "
+             << job->execution->Description();
         return false;
       }
       break;
     case TaskStatus::FAILURE:
       MarkAsFailed(job);
       if (!job->execution->callback_(answer)) {
-        LOG(ERROR) << "Task failed: " << job->execution->Description() << "\n"
-                   << job->execution->response_.DebugString();
+        LOGE << "Task failed: " << job->execution->Description() << "\n"
+             << job->execution->response_.DebugString();
         return false;
       }
       break;
     default:
-      LOG(FATAL) << "Invalid event type: " << answer.type;
+      LOGF << "Invalid event type: " << answer.type;
       return false;
   }
   return true;

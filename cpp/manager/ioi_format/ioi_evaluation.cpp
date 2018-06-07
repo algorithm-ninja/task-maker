@@ -1,5 +1,5 @@
 #include "manager/ioi_format/ioi_evaluation.hpp"
-#include "glog/logging.h"
+#include "plog/Log.h"
 #include "util/which.hpp"
 
 namespace manager {
@@ -26,7 +26,7 @@ IOIEvaluation::IOIEvaluation(EventQueue* queue, core::Core* core,
 }
 
 void IOIEvaluation::Evaluate(SourceFile* solution) {
-  LOG(INFO) << "Evaluating " << solution->Name();
+  LOGI << "Evaluating " << solution->Name();
   std::string name = solution->Name();
   status_[name].task_score = -1;  // assuming you cannot make negative points
 

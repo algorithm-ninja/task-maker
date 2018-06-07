@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "executor/local_executor.hpp"
-#include "glog/logging.h"
+#include "plog/Log.h"
 #include "grpc++/channel.h"
 #include "grpc++/create_channel.h"
 #include "proto/server.grpc.pb.h"
@@ -18,7 +18,7 @@ void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
       stream(stub->GetWork(&context));
   proto::Request request;
   while (stream->Read(&request)) {
-    LOG(INFO) << "[" << name << "] Got work: " << request.executable();
+    LOGI << "[" << name << "] Got work: " << request.executable();
     std::unique_ptr<executor::Executor> executor{new executor::LocalExecutor(
         FLAGS_store_directory, FLAGS_temp_directory)};
     proto::Response response;
@@ -41,24 +41,24 @@ void DoWork(proto::TaskMakerServer::Stub* stub, const std::string& name) {
           std::bind(&executor::Executor::GetFile, executor.get(), _1, _2));
     }
     if (!stream->Write(response)) break;
-    LOG(INFO) << "[" << name << "] Done";
+    LOGI << "[" << name << "] Done";
   }
   grpc::Status status = stream->Finish();
-  LOG(ERROR) << "[" << name << "] DoWork: " << status.error_message();
+  LOGE << "[" << name << "] DoWork: " << status.error_message();
 }
 
 void worker(const std::string& server, const std::string& name) {
   while (true) {
-    LOG(INFO) << "[" << name << "] Connecting...";
+    LOGI << "[" << name << "] Connecting...";
     std::shared_ptr<grpc::Channel> channel =
         grpc::CreateChannel(server, grpc::InsecureChannelCredentials());
     if (channel->GetState(/* try_to_connect = */ true) ==
         GRPC_CHANNEL_SHUTDOWN) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
-      LOG(ERROR) << "Connection failed";
+      LOGE << "Connection failed";
       continue;
     }
-    LOG(INFO) << "[" << name << "] Connected";
+    LOGI << "[" << name << "] Connected";
     std::unique_ptr<proto::TaskMakerServer::Stub> stub(
         proto::TaskMakerServer::NewStub(channel));
     grpc::ClientContext context;
@@ -68,7 +68,7 @@ void worker(const std::string& server, const std::string& name) {
 }
 
 int worker_main() {
-  CHECK_NE(FLAGS_server, "") << "You need to specify a server!";
+  LOG_FATAL_IF(FLAGS_server.empty()) << "You need to specify a server!";
 
   if (FLAGS_num_cores == 0)
     FLAGS_num_cores = std::thread::hardware_concurrency();

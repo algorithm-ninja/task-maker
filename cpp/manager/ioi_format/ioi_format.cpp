@@ -45,7 +45,7 @@ EvaluationInfo setup_request(const proto::EvaluateTaskRequest& request) {
       evaluation->Evaluate(info.source_files[source.path()].get());
     }
   } catch (std::exception& ex) {
-    LOG(ERROR) << "Failed to prepare core: " << ex.what();
+    LOGE << "Failed to prepare core: " << ex.what();
     info.queue->FatalError(std::string("Failed to start the core! ") +
                            ex.what());
     info.queue->Stop();
@@ -59,13 +59,13 @@ void run_core(const proto::EvaluateTaskRequest& request, int64_t current_id,
   (*running)[current_id].running_thread = std::thread([request, current_id,
                                                        running] {
     EvaluationInfo& info = (*running)[current_id];
-    LOG(INFO) << "Starting new core for request " << current_id;
+    LOGI << "Starting new core for request " << current_id;
     try {
       if (info.core->Run()) {
-        LOG(INFO) << "The core for request " << current_id << " has succeeded";
+        LOGI << "The core for request " << current_id << " has succeeded";
         info.queue->Stop();
         if (request.dry_run()) {
-          LOG(INFO) << "Dry-run mode, inputs/outputs/checker not saved";
+          LOGI << "Dry-run mode, inputs/outputs/checker not saved";
           return;
         }
         auto* generation =
@@ -76,12 +76,12 @@ void run_core(const proto::EvaluateTaskRequest& request, int64_t current_id,
         generation->WriteOutputs(request);
       } else {
         info.queue->FatalError("The core failed!");
-        LOG(WARNING) << "The core for request " << current_id << " has failed";
+        LOGW << "The core for request " << current_id << " has failed";
         info.queue->Stop();
       }
     } catch (const std::exception& ex) {
-      LOG(WARNING) << "The core for request " << current_id
-                   << " has failed with an excetpion: " << ex.what();
+      LOGW << "The core for request " << current_id
+           << " has failed with an excetpion: " << ex.what();
       info.queue->FatalError(std::string("The core failed! ") + ex.what());
       info.queue->Stop();
     }

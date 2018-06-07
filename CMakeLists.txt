@@ -11,8 +11,8 @@ include(HunterGate)
 include(ThreadSanitizer)
 
 HunterGate(
-    URL "https://github.com/edomora97/hunter/archive/v0.22.4-p2.tar.gz"
-    SHA1 "25f8747dbc699fe1095eb698956da042ee0eb19d"
+    URL "https://github.com/edomora97/hunter/archive/v0.22.4-p3.tar.gz"
+    SHA1 "9387a2425ce1619ae5fc0e02554e3235742a5869"
     # Needed to compile gRPC because it needs -fPIC
     FILEPATH ${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake
 )
@@ -50,10 +50,10 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 # if hunter is disabled all these lines are noop
 hunter_add_package(gRPC)
 hunter_add_package(GTest)
-hunter_add_package(glog)
 hunter_add_package(nlohmann_json)
 hunter_add_package(Protobuf)
 hunter_add_package(CLI11)
+hunter_add_package(plog)
 
 # these finders are bundled with cmake
 find_package(GTest REQUIRED)
@@ -62,9 +62,9 @@ find_package(Protobuf REQUIRED)
 # these finders are provided by hunter, when hunter is disabled the ones in cmake are used
 find_package(gRPC CONFIG REQUIRED)
 find_package(GMock CONFIG REQUIRED)
-find_package(glog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(CLI11 CONFIG REQUIRED)
+find_package(plog CONFIG REQUIRED)
 
 include(Protobuf)
 include(GRPC)

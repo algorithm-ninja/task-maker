@@ -18,6 +18,8 @@ extern std::string FLAGS_address;
 extern int32_t FLAGS_manager_port;
 extern int32_t FLAGS_server_port;
 
+extern int32_t FLAGS_verbose;
+
 namespace util {
 extern CLI::App* manager_parser;
 extern CLI::App* server_parser;

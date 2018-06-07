@@ -9,7 +9,7 @@ add_library(cpp_util
 target_include_directories(cpp_util PUBLIC .)
 target_link_libraries(cpp_util
   proto_cpp
-  glog::glog
+  plog::plog
   CLI11::CLI11
 )
 # this flag is needed on travis

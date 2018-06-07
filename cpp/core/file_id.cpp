@@ -1,5 +1,5 @@
 #include "core/file_id.hpp"
-#include "glog/logging.h"
+#include "plog/Log.h"
 #include "util/file.hpp"
 
 namespace core {
@@ -16,7 +16,7 @@ std::string FileID::Contents(int64_t size_limit) {
   std::string source_path;
   {
     std::unique_lock<std::mutex> lck(hash_mutex_);
-    CHECK(!hash_.isZero());
+    LOG_FATAL_IF(hash_.isZero()) << "Zero hash detected";
     source_path = util::File::SHAToPath(store_directory_, hash_);
   }
   util::File::Read(
@@ -37,7 +37,7 @@ void FileID::Load(
   {
     std::unique_lock<std::mutex> lck(hash_mutex_);
     hash_ = util::File::Hash(path_);
-    LOG(INFO) << "Loading file " << path_ << " into hash " << hash_.Hex();
+    LOGI << "Loading file " << path_ << " into hash " << hash_.Hex();
     util::File::Copy(path_, util::File::SHAToPath(store_directory_, hash_));
   }
   set_hash(ID(), hash_);
