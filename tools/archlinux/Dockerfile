@@ -32,6 +32,10 @@ RUN yaourt -Syua --needed --noconfirm \
         grpc nlohmann-json-bin && \
     sudo pacman -Scc --noconfirm
 
+RUN yaourt -Syua --needed --noconfirm \
+        cli11 && \
+    sudo pacman -Scc --noconfirm
+
 RUN sudo mkdir -p /build
 
 WORKDIR /build

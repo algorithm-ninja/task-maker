@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "executor/local_executor.hpp"
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "grpc++/channel.h"
 #include "grpc++/create_channel.h"

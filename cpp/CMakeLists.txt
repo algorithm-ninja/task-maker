@@ -4,12 +4,13 @@ add_library(cpp_util
   util/file.cpp
   util/sha256.cpp
   util/which.cpp
+  util/flags.cpp
 )
 target_include_directories(cpp_util PUBLIC .)
 target_link_libraries(cpp_util
   proto_cpp
   glog::glog
-  gflags
+  CLI11::CLI11
 )
 # this flag is needed on travis
 if (TRAVIS)
@@ -119,7 +120,6 @@ add_executable(task-maker
   manager/manager.cpp
   remote/server.cpp
   remote/worker.cpp
-  util/flags.cpp
   main.cpp
 )
 target_link_libraries(task-maker

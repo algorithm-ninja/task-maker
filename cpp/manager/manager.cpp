@@ -3,7 +3,6 @@
 
 #include "core/core.hpp"
 #include "event_queue.hpp"
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "grpc++/security/server_credentials.h"
 #include "grpc++/server.h"
@@ -197,7 +196,7 @@ class TaskMakerManagerImpl : public proto::TaskMakerManager::Service {
 }  // namespace manager
 
 int manager_main() {
-  std::string server_address = "127.0.0.1:" + std::to_string(FLAGS_port);
+  std::string server_address = "127.0.0.1:" + std::to_string(FLAGS_manager_port);
   manager::TaskMakerManagerImpl service;
   grpc::ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());

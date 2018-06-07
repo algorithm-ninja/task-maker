@@ -1,3 +1,4 @@
+#include "glog/logging.h"
 #include "manager/manager.hpp"
 #include "remote/server.hpp"
 #include "remote/worker.hpp"
@@ -7,11 +8,10 @@
 #include "util/version.hpp"
 
 int main(int argc, char** argv) {
-  gflags::SetUsageMessage("task-maker binary main command");
-  gflags::SetVersionString(util::version);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  util::parse_flags(argc, argv);
   if (FLAGS_daemon) util::daemonize(FLAGS_pidfile);
-  if (FLAGS_mode == "manager") {
+
+  if (*util::manager_parser) {
     sandbox::SandboxManager::Start();
     google::InitGoogleLogging(argv[0]);  // NOLINT
     google::InstallFailureSignalHandler();
@@ -23,12 +23,12 @@ int main(int argc, char** argv) {
       sandbox::SandboxManager::Stop();
     }
   }
-  if (FLAGS_mode == "server") {
+  if (*util::server_parser) {
     google::InitGoogleLogging(argv[0]);  // NOLINT
     google::InstallFailureSignalHandler();
     return server_main();
   }
-  if (FLAGS_mode == "worker") {
+  if (*util::worker_parser) {
     sandbox::SandboxManager::Start();
     google::InitGoogleLogging(argv[0]);  // NOLINT
     google::InstallFailureSignalHandler();
@@ -40,5 +40,4 @@ int main(int argc, char** argv) {
       sandbox::SandboxManager::Stop();
     }
   }
-  fprintf(stderr, "Invalid program mode: %s\n", FLAGS_mode.c_str());
 }

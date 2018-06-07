@@ -17,8 +17,7 @@ def get_task_maker_path():
 def spawn_manager(port: int) -> None:
     manager = get_task_maker_path()
     subprocess.run(
-        [manager, "-mode", "manager", "-port",
-         str(port), "-daemon"],
+        [manager, "manager", "--port", str(port), "--daemon"],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL)
@@ -49,18 +48,18 @@ def became_manager(args):
     manager_args = args.run_manager
     os.execv(
         get_task_maker_path(),
-        ["task-maker", "-mode", "manager", "-port", "7071"] + manager_args)
+        ["task-maker", "manager", "--port", "7071"] + manager_args)
 
 
 def became_server(args):
     print("Spawning server")
     server_args = args.run_server
     os.execv(get_task_maker_path(),
-             ["task-maker", "-mode", "server"] + server_args)
+             ["task-maker", "server"] + server_args)
 
 
 def became_worker(args):
     print("Spawning worker")
     worker_args = args.run_worker
     os.execv(get_task_maker_path(),
-             ["task-maker", "-mode", "worker"] + worker_args)
+             ["task-maker", "worker"] + worker_args)

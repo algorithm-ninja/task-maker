@@ -1,6 +1,7 @@
 #include <future>
 #include <queue>
 
+#include "glog/logging.h"
 #include "grpc++/security/server_credentials.h"
 #include "grpc++/server.h"
 #include "grpc++/server_builder.h"
@@ -160,7 +161,7 @@ class TaskMakerServerImpl : public proto::TaskMakerServer::Service {
 };
 
 int server_main() {
-  std::string server_address = FLAGS_address + ":" + std::to_string(FLAGS_port);
+  std::string server_address = FLAGS_address + ":" + std::to_string(FLAGS_server_port);
   TaskMakerServerImpl service(FLAGS_store_directory);
   grpc::ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
