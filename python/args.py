@@ -2,6 +2,7 @@
 
 import argparse
 import os.path
+from enum import Enum
 
 from manager_pb2 import ALL, GENERATION, NOTHING
 from task_pb2 import DEFAULT, X86_64, I686
@@ -11,11 +12,32 @@ from task_maker.uis.print_ui import PrintUI
 from task_maker.uis.silent_ui import SilentUI
 from task_maker.version import TASK_MAKER_VERSION
 
-UIS = {"curses": CursesUI, "print": PrintUI, "silent": SilentUI}
 
-CACHES = {"all": ALL, "generation": GENERATION, "nothing": NOTHING}
+class UIS(Enum):
+    curses = CursesUI
+    print = PrintUI
+    silent = SilentUI
 
-ARCHS = {"default": DEFAULT, "x86-64": X86_64, "i686": I686}
+class CACHES(Enum):
+    all = ALL
+    generation = GENERATION
+    nothing = NOTHING
+
+
+class ARCHS(Enum):
+    default = DEFAULT
+    x86_64 = X86_64
+    i686 = I686
+
+
+for cls in [UIS, CACHES, ARCHS]:
+    def from_string(cls, name):
+        try:
+            return cls[name]
+        except:
+            raise ValueError()
+    cls.__new__ = from_string
+    cls.__str__ = lambda self: self.name
 
 
 def _validate_num_cores(num: str) -> int:
@@ -26,21 +48,6 @@ def _validate_num_cores(num: str) -> int:
         return int(num)
     except ValueError:
         raise argparse.ArgumentTypeError(error_message)
-
-
-def _validate_cache_mode(mode: str) -> int:
-    try:
-        return CACHES[mode]
-    except ValueError:
-        raise argparse.ArgumentTypeError("Not valid cache mode %s" % mode)
-
-
-def _validate_arch(arch: str) -> int:
-    try:
-        return ARCHS[arch]
-    except ValueError:
-        raise argparse.ArgumentTypeError(
-            "Not valid target architecture %s" % arch)
 
 
 def add_generic_group(parser: argparse.ArgumentParser):
@@ -56,15 +63,17 @@ def add_generic_group(parser: argparse.ArgumentParser):
         default=2)
     group.add_argument(
         "--ui",
-        help="UI to use (%s)" % ("|".join(UIS.keys())),
-        choices=UIS.keys(),
+        help="UI to use",
+        choices=list(UIS),
+        type=UIS,
         action="store",
         default="curses")
     group.add_argument(
         "--cache",
-        help="Cache policy to use (%s)" % ("|".join(CACHES.keys())),
+        help="Cache policy to use",
         action="store",
-        type=_validate_cache_mode,
+        choices=list(CACHES),
+        type=CACHES,
         default="all")
     group.add_argument(
         "--dry-run",
@@ -172,10 +181,10 @@ def add_terry_group(parser: argparse.ArgumentParser):
     group = parser.add_argument_group("Terry options")
     group.add_argument(
         "--arch",
-        help="Architecture to target the managers in Terry format (%s)" %
-        "|".join(ARCHS.keys()),
+        help="Architecture to target the managers in Terry format",
         action="store",
-        type=_validate_arch,
+        choices=list(ARCHS),
+        type=ARCHS,
         default="default")
 
     group.add_argument(
@@ -188,7 +197,8 @@ def add_terry_group(parser: argparse.ArgumentParser):
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="The new cmsMake!")
-    parser.add_argument("--version", action="version", version=TASK_MAKER_VERSION)
+    parser.add_argument("--version", action="version",
+                        version=TASK_MAKER_VERSION)
     add_generic_group(parser)
     add_remote_group(parser)
     add_execution_group(parser)

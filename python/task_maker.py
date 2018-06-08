@@ -10,11 +10,10 @@ from typing import Any
 from manager_pb2 import StopRequest, CleanTaskRequest, ShutdownRequest
 
 from task_maker import ioi_format, terry_format
-from task_maker.args import get_parser, UIS
+from task_maker.args import get_parser
 from task_maker.detect_format import find_task_dir
 from task_maker.manager import get_manager, became_manager, became_server, \
     became_worker
-from task_maker.version import TASK_MAKER_VERSION
 
 
 def manager_clean(args):
@@ -92,7 +91,7 @@ def main() -> None:
     else:
         raise ValueError("Format %s not supported" % format)
 
-    ui = UIS[args.ui](solutions, format)
+    ui = args.ui.value(solutions, format)
 
     if format == "ioi":
         ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))

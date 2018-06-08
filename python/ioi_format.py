@@ -244,7 +244,7 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
         request.write_inputs_to[testcase] = "input/input%d.txt" % testcase
         request.write_outputs_to[testcase] = "output/output%d.txt" % testcase
     request.write_checker_to = "cor/checker"
-    request.cache_mode = args.cache
+    request.cache_mode = args.cache.value
     if args.num_cores:
         request.num_cores = args.num_cores
     request.dry_run = args.dry_run

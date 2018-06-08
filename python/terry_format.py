@@ -103,7 +103,7 @@ def get_request(args: argparse.Namespace):
         request.solutions.extend([terry_solution])
     request.store_dir = absolutize_path(args.store_dir)
     request.temp_dir = absolutize_path(args.temp_dir)
-    request.cache_mode = args.cache
+    request.cache_mode = args.cache.value
     if args.num_cores:
         request.num_cores = args.num_cores
     request.dry_run = args.dry_run
