@@ -26,13 +26,13 @@ def detect_format(task_dir: str):
 
 
 def is_tm_format(task_dir: str):
-    return exists(exists(join(task_dir, "gen", "cases.gen")))
+    return exists(join(task_dir, "gen", "cases.gen"))
 
 
 def is_ioi_format(task_dir: str):
     if isdir(join(task_dir, "gen")):
         if exists(join(task_dir, "gen", "GEN")) and \
-                not exists(exists(join(task_dir, "gen", "cases.gen"))):
+                not exists(join(task_dir, "gen", "cases.gen")):
             return True
         else:
             return False

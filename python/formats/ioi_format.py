@@ -75,7 +75,6 @@ def get_official_solution() -> Optional[str]:
 def gen_testcases(
         copy_compiled: bool) -> Tuple[Optional[str], Dict[int, Subtask]]:
     subtasks = {}  # type: Dict[int, Subtask]
-    official_solution = None  # type: Optional[str]
 
     def create_subtask(subtask_num: int, testcases: Dict[int, TestCase],
                        score: float) -> None:

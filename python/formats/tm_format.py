@@ -3,6 +3,7 @@ import argparse
 import os.path
 from typing import List, IO, Dict
 from typing import Optional
+import shlex
 
 from manager_pb2 import EvaluateTaskRequest
 from task_maker.absolutize import absolutize_request
@@ -121,7 +122,7 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
             return False
 
     def parse_command(line: str):
-        return filter(bool, line[1:].strip().split(" "))
+        return shlex.split(line[1:])
 
     def process_GEN(args):
         nonlocal default_gen, current_gen
@@ -313,7 +314,7 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
                                  (cmd, line, lineno))
         # a simple testcase
         else:
-            process_TESTCASE(list(filter(bool, line.strip().split(" "))))
+            process_TESTCASE(shlex.split(line))
     return subtasks
 
 
