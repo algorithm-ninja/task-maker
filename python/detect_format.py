@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from os.path import join, isdir, dirname
+from os.path import join, isdir, dirname, exists
 
 
 def find_task_dir(task_dir: str, max_depth: int):
@@ -13,8 +13,11 @@ def find_task_dir(task_dir: str, max_depth: int):
 
 
 def detect_format(task_dir: str):
+    tm = is_tm_format(task_dir)
     ioi = is_ioi_format(task_dir)
     terry = is_terry_format(task_dir)
+    if tm:
+        return "tm"
     if ioi and not terry:
         return "ioi"
     elif terry and not ioi:
@@ -22,8 +25,18 @@ def detect_format(task_dir: str):
     return None
 
 
+def is_tm_format(task_dir: str):
+    return exists(exists(join(task_dir, "gen", "cases.gen")))
+
+
 def is_ioi_format(task_dir: str):
-    if isdir(join(task_dir, "gen")) or isdir(join(task_dir, "input")):
+    if isdir(join(task_dir, "gen")):
+        if exists(join(task_dir, "gen", "GEN")) and \
+                not exists(exists(join(task_dir, "gen", "cases.gen"))):
+            return True
+        else:
+            return False
+    if isdir(join(task_dir, "input")):
         return True
     return False
 

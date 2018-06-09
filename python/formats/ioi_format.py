@@ -182,6 +182,29 @@ def create_task_from_yaml(data: Dict[str, Any]) -> Task:
     return task
 
 
+def get_solutions(solutions, graders) -> List[str]:
+    if solutions:
+        solutions = list_files([
+            sol + "*" if sol.startswith("sol/") else "sol/" + sol + "*"
+            for sol in solutions
+        ])
+    else:
+        solutions = list_files(
+            ["sol/*"], exclude=graders + ["sol/__init__.py"])
+    return solutions
+
+
+def get_checker() -> Optional[str]:
+    checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])
+    if not checkers:
+        checker = None
+    elif len(checkers) == 1:
+        checker = checkers[0]
+    else:
+        raise ValueError("Too many checkers in cor/ folder")
+    return checker
+
+
 def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
     copy_compiled = args.copy_exe
     data = parse_task_yaml()
@@ -191,22 +214,8 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
     task = create_task_from_yaml(data)
 
     graders = list_files(["sol/grader.*"])
-    if args.solutions:
-        solutions = list_files([
-            sol + "*" if sol.startswith("sol/") else "sol/" + sol + "*"
-            for sol in args.solutions
-        ])
-    else:
-        solutions = list_files(
-            ["sol/*"], exclude=graders + ["sol/__init__.py"])
-
-    checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])
-    if not checkers:
-        checker = None
-    elif len(checkers) == 1:
-        checker = checkers[0]
-    else:
-        raise ValueError("Too many checkers in cor/ folder")
+    solutions = get_solutions(args.solutions, graders)
+    checker = get_checker()
 
     official_solution, subtasks = gen_testcases(copy_compiled)
     if official_solution:
