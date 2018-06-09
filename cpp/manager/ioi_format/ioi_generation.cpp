@@ -3,6 +3,9 @@
 namespace manager {
 
 namespace {
+
+static const std::string VALIDATION_INPUT_NAME = "tm_input_file";
+
 void generate_input(
     const proto::TestCase& testcase, int64_t testcase_num, int64_t subtask_num,
     core::Core* core, EventQueue* queue,
@@ -19,8 +22,8 @@ void generate_input(
     const std::string& generator = testcase.generator().path();
     const std::string& validator = testcase.validator().path();
 
-    std::vector<std::string> args(testcase.args().begin(),
-                                  testcase.args().end());
+    std::vector<std::string> args(testcase.generator_args().begin(),
+                                  testcase.generator_args().end());
     core::Execution* gen = (*source_cache)[generator]->execute(
         "Generation of input " + std::to_string(testcase_num), args,
         keep_sandbox);
@@ -62,9 +65,11 @@ void generate_input(
     (*inputs_)[testcase_num] = gen->Stdout();
     queue->GenerationWaiting(testcase_num);
 
+    std::vector<std::string> val_args(testcase.validator_args().begin(),
+                                      testcase.validator_args().end());
     core::Execution* val = (*source_cache)[validator]->execute(
-        "Validation of input " + std::to_string(testcase_num),
-        {"input", std::to_string(subtask_num + 1)}, keep_sandbox);
+        "Validation of input " + std::to_string(testcase_num), val_args,
+        keep_sandbox);
     val->SetCallback([queue,
                       testcase_num](const core::TaskStatus& status) -> bool {
       auto exec = status.execution_info;
@@ -94,7 +99,7 @@ void generate_input(
       val->SetCachingMode(core::Execution::CachingMode::ALWAYS);
     else
       val->SetCachingMode(core::Execution::CachingMode::NEVER);
-    val->Input("input", (*inputs_)[testcase_num]);
+    val->Input(VALIDATION_INPUT_NAME, (*inputs_)[testcase_num]);
     (*validation_)[testcase_num] = val->Stdout();
   } else {
     throw std::logic_error(

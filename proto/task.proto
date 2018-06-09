@@ -42,11 +42,12 @@ message SourceFile {
 
 message TestCase {
   SourceFile generator = 1;
-  repeated string args = 2;
+  repeated string generator_args = 2;
   repeated Dependency extra_deps = 3;
   SourceFile validator = 4;
-  string input_file = 5;
-  string output_file = 6;
+  repeated string validator_args = 5;
+  string input_file = 6;
+  string output_file = 7;
 }
 
 message Subtask {

@@ -22,6 +22,9 @@ from task_maker.sanitize import sanitize_command
 from task_maker.source_file import from_file
 
 
+VALIDATION_INPUT_NAME = "tm_input_file"
+
+
 def list_files(patterns: List[str],
                exclude: Optional[List[str]] = None) -> List[str]:
     if exclude is None:
@@ -114,20 +117,23 @@ def gen_testcases(
             line = line.split("#")[0].strip()
             if not line:
                 continue
+            # a new testcase without subtask
+            if subtask_num < 0:
+                subtask_num = 0
             args = line.split()
             arg_deps = sanitize_command(args)
             testcase.generator.CopyFrom(
                 from_file(generator, copy_compiled and "bin/generator"))
-            testcase.args.extend(args)
+            testcase.generator_args.extend(args)
             testcase.extra_deps.extend(arg_deps)
             testcase.validator.CopyFrom(
                 from_file(validator, copy_compiled and "bin/validator"))
+            # in the old format the subtask number is 1-based
+            testcase.validator_args.extend([VALIDATION_INPUT_NAME,
+                                            str(subtask_num+1)])
         current_testcases[testcase_num] = testcase
         testcase_num += 1
 
-    # if the task has no subtasks, the starting number should be 0
-    if subtask_num == -1:
-        subtask_num = 0
     create_subtask(subtask_num, current_testcases, current_score)
     # Hack for when subtasks are not specified.
     if len(subtasks) == 1 and subtasks[0].max_score == 0:
