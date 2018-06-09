@@ -26,6 +26,19 @@ class TMConstraint:
         self.more_or_equal = more_or_equal
         self.less_or_equal = less_or_equal
 
+    def accept(self, x: float):
+        if self.lower_bound is not None:
+            if self.more_or_equal and x < self.lower_bound:
+                return False
+            if not self.more_or_equal and x <= self.lower_bound:
+                return False
+        if self.upper_bound is not None:
+            if self.less_or_equal and x > self.upper_bound:
+                return False
+            if not self.less_or_equal and x >= self.upper_bound:
+                return False
+        return True
+
     def __repr__(self):
         res = "<Constraint "
         if self.lower_bound is not None:
@@ -177,19 +190,23 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
             current_val = validators[name]
 
     def process_CONSTRAINT(args):
-        # there are 3 cases:
-        # a) L   < XXX
-        # b) XXX < U
-        # c) L   < XXX < U
+        # there are 4 cases:
+        # a) 42  < XXX
+        # b) XXX < 123
+        # c) 42  < XXX < 123
+        # d) XXX > 42
 
         if len(args) not in [3, 5]:
             raise ValueError("Invalid number of arguments passed to "
                              "CONSTRAINT (line %d)" % lineno)
-        if args[1] not in ["<", "<="] or \
+        if args[1] not in ["<", "<=", ">", ">="] or \
                 (len(args) == 5 and args[3] not in ["<", "<="]):
             raise ValueError("Invalid operator passed to CONSTRAINT (line %d)" %
                              lineno)
-        more_or_equal = args[1] == "<="
+        if args[1][0] == "<":
+            more_or_equal = args[1] == "<="
+        else:
+            more_or_equal = args[1] == ">="
         less_or_equal = args[3] == "<=" if len(args) == 5 else False
 
         # case a
@@ -200,7 +217,7 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
             constraint = TMConstraint(args[2], float(args[0]), None,
                                       more_or_equal, False)
         # case b
-        elif len(args) == 3 and is_float(args[2]):
+        elif len(args) == 3 and is_float(args[2]) and args[1][0] == "<":
             if is_float(args[0]):
                 raise ValueError("Expecting variable name in CONSTRAINT"
                                  "(line %d)" % lineno)
@@ -211,8 +228,20 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
             if is_float(args[2]):
                 raise ValueError("Expecting variable name in CONSTRAINT"
                                  "(line %d)" % lineno)
+            lowest_ok = float(args[0]) if more_or_equal else float(args[0]) + 1
+            hiest_ok = float(args[4]) if less_or_equal else float(args[4]) - 1
+            if lowest_ok > hiest_ok:
+                raise ValueError("CONSTRAINT is always false (line %d)" %
+                                 lineno)
             constraint = TMConstraint(args[2], float(args[0]), float(args[4]),
                                       more_or_equal, less_or_equal)
+        # case d
+        elif len(args) == 3 and is_float(args[2]) and args[1][0] == ">":
+            if is_float(args[0]):
+                raise ValueError("Expecting variable name in CONSTRAINT"
+                                 "(line %d)" % lineno)
+            constraint = TMConstraint(args[0], float(args[2]), None,
+                                      more_or_equal, False)
         else:
             raise ValueError("Invalid format for CONSTRAINT (line %d)" % lineno)
 
@@ -261,7 +290,19 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
 
     def add_testcase(args, generator, validator):
         testcase = TMTestcase(args, generator, validator)
-        # TODO perform the constraint check
+        if generator.args:
+            if len(generator.args) != len(args):
+                raise ValueError("Number of params mismatch the definition "
+                                 "(line %d)" % lineno)
+            for name, value in zip(generator.args, args):
+                for constraint in constraints:
+                    if name != constraint.name or not is_float(value):
+                        continue
+                    if not constraint.accept(float(value)):
+                        raise ValueError("Constraint not met: %s when %s=%f "
+                                         "(line %d)" %
+                                         (constraint, name, float(value),
+                                          lineno))
         subtasks[-1].testcases.append(testcase)
 
     def process_RUN(args):
@@ -285,7 +326,7 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
             raise ValueError("No VAL available (line %d)" % lineno)
         add_testcase(args, current_gen, current_val)
 
-    for lineno, line in enumerate(lines):
+    for lineno, line in enumerate(lines, 1):
         # skip empty lines
         if not line:
             continue
