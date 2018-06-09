@@ -9,7 +9,7 @@ from typing import Any
 
 from manager_pb2 import StopRequest, CleanTaskRequest, ShutdownRequest
 
-from task_maker.formats import ioi_format, terry_format
+from task_maker.formats import ioi_format, terry_format, tm_format
 from task_maker.args import get_parser
 from task_maker.detect_format import find_task_dir
 from task_maker.manager import get_manager, became_manager, became_server, \
@@ -83,6 +83,9 @@ def main() -> None:
     if format == "ioi":
         request = ioi_format.get_request(args)
         solutions = [os.path.basename(sol.path) for sol in request.solutions]
+    elif format == "tm":
+        request = tm_format.get_request(args)
+        solutions = [os.path.basename(sol.path) for sol in request.solutions]
     elif format == "terry":
         request = terry_format.get_request(args)
         solutions = [
@@ -93,7 +96,7 @@ def main() -> None:
 
     ui = args.ui.value(solutions, format)
 
-    if format == "ioi":
+    if format == "ioi" or format == "tm":
         ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))
         ui.set_time_limit(request.task.time_limit)
         ui.set_memory_limit(request.task.memory_limit_kb)
@@ -123,7 +126,7 @@ def main() -> None:
     signal.signal(signal.SIGINT, stop_server)
     signal.signal(signal.SIGTERM, stop_server)
 
-    if format == "ioi":
+    if format == "ioi" or format == "tm":
         events = manager.EvaluateTask(request)
     elif format == "terry":
         events = manager.EvaluateTerryTask(request)

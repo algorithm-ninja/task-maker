@@ -271,7 +271,7 @@ class CursesUI(SilentUI):
         pad = curses.newpad(1000, 1000)
         printer = CursesPrinter(pad)
 
-        if self.format == "ioi":
+        if self.format == "ioi" or self.format == "tm":
             self._ioi_ui(pad, printer, stdscr)
         elif self.format == "terry":
             self._terry_ui(pad, printer, stdscr)
@@ -419,7 +419,7 @@ class CursesUI(SilentUI):
         self._print_compilation(self.solutions, "?", printer)
         printer.text("\n")
 
-        if self.format == "ioi":
+        if self.format == "ioi" or self.format == "tm":
             self._ioi_final_status(printer)
         elif self.format == "terry":
             self._terry_final_status(printer)

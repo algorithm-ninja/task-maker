@@ -12,7 +12,7 @@ EXTENSIONS = {
     C: [".c"],
     PASCAL: [".pas"],
     PYTHON: [".py"],
-    BASH: [".sh"],
+    BASH: [".sh", ""],  # TODO(edomora97) add executable format
     RUBY: [".rb"],
     ERLANG: [".erl"],
     RUST: [".rs"],

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os.path
 from typing import Optional
+from distutils.spawn import find_executable
 
 from task_pb2 import SourceFile, DEFAULT
 
@@ -20,6 +21,11 @@ def is_executable(path: str) -> bool:
 
 def from_file(path: str, write_to: Optional[str] = None,
               target_arch=DEFAULT) -> SourceFile:
+    old_path = path
+    if not os.path.exists(path):
+        path = find_executable(path)
+    if not path:
+        raise ValueError("Cannot find %s" % old_path)
     source_file = SourceFile()
     source_file.path = path
     source_file.deps.extend(find_dependency(path))

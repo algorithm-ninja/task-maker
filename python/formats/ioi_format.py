@@ -60,9 +60,20 @@ def get_generator() -> Optional[str]:
     return None
 
 
+def get_validator() -> Optional[str]:
+    for validator in list_files(["gen/validator.*", "gen/valida.*"]):
+        return validator
+    return None
+
+
+def get_official_solution() -> Optional[str]:
+    for sol in list_files(["sol/solution.*", "sol/soluzione.*"]):
+        return sol
+    return None
+
+
 def gen_testcases(
         copy_compiled: bool) -> Tuple[Optional[str], Dict[int, Subtask]]:
-    validator = None  # type: Optional[str]
     subtasks = {}  # type: Dict[int, Subtask]
     official_solution = None  # type: Optional[str]
 
@@ -79,12 +90,10 @@ def gen_testcases(
     generator = get_generator()
     if not generator:
         return load_testcases()
-    for _validator in list_files(["gen/validator.*", "gen/valida.*"]):
-        validator = _validator
+    validator = get_validator()
     if not validator:
         raise RuntimeError("No validator found")
-    for solution in list_files(["sol/solution.*", "sol/soluzione.*"]):
-        official_solution = solution
+    official_solution = get_official_solution()
     if official_solution is None:
         raise RuntimeError("No official solution found")
 
