@@ -9,7 +9,8 @@ from manager_pb2 import EvaluateTerryTaskRequest, TerrySolution
 from task_pb2 import TerryTask, DEFAULT, X86_64, I686
 
 from task_maker.absolutize import absolutize_source_file, absolutize_path
-from task_maker.ioi_format import parse_task_yaml, get_options, list_files
+from task_maker.formats.ioi_format import parse_task_yaml, get_options, \
+    list_files
 from task_maker.source_file import from_file
 
 
@@ -60,18 +61,18 @@ def get_request(args: argparse.Namespace):
 
     task = create_task_from_yaml(data)
 
-    task.generator.CopyFrom(get_manager("generator", args.arch))
+    task.generator.CopyFrom(get_manager("generator", args.arch.value))
     absolutize_source_file(task.generator)
 
-    validator = get_manager("validator", args.arch, optional=True)
+    validator = get_manager("validator", args.arch.value, optional=True)
     if validator:
         task.validator.CopyFrom(validator)
         absolutize_source_file(task.validator)
 
-    task.checker.CopyFrom(get_manager("checker", args.arch))
+    task.checker.CopyFrom(get_manager("checker", args.arch.value))
     absolutize_source_file(task.checker)
 
-    solution = get_manager("solution", args.arch, optional=True)
+    solution = get_manager("solution", args.arch.value, optional=True)
     if solution:
         task.solution.CopyFrom(solution)
         absolutize_source_file(task.solution)

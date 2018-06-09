@@ -7,10 +7,11 @@ import os.path
 import shutil
 import sys
 from typing import List
+from enum import Enum
 
 import pytest
 
-from task_maker.args import UIS
+import task_maker.args
 from task_maker.uis.silent_ui import SilentUI
 from task_maker.task_maker import main
 
@@ -29,7 +30,14 @@ class TestingUI(SilentUI):
 
 
 # inject the testing UI to the valid UIs
-UIS["testing"] = TestingUI
+task_maker.args.UIS = Enum("UIS", {"testing": TestingUI})
+def from_string(cls, name):
+    try:
+        return cls[name]
+    except:
+        raise ValueError()
+task_maker.args.UIS.__new__ = from_string
+task_maker.args.UIS.__str__ = lambda self: self.name
 
 
 def run_tests(task_name, file):

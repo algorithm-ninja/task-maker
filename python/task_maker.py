@@ -9,7 +9,7 @@ from typing import Any
 
 from manager_pb2 import StopRequest, CleanTaskRequest, ShutdownRequest
 
-from task_maker import ioi_format, terry_format
+from task_maker.formats import ioi_format, terry_format
 from task_maker.args import get_parser
 from task_maker.detect_format import find_task_dir
 from task_maker.manager import get_manager, became_manager, became_server, \
