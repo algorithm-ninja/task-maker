@@ -11,8 +11,8 @@ setup(
     name='task_maker',
     version='${PROJECT_VERSION}',
     packages=[
-        'task_maker', 'task_maker.uis', 'task_maker.proto', 'task_maker.bin',
-        'task_maker.venv',
+        'task_maker', 'task_maker.uis', 'task_maker.formats', 'task_maker.proto',
+        'task_maker.bin', 'task_maker.venv',
     ],
     zip_safe=False,
     package_data={
