@@ -29,6 +29,11 @@ def ioi_format_clean(args):
     manager_clean(args)
 
 
+def tm_format_clean(args):
+    tm_format.clean()
+    manager_clean(args)
+
+
 def terry_format_clean(args):
     terry_format.clean()
     manager_clean(args)
@@ -72,6 +77,8 @@ def main() -> None:
     if args.clean:
         if format == "ioi":
             ioi_format_clean(args)
+        elif format == "tm":
+            tm_format_clean(args)
         elif format == "terry":
             terry_format_clean(args)
         else:
