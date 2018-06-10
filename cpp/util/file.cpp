@@ -218,7 +218,7 @@ void File::MakeDirs(const std::string& path) {
 void File::Copy(const std::string& from, const std::string& to, bool overwrite,
                 bool exist_ok) {
   MakeDirs(BaseDir(to));
-  if (OsIsLink(from) || !OsAtomicCopy(from, to, overwrite, exist_ok)) {
+  if (OsIsLink(from) || OsAtomicCopy(from, to, overwrite, exist_ok)) {
     using std::placeholders::_1;
     Write(to, std::bind(Read, from, _1), overwrite, exist_ok);
   }
