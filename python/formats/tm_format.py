@@ -7,13 +7,15 @@ import shlex
 
 from manager_pb2 import EvaluateTaskRequest
 from task_maker.absolutize import absolutize_request
+from task_maker.dependency_finder import find_dependency
 from task_maker.formats import ioi_format
 from task_maker.formats.ioi_format import list_files, parse_task_yaml, \
     create_task_from_yaml, get_solutions, get_checker, get_generator, \
     get_validator, get_official_solution, VALIDATION_INPUT_NAME
+from task_maker.language import grader_from_file
 from task_maker.sanitize import sanitize_command
 from task_maker.source_file import from_file
-from task_pb2 import Subtask, MIN, TestCase
+from task_pb2 import Subtask, MIN, TestCase, GraderInfo, Dependency
 
 
 class TMConstraint:
@@ -509,6 +511,14 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
             st.testcases[testcase_num].CopyFrom(tc)
             testcase_num += 1
         task.subtasks[st_num].CopyFrom(st)
+
+    for grader in graders:
+        info = GraderInfo()
+        info.for_language = grader_from_file(grader)
+        name = os.path.basename(grader)
+        info.files.extend(
+            [Dependency(name=name, path=grader)] + find_dependency(grader))
+        task.grader_info.extend([info])
 
     request = EvaluateTaskRequest()
     request.task.CopyFrom(task)
