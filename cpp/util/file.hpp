@@ -46,6 +46,10 @@ class File {
   static void Copy(const std::string& from, const std::string& to,
                    bool overwrite = false, bool exist_ok = true);
 
+  // Copies from -> to without using hard links.
+  static void HardCopy(const std::string& from, const std::string& to,
+                       bool overwrite = false, bool exist_ok = true);
+
   // Moves a file to a new position. If overwrite is false and exist_ok
   // is true, the original file is deleted anyway.
   static void Move(const std::string& from, const std::string& to,

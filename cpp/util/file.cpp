@@ -215,6 +215,13 @@ void File::MakeDirs(const std::string& path) {
   }
 }
 
+void File::HardCopy(const std::string& from, const std::string& to,
+                    bool overwrite, bool exist_ok) {
+  MakeDirs(BaseDir(to));
+  using std::placeholders::_1;
+  Write(to, std::bind(Read, from, _1), overwrite, exist_ok);
+}
+
 void File::Copy(const std::string& from, const std::string& to, bool overwrite,
                 bool exist_ok) {
   MakeDirs(BaseDir(to));
