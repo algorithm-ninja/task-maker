@@ -446,7 +446,7 @@ def generate_gen_GEN(subtasks: List[TMSubtask]):
     GEN += "# tm-allow-delete\n"
 
     for subtask in subtasks:
-        GEN += "\n#ST: %f\n" % subtask.max_score
+        GEN += "\n#ST: %f\n" % int(subtask.max_score)
         name = ""
         if subtask.name:
             name += " " + subtask.name
