@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+    source /venv/bin/activate
+else
+    source /tmp/venv/bin/activate
+fi
+
 cmake -H. -Bbuild_rel -DHUNTER_ROOT=hunter-root -DCMAKE_BUILD_TYPE=Release
 
 cmake --build build_rel
