@@ -21,7 +21,7 @@ matrix:
       install:
         - brew upgrade python wget cmake
         - brew install rust
-        - python3.6 -m venv /tmp/venv --without-pip
+        - python3 -m venv /tmp/venv --without-pip
         - source /tmp/venv/bin/activate
         - wget -O- https://bootstrap.pypa.io/get-pip.py | python3
         - mkdir /tmp/bin
