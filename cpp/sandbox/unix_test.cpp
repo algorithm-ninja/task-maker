@@ -75,7 +75,7 @@ TEST(UnixTest, TestWaitArg1) {
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.wall_time_millis, 900);
-  EXPECT_LE(info.wall_time_millis, 1500);
+  EXPECT_LE(info.wall_time_millis, 2000);
   EXPECT_LE(info.cpu_time_millis, 300);
   EXPECT_LE(info.sys_time_millis, 300);
 }
@@ -94,7 +94,7 @@ TEST(UnixTest, TestBusyWaitArg1) {
   EXPECT_GE(info.cpu_time_millis + info.sys_time_millis, 900);
   EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 1500);
   EXPECT_GE(info.wall_time_millis, 900);
-  EXPECT_LE(info.wall_time_millis, 1500);
+  EXPECT_LE(info.wall_time_millis, 2000);
   EXPECT_LE(info.sys_time_millis, 500);
 }
 
@@ -156,7 +156,7 @@ TEST(UnixTest, TestWallLimitOk) {
   EXPECT_EQ(info.signal, 0);
   EXPECT_EQ(info.status_code, 0);
   EXPECT_GE(info.wall_time_millis, 900);
-  EXPECT_LE(info.wall_time_millis, 1500);
+  EXPECT_LE(info.wall_time_millis, 1900);
 }
 
 TEST(UnixTest, TestWallLimitNotOk) {
