@@ -2,7 +2,7 @@
 #define UTIL_FLAGS_HPP
 
 #include <string>
-#include "CLI11.hpp"
+#include "CLI.hpp"
 
 extern bool FLAGS_daemon;
 extern std::string FLAGS_pidfile;
