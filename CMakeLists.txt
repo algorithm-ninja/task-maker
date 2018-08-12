@@ -11,10 +11,8 @@ include(HunterGate)
 include(ThreadSanitizer)
 
 HunterGate(
-    URL "https://github.com/edomora97/hunter/archive/v0.22.4-p3.tar.gz"
-    SHA1 "9387a2425ce1619ae5fc0e02554e3235742a5869"
-    # Needed to compile gRPC because it needs -fPIC
-    FILEPATH ${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake
+    URL "https://github.com/ruslo/hunter/archive/v0.23.14.tar.gz"
+    SHA1 "f58bcf274f29097ac380bfe4955d2a66f077e741"
 )
 
 # extract project version from git tag
@@ -48,27 +46,17 @@ set(CMAKE_CXX_FLAGS "-fdiagnostics-color=always -Wall -Wextra -Wno-unused-parame
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # if hunter is disabled all these lines are noop
-hunter_add_package(gRPC)
 hunter_add_package(GTest)
-hunter_add_package(nlohmann_json)
-hunter_add_package(Protobuf)
-hunter_add_package(CLI11)
-hunter_add_package(plog)
+hunter_add_package(CapnProto)
 
 # these finders are bundled with cmake
 find_package(GTest REQUIRED)
-find_package(Protobuf REQUIRED)
 
 # these finders are provided by hunter, when hunter is disabled the ones in cmake are used
-find_package(gRPC CONFIG REQUIRED)
+# TODO: add the one for CapnProto
+find_package(CapnProto CONFIG REQUIRED)
 find_package(GMock CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(CLI11 CONFIG REQUIRED)
-find_package(plog CONFIG REQUIRED)
 
-include(Protobuf)
-include(GRPC)
-
-add_subdirectory(proto)
-add_subdirectory(cpp)
-add_subdirectory(python)
+add_subdirectory(capnp)
+#add_subdirectory(cpp)
+#add_subdirectory(python)
