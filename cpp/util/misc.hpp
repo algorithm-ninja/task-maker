@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include <kj/async.h>
 #include <kj/string.h>
 
 namespace util {
@@ -42,6 +43,45 @@ inline std::function<bool(kj::StringPtr)> setInt(int& var) {
     var = std::stoi(std::string(p));
     return true;
   };
+};
+
+class UnionPromiseBuilder {
+  struct Info {
+    size_t resolved = 0;
+    std::vector<kj::Promise<void>> promises;
+    bool finalized = false;
+  };
+
+ public:
+  UnionPromiseBuilder() : p_(kj::newPromiseAndFulfiller<void>()) {
+    auto info = kj::heap<Info>();
+    info_ = info.get();
+    fulfiller_ = p_.fulfiller.get();
+    p_.promise = p_.promise.attach(std::move(info), std::move(p_.fulfiller));
+  }
+
+  void AddPromise(kj::Promise<void> p) {
+    info_->promises.push_back(std::move(p).eagerlyEvaluate(nullptr).then(
+        [info = info_, fulfiller = fulfiller_]() {
+          info->resolved++;
+          if (info->finalized && info->resolved == info->promises.size()) {
+            fulfiller->fulfill();
+          }
+        }));
+  }
+
+  kj::Promise<void> Finalize() && {
+    info_->finalized = true;
+    if (info_->resolved == info_->promises.size()) {
+      fulfiller_->fulfill();
+    }
+    return std::move(p_.promise);
+  }
+
+ private:
+  kj::PromiseFulfillerPair<void> p_;
+  Info* info_ = nullptr;
+  kj::PromiseFulfiller<void>* fulfiller_ = nullptr;
 };
 
 }  // namespace util

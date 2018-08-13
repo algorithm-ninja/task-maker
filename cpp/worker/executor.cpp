@@ -1,10 +1,10 @@
 #include "worker/executor.hpp"
 #include "util/file.hpp"
 #include "util/flags.hpp"
-
-#include <cctype>
+#include "util/misc.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <fstream>
 #include <thread>
 
@@ -65,11 +65,14 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
   }
   // TODO: move inside PrepareFile?
   kj::Promise<void> last_load = kj::READY_NOW;
-  for (const auto& input : request.getInputFiles()) {
-    last_load = last_load.then([=]() { return MaybeGetFile(input.getHash()); });
+  {
+    util::UnionPromiseBuilder builder;
+    for (const auto& input : request.getInputFiles()) {
+      builder.AddPromise(MaybeGetFile(input.getHash()));
+    }
+    builder.AddPromise(MaybeGetFile(request.getStdin()));
+    last_load = std::move(builder).Finalize();
   }
-  last_load =
-      last_load.then([=]() { return MaybeGetFile(request.getStdin()); });
 
   util::TempDir tmp(Flags::temp_directory);
 
