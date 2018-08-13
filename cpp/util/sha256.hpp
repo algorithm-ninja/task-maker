@@ -4,21 +4,37 @@
 #include <array>
 #include <string>
 
-#include "proto/sha256.pb.h"
+#include "capnp/sha256.capnp.h"
 
 namespace util {
+namespace {
+static const constexpr uint32_t DIGEST_SIZE = (256 / 8);
+}
 
-class SHA256_t;
+class SHA256_t {
+  std::array<uint8_t, DIGEST_SIZE> hash_;
+
+ public:
+  SHA256_t(const std::array<uint8_t, DIGEST_SIZE>& hash) : hash_(hash) {}
+  SHA256_t(capnproto::SHA256::Reader in);
+  void ToCapnp(capnproto::SHA256::Builder out);
+
+  std::string Hex() const;
+
+  bool isZero() const {
+    for (uint32_t i = 0; i < DIGEST_SIZE; i++)
+      if (hash_[i]) return false;
+    return true;
+  }
+};
 
 class SHA256 {
  public:
-  static const constexpr uint32_t DIGEST_SIZE = (256 / 8);
-
   SHA256() : m_block{}, m_h{} { init(); }
   void init();
   void update(const unsigned char* message, unsigned int len);
   void finalize(unsigned char* digest);
-  void finalize(SHA256_t* digest);
+  SHA256_t finalize();
 
  private:
   static const constexpr uint32_t SHA224_256_BLOCK_SIZE = (512 / 8);
@@ -27,23 +43,7 @@ class SHA256 {
   unsigned int m_len{0};
   unsigned char m_block[2 * SHA224_256_BLOCK_SIZE];
   uint32_t m_h[8];
-  friend class SHA256_t;
 };
-
-class SHA256_t : public std::array<uint8_t, SHA256::DIGEST_SIZE> {
- public:
-  std::string Hex() const;
-
-  bool isZero() const {
-    for (const auto block : *this)
-      if (block != 0)
-        return false;
-    return true;
-  }
-};
-
-void SHA256ToProto(const SHA256_t& in, proto::SHA256* out);
-void ProtoToSHA256(const proto::SHA256& in, SHA256_t* out);
 
 }  // namespace util
 #endif

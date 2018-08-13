@@ -1,28 +1,19 @@
 #include "util/flags.hpp"
 
-bool FLAGS_daemon = false;
-std::string FLAGS_pidfile;
+bool Flags::daemon = false;
+std::string Flags::pidfile;
 
-std::string FLAGS_server;
-std::string FLAGS_name = "unnamed_worker";
-int32_t FLAGS_num_cores = 0;
+std::string Flags::server;
+std::string Flags::name = "unnamed_worker";
+int32_t Flags::num_cores = 0;
 
-std::string FLAGS_store_directory = "files";
-std::string FLAGS_temp_directory = "temp";
+std::string Flags::store_directory = "files";
+std::string Flags::temp_directory = "temp";
 
-std::string FLAGS_address = "0.0.0.0";
-int32_t FLAGS_manager_port = 7071;
-int32_t FLAGS_server_port = 7070;
+std::string Flags::listen_address = "0.0.0.0";
+int32_t Flags::listen_port = 7070;
 
-int32_t FLAGS_verbose = 0;
-
-namespace util {
-CLI::App* manager_parser = nullptr;
-CLI::App* server_parser = nullptr;
-CLI::App* worker_parser = nullptr;
-CLI::App app;
-
-void parse_flags(int argc, char** argv) {
+/*void parse_flags(int argc, char** argv) {
   app.require_subcommand(1);
   app.add_flag("-v,--verbose", FLAGS_verbose, "Enable verbose logs");
   app.add_flag("-d,--daemon", FLAGS_daemon, "Become a daemon");
@@ -72,5 +63,4 @@ void parse_flags(int argc, char** argv) {
   } catch (const CLI::ParseError& e) {
     exit(app.exit(e));
   }
-}
-}  // namespace util
+}*/

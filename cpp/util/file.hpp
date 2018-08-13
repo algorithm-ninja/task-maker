@@ -2,7 +2,7 @@
 #define UTIL_FILE_HPP
 #include <functional>
 
-#include "proto/file.pb.h"
+#include <kj/common.h>
 #include "util/sha256.hpp"
 
 namespace util {
@@ -11,7 +11,8 @@ static const constexpr uint32_t kChunkSize = 32 * 1024;
 
 class File {
  public:
-  using ChunkReceiver = std::function<void(const proto::FileContents&)>;
+  using Chunk = kj::ArrayPtr<const kj::byte>;
+  using ChunkReceiver = std::function<void(Chunk)>;
   using ChunkProducer = std::function<void(const ChunkReceiver&)>;
 
   // Reads the file specified by path in chunks.
@@ -25,14 +26,12 @@ class File {
                     bool exist_ok = true);
 
   // Overload for writing directly a single chunk.
-  static void Write(const std::string& path,
-                    const proto::FileContents& contents, bool overwrite = false,
-                    bool exist_ok = true) {
-    Write(path,
-          [&contents](const ChunkReceiver& chunk_receiver) {
-            chunk_receiver(contents);
-          },
-          overwrite, exist_ok);
+  static void Write(const std::string& path, Chunk chunk,
+                    bool overwrite = false, bool exist_ok = true) {
+    Write(
+        path,
+        [chunk](const ChunkReceiver& chunk_receiver) { chunk_receiver(chunk); },
+        overwrite, exist_ok);
   }
 
   // Computes the hash of the file specified by path.
@@ -80,15 +79,12 @@ class File {
   // Computes a file's size. Returns a negative number in case of errors.
   static int64_t Size(const std::string& path);
 
+  // Returns true if a file exists
+  static bool Exists(const std::string& path) { return Size(path) >= 0; }
+
   // Returns the storage path of a file with the given SHA.
   static std::string SHAToPath(const std::string& store_directory,
                                const SHA256_t& hash);
-  static std::string ProtoSHAToPath(const std::string& store_directory,
-                                    const proto::SHA256& hash);
-
-  // Sets the SHA and possibly reads a small file.
-  static void SetSHA(const std::string& store_directory, const SHA256_t& hash,
-                     proto::FileInfo* dest);
 };
 
 class TempDir {

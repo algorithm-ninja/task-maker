@@ -1,5 +1,4 @@
 #include "util/file.hpp"
-#include "plog/Log.h"
 #include "util/sha256.hpp"
 
 #include <cstdlib>
@@ -20,6 +19,8 @@
 #else
 #define NFTW_EXTRA_FLAGS FTW_MOUNT
 #endif
+
+#include <kj/debug.h>
 
 namespace {
 
@@ -50,7 +51,8 @@ bool OsMakeImmutable(const std::string& path) {
 const size_t max_path_len = 1 << 15;
 std::string OsTempDir(const std::string& path) {
   std::string tmp = util::File::JoinPath(path, "XXXXXX");
-  LOG_FATAL_IF(tmp.size() >= max_path_len) << "Path too long";
+  KJ_REQUIRE(tmp.size() >= max_path_len, tmp.size(), max_path_len,
+             "Path too long");
   char data[max_path_len + 1];
   data[0] = 0;
   strncat(data, tmp.c_str(), max_path_len - 1);  // NOLINT
@@ -121,14 +123,12 @@ int OsRead(const std::string& path,
   int fd = open(path.c_str(), O_CLOEXEC | O_RDONLY);  // NOLINT
   if (fd == -1) return errno;
   ssize_t amount;
-  proto::FileContents contents;
   try {
-    char buf[util::kChunkSize] = {};
+    kj::byte buf[util::kChunkSize] = {};
     while ((amount = read(fd, buf, util::kChunkSize))) {  // NOLINT
       if (amount == -1 && errno == EINTR) continue;
       if (amount == -1) break;
-      contents.set_chunk(buf, amount);  // NOLINT
-      chunk_receiver(contents);
+      chunk_receiver(util::File::Chunk(buf, amount));
     }
   } catch (...) {
     close(fd);
@@ -149,11 +149,11 @@ int OsWrite(const std::string& path,
   int fd = OsTempFile(path, &temp_file);
   if (fd == -1) return errno;
   try {
-    chunk_producer([&fd, &temp_file](const proto::FileContents& chunk) {
+    chunk_producer([&fd, &temp_file](const util::File::Chunk chunk) {
       size_t pos = 0;
-      while (pos < chunk.chunk().size()) {
-        ssize_t written = write(fd, chunk.chunk().c_str() + pos,  // NOLINT
-                                chunk.chunk().size() - pos);
+      while (pos < chunk.size()) {
+        ssize_t written = write(fd, chunk.begin() + pos,  // NOLINT
+                                chunk.size() - pos);
         if (written == -1 && errno == EINTR) continue;
         if (written == -1) {
           throw std::system_error(errno, std::system_category(),
@@ -196,13 +196,10 @@ void File::Write(const std::string& path, const ChunkProducer& chunk_producer,
 
 SHA256_t File::Hash(const std::string& path) {
   SHA256 hasher;
-  Read(path, [&hasher](const proto::FileContents& chunk) {
-    hasher.update(reinterpret_cast<const unsigned char*>(chunk.chunk().data()),
-                  chunk.chunk().size());
+  Read(path, [&hasher](const util::File::Chunk& chunk) {
+    hasher.update(chunk.begin(), chunk.size());
   });
-  SHA256_t digest;
-  hasher.finalize(&digest);
-  return digest;
+  return hasher.finalize();
 }
 
 void File::MakeDirs(const std::string& path) {
@@ -294,29 +291,6 @@ TempDir::~TempDir() {
 std::string File::SHAToPath(const std::string& store_directory,
                             const SHA256_t& hash) {
   return util::File::JoinPath(store_directory, util::File::PathForHash(hash));
-}
-
-std::string File::ProtoSHAToPath(const std::string& store_directory,
-                                 const proto::SHA256& hash) {
-  util::SHA256_t extracted_hash;
-  ProtoToSHA256(hash, &extracted_hash);
-  return SHAToPath(store_directory, extracted_hash);
-}
-
-void File::SetSHA(const std::string& store_directory, const SHA256_t& hash,
-                  proto::FileInfo* dest) {
-  util::SHA256ToProto(hash, dest->mutable_hash());
-  dest->clear_contents();
-  if (util::File::Size(SHAToPath(store_directory, hash)) <= util::kChunkSize) {
-    util::File::Read(
-        SHAToPath(store_directory, hash),
-        [&dest](const proto::FileContents& bf) {
-          if (!dest->contents().chunk().empty()) {
-            throw std::runtime_error("Small file with more than one chunk");
-          }
-          *dest->mutable_contents() = bf;
-        });
-  }
 }
 
 }  // namespace util

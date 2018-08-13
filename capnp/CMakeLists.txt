@@ -11,4 +11,4 @@ add_library(
 )
 
 target_link_libraries(capnp_cpp PUBLIC CapnProto::capnp-rpc)
-target_include_directories(capnp_cpp PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(capnp_cpp PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/..)

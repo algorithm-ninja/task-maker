@@ -58,5 +58,5 @@ find_package(CapnProto CONFIG REQUIRED)
 find_package(GMock CONFIG REQUIRED)
 
 add_subdirectory(capnp)
-#add_subdirectory(cpp)
+add_subdirectory(cpp)
 #add_subdirectory(python)

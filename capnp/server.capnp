@@ -6,6 +6,8 @@ using import "sha256.capnp".SHA256;
 using import "evaluation.capnp".Result;
 using import "evaluation.capnp".Resources;
 using import "evaluation.capnp".Evaluator;
+using Cxx = import "/capnp/c++.capnp";
+$Cxx.namespace("capnproto");
 
 struct File {
   id @0 :UInt64;

@@ -129,32 +129,34 @@ void SHA256::finalize(unsigned char* digest) {
   }
 }
 
-void SHA256::finalize(SHA256_t* digest) { finalize(digest->data()); }
+SHA256_t SHA256::finalize() {
+  std::array<uint8_t, DIGEST_SIZE> res;
+  finalize(res.data());
+  return res;
+}
 
 std::string SHA256_t::Hex() const {
   std::string ans;
-  for (unsigned i = 0; i < size(); i++) {
-    uint32_t a = at(i) / 16;
+  for (unsigned i = 0; i < hash_.size(); i++) {
+    uint32_t a = hash_.at(i) / 16;
     ans += a > 9 ? ('a' + a - 10) : ('0' + a);
-    uint32_t b = at(i) % 16;
+    uint32_t b = hash_.at(i) % 16;
     ans += b > 9 ? ('a' + b - 10) : ('0' + b);
   }
   return ans;
 }
 
 #define TOUINT32(in, i)                                                     \
-  (uint32_t) in[i] | (uint32_t)in[i + 1] << 8 | (uint32_t)in[i + 2] << 16 | \
-      (uint32_t)in[i + 3] << 24
+  ((uint32_t)in[i] | (uint32_t)in[i + 1] << 8 | (uint32_t)in[i + 2] << 16 | \
+   (uint32_t)in[i + 3] << 24)
+#define TOUINT64(in, i) \
+  (uint64_t) TOUINT32(in, i) | (uint64_t)TOUINT32(in, i + 4) << 32
 
-void SHA256ToProto(const SHA256_t& in, proto::SHA256* out) {
-  out->set_data1(TOUINT32(in, 0));
-  out->set_data2(TOUINT32(in, 4));
-  out->set_data3(TOUINT32(in, 8));
-  out->set_data4(TOUINT32(in, 12));
-  out->set_data5(TOUINT32(in, 16));
-  out->set_data6(TOUINT32(in, 20));
-  out->set_data7(TOUINT32(in, 24));
-  out->set_data8(TOUINT32(in, 28));
+void SHA256_t::ToCapnp(capnproto::SHA256::Builder out) {
+  out.setData0(TOUINT64(hash_, 0));
+  out.setData1(TOUINT64(hash_, 8));
+  out.setData2(TOUINT64(hash_, 16));
+  out.setData3(TOUINT64(hash_, 24));
 }
 
 #define FROMUINT32(out, i, val)    \
@@ -162,16 +164,15 @@ void SHA256ToProto(const SHA256_t& in, proto::SHA256* out) {
   out[i + 1] = (val >> 8) & 0xFF;  \
   out[i + 2] = (val >> 16) & 0xFF; \
   out[i + 3] = (val >> 24) & 0xFF;
+#define FROMUINT64(out, i, val) \
+  FROMUINT32(out, i, val)       \
+  FROMUINT32(out, i + 4, val >> 32)
 
-void ProtoToSHA256(const proto::SHA256& in, SHA256_t* out) {
-  FROMUINT32((*out), 0, in.data1());
-  FROMUINT32((*out), 4, in.data2());
-  FROMUINT32((*out), 8, in.data3());
-  FROMUINT32((*out), 12, in.data4());
-  FROMUINT32((*out), 16, in.data5());
-  FROMUINT32((*out), 20, in.data6());
-  FROMUINT32((*out), 24, in.data7());
-  FROMUINT32((*out), 28, in.data8());
+SHA256_t::SHA256_t(capnproto::SHA256::Reader in) {
+  FROMUINT64(hash_, 0, in.getData0());
+  FROMUINT64(hash_, 8, in.getData1());
+  FROMUINT64(hash_, 16, in.getData2());
+  FROMUINT64(hash_, 24, in.getData3());
 }
 
 }  // namespace util

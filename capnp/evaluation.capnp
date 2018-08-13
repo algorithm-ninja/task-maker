@@ -2,6 +2,8 @@
 
 using import "file.capnp".FileSender;
 using import "sha256.capnp".SHA256;
+using Cxx = import "/capnp/c++.capnp";
+$Cxx.namespace("capnproto");
 
 struct FileInfo {
   name @0 :Text; # Name, relative to the sandbox, of the file
