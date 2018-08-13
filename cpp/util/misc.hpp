@@ -70,7 +70,7 @@ class UnionPromiseBuilder {
         }));
   }
 
-  kj::Promise<void> Finalize() && {
+  kj::Promise<void> Finalize() && KJ_WARN_UNUSED_RESULT {
     info_->finalized = true;
     if (info_->resolved == info_->promises.size()) {
       fulfiller_->fulfill();
