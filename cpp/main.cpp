@@ -1,52 +1,27 @@
-#include "manager/manager.hpp"
-#include "plog/Appenders/ColorConsoleAppender.h"
-#include "plog/Formatters/TxtFormatter.h"
-#include "plog/Init.h"
-#include "plog/Log.h"
-#include "remote/server.hpp"
-#include "remote/worker.hpp"
-#include "sandbox/sandbox_manager.hpp"
+#include "worker/main.hpp"
 #include "util/daemon.hpp"
 #include "util/flags.hpp"
+#include "util/misc.hpp"
 #include "util/version.hpp"
 
-int main(int argc, char** argv) {
-  util::parse_flags(argc, argv);
-  if (FLAGS_daemon) util::daemonize(FLAGS_pidfile);
-
-  plog::ColorConsoleAppender<plog::TxtFormatter> appender;
-
-  plog::Severity severity;
-  if (FLAGS_verbose == 0)
-    severity = plog::info;
-  else if (FLAGS_verbose == 1)
-    severity = plog::debug;
-  else
-    severity = plog::verbose;
-
-  plog::init(severity, &appender);
-
-  if (*util::manager_parser) {
-    sandbox::SandboxManager::Start();
-    try {
-      int ret = manager_main();
-      sandbox::SandboxManager::Stop();
-      return ret;
-    } catch (...) {
-      sandbox::SandboxManager::Stop();
-    }
+class TaskMakerMain {
+ public:
+  TaskMakerMain(kj::ProcessContext& context) : context(context) {}
+  kj::MainFunc getMain() {
+    worker::Main wm(context);
+    return kj::MainBuilder(context, "Task-Maker (" + util::version + ")",
+                           "The new cmsMake!")
+        .addOption({'d', "daemon"}, util::setBool(Flags::daemon),
+                   "Become a daemon")
+        .addOptionWithArg({'P', "pidfile"}, util::setString(Flags::pidfile),
+                          "<PIDFILE>",
+                          "Path where the pidfile should be stored")
+        .addSubCommand("worker", KJ_BIND_METHOD(wm, getMain), "run the worker")
+        .build();
   }
-  if (*util::server_parser) {
-    return server_main();
-  }
-  if (*util::worker_parser) {
-    sandbox::SandboxManager::Start();
-    try {
-      int ret = worker_main();
-      sandbox::SandboxManager::Stop();
-      return ret;
-    } catch (...) {
-      sandbox::SandboxManager::Stop();
-    }
-  }
-}
+
+ private:
+  kj::ProcessContext& context;
+};
+
+KJ_MAIN(TaskMakerMain);

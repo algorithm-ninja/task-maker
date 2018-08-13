@@ -1,5 +1,8 @@
 #ifndef UTIL_IPC_HPP
 #define UTIL_IPC_HPP
+// TODO: this file seems not to be used anymore. If that is
+// actually the case, we should remove it.
+
 #include <pthread.h>
 #include <string.h>
 #include <sys/mman.h>

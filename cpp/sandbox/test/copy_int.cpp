@@ -1,4 +1,3 @@
-#include "plog/Log.h"
 #include <cstdio>
 
 int main() {

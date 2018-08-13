@@ -48,15 +48,18 @@ struct Result {
     signal @1 :UInt32;
     returnCode @2 :UInt32;
     timeLimit @3 :Void;
-    memoryLimit @4 :Void;
-    internalError @5 :Text;
+    wallLimit @4 :Void;
+    memoryLimit @5 :Void;
+    missingFiles @6 :Void;
+    internalError @7 :Text;
   }
-  resourceUsage @6 :Resources;
-  stdout @7 :SHA256; # Hash of standard output
-  stderr @8 :SHA256; # Hash of standard error
-  outputFiles @9 :List(FileInfo); # Name and hash of other outputs
+  resourceUsage @8 :Resources;
+  stdout @9 :SHA256; # Hash of standard output
+  stderr @10 :SHA256; # Hash of standard error
+  outputFiles @11 :List(FileInfo); # Name and hash of other outputs
 }
 
 interface Evaluator extends(FileSender) {
   evaluate @0 (request :Request) -> (result :Result);
+  id @1 () -> (text :Result);
 }

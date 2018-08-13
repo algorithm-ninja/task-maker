@@ -17,7 +17,7 @@ class SHA256_t {
  public:
   SHA256_t(const std::array<uint8_t, DIGEST_SIZE>& hash) : hash_(hash) {}
   SHA256_t(capnproto::SHA256::Reader in);
-  void ToCapnp(capnproto::SHA256::Builder out);
+  void ToCapnp(capnproto::SHA256::Builder out) const;
 
   std::string Hex() const;
 

@@ -152,7 +152,7 @@ std::string SHA256_t::Hex() const {
 #define TOUINT64(in, i) \
   (uint64_t) TOUINT32(in, i) | (uint64_t)TOUINT32(in, i + 4) << 32
 
-void SHA256_t::ToCapnp(capnproto::SHA256::Builder out) {
+void SHA256_t::ToCapnp(capnproto::SHA256::Builder out) const {
   out.setData0(TOUINT64(hash_, 0));
   out.setData1(TOUINT64(hash_, 8));
   out.setData2(TOUINT64(hash_, 16));

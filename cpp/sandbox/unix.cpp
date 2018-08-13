@@ -1,5 +1,4 @@
 #include "sandbox/unix.hpp"
-#include "plog/Log.h"
 
 #include <fcntl.h>
 #include <spawn.h>
@@ -18,6 +17,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <thread>
+
+#include <kj/debug.h>
 
 namespace {
 char* mystrerror(int err, char* buf, size_t buf_size) {
@@ -185,10 +186,8 @@ void Unix::Child() {
     strncat(buf, ": ", 3);                // NOLINT
     strncat(buf, err, kStrErrorBufSize);  // NOLINT
     ssize_t len = strlen(buf);            // NOLINT
-    LOG_FATAL_IF(write(pipe_fds_[1], &len, sizeof(len)) != sizeof(len))
-        << "Failed to write to fd";
-    LOG_FATAL_IF(write(pipe_fds_[1], buf, len) != len)
-        << "Failed to write to fd";
+    KJ_SYSCALL(write(pipe_fds_[1], &len, sizeof(len)), "Failed to write to fd");
+    KJ_SYSCALL(write(pipe_fds_[1], buf, len), "Failed to write to fd");
     close(pipe_fds_[1]);
     _Exit(1);
   };
@@ -293,8 +292,7 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
   ssize_t error_len = 0;
   if (read(pipe_fds_[0], &error_len, sizeof(error_len)) == sizeof(error_len)) {
     char error[PIPE_BUF] = {};
-    LOG_FATAL_IF(read(pipe_fds_[0], error, error_len) != error_len)
-        << "Failed to read from fd";
+    KJ_SYSCALL(read(pipe_fds_[0], error, error_len), "Failed to read from fd");
     *error_msg = error;
     return false;
   }

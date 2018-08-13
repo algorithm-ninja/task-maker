@@ -1,38 +1,29 @@
 #ifndef UTIL_FILE_HPP
 #define UTIL_FILE_HPP
-#include <functional>
+#include <memory>
 
 #include <kj/common.h>
+#include <kj/function.h>
+#include "capnp/file.capnp.h"
 #include "util/sha256.hpp"
 
 namespace util {
 
-static const constexpr uint32_t kChunkSize = 32 * 1024;
+static const constexpr uint32_t kChunkSize = 1024 * 1024;
 
 class File {
  public:
   using Chunk = kj::ArrayPtr<const kj::byte>;
-  using ChunkReceiver = std::function<void(Chunk)>;
-  using ChunkProducer = std::function<void(const ChunkReceiver&)>;
+  using ChunkReceiver = kj::Function<void(Chunk)>;
 
   // Reads the file specified by path in chunks.
-  static void Read(const std::string& path,
-                   const ChunkReceiver& chunk_receiver);
+  static void Read(const std::string& path, ChunkReceiver chunk_receiver);
 
-  // Takes as an argument a function that requires a chunk receiver, which is
-  // called on a receiver that will output to the given file.
-  static void Write(const std::string& path,
-                    const ChunkProducer& chunk_producer, bool overwrite = false,
-                    bool exist_ok = true);
-
-  // Overload for writing directly a single chunk.
-  static void Write(const std::string& path, Chunk chunk,
-                    bool overwrite = false, bool exist_ok = true) {
-    Write(
-        path,
-        [chunk](const ChunkReceiver& chunk_receiver) { chunk_receiver(chunk); },
-        overwrite, exist_ok);
-  }
+  // Returns a receiver that writes to the given file and finalizes
+  // the write when destroyed.
+  static kj::Maybe<ChunkReceiver> Write(const std::string& path,
+                                        bool overwrite = false,
+                                        bool exist_ok = true);
 
   // Computes the hash of the file specified by path.
   static SHA256_t Hash(const std::string& path);
@@ -85,7 +76,40 @@ class File {
   // Returns the storage path of a file with the given SHA.
   static std::string SHAToPath(const std::string& store_directory,
                                const SHA256_t& hash);
-};
+
+  // Utility to implement RequestFile methods
+  template <typename RequestFileContext>
+  static kj::Promise<void> HandleRequestFile(RequestFileContext context) {
+    auto hash = context.getParams().getHash();
+    auto receiver = context.getParams().getReceiver();
+    kj::Promise<void> prev_chunk = kj::READY_NOW;
+    // TODO: see if we can easily avoid the extra round-trips while
+    // still guaranteeing in-order processing (when capnp implements streams?)
+    Read(PathForHash(hash), [receiver, &prev_chunk](Chunk chunk) mutable {
+      prev_chunk = prev_chunk.then([receiver, chunk]() mutable {
+        auto req = receiver.sendChunkRequest();
+        req.setChunk(chunk);
+        return req.send().ignoreResult();
+      });
+    });
+    return prev_chunk;
+  }
+
+  // Simple capnproto server implementation to receive a file
+  class Receiver : public capnproto::FileReceiver::Server {
+   public:
+    Receiver(ChunkReceiver receiver) : receiver_(std::move(receiver)) {}
+    Receiver(util::SHA256_t hash) {
+      KJ_IF_MAYBE(tmp, Write(PathForHash(hash), /*overwrite=*/true)) {
+        receiver_ = std::move(*tmp);
+      }
+    }
+    kj::Promise<void> SendChunk(SendChunkContext context);
+
+   private:
+    ChunkReceiver receiver_;
+  };
+};  // namespace util
 
 class TempDir {
  public:

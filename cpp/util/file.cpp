@@ -21,6 +21,7 @@
 #endif
 
 #include <kj/debug.h>
+#include <kj/exception.h>
 
 namespace {
 
@@ -118,8 +119,7 @@ int OsAtomicCopy(const std::string& src, const std::string& dst,
   return 0;
 }
 
-int OsRead(const std::string& path,
-           const util::File::ChunkReceiver& chunk_receiver) {
+int OsRead(const std::string& path, util::File::ChunkReceiver& chunk_receiver) {
   int fd = open(path.c_str(), O_CLOEXEC | O_RDONLY);  // NOLINT
   if (fd == -1) return errno;
   ssize_t amount;
@@ -142,33 +142,41 @@ int OsRead(const std::string& path,
   return close(fd) == -1 ? errno : 0;
 }
 
-int OsWrite(const std::string& path,
-            const util::File::ChunkProducer& chunk_producer, bool overwrite,
-            bool exist_ok) {
+util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
+                                  bool exist_ok) {
   std::string temp_file;
   int fd = OsTempFile(path, &temp_file);
-  if (fd == -1) return errno;
-  try {
-    chunk_producer([&fd, &temp_file](const util::File::Chunk chunk) {
-      size_t pos = 0;
-      while (pos < chunk.size()) {
-        ssize_t written = write(fd, chunk.begin() + pos,  // NOLINT
-                                chunk.size() - pos);
-        if (written == -1 && errno == EINTR) continue;
-        if (written == -1) {
-          throw std::system_error(errno, std::system_category(),
-                                  "write " + temp_file);
-        }
-        pos += written;
-      }
-    });
-  } catch (...) {
-    close(fd);
-    throw;
+
+  if (fd == -1) {
+    throw std::system_error(errno, std::system_category(), "Write " + path);
   }
-  if (fsync(fd) == -1) return errno;
-  if (close(fd) == -1) return errno;
-  return OsAtomicMove(temp_file, path, overwrite, exist_ok);
+  auto finalize = [=]() {
+    if (fd == -1) return;
+    if (fsync(fd) == -1 || close(fd) == -1 ||
+        OsAtomicMove(temp_file, path, overwrite, exist_ok)) {
+      kj::UnwindDetector detector;
+      detector.catchExceptionsIfUnwinding([path]() {
+        throw std::system_error(errno, std::system_category(), "Write " + path);
+      });
+    }
+  };
+  return [fd, temp_file,
+          _ = kj::defer(std::move(finalize))](util::File::Chunk chunk) mutable {
+    if (fd == -1) return;
+    size_t pos = 0;
+    while (pos < chunk.size()) {
+      ssize_t written = write(fd, chunk.begin() + pos,  // NOLINT
+                              chunk.size() - pos);
+      if (written == -1 && errno == EINTR) continue;
+      if (written == -1) {
+        close(fd);
+        fd = -1;
+        throw std::system_error(errno, std::system_category(),
+                                "write " + temp_file);
+      }
+      pos += written;
+    }
+  };
 }
 
 }  // namespace
@@ -176,27 +184,25 @@ int OsWrite(const std::string& path,
 
 namespace util {
 
-void File::Read(const std::string& path,
-                const File::ChunkReceiver& chunk_receiver) {
+void File::Read(const std::string& path, File::ChunkReceiver chunk_receiver) {
   int err = OsRead(path, chunk_receiver);
   if (err != 0)
     throw std::system_error(err, std::system_category(), "Read " + path);
 }
 
-void File::Write(const std::string& path, const ChunkProducer& chunk_producer,
-                 bool overwrite, bool exist_ok) {
+kj::Maybe<File::ChunkReceiver> File::Write(const std::string& path,
+                                           bool overwrite, bool exist_ok) {
   MakeDirs(BaseDir(path));
   if (!overwrite && Size(path) >= 0) {
-    if (exist_ok) return;
+    if (exist_ok) return nullptr;
     throw std::system_error(EEXIST, std::system_category(), "Write " + path);
   }
-  int err = OsWrite(path, chunk_producer, overwrite, exist_ok);
-  if (err != 0) throw std::system_error(err, std::system_category(), path);
+  return OsWrite(path, overwrite, exist_ok);
 }
 
 SHA256_t File::Hash(const std::string& path) {
   SHA256 hasher;
-  Read(path, [&hasher](const util::File::Chunk& chunk) {
+  Read(path, [&hasher](util::File::Chunk chunk) {
     hasher.update(chunk.begin(), chunk.size());
   });
   return hasher.finalize();
@@ -215,16 +221,18 @@ void File::MakeDirs(const std::string& path) {
 void File::HardCopy(const std::string& from, const std::string& to,
                     bool overwrite, bool exist_ok) {
   MakeDirs(BaseDir(to));
-  using std::placeholders::_1;
-  Write(to, std::bind(Read, from, _1), overwrite, exist_ok);
+  KJ_IF_MAYBE(receiver, Write(to, overwrite, exist_ok)) {
+    Read(from, std::move(*receiver));
+  }
 }
 
 void File::Copy(const std::string& from, const std::string& to, bool overwrite,
                 bool exist_ok) {
   MakeDirs(BaseDir(to));
   if (OsIsLink(from) || OsAtomicCopy(from, to, overwrite, exist_ok)) {
-    using std::placeholders::_1;
-    Write(to, std::bind(Read, from, _1), overwrite, exist_ok);
+    KJ_IF_MAYBE(receiver, Write(to, overwrite, exist_ok)) {
+      Read(from, std::move(*receiver));
+    }
   }
 }
 
