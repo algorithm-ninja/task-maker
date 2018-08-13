@@ -26,13 +26,12 @@ interface Execution {
 
   # Set execution options
   disableCache @7 ();
-  forceCache @8 ();
-  makeExclusive @9 ();
-  setLimits @10 (limits: Resources);
+  makeExclusive @8 ();
+  setLimits @9 (limits: Resources);
 
   # The following methods will only complete (i.e. return or call callbacks)
   # when the evaluation is complete.
-  getResult @11 () -> (result :Result);
+  getResult @10 () -> (result :Result);
 }
 
 interface FrontendContext {
