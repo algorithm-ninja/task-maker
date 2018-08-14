@@ -10,8 +10,10 @@ using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("capnproto");
 
 struct File {
+  # This struct should not be modified by the client
   id @0 :UInt64;
   description @1 :Text;
+  executable @2 :Bool;
 }
 
 interface Execution {
@@ -21,19 +23,22 @@ interface Execution {
   setStdin @2 (file :File);
   addInput @3 (name :Text, file :File);
 
-  # Get file IDs representing outputs
-  stdout @4 (isExecutable :Bool = false) -> (output :File);
-  stderr @5 (isExecutable :Bool = false) -> (output :File);
-  output @6 (name :Text, isExecutable :Bool = false) -> (output :File);
+  # Set arguments
+  setArgs @4 (args :List(Text));
 
   # Set execution options
-  disableCache @7 ();
-  makeExclusive @8 ();
-  setLimits @9 (limits: Resources);
+  disableCache @5 ();
+  makeExclusive @6 ();
+  setLimits @7 (limits: Resources);
+
+  # Get file IDs representing outputs
+  stdout @8 (isExecutable :Bool = false) -> (output :File);
+  stderr @9 (isExecutable :Bool = false) -> (output :File);
+  output @10 (name :Text, isExecutable :Bool = false) -> (output :File);
 
   # The following methods will only complete (i.e. return or call callbacks)
   # when the evaluation is complete.
-  getResult @10 () -> (result :Result);
+  getResult @11 () -> (result :Result);
 }
 
 interface FrontendContext {
