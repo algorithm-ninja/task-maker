@@ -6,13 +6,25 @@
 
 namespace server {
 
+class Server;
+
+class FrontendContext : public capnproto::FrontendContext::Server {
+ public:
+  KJ_DISALLOW_COPY(FrontendContext);
+  FrontendContext(server::Server& server) : server_(server) {}
+
+ private:
+  server::Server& server_;
+};
+
 class Server : public capnproto::MainServer::Server {
  public:
   kj::Promise<void> registerFrontend(RegisterFrontendContext context);
   kj::Promise<void> registerEvaluator(RegisterEvaluatorContext context);
+  friend class FrontendContext;
 
  private:
-  Dispatcher dispatcher;
+  Dispatcher dispatcher_;
 };
 
 }  // namespace server
