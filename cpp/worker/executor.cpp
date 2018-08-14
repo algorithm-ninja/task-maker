@@ -18,7 +18,7 @@ void PrepareFile(const std::string& path, const util::SHA256_t& hash,
   if (executable)
     util::File::MakeExecutable(path);
   else
-    util::File::MakeExecutable(path);
+    util::File::MakeImmutable(path);
 }
 
 void RetrieveFile(const std::string& path,
@@ -68,18 +68,17 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
   {
     util::UnionPromiseBuilder builder;
     for (const auto& input : request.getInputFiles()) {
-      builder.AddPromise(MaybeGetFile(input.getHash()));
+      builder.AddPromise(util::File::MaybeGet(input.getHash(), server_));
     }
-    builder.AddPromise(MaybeGetFile(request.getStdin()));
+    builder.AddPromise(util::File::MaybeGet(request.getStdin(), server_));
+    if (executable.isLocalFile()) {
+      builder.AddPromise(
+          util::File::MaybeGet(executable.getLocalFile().getHash(), server_));
+    }
     last_load = std::move(builder).Finalize();
   }
 
   util::TempDir tmp(Flags::temp_directory);
-
-  if (executable.isLocalFile()) {
-    last_load = last_load.then(
-        [=]() { return MaybeGetFile(executable.getLocalFile().getHash()); });
-  }
 
   std::string cmdline;
   switch (executable.which()) {

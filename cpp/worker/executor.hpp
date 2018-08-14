@@ -29,22 +29,6 @@ class Executor : public capnproto::Evaluator::Server {
 
   static const constexpr char* kBoxDir = "box";
 
-  // Get a file from the server, if needed.
-  kj::Promise<void> MaybeGetFile(const util::SHA256_t& hash)
-      KJ_WARN_UNUSED_RESULT {
-    if (hash.isZero()) return kj::READY_NOW;
-    if (!util::File::Exists(util::File::PathForHash(hash))) {
-      return GetFile(hash);
-    } else {
-      return kj::READY_NOW;
-    }
-  }
-  kj::Promise<void> GetFile(const util::SHA256_t& hash) {
-    auto req = server_.requestFileRequest();
-    hash.ToCapnp(req.initHash());
-    req.setReceiver(kj::heap<util::File::Receiver>(hash));
-    return req.send().ignoreResult();
-  }
   capnproto::FileSender::Client server_;
 };
 

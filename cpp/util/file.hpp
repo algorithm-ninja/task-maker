@@ -109,6 +109,28 @@ class File {
    private:
     ChunkReceiver receiver_;
   };
+
+  // Retrieve a file from a FileSender and store it in storage
+  static kj::Promise<void> Get(const util::SHA256_t& hash,
+                               capnproto::FileSender::Client worker)
+      KJ_WARN_UNUSED_RESULT {
+    auto req = worker.requestFileRequest();
+    hash.ToCapnp(req.initHash());
+    req.setReceiver(kj::heap<util::File::Receiver>(hash));
+    return req.send().ignoreResult();
+  }
+
+  // Same as Get, but skip zero files and already present files.
+  static kj::Promise<void> MaybeGet(const util::SHA256_t& hash,
+                                    capnproto::FileSender::Client worker)
+      KJ_WARN_UNUSED_RESULT {
+    if (hash.isZero()) return kj::READY_NOW;
+    if (!util::File::Exists(util::File::PathForHash(hash))) {
+      return Get(hash, worker);
+    } else {
+      return kj::READY_NOW;
+    }
+  }
 };  // namespace util
 
 class TempDir {
