@@ -91,15 +91,14 @@ target_link_libraries(cpp_worker
   cpp_util
 )
 
-#
-#add_library(cpp_remote
-#  remote/common.cpp
-#)
-#target_link_libraries(cpp_remote
-#  cpp_util
-#)
-#
-#
+add_library(cpp_server
+  server/dispatcher.cpp
+)
+target_link_libraries(cpp_server
+  cpp_util
+)
+
+
 #add_library(cpp_manager_lib
 #  manager/event_queue.cpp
   #manager/source_file.cpp
@@ -126,7 +125,8 @@ add_executable(task-maker
 target_link_libraries(task-maker
   ${CPP_SANDBOXES}
   cpp_worker
+  cpp_server
 )
-#target_compile_definitions(task-maker PRIVATE TASK_MAKER_VERSION="${GIT_FULL_VERSION}")
+target_compile_definitions(task-maker PRIVATE TASK_MAKER_VERSION="${GIT_FULL_VERSION}")
 
 gtest_discover_tests(sandbox_unix_test)
