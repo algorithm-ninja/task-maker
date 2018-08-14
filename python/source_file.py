@@ -3,11 +3,10 @@ import os.path
 from typing import Optional
 from distutils.spawn import find_executable
 
-from task_pb2 import SourceFile, DEFAULT
-
 from task_maker import language
 from task_maker.dependency_finder import find_dependency
 from task_maker.detect_exe import get_exeflags, EXEFLAG_NONE
+from task_maker.formats import SourceFile, Arch
 
 
 def is_executable(path: str) -> bool:
@@ -20,22 +19,17 @@ def is_executable(path: str) -> bool:
 
 
 def from_file(path: str, write_to: Optional[str] = None,
-              target_arch=DEFAULT) -> SourceFile:
+              target_arch=Arch.DEFAULT) -> SourceFile:
     old_path = path
     if not os.path.exists(path):
         path = find_executable(path)
     if not path:
         raise ValueError("Cannot find %s" % old_path)
-    source_file = SourceFile()
-    source_file.path = path
-    source_file.deps.extend(find_dependency(path))
-    source_file.language = language.from_file(path)
+    source_file = SourceFile(path, find_dependency(path), language.from_file(path), None, target_arch)
     if write_to:
         if not os.path.isabs(write_to):
             write_to = os.path.join(os.getcwd(), write_to)
         source_file.write_bin_to = write_to
-    if target_arch != DEFAULT:
-        source_file.target_arch = target_arch
     if not language.need_compilation(source_file.language):
         if not is_executable(source_file.path):
             raise ValueError("The file %s is not an executable. "

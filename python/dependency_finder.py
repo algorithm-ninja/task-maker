@@ -4,10 +4,8 @@ import os.path
 import re
 from typing import List
 
-from task_pb2 import Dependency
-from task_pb2 import CPP, C, PYTHON
-
 from task_maker import language
+from task_maker.formats import Dependency, Language
 
 CXX_INCLUDE = re.compile('#include *["<](.+)[">]')
 PY_IMPORT = re.compile('import +(.+)|from +(.+) +import')
@@ -22,9 +20,7 @@ def find_python_dependency(content: str, scope: str) -> List[Dependency]:
             file_path = os.path.join(scope, import_file.strip() + ".py")
             basename = os.path.basename(file_path)
             if os.path.exists(file_path):
-                dependency = Dependency()
-                dependency.name = basename
-                dependency.path = file_path
+                dependency = Dependency(basename, file_path)
                 dependencies += [dependency]
                 dependencies += find_dependency(file_path)
     return dependencies
@@ -40,9 +36,7 @@ def find_cxx_dependency(content: str, scope: str) -> List[Dependency]:
         # the sandbox does not support file inside subdirs (nor ../something),
         # for convenience skip all the files that includes "/" in the name
         if os.path.exists(file_path) and os.sep not in include:
-            dependency = Dependency()
-            dependency.name = include
-            dependency.path = file_path
+            dependency = Dependency(include, file_path)
             dependencies += [dependency]
             dependencies += find_dependency(file_path)
     return dependencies
@@ -53,9 +47,9 @@ def find_dependency(filename: str) -> List[Dependency]:
     try:
         with open(filename) as file:
             lang = language.from_file(filename)
-            if lang == PYTHON:
+            if lang == Language.PYTHON:
                 return make_unique(find_python_dependency(file.read(), scope))
-            elif lang in [C, CPP]:
+            elif lang in [Language.C, Language.CPP]:
                 # TODO add .h and .hpp files
                 return make_unique(find_cxx_dependency(file.read(), scope))
             return []

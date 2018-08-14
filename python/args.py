@@ -7,42 +7,32 @@ from enum import Enum
 # from task_maker.uis.curses_ui import CursesUI
 # from task_maker.uis.print_ui import PrintUI
 # from task_maker.uis.silent_ui import SilentUI
+from task_maker.formats import Arch
 from task_maker.version import TASK_MAKER_VERSION
-from task_maker import ALL, GENERATION, NOTHING, DEFAULT, X86_64, I686
+from task_maker import CacheMode
 
 # TODO restore the UIs classes
 # class UIS(Enum):
 #     curses = CursesUI
 #     print = PrintUI
 #     silent = SilentUI
+
 class UIS(Enum):
-    curses = 0
-    print = 1
-    silent = 2
+    CURSES = 0
+    PRINT = 1
+    SILENT = 2
 
 
-class CACHES(Enum):
-    all = ALL
-    generation = GENERATION
-    nothing = NOTHING
-
-
-class ARCHS(Enum):
-    default = DEFAULT
-    x86_64 = X86_64
-    i686 = I686
-
-
-for cls in [UIS, CACHES, ARCHS]:
-    def from_string(cls, name):
+for cls in [UIS, CacheMode, Arch]:
+    def from_string(cls, name: str):
         try:
-            return cls[name]
+            return cls[name.upper()]
         except:
             raise ValueError()
 
 
     cls.__new__ = from_string
-    cls.__str__ = lambda self: self.name
+    cls.__str__ = lambda self: self.name.lower()
 
 
 def _validate_num_cores(num: str) -> int:
@@ -77,8 +67,8 @@ def add_generic_group(parser: argparse.ArgumentParser):
         "--cache",
         help="Cache policy to use",
         action="store",
-        choices=list(CACHES),
-        type=CACHES,
+        choices=list(CacheMode),
+        type=CacheMode,
         default="all")
     group.add_argument(
         "--dry-run",
@@ -188,8 +178,8 @@ def add_terry_group(parser: argparse.ArgumentParser):
         "--arch",
         help="Architecture to target the managers in Terry format",
         action="store",
-        choices=list(ARCHS),
-        type=ARCHS,
+        choices=list(Arch),
+        type=Arch,
         default="default")
 
     group.add_argument(

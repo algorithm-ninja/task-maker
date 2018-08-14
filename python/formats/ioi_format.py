@@ -7,20 +7,12 @@ from typing import Dict, List, Any, Tuple
 from typing import Optional
 
 import yaml
-from manager_pb2 import EvaluateTaskRequest
-from task_pb2 import Dependency
-from task_pb2 import GraderInfo
-from task_pb2 import SUM, MIN  # ScoreMode
-from task_pb2 import Subtask
-from task_pb2 import Task
-from task_pb2 import TestCase
 
-from task_maker.absolutize import absolutize_request
 from task_maker.dependency_finder import find_dependency
 from task_maker.language import grader_from_file, valid_extensions
 from task_maker.sanitize import sanitize_command
 from task_maker.source_file import from_file
-
+from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo, SourceFile
 
 VALIDATION_INPUT_NAME = "tm_input_file"
 
@@ -32,8 +24,9 @@ def list_files(patterns: List[str],
     files = [_file for pattern in patterns
              for _file in glob.glob(pattern)]  # type: List[str]
     return [
-        res for res in files if res not in exclude
-        and os.path.splitext(res)[1] in valid_extensions()
+        res
+        for res in files
+        if res not in exclude and os.path.splitext(res)[1] in valid_extensions()
     ]
 
 
@@ -45,15 +38,13 @@ def load_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
     if not nums:
         raise RuntimeError("No generator and no input files found!")
 
-    subtask = Subtask()
-    subtask.score_mode = SUM
-    subtask.max_score = 100
+    subtask = Subtask(ScoreMode.SUM, 100, {})
 
     for num in sorted(nums):
-        testcase = TestCase()
-        testcase.input_file = os.path.join("input", "input%d.txt" % num)
-        testcase.output_file = os.path.join("output", "output%d.txt" % num)
-        subtask.testcases[num].CopyFrom(testcase)
+        testcase = TestCase(None, [], [], None, [], os.path.join("input", "input%d.txt" % num),
+                            os.path.join("output", "output%d.txt" % num), get_write_input_file(num),
+                            get_write_output_file(num))
+        subtask.testcases[num] = testcase
     return None, {0: subtask}
 
 
@@ -75,6 +66,14 @@ def get_official_solution() -> Optional[str]:
     return None
 
 
+def get_write_input_file(tc_num: int) -> str:
+    return "input/input%d.txt" % tc_num
+
+
+def get_write_output_file(tc_num: int) -> str:
+    return "output/output%d.txt" % tc_num
+
+
 def gen_testcases(
         copy_compiled: bool) -> Tuple[Optional[str], Dict[int, Subtask]]:
     subtasks = {}  # type: Dict[int, Subtask]
@@ -82,11 +81,9 @@ def gen_testcases(
     def create_subtask(subtask_num: int, testcases: Dict[int, TestCase],
                        score: float) -> None:
         if testcases:
-            subtask = Subtask()
-            subtask.score_mode = MIN
-            subtask.max_score = score
+            subtask = Subtask(ScoreMode.MIN, score, {})
             for testcase_num, testcase in testcases.items():
-                subtask.testcases[testcase_num].CopyFrom(testcase)
+                subtask.testcases[testcase_num] = testcase
             subtasks[subtask_num] = subtask
 
     generator = get_generator()
@@ -104,7 +101,8 @@ def gen_testcases(
     testcase_num = 0
     current_score = 0.0
     for line in open("gen/GEN"):
-        testcase = TestCase()
+        testcase = TestCase(None, [], [], None, [], None, None, get_write_input_file(testcase_num),
+                            get_write_output_file(testcase_num))
         if line.startswith("#ST: "):
             create_subtask(subtask_num, current_testcases, current_score)
             subtask_num += 1
@@ -122,22 +120,20 @@ def gen_testcases(
                 subtask_num = 0
             args = line.split()
             arg_deps = sanitize_command(args)
-            testcase.generator.CopyFrom(
-                from_file(generator, copy_compiled and "bin/generator"))
+            testcase.generator = from_file(generator, copy_compiled and "bin/generator")
             testcase.generator_args.extend(args)
             testcase.extra_deps.extend(arg_deps)
-            testcase.validator.CopyFrom(
-                from_file(validator, copy_compiled and "bin/validator"))
+            testcase.validator = from_file(validator, copy_compiled and "bin/validator")
             # in the old format the subtask number is 1-based
             testcase.validator_args.extend([VALIDATION_INPUT_NAME,
-                                            str(subtask_num+1)])
+                                            str(subtask_num + 1)])
         current_testcases[testcase_num] = testcase
         testcase_num += 1
 
     create_subtask(subtask_num, current_testcases, current_score)
     # Hack for when subtasks are not specified.
     if len(subtasks) == 1 and subtasks[0].max_score == 0:
-        subtasks[0].score_mode = SUM
+        subtasks[0].score_mode = ScoreMode.SUM
         subtasks[0].max_score = 100
     return official_solution, subtasks
 
@@ -186,13 +182,8 @@ def create_task_from_yaml(data: Dict[str, Any]) -> Task:
     input_file = get_options(data, ["infile"], "input.txt")
     output_file = get_options(data, ["outfile"], "output.txt")
 
-    task = Task()
-    task.name = name
-    task.title = title
-    task.time_limit = time_limit
-    task.memory_limit_kb = memory_limit
-    task.input_file = input_file if input_file else ""
-    task.output_file = output_file if output_file else ""
+    task = Task(name, title, {}, None, [], None, time_limit, memory_limit, input_file if input_file else "",
+                output_file if output_file else "")
     return task
 
 
@@ -219,7 +210,7 @@ def get_checker() -> Optional[str]:
     return checker
 
 
-def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
+def get_request(args: argparse.Namespace) -> (Task, List[str]):
     copy_compiled = args.copy_exe
     data = parse_task_yaml()
     if not data:
@@ -233,52 +224,27 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
 
     official_solution, subtasks = gen_testcases(copy_compiled)
     if official_solution:
-        task.official_solution.CopyFrom(
-            from_file(official_solution, copy_compiled
-                      and "bin/official_solution"))
+        task.official_solution = from_file(official_solution, copy_compiled and "bin/official_solution")
 
     if checker is not None:
-        task.checker.CopyFrom(
-            from_file(checker, copy_compiled and "bin/checker"))
+        task.checker = from_file(checker, copy_compiled and "bin/checker")
     for grader in graders:
-        info = GraderInfo()
-        info.for_language = grader_from_file(grader)
         name = os.path.basename(grader)
-        info.files.extend(
-            [Dependency(name=name, path=grader)] + find_dependency(grader))
+        info = GraderInfo(grader_from_file(grader), [Dependency(name, grader)] + find_dependency(grader))
         task.grader_info.extend([info])
     for subtask_num, subtask in subtasks.items():
-        task.subtasks[subtask_num].CopyFrom(subtask)
-    num_testcases = sum(
-        len(subtask.testcases) for subtask in subtasks.values())
+        task.subtasks[subtask_num] = subtask
 
-    request = EvaluateTaskRequest()
-    request.task.CopyFrom(task)
+    sols = []  # type: List[SourceFile]
     for solution in solutions:
         path, ext = os.path.splitext(os.path.basename(solution))
         bin_file = copy_compiled and "bin/" + path + "_" + ext[1:]
-        request.solutions.extend([from_file(solution, bin_file)])
-    request.store_dir = args.store_dir
-    request.temp_dir = args.temp_dir
-    request.exclusive = args.exclusive
-    request.extra_time = args.extra_time
-    request.keep_sandbox = args.keep_sandbox
-    for testcase in range(num_testcases):
-        request.write_inputs_to[testcase] = "input/input%d.txt" % testcase
-        request.write_outputs_to[testcase] = "output/output%d.txt" % testcase
-    request.write_checker_to = "cor/checker"
-    request.cache_mode = args.cache.value
-    if args.num_cores:
-        request.num_cores = args.num_cores
-    request.dry_run = args.dry_run
-    if args.evaluate_on:
-        request.evaluate_on = args.evaluate_on
-    absolutize_request(request)
-    return request
+        sols.extend([from_file(solution, bin_file)])
+    return task, sols
 
 
 def clean():
-    def remove_dir(path: str, pattern) -> None:
+    def remove_dir(path: str, pattern: str) -> None:
         if not os.path.exists(path):
             return
         for file in glob.glob(os.path.join(path, pattern)):

@@ -4,18 +4,17 @@ import os
 from itertools import chain
 from typing import List
 
-from task_pb2 import CPP, C, PASCAL, PYTHON, BASH, RUBY, ERLANG,\
-    RUST, INVALID_LANGUAGE
+from task_maker.formats import Language
 
 EXTENSIONS = {
-    CPP: [".cpp", ".C", ".cc"],
-    C: [".c"],
-    PASCAL: [".pas"],
-    PYTHON: [".py"],
-    BASH: [".sh", ""],  # TODO(edomora97) add executable format
-    RUBY: [".rb"],
-    ERLANG: [".erl"],
-    RUST: [".rs"],
+    Language.CPP: [".cpp", ".C", ".cc"],
+    Language.C: [".c"],
+    Language.PASCAL: [".pas"],
+    Language.PYTHON: [".py"],
+    Language.BASH: [".sh", ""],  # TODO(edomora97) add executable format
+    Language.RUBY: [".rb"],
+    Language.ERLANG: [".erl"],
+    Language.RUST: [".rs"],
 }
 
 
@@ -23,17 +22,17 @@ def valid_extensions() -> List[str]:
     return list(chain(*EXTENSIONS.values()))
 
 
-def from_file(path: str) -> int:
+def from_file(path: str) -> Language:
     ext = os.path.splitext(path)[1]
     for lang, exts in EXTENSIONS.items():
         if ext in exts:
             return lang
-    return INVALID_LANGUAGE
+    return Language.INVALID_LANGUAGE
 
 
-def grader_from_file(path: str) -> int:
+def grader_from_file(path: str) -> Language:
     return from_file(path)
 
 
-def need_compilation(language: int) -> bool:
-    return language in [CPP, C, PASCAL, RUST]
+def need_compilation(language: Language) -> bool:
+    return language in [Language.CPP, Language.C, Language.PASCAL, Language.RUST]

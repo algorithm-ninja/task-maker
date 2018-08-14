@@ -11,8 +11,9 @@ import capnp
 import server_capnp
 
 # from task_maker.formats import ioi_format, terry_format, tm_format
+from task_maker.formats import ioi_format
 from task_maker.args import get_parser
-# from task_maker.detect_format import find_task_dir
+from task_maker.detect_format import find_task_dir
 # from task_maker.manager import get_manager, became_manager, became_server, \
 #     became_worker
 
@@ -25,11 +26,11 @@ from task_maker.args import get_parser
 #     manager.CleanTask(request)
 #
 #
-# def ioi_format_clean(args):
-#     ioi_format.clean()
-#     manager_clean(args)
-#
-#
+def ioi_format_clean(args):
+    ioi_format.clean()
+    # manager_clean(args)
+
+
 # def tm_format_clean(args):
 #     tm_format.clean()
 #     manager_clean(args)
@@ -38,7 +39,7 @@ from task_maker.args import get_parser
 # def terry_format_clean(args):
 #     terry_format.clean()
 #     manager_clean(args)
-#
+
 #
 # def quit_manager(args, force):
 #     request = ShutdownRequest()
@@ -65,32 +66,32 @@ def main() -> None:
     # if args.kill_manager or args.quit_manager:
     #     return
     #
-    # task_dir, format = find_task_dir(args.task_dir, args.max_depth)
-    # if not format:
-    #     raise ValueError(
-    #         "Cannot detect format! It's probable that the task is ill-formed")
-    # if args.format is not None and format != args.format:
-    #     raise ValueError(
-    #         "Detected format mismatch the required one: %s" % format)
-    #
-    # os.chdir(task_dir)
-    #
-    # if args.clean:
-    #     if format == "ioi":
-    #         ioi_format_clean(args)
-    #     elif format == "tm":
-    #         tm_format_clean(args)
-    #     elif format == "terry":
-    #         terry_format_clean(args)
-    #     else:
-    #         raise ValueError("Format %s not supported" % format)
-    #     return
-    #
+    task_dir, format = find_task_dir(args.task_dir, args.max_depth)
+    if not format:
+        raise ValueError(
+            "Cannot detect format! It's probable that the task is ill-formed")
+    if args.format is not None and format != args.format:
+        raise ValueError(
+            "Detected format mismatch the required one: %s" % format)
+
+    os.chdir(task_dir)
+
+    if args.clean:
+        if format == "ioi":
+            ioi_format_clean(args)
+        # elif format == "tm":
+        #     tm_format_clean(args)
+        # elif format == "terry":
+        #     terry_format_clean(args)
+        else:
+            raise ValueError("Format %s not supported" % format)
+        return
+
     # manager = get_manager(args)
     #
-    # if format == "ioi":
-    #     request = ioi_format.get_request(args)
-    #     solutions = [os.path.basename(sol.path) for sol in request.solutions]
+    if format == "ioi":
+        task, solutions = ioi_format.get_request(args)
+        solutions = [os.path.basename(sol.path) for sol in solutions]
     # elif format == "tm":
     #     request = tm_format.get_request(args)
     #     solutions = [os.path.basename(sol.path) for sol in request.solutions]
@@ -101,7 +102,11 @@ def main() -> None:
     #     ]
     # else:
     #     raise ValueError("Format %s not supported" % format)
-    #
+
+    import jsonpickle
+    import json
+    print(json.dumps(json.loads(jsonpickle.dumps(task)), indent=4))
+
     # ui = args.ui.value(solutions, format)
     #
     # if format == "ioi" or format == "tm":

@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
+from enum import Enum
 
-# Cache modes
-ALL = "all"
-GENERATION = "generation"
-NOTHING = "nothing"
 
-# Architectures
-DEFAULT = "default"
-X86_64 = "x86_64"
-I686 = "i686"
+class CacheMode(Enum):
+    ALL = 0
+    GENERATION = 1
+    NOTHING = 2
