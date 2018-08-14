@@ -13,7 +13,7 @@ kj::Promise<void> Server::registerFrontend(RegisterFrontendContext context) {
 kj::Promise<void> Server::registerEvaluator(RegisterEvaluatorContext context) {
   KJ_LOG(INFO,
          "Worker " + std::string(context.getParams().getName()) + " connected");
-  return kj::READY_NOW;
+  return dispatcher.AddEvaluator(context.getParams().getEvaluator());
 }
 
 }  // namespace server
