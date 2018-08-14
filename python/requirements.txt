@@ -1,5 +1,4 @@
-grpcio>=1.11
 pytest>=3.2.3
 PyYAML>=3.12
 typing>=3.6.4
-protobuf>=3.5.2
+git+git://github.com/edomora97/pycapnp@develop#egg=pycapnp

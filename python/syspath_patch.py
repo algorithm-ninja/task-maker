@@ -5,5 +5,5 @@ import sys
 
 
 def patch_sys_path():
-    sys.path.append(os.path.join(os.path.dirname(__file__), 'proto'))
+    sys.path.append(os.path.join(os.path.dirname(__file__), 'capnp'))
     sys.path.append(os.path.join(os.path.dirname(__file__), 'venv'))

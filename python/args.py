@@ -4,18 +4,21 @@ import argparse
 import os.path
 from enum import Enum
 
-from manager_pb2 import ALL, GENERATION, NOTHING
-from task_maker.uis.curses_ui import CursesUI
-from task_maker.uis.print_ui import PrintUI
-from task_maker.uis.silent_ui import SilentUI
+# from task_maker.uis.curses_ui import CursesUI
+# from task_maker.uis.print_ui import PrintUI
+# from task_maker.uis.silent_ui import SilentUI
 from task_maker.version import TASK_MAKER_VERSION
-from task_pb2 import DEFAULT, X86_64, I686
+from task_maker import ALL, GENERATION, NOTHING, DEFAULT, X86_64, I686
 
-
+# TODO restore the UIs classes
+# class UIS(Enum):
+#     curses = CursesUI
+#     print = PrintUI
+#     silent = SilentUI
 class UIS(Enum):
-    curses = CursesUI
-    print = PrintUI
-    silent = SilentUI
+    curses = 0
+    print = 1
+    silent = 2
 
 
 class CACHES(Enum):
