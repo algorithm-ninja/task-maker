@@ -53,5 +53,5 @@ interface FrontendContext {
 
 interface MainServer extends(FileSender) {
   registerFrontend @0 () -> (context: FrontendContext); # For the frontend
-  registerEvaluator @1 (name:Text, evaluator :Evaluator) -> (); # For workers
+  registerEvaluator @1 (name :Text, evaluator :Evaluator) -> (); # For workers
 }

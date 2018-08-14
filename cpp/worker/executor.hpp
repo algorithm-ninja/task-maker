@@ -14,12 +14,12 @@ class Executor : public capnproto::Evaluator::Server {
   KJ_DISALLOW_COPY(Executor);
   Executor(capnproto::FileSender::Client server) : server_(server) {}
 
-  kj::Promise<void> Evaluate(EvaluateContext context) {
+  kj::Promise<void> evaluate(EvaluateContext context) {
     auto request = context.getParams().getRequest();
     return Execute(request, context.getResults().initResult());
   }
 
-  kj::Promise<void> RequestFile(RequestFileContext context) {
+  kj::Promise<void> requestFile(RequestFileContext context) {
     return util::File::HandleRequestFile(context);
   }
 
