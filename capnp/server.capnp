@@ -12,8 +12,6 @@ $Cxx.namespace("capnproto");
 struct File {
   # This struct should not be modified by the client
   id @0 :UInt64;
-  description @1 :Text;
-  executable @2 :Bool;
 }
 
 interface Execution {
