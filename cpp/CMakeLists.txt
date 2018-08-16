@@ -16,8 +16,6 @@ if (TRAVIS)
   target_compile_definitions(cpp_util PRIVATE REMOVE_ALSO_MOUNT_POINTS=1)
 endif()
 
-
-
 add_library(cpp_sandbox
   sandbox/sandbox.cpp
 )
@@ -58,7 +56,6 @@ if (UNIX)
     GMock::gmock
   )
 
-
   if (APPLE)
     set(CPP_SANDBOXES -Wl,-force_load cpp_sandbox_unix ${CPP_SANDBOXES})
   else()
@@ -66,19 +63,6 @@ if (UNIX)
       -Wl,--whole-archive cpp_sandbox_unix -Wl,--no-whole-archive ${CPP_SANDBOXES})
   endif()
 endif()
-
-
-
-#add_library(cpp_core
-#  core/core.cpp
-#  core/execution_cacher.cpp
-#  core/execution.cpp
-#  core/file_id.cpp
-#)
-#target_link_libraries(cpp_core
-#  cpp_util
-#  cpp_remote
-#)
 
 add_library(cpp_worker
   worker/executor.cpp
@@ -100,28 +84,7 @@ target_link_libraries(cpp_server
   cpp_util
 )
 
-
-#add_library(cpp_manager_lib
-#  manager/event_queue.cpp
-  #manager/source_file.cpp
-  #manager/ioi_format/ioi_format.cpp
-  #manager/ioi_format/ioi_evaluation.cpp
-  #manager/ioi_format/ioi_generation.cpp
-  #manager/terry_format/terry_format.cpp
-  #manager/terry_format/terry_evaluation.cpp
-  #manager/terry_format/terry_generation.cpp
-#)
-#target_link_libraries(cpp_manager_lib
-  #cpp_core
-  #cpp_remote
-  #cpp_executor
-  #nlohmann_json
-#)
-
 add_executable(task-maker
-  #manager/manager.cpp
-  #remote/server.cpp
-  #remote/worker.cpp
   main.cpp
 )
 target_link_libraries(task-maker
