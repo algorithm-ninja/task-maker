@@ -23,15 +23,20 @@ uint32_t AddFileInfo(uint32_t& last_file_id,
 kj::Promise<void> Execution::setExecutablePath(
     SetExecutablePathContext context) {
   request_.getExecutable().setAbsolutePath(context.getParams().getPath());
+  executable_ = 0;
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::setExecutable(SetExecutableContext context) {
+  executable_ = context.getParams().getFile().getId();
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::setStdin(SetStdinContext context) {
+  stdin_ = context.getParams().getFile().getId();
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::addInput(AddInputContext context) {
+  inputs_.emplace_back(context.getParams().getFile().getId(),
+                       context.getParams().getName());
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::setArgs(SetArgsContext context) {
@@ -51,26 +56,26 @@ kj::Promise<void> Execution::setLimits(SetLimitsContext context) {
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::stdout(StdoutContext context) {
-  stdout_ =
-      AddFileInfo(last_file_id_, file_info_, context.getResults().initFile(),
-                  context.getParams().getIsExecutable(),
-                  "Standard output of execution " + description_);
+  stdout_ = AddFileInfo(
+      frontend_context_.last_file_id_, frontend_context_.file_info_,
+      context.getResults().initFile(), context.getParams().getIsExecutable(),
+      "Standard output of execution " + description_);
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::stderr(StderrContext context) {
-  stderr_ =
-      AddFileInfo(last_file_id_, file_info_, context.getResults().initFile(),
-                  context.getParams().getIsExecutable(),
-                  "Standard error of execution " + description_);
+  stderr_ = AddFileInfo(
+      frontend_context_.last_file_id_, frontend_context_.file_info_,
+      context.getResults().initFile(), context.getParams().getIsExecutable(),
+      "Standard error of execution " + description_);
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::output(OutputContext context) {
-  uint32_t id =
-      AddFileInfo(last_file_id_, file_info_, context.getResults().initFile(),
-                  context.getParams().getIsExecutable(),
-                  "Output " + std::string(context.getParams().getName()) +
-                      " of execution " + description_);
-  outputs.emplace_back(context.getParams().getName(), id);
+  uint32_t id = AddFileInfo(
+      frontend_context_.last_file_id_, frontend_context_.file_info_,
+      context.getResults().initFile(), context.getParams().getIsExecutable(),
+      "Output " + std::string(context.getParams().getName()) +
+          " of execution " + description_);
+  outputs_.emplace_back(context.getParams().getName(), id);
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::notifyStart(NotifyStartContext context) {
@@ -93,13 +98,28 @@ kj::Promise<void> FrontendContext::provideFile(ProvideFileContext context) {
 kj::Promise<void> FrontendContext::addExecution(AddExecutionContext context) {
   // TODO: see Server::registerFrontend
   context.getResults().setExecution(
-      kj::heap<Execution>(dispatcher_, last_file_id_, file_info_,
-                          context.getParams().getDescription()));
+      kj::heap<Execution>(*this, context.getParams().getDescription()));
   return kj::READY_NOW;
 }
 kj::Promise<void> FrontendContext::startEvaluation(
     StartEvaluationContext context) {
-  return kj::READY_NOW;
+  evaluation_start_.fulfiller->fulfill();  // Starts the evaluation
+  for (auto& file : file_info_) {
+    if (file.second.provided) {
+      builder_.AddPromise(
+          util::File::MaybeGet(file.second.hash,
+                               context.getParams().getSender())
+              .eagerlyEvaluate(nullptr)
+              .then([fulfiller =
+                         std::move(file.second.promise.fulfiller)]() mutable {
+                fulfiller->fulfill();
+              }));
+    }
+    // Wait for all files to be ready
+    builder_.AddPromise(file.second.forked_promise.addBranch());
+  }
+  return std::move(builder_).Finalize().exclusiveJoin(
+      std::move(evaluation_early_stop_.promise));
 }
 kj::Promise<void> FrontendContext::getFileContents(
     GetFileContentsContext context) {
@@ -108,6 +128,7 @@ kj::Promise<void> FrontendContext::getFileContents(
 }
 kj::Promise<void> FrontendContext::stopEvaluation(
     StopEvaluationContext context) {
+  evaluation_early_stop_.fulfiller->fulfill();
   return kj::READY_NOW;
 }
 

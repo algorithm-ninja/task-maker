@@ -3,6 +3,7 @@
 
 #include "capnp/server.capnp.h"
 #include "server/dispatcher.hpp"
+#include "util/misc.hpp"
 #include "util/sha256.hpp"
 
 #include <capnp/message.h>
@@ -17,25 +18,23 @@ struct FileInfo {
   bool executable = false;
   bool provided = false;
   kj::PromiseFulfillerPair<void> promise = kj::newPromiseAndFulfiller<void>();
+  kj::ForkedPromise<void> forked_promise = promise.promise.fork();
   util::SHA256_t hash = util::SHA256_t::ZERO;
 };
 };  // namespace detail
 
+class FrontendContext;
+
 class Execution : public capnproto::Execution::Server {
  public:
   KJ_DISALLOW_COPY(Execution);
-  Execution(server::Dispatcher& dispatcher, uint32_t& last_file_id,
-            std::unordered_map<uint32_t, detail::FileInfo>& file_info,
-            std::string description)
-      : dispatcher_(dispatcher),
-        last_file_id_(last_file_id),
-        file_info_(file_info),
-        description_(description) {}
+  Execution(FrontendContext& frontend_context, std::string description)
+      : frontend_context_(frontend_context), description_(description) {}
 
   kj::Promise<void> setExecutablePath(SetExecutablePathContext context);
-  kj::Promise<void> setExecutable(SetExecutableContext context);  // TODO
-  kj::Promise<void> setStdin(SetStdinContext context);            // TODO
-  kj::Promise<void> addInput(AddInputContext context);            // TODO
+  kj::Promise<void> setExecutable(SetExecutableContext context);
+  kj::Promise<void> setStdin(SetStdinContext context);
+  kj::Promise<void> addInput(AddInputContext context);
   kj::Promise<void> setArgs(SetArgsContext context);
   kj::Promise<void> disableCache(DisableCacheContext context);
   kj::Promise<void> makeExclusive(MakeExclusiveContext context);
@@ -47,15 +46,14 @@ class Execution : public capnproto::Execution::Server {
   kj::Promise<void> getResult(GetResultContext context);  // TODO
 
  private:
-  server::Dispatcher& dispatcher_;
-  uint32_t& last_file_id_;
-  std::unordered_map<uint32_t, detail::FileInfo>& file_info_;
+  FrontendContext& frontend_context_;
   std::string description_;
   capnp::MallocMessageBuilder builder_;
   capnproto::Request::Builder request_ =
       builder_.initRoot<capnproto::Request>();
-  std::vector<std::pair<std::string, uint32_t>> inputs;
-  std::vector<std::pair<std::string, uint32_t>> outputs;
+  std::vector<std::pair<std::string, uint32_t>> inputs_;
+  std::vector<std::pair<std::string, uint32_t>> outputs_;
+  uint32_t executable_ = 0;
   uint32_t stdin_ = 0;
   uint32_t stdout_ = 0;
   uint32_t stderr_ = 0;
@@ -69,14 +67,22 @@ class FrontendContext : public capnproto::FrontendContext::Server {
   FrontendContext(server::Dispatcher& dispatcher) : dispatcher_(dispatcher) {}
   kj::Promise<void> provideFile(ProvideFileContext context);
   kj::Promise<void> addExecution(AddExecutionContext context);
-  kj::Promise<void> startEvaluation(StartEvaluationContext context);  // TODO
+  kj::Promise<void> startEvaluation(StartEvaluationContext context);
   kj::Promise<void> getFileContents(GetFileContentsContext context);
-  kj::Promise<void> stopEvaluation(StopEvaluationContext context);  // TODO
+  kj::Promise<void> stopEvaluation(StopEvaluationContext context);
 
  private:
+  friend class Execution;
   server::Dispatcher& dispatcher_;
   uint32_t last_file_id_ = 1;
   std::unordered_map<uint32_t, detail::FileInfo> file_info_;
+  util::UnionPromiseBuilder builder_;
+  kj::PromiseFulfillerPair<void> evaluation_start_ =
+      kj::newPromiseAndFulfiller<void>();
+  kj::ForkedPromise<void> forked_evaluation_start_ =
+      evaluation_start_.promise.fork();
+  kj::PromiseFulfillerPair<void> evaluation_early_stop_ =
+      kj::newPromiseAndFulfiller<void>();
 };
 
 class Server : public capnproto::MainServer::Server {
