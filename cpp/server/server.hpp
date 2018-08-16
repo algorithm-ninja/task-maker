@@ -51,14 +51,16 @@ class Execution : public capnproto::Execution::Server {
   capnp::MallocMessageBuilder builder_;
   capnproto::Request::Builder request_ =
       builder_.initRoot<capnproto::Request>();
-  std::vector<std::pair<std::string, uint32_t>> inputs_;
-  std::vector<std::pair<std::string, uint32_t>> outputs_;
+  std::unordered_map<std::string, uint32_t> inputs_;
+  std::unordered_map<std::string, uint32_t> outputs_;
   uint32_t executable_ = 0;
   uint32_t stdin_ = 0;
   uint32_t stdout_ = 0;
   uint32_t stderr_ = 0;
   uint32_t cache_enabled_ = true;
   std::vector<kj::PromiseFulfillerPair<void>> start_promises_;
+  kj::PromiseFulfillerPair<void> finish_promise_ =
+      kj::newPromiseAndFulfiller<void>();
 };
 
 class FrontendContext : public capnproto::FrontendContext::Server {

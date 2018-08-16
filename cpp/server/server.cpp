@@ -28,6 +28,8 @@ kj::Promise<void> Execution::setExecutablePath(
 }
 kj::Promise<void> Execution::setExecutable(SetExecutableContext context) {
   executable_ = context.getParams().getFile().getId();
+  request_.getExecutable().getLocalFile().setName(
+      context.getParams().getName());
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::setStdin(SetStdinContext context) {
@@ -35,8 +37,8 @@ kj::Promise<void> Execution::setStdin(SetStdinContext context) {
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::addInput(AddInputContext context) {
-  inputs_.emplace_back(context.getParams().getFile().getId(),
-                       context.getParams().getName());
+  inputs_.emplace(context.getParams().getName(),
+                  context.getParams().getFile().getId());
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::setArgs(SetArgsContext context) {
@@ -75,7 +77,7 @@ kj::Promise<void> Execution::output(OutputContext context) {
       context.getResults().initFile(), context.getParams().getIsExecutable(),
       "Output " + std::string(context.getParams().getName()) +
           " of execution " + description_);
-  outputs_.emplace_back(context.getParams().getName(), id);
+  outputs_.emplace(context.getParams().getName(), id);
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::notifyStart(NotifyStartContext context) {
@@ -83,7 +85,67 @@ kj::Promise<void> Execution::notifyStart(NotifyStartContext context) {
   return std::move(start_promises_.back().promise);
 }
 kj::Promise<void> Execution::getResult(GetResultContext context) {
-  return kj::READY_NOW;
+  util::UnionPromiseBuilder dependencies;
+  auto add_dep = [&dependencies, this](uint32_t id) {
+    dependencies.AddPromise(
+        frontend_context_.file_info_[id].forked_promise.addBranch());
+  };
+  if (executable_) add_dep(executable_);
+  if (stdin_) add_dep(stdin_);
+  for (auto& input : inputs_) {
+    add_dep(input.second);
+  }
+  dependencies.AddPromise(
+      frontend_context_.forked_evaluation_start_.addBranch());
+  frontend_context_.builder_.AddPromise(std::move(finish_promise_.promise));
+  return std::move(dependencies).Finalize().then([this, context]() mutable {
+    auto get_hash = [this](uint32_t id, capnproto::SHA256::Builder builder) {
+      frontend_context_.file_info_[id].hash.ToCapnp(builder);
+    };
+    get_hash(stdin_, request_.initStdin());
+    if (executable_) {
+      get_hash(executable_, request_.getExecutable().getLocalFile().initHash());
+    }
+    request_.initInputFiles(inputs_.size());
+    {
+      size_t i = 0;
+      for (auto& input : inputs_) {
+        request_.getInputFiles()[i].setName(input.first);
+        get_hash(input.second, request_.getInputFiles()[i].getHash());
+        i++;
+      }
+    }
+    request_.initOutputFiles(outputs_.size());
+    {
+      size_t i = 0;
+      for (auto& output : outputs_) {
+        request_.getOutputFiles().set(i, output.first);
+        i++;
+      }
+    }
+    return frontend_context_.dispatcher_.AddRequest(request_).then(
+        [this, context](capnproto::Result::Reader result) mutable {
+          context.getResults().setResult(result);
+          finish_promise_.fulfiller->fulfill();
+          if (result.getStatus().isInternalError()) return;
+          auto set_hash = [this](uint32_t id, const util::SHA256_t& hash) {
+            frontend_context_.file_info_[id].hash = hash;
+            frontend_context_.file_info_[id].promise.fulfiller->fulfill();
+          };
+          if (stdout_) {
+            set_hash(stdout_, result.getStdout());
+          }
+          if (stderr_) {
+            set_hash(stderr_, result.getStderr());
+          }
+          for (auto output : result.getOutputFiles()) {
+            std::string name = output.getName();
+            KJ_REQUIRE(outputs_.count(output.getName()), output.getName(),
+                       "Unexpected output!");
+            set_hash(outputs_[output.getName()], output.getHash());
+          }
+        });
+  });
 }
 
 kj::Promise<void> FrontendContext::provideFile(ProvideFileContext context) {
@@ -123,8 +185,13 @@ kj::Promise<void> FrontendContext::startEvaluation(
 }
 kj::Promise<void> FrontendContext::getFileContents(
     GetFileContentsContext context) {
-  auto hash = file_info_.at(context.getParams().getFile().getId()).hash;
-  return util::File::HandleRequestFile(hash, context.getParams().getReceiver());
+  uint32_t id = context.getParams().getFile().getId();
+  return file_info_.at(id).forked_promise.addBranch().then(
+      [id, context, this]() mutable {
+        auto hash = file_info_.at(id).hash;
+        return util::File::HandleRequestFile(hash,
+                                             context.getParams().getReceiver());
+      });
 }
 kj::Promise<void> FrontendContext::stopEvaluation(
     StopEvaluationContext context) {

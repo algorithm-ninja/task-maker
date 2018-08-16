@@ -12,9 +12,10 @@ class Dispatcher {
   using Queue = std::vector<std::pair<T, kj::Own<kj::PromiseFulfiller<U>>>>;
 
  public:
-  kj::Promise<void> AddEvaluator(capnproto::Evaluator::Client evaluator);
+  kj::Promise<void> AddEvaluator(capnproto::Evaluator::Client evaluator)
+      KJ_WARN_UNUSED_RESULT;
   kj::Promise<capnproto::Result::Reader> AddRequest(
-      capnproto::Request::Reader request);
+      capnproto::Request::Reader request) KJ_WARN_UNUSED_RESULT;
 
  private:
   // TODO: I could not make a Queue<Evaluator, void> work, for some reason

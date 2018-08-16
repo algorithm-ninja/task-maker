@@ -17,7 +17,7 @@ struct File {
 interface Execution {
   # Add input dependencies
   setExecutablePath @0 (path :Text);
-  setExecutable @1 (file :File);
+  setExecutable @1 (name :Text, file :File);
   setStdin @2 (file :File);
   addInput @3 (name :Text, file :File);
 
