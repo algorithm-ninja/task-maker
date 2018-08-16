@@ -1,4 +1,5 @@
 #include "server/server.hpp"
+#include "util/file.hpp"
 
 #include <kj/debug.h>
 
@@ -102,7 +103,8 @@ kj::Promise<void> FrontendContext::startEvaluation(
 }
 kj::Promise<void> FrontendContext::getFileContents(
     GetFileContentsContext context) {
-  return kj::READY_NOW;
+  auto hash = file_info_.at(context.getParams().getFile().getId()).hash;
+  return util::File::HandleRequestFile(hash, context.getParams().getReceiver());
 }
 kj::Promise<void> FrontendContext::stopEvaluation(
     StopEvaluationContext context) {
@@ -121,6 +123,10 @@ kj::Promise<void> Server::registerEvaluator(RegisterEvaluatorContext context) {
   KJ_LOG(INFO,
          "Worker " + std::string(context.getParams().getName()) + " connected");
   return dispatcher_.AddEvaluator(context.getParams().getEvaluator());
+}
+
+kj::Promise<void> Server::requestFile(RequestFileContext context) {
+  return util::File::HandleRequestFile(context);
 }
 
 }  // namespace server

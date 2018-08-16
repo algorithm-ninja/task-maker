@@ -301,4 +301,20 @@ std::string File::SHAToPath(const std::string& store_directory,
   return util::File::JoinPath(store_directory, util::File::PathForHash(hash));
 }
 
+kj::Promise<void> File::HandleRequestFile(
+    const util::SHA256_t& hash, capnproto::FileReceiver::Client receiver) {
+  kj::Promise<void> prev_chunk = kj::READY_NOW;
+  // TODO: see if we can easily avoid the extra round-trips while
+  // still guaranteeing in-order processing (when capnp implements streams?)
+  // Possibly by using UnionPromiseBuilder?
+  Read(PathForHash(hash), [receiver, &prev_chunk](Chunk chunk) mutable {
+    prev_chunk = prev_chunk.then([receiver, chunk]() mutable {
+      auto req = receiver.sendChunkRequest();
+      req.setChunk(chunk);
+      return req.send().ignoreResult();
+    });
+  });
+  return prev_chunk;
+}
+
 }  // namespace util

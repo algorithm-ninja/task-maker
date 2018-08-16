@@ -70,8 +70,8 @@ class FrontendContext : public capnproto::FrontendContext::Server {
   kj::Promise<void> provideFile(ProvideFileContext context);
   kj::Promise<void> addExecution(AddExecutionContext context);
   kj::Promise<void> startEvaluation(StartEvaluationContext context);  // TODO
-  kj::Promise<void> getFileContents(GetFileContentsContext context);  // TODO
-  kj::Promise<void> stopEvaluation(StopEvaluationContext context);    // TODO
+  kj::Promise<void> getFileContents(GetFileContentsContext context);
+  kj::Promise<void> stopEvaluation(StopEvaluationContext context);  // TODO
 
  private:
   server::Dispatcher& dispatcher_;
@@ -83,6 +83,7 @@ class Server : public capnproto::MainServer::Server {
  public:
   kj::Promise<void> registerFrontend(RegisterFrontendContext context);
   kj::Promise<void> registerEvaluator(RegisterEvaluatorContext context);
+  kj::Promise<void> requestFile(RequestFileContext context);
   friend class FrontendContext;
 
  private:
