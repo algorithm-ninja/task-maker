@@ -200,7 +200,6 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
           try {
             RetrieveFile(util::File::JoinPath(sandbox_dir, output_names[i]),
                          outputs[i].initHash());
-            // TODO
           } catch (const std::system_error& exc) {
             if (exc.code().value() !=
                 static_cast<int>(std::errc::no_such_file_or_directory)) {
