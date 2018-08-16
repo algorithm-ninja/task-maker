@@ -3,6 +3,7 @@
 import argparse
 import glob
 import os
+from task_maker.promise import ForkablePromise, UnionPromiseBuilder
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
@@ -12,7 +13,7 @@ from task_maker.dependency_finder import find_dependency
 from task_maker.language import grader_from_file, valid_extensions
 from task_maker.sanitize import sanitize_command
 from task_maker.source_file import from_file
-from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo, SourceFile
+from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo, SourceFile, provide_file
 
 VALIDATION_INPUT_NAME = "tm_input_file"
 
@@ -247,6 +248,106 @@ def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
         sols.extend([from_file(solution, bin_file, grader_map=grader_map)])
 
     return task, sols
+
+
+def evaluate_task(context, task: Task, solutions: List[SourceFile]):
+    ins, outs, vals = generate_inputs(context, task)
+    evaluate_solutions(context, task, ins, outs, vals, solutions)
+
+
+def generate_inputs(context, task: Task) -> (
+        Dict[int, ForkablePromise], Dict[int, ForkablePromise], Dict[int, ForkablePromise]):
+    inputs = dict()
+    outputs = dict()
+    validations = dict()
+    for st_num, subtask in task.subtasks.items():
+        for tc_num, testcase in subtask.testcases.items():
+            # input file
+            if testcase.input_file:
+                inputs[tc_num] = provide_file(context, testcase.input_file, "Static input %d" + tc_num, False)
+            else:
+                testcase.generator.prepare(context)
+                testcase.validator.prepare(context)
+
+                gen, gen_proms = testcase.generator.execute(context, "Generation of input %d" % tc_num,
+                                                            testcase.generator_args)
+                for dep in testcase.extra_deps:
+                    prom = provide_file(context, dep.path, dep.path, False)
+                    gen_proms.add(prom.then(lambda s: gen.addInput(dep.name, s.file)))
+                # TODO set cache mode
+                # TODO set limits?
+                inputs[tc_num] = ForkablePromise(gen.stdout())
+                gen_result = gen_proms.finalize().then(lambda: gen.getResult())
+                # TODO write input file
+
+                val, val_proms = testcase.validator.execute(context, "Validation of input %d" % tc_num,
+                                                            testcase.validator_args)
+                # TODO set cache mode
+                # TODO set limits?
+                val_proms.add(inputs[tc_num].then(lambda f: val.addInput(VALIDATION_INPUT_NAME, f.file)))
+                validations[tc_num] = ForkablePromise(val.stdout())
+                val_result = val_proms.finalize().then(lambda: val.getResult())
+
+            # output file
+            if testcase.output_file:
+                outputs[tc_num] = provide_file(context, testcase.output_file, "Static output %d" % tc_num, False)
+            else:
+                task.official_solution.prepare(context)
+                sol, sol_proms = task.official_solution.execute(context, "Generation of output %d" % tc_num, [])
+                # TODO set cache mode
+                # TODO set limits?
+
+                if tc_num in validations:
+                    sol_proms.add(validations[tc_num].then(lambda f: sol.addInput("wait_for_validation", f.file)))
+                if task.input_file:
+                    sol_proms.add(inputs[tc_num].then(lambda f: sol.addInput(task.input_file, f.file)))
+                else:
+                    sol_proms.add(inputs[tc_num].then(lambda f: sol.stdin(f.file)))
+                if task.output_file:
+                    outputs[tc_num] = ForkablePromise(sol.output(task.output_file, False))
+                else:
+                    outputs[tc_num] = ForkablePromise(sol.stdout(False))
+                sol_result = sol_proms.finalize().then(lambda: sol.getResult())
+                # TODO write output file
+    return inputs, outputs, validations
+
+
+def evaluate_solutions(context, task: Task, inputs: Dict[int, ForkablePromise], outputs: Dict[int, ForkablePromise],
+                       validations: Dict[int, ForkablePromise], solutions: List[SourceFile]):
+    for solution in solutions:
+        solution.prepare(context)
+        for tc_num, input in inputs.items():
+            eval, eval_proms = solution.execute(context, "Evaluation of %s on testcase %d" % (solution.name, tc_num),
+                                                [])
+            # TODO set cache mode
+            # TODO set limits!
+            eval_proms.add(validations[tc_num].then(lambda f: f.file))
+            if task.input_file:
+                eval_proms.add(inputs[tc_num].then(lambda f: eval.addInput(task.input_file, f.file)))
+            else:
+                eval_proms.add(inputs[tc_num].then(lambda f: eval.stdin(f.file)))
+            if task.output_file:
+                output = ForkablePromise(eval.output(task.output_file, False))
+            else:
+                output = ForkablePromise(eval.stdout(False))
+            eval_result = eval_proms.finalize().then(lambda: eval.getResult())
+
+            if task.checker:
+                task.checker.prepare(context)
+                check, check_proms = task.checker.execute(context, "Checking solution %s for testcase %d" % (
+                    solution.name, tc_num), ["input", "output", "contestant_output"])
+                check_proms.add(inputs[tc_num].then(lambda f: check.addInput("input", f.file)))
+            else:
+                check = context.addExecution("Checking solution %s for testcase %d" % (solution.name, tc_num)).execution
+                check.setExecutablePath("diff")
+                check.setArgs(["-w", "output", "contestant_output"])
+                check_proms = UnionPromiseBuilder()
+            check_proms.add(outputs[tc_num].then(lambda f: check.addInput("output", f.file)))
+            check_proms.add(output.then(lambda f: check.addInput("contestant_output", f.file)))
+            # TODO set cache mode
+            check_result = check_proms.finalize().then(lambda: check.getResult())
+
+            # TODO calculate the status of the solution on this testcase and update the score
 
 
 def clean():

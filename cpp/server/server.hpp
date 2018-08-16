@@ -41,7 +41,7 @@ class Execution : public capnproto::Execution::Server {
   kj::Promise<void> stderr(StderrContext context);
   kj::Promise<void> output(OutputContext context);
   kj::Promise<void> notifyStart(NotifyStartContext context);
-  kj::Promise<void> getResults(GetResultContext context);
+  kj::Promise<void> getResult(GetResultContext context);
 
  private:
   server::Dispatcher& dispatcher_;

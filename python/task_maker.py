@@ -94,12 +94,7 @@ def main() -> None:
 
     if format == "ioi":
         task, solutions = ioi_format.get_request(args)
-        for sol in solutions:
-            sol.prepare(frontend)
-            exe, prom = sol.execute(frontend, "Testrun", ["ciao"])
-            print(prom.finalize().then(lambda: exe.getResult()).wait())
-        solutions = [os.path.basename(sol.path) for sol in solutions]
-        print(solutions)
+        ioi_format.evaluate_task(frontend, task, solutions)
     # elif format == "tm":
     #     request = tm_format.get_request(args)
     #     solutions = [os.path.basename(sol.path) for sol in request.solutions]

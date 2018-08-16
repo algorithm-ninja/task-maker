@@ -42,7 +42,7 @@ kj::Promise<void> Execution::output(OutputContext context) {
 kj::Promise<void> Execution::notifyStart(NotifyStartContext context) {
   return kj::READY_NOW;
 }
-kj::Promise<void> Execution::getResults(GetResultContext context) {
+kj::Promise<void> Execution::getResult(GetResultContext context) {
   return kj::READY_NOW;
 }
 

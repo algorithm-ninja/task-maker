@@ -64,13 +64,17 @@ class SourceFile:
         self.name = os.path.basename(path)
         self.exe_name = os.path.splitext(os.path.basename(write_bin_to or path))[0]
         self.need_compilation = need_compilation(self.language)
+        self.prepared = False
 
     # prepare the source file for execution, compile the source if needed
     def prepare(self, context):
+        if self.prepared:
+            return
         if self.need_compilation:
             self._compile(context)
         else:
             self._not_compile(context)
+        self.prepared = True
 
     def _compile(self, context):
         source = provide_file(context, self.path, "Source file for " + self.name, False)
