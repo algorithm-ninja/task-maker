@@ -77,22 +77,16 @@ class File {
   static std::string SHAToPath(const std::string& store_directory,
                                const SHA256_t& hash);
 
+  // Utility to implement RequestFile methods, given the hash and the receiver
+  static kj::Promise<void> HandleRequestFile(
+      const util::SHA256_t& hash, capnproto::FileReceiver::Client receiver);
+
   // Utility to implement RequestFile methods
   template <typename RequestFileContext>
   static kj::Promise<void> HandleRequestFile(RequestFileContext context) {
     auto hash = context.getParams().getHash();
     auto receiver = context.getParams().getReceiver();
-    kj::Promise<void> prev_chunk = kj::READY_NOW;
-    // TODO: see if we can easily avoid the extra round-trips while
-    // still guaranteeing in-order processing (when capnp implements streams?)
-    Read(PathForHash(hash), [receiver, &prev_chunk](Chunk chunk) mutable {
-      prev_chunk = prev_chunk.then([receiver, chunk]() mutable {
-        auto req = receiver.sendChunkRequest();
-        req.setChunk(chunk);
-        return req.send().ignoreResult();
-      });
-    });
-    return prev_chunk;
+    return HandleRequestFile(hash, receiver);
   }
 
   // Simple capnproto server implementation to receive a file
