@@ -123,6 +123,7 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
         i++;
       }
     }
+    // TODO: cache
     return frontend_context_.dispatcher_.AddRequest(request_).then(
         [this, context](capnproto::Result::Reader result) mutable {
           context.getResults().setResult(result);
