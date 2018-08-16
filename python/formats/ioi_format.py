@@ -210,7 +210,7 @@ def get_checker() -> Optional[str]:
     return checker
 
 
-def get_request(args: argparse.Namespace) -> (Task, List[str]):
+def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
     copy_compiled = args.copy_exe
     data = parse_task_yaml()
     if not data:
@@ -222,16 +222,21 @@ def get_request(args: argparse.Namespace) -> (Task, List[str]):
     solutions = get_solutions(args.solutions, graders)
     checker = get_checker()
 
-    official_solution, subtasks = gen_testcases(copy_compiled)
-    if official_solution:
-        task.official_solution = from_file(official_solution, copy_compiled and "bin/official_solution")
+    grader_map = dict()
 
-    if checker is not None:
-        task.checker = from_file(checker, copy_compiled and "bin/checker")
     for grader in graders:
         name = os.path.basename(grader)
         info = GraderInfo(grader_from_file(grader), [Dependency(name, grader)] + find_dependency(grader))
+        grader_map[info.for_language] = info
         task.grader_info.extend([info])
+
+    official_solution, subtasks = gen_testcases(copy_compiled)
+    if official_solution:
+        task.official_solution = from_file(official_solution, copy_compiled and "bin/official_solution",
+                                           grader_map=grader_map)
+
+    if checker is not None:
+        task.checker = from_file(checker, copy_compiled and "bin/checker")
     for subtask_num, subtask in subtasks.items():
         task.subtasks[subtask_num] = subtask
 
@@ -239,7 +244,8 @@ def get_request(args: argparse.Namespace) -> (Task, List[str]):
     for solution in solutions:
         path, ext = os.path.splitext(os.path.basename(solution))
         bin_file = copy_compiled and "bin/" + path + "_" + ext[1:]
-        sols.extend([from_file(solution, bin_file)])
+        sols.extend([from_file(solution, bin_file, grader_map=grader_map)])
+
     return task, sols
 
 

@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 
 from task_maker.syspath_patch import patch_sys_path
+
 patch_sys_path()
 
-import os
-import signal
-from typing import Any
-
+import os.path
 import capnp
+
 import server_capnp
 
 # from task_maker.formats import ioi_format, terry_format, tm_format
 from task_maker.formats import ioi_format
 from task_maker.args import get_parser
 from task_maker.detect_format import find_task_dir
+
+
 # from task_maker.manager import get_manager, became_manager, became_server, \
 #     became_worker
 
@@ -87,11 +88,18 @@ def main() -> None:
             raise ValueError("Format %s not supported" % format)
         return
 
-    # manager = get_manager(args)
-    #
+    client = capnp.TwoPartyClient("localhost:%d" % args.manager_port)
+    main_server = client.bootstrap().cast_as(server_capnp.MainServer)
+    frontend = main_server.registerFrontend().wait().context
+
     if format == "ioi":
         task, solutions = ioi_format.get_request(args)
+        for sol in solutions:
+            sol.prepare(frontend)
+            exe, prom = sol.execute(frontend, "Testrun", ["ciao"])
+            print(prom.finalize().then(lambda: exe.getResult()).wait())
         solutions = [os.path.basename(sol.path) for sol in solutions]
+        print(solutions)
     # elif format == "tm":
     #     request = tm_format.get_request(args)
     #     solutions = [os.path.basename(sol.path) for sol in request.solutions]
@@ -103,9 +111,9 @@ def main() -> None:
     # else:
     #     raise ValueError("Format %s not supported" % format)
 
-    import jsonpickle
-    import json
-    print(json.dumps(json.loads(jsonpickle.dumps(task)), indent=4))
+    # import jsonpickle
+    # import json
+    # print(json.dumps(json.loads(jsonpickle.dumps(task)), indent=4))
 
     # ui = args.ui.value(solutions, format)
     #

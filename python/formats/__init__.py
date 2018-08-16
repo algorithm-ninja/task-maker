@@ -1,18 +1,33 @@
 #!/usr/bin/env python3
+import hashlib
+import os.path
+import shutil
+
 from enum import Enum
+from task_maker.language import Language, need_compilation
+from task_maker.promise import UnionPromiseBuilder, ForkablePromise
 from typing import List, Dict, Optional
 
+from sha256_capnp import SHA256
+from server_capnp import File, Execution
 
-class Language(Enum):
-    INVALID_LANGUAGE = 0
-    CPP = 1
-    C = 2
-    PASCAL = 3
-    PYTHON = 4
-    BASH = 5
-    RUBY = 6
-    ERLANG = 7
-    RUST = 8
+
+def get_sha256(path: str, blocksize=65536) -> SHA256:
+    sha256 = hashlib.sha256()
+    with open(path, "br") as f:
+        for block in iter(lambda: f.read(blocksize), b""):
+            sha256.update(block)
+    digest = sha256.digest()
+    sha256 = SHA256.new_message()
+    sha256.data0 = int.from_bytes(digest[0:8], "little")
+    sha256.data1 = int.from_bytes(digest[8:16], "little")
+    sha256.data2 = int.from_bytes(digest[16:24], "little")
+    sha256.data3 = int.from_bytes(digest[24:32], "little")
+    return sha256
+
+
+def provide_file(context, path: str, description: str, is_exe: bool) -> File:
+    return context.provideFile(get_sha256(path), description, is_exe)
 
 
 class ScoreMode(Enum):
@@ -39,12 +54,89 @@ class Dependency:
 
 class SourceFile:
     def __init__(self, path: str, dependencies: List[Dependency], language: Language, write_bin_to: Optional[str],
-                 target_arch: Arch):
+                 target_arch: Arch, grader: Optional["GraderInfo"]):
         self.path = path
         self.dependencies = dependencies
         self.language = language
         self.write_bin_to = write_bin_to
         self.target_arch = target_arch
+        self.grader = grader
+        self.name = os.path.basename(path)
+        self.exe_name = os.path.splitext(os.path.basename(write_bin_to or path))[0]
+        self.need_compilation = need_compilation(self.language)
+
+    # prepare the source file for execution, compile the source if needed
+    def prepare(self, context):
+        if self.need_compilation:
+            self._compile(context)
+        else:
+            self._not_compile(context)
+
+    def _compile(self, context):
+        source = provide_file(context, self.path, "Source file for " + self.name, False)
+        if self.language == Language.CPP:
+            compiler = "c++"
+            args = ["-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", self.exe_name, self.name]
+            if self.target_arch == Arch.I686:
+                args.append("-m32")
+        elif self.language == Language.C:
+            compiler = "cc"
+            args = ["-O2", "-std=c11", "-DEVAL", "-Wall", "-o", self.exe_name, self.name]
+            if self.target_arch == Arch.I686:
+                args.append("-m32")
+        elif self.language == Language.PASCAL:
+            compiler = "fpc"
+            args = ["-O2", "-XS", "-dEVAL", "-o", self.exe_name, self.name]
+            if self.target_arch == Arch.DEFAULT:
+                raise NotImplementedError(
+                    "Cannot compile %s: targetting Pascal executables is not supported yet" % self.path)
+        elif self.language == Language.RUST:
+            compiler = "rustc"
+            args = ["-O", "--cfg", "EVAL", "-o", self.exe_name, self.name]
+            if self.target_arch == Arch.DEFAULT:
+                raise NotImplementedError(
+                    "Cannot compile %s: targetting Rust executables is not supported yet" % self.path)
+        # TODO add language plugin system
+        else:
+            raise NotImplementedError("Cannot compile %s: unknown language" % self.path)
+
+        # TODO this should be done by the worker
+        compiler = shutil.which(compiler)
+        if not compiler:
+            raise FileNotFoundError("Cannot compile %s: missing compiler" % self.path)
+
+        proms = UnionPromiseBuilder()
+
+        self.compilation = context.addExecution("Compilation of %s" % self.name).execution
+        self.compilation.setExecutablePath(compiler)
+        self.compilation.setArgs(args)
+        proms.add(source.then(lambda s: self.compilation.addInput("Source file of " + self.name, s.file)))
+        for dep in self.dependencies:
+            prom = provide_file(context, dep.path, dep.path, False)
+            proms.add(prom.then(lambda s: self.compilation.addInput(dep.name, s.file)))
+        if self.grader:
+            for dep in self.grader.files:
+                prom = provide_file(context, dep.path, dep.path, False)
+                proms.add(prom.then(lambda s: self.compilation.addInput(dep.name, s.file)))
+        self.compilation_stderr = self.compilation.stderr()
+        self.executable = ForkablePromise(self.compilation.output(self.exe_name, True))
+        # TODO set cache
+        # TODO set time/memory limits?
+        self.compile_result = proms.finalize().then(lambda: self.compilation.getResult())
+
+    def _not_compile(self, context):
+        self.executable = ForkablePromise(provide_file(context, self.path, "Source file for " + self.name, True))
+
+    def execute(self, context, description: str, args: List[str]) -> (Execution, UnionPromiseBuilder):
+        execution = context.addExecution(description).execution
+        proms = UnionPromiseBuilder()
+        proms.add(self.executable.then(lambda ex: execution.setExecutable(ex.file)))
+        execution.setArgs(args)
+        if not self.need_compilation:
+            for dep in self.dependencies:
+                prom = provide_file(context, dep.path, dep.path, False)
+                proms.add(prom.then(lambda s: execution.addInput(dep.name, s.file)))
+        return execution, proms
 
     def __repr__(self):
         return "<SourceFile path=%s language=%s>" % (self.path, self.language)

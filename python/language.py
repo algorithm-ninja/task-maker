@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
 
-import os
 from itertools import chain
+import os
+from enum import Enum
 from typing import List
 
-from task_maker.formats import Language
+
+class Language(Enum):
+    INVALID_LANGUAGE = 0
+    CPP = 1
+    C = 2
+    PASCAL = 3
+    PYTHON = 4
+    BASH = 5
+    RUBY = 6
+    ERLANG = 7
+    RUST = 8
+
 
 EXTENSIONS = {
     Language.CPP: [".cpp", ".C", ".cc"],
