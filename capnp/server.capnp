@@ -32,13 +32,16 @@ interface Execution {
   setLimits @7 (limits: Resources);
 
   # Get file IDs representing outputs
-  stdout @8 (isExecutable :Bool = false) -> (output :File);
-  stderr @9 (isExecutable :Bool = false) -> (output :File);
-  output @10 (name :Text, isExecutable :Bool = false) -> (output :File);
+  stdout @8 (isExecutable :Bool = false) -> (file :File);
+  stderr @9 (isExecutable :Bool = false) -> (file :File);
+  output @10 (name :Text, isExecutable :Bool = false) -> (file :File);
+
+  # To be called to be notified of the start of the evaluation
+  notifyStart @11 ();
 
   # The following methods will only complete (i.e. return or call callbacks)
   # when the evaluation is complete.
-  getResult @11 () -> (result :Result);
+  getResult @12 () -> (result :Result);
 }
 
 interface FrontendContext {
@@ -46,7 +49,7 @@ interface FrontendContext {
     hash :SHA256,
     description :Text,
     isExecutable :Bool
-  ) -> (input :File);
+  ) -> (file :File);
   addExecution @1 (description :Text) -> (execution :Execution);
   
   # The following methods should only be called after the computational
