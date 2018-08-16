@@ -15,7 +15,8 @@ class SHA256_t {
   std::array<uint8_t, DIGEST_SIZE> hash_;
 
  public:
-  SHA256_t(const std::array<uint8_t, DIGEST_SIZE>& hash) : hash_(hash) {}
+  explicit SHA256_t(const std::array<uint8_t, DIGEST_SIZE>& hash)
+      : hash_(hash) {}
   SHA256_t(capnproto::SHA256::Reader in);
   void ToCapnp(capnproto::SHA256::Builder out) const;
 
@@ -26,6 +27,8 @@ class SHA256_t {
       if (hash_[i]) return false;
     return true;
   }
+
+  static const SHA256_t ZERO;
 };
 
 class SHA256 {
@@ -35,6 +38,7 @@ class SHA256 {
   void update(const unsigned char* message, unsigned int len);
   void finalize(unsigned char* digest);
   SHA256_t finalize();
+  KJ_DISALLOW_COPY(SHA256);
 
  private:
   static const constexpr uint32_t SHA224_256_BLOCK_SIZE = (512 / 8);

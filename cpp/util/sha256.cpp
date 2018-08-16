@@ -25,6 +25,7 @@
   }
 
 namespace util {
+const SHA256_t SHA256_t::ZERO = SHA256_t(std::array<uint8_t, DIGEST_SIZE>());
 
 const constexpr uint32_t sha256_k[64] =  // UL = uint32
     {0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
@@ -132,7 +133,7 @@ void SHA256::finalize(unsigned char* digest) {
 SHA256_t SHA256::finalize() {
   std::array<uint8_t, DIGEST_SIZE> res;
   finalize(res.data());
-  return res;
+  return SHA256_t(res);
 }
 
 std::string SHA256_t::Hex() const {
