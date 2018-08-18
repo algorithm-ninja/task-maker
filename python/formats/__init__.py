@@ -10,6 +10,29 @@ from typing import List, Dict, Optional
 
 from sha256_capnp import SHA256
 from server_capnp import File, Execution
+from file_capnp import FileSender, FileReceiver
+
+
+CHUNK_SIZE = 1024 * 1024
+
+
+class FileSenderImpl(FileSender.Server):
+    def __init__(self):
+        self.known_files = dict()
+
+    def provide_file(self, context, path: str, description: str, is_exe: bool):
+        hash = get_sha256(path)
+        self.known_files[hash] = path
+        return context.provideFile(hash, description, is_exe)
+
+    def requestFile(self, hash: SHA256, receiver: FileReceiver):
+        print("Requested file", hash)
+        if hash not in self.known_files:
+            raise RuntimeError("Requested unknown file: %s" % str(hash))
+        path = self.known_files[hash]
+        with open(path, "rb") as f:
+            for chunk in f.read(CHUNK_SIZE):
+                receiver.sendChunk(chunk)
 
 
 def get_sha256(path: str, blocksize=65536) -> SHA256:
@@ -24,10 +47,6 @@ def get_sha256(path: str, blocksize=65536) -> SHA256:
     sha256.data2 = int.from_bytes(digest[16:24], "little")
     sha256.data3 = int.from_bytes(digest[24:32], "little")
     return sha256
-
-
-def provide_file(context, path: str, description: str, is_exe: bool) -> File:
-    return context.provideFile(get_sha256(path), description, is_exe)
 
 
 class ScoreMode(Enum):
@@ -67,17 +86,17 @@ class SourceFile:
         self.prepared = False
 
     # prepare the source file for execution, compile the source if needed
-    def prepare(self, context):
+    def prepare(self, context, file_sender: FileSenderImpl):
         if self.prepared:
             return
         if self.need_compilation:
-            self._compile(context)
+            self._compile(context, file_sender)
         else:
-            self._not_compile(context)
+            self._not_compile(context, file_sender)
         self.prepared = True
 
-    def _compile(self, context):
-        source = provide_file(context, self.path, "Source file for " + self.name, False)
+    def _compile(self, context, file_sender: FileSenderImpl):
+        source = file_sender.provide_file(context, self.path, "Source file for " + self.name, False)
         if self.language == Language.CPP:
             compiler = "c++"
             args = ["-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", self.exe_name, self.name]
@@ -109,38 +128,34 @@ class SourceFile:
         if not compiler:
             raise FileNotFoundError("Cannot compile %s: missing compiler" % self.path)
 
-        proms = UnionPromiseBuilder()
-
         self.compilation = context.addExecution("Compilation of %s" % self.name).execution
         self.compilation.setExecutablePath(compiler)
         self.compilation.setArgs(args)
-        proms.add(source.then(lambda s: self.compilation.addInput("Source file of " + self.name, s.file)))
+        self.compilation.addInput("Source file of " + self.name, source.file)
         for dep in self.dependencies:
-            prom = provide_file(context, dep.path, dep.path, False)
-            proms.add(prom.then(lambda s: self.compilation.addInput(dep.name, s.file)))
+            self.compilation.addInput(dep.name, file_sender.provide_file(context, dep.path, dep.path, False).file)
         if self.grader:
             for dep in self.grader.files:
-                prom = provide_file(context, dep.path, dep.path, False)
-                proms.add(prom.then(lambda s: self.compilation.addInput(dep.name, s.file)))
+                self.compilation.addInput(dep.name, file_sender.provide_file(context, dep.path, dep.path, False).file)
         self.compilation_stderr = self.compilation.stderr()
-        self.executable = ForkablePromise(self.compilation.output(self.exe_name, True))
+        self.executable = self.compilation.output(self.exe_name, True)
         # TODO set cache
         # TODO set time/memory limits?
-        self.compile_result = proms.finalize().then(lambda: self.compilation.getResult())
+        self.compilation.notifyStart().then(lambda _: print("Compilation of %s" % self.name, "started"))
+        self.compilation.getResult().then(lambda res: print(res))
 
-    def _not_compile(self, context):
-        self.executable = ForkablePromise(provide_file(context, self.path, "Source file for " + self.name, True))
+    def _not_compile(self, context, file_sender: FileSenderImpl):
+        self.executable = file_sender.provide_file(context, self.path, "Source file for " + self.name, True)
 
-    def execute(self, context, description: str, args: List[str]) -> (Execution, UnionPromiseBuilder):
+    def execute(self, context, file_sender: FileSenderImpl, description: str, args: List[str]) -> Execution:
         execution = context.addExecution(description).execution
-        proms = UnionPromiseBuilder()
-        proms.add(self.executable.then(lambda ex: execution.setExecutable(ex.file)))
+        execution.notifyStart().then(lambda _: print(description, "started"))
+        execution.setExecutable(self.exe_name, self.executable.file)
         execution.setArgs(args)
         if not self.need_compilation:
             for dep in self.dependencies:
-                prom = provide_file(context, dep.path, dep.path, False)
-                proms.add(prom.then(lambda s: execution.addInput(dep.name, s.file)))
-        return execution, proms
+                execution.addInput(dep.name, file_sender.provide_file(context, dep.path, dep.path, False).file)
+        return execution
 
     def __repr__(self):
         return "<SourceFile path=%s language=%s>" % (self.path, self.language)

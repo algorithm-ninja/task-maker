@@ -9,28 +9,6 @@ from event_pb2 import EvaluationResult, TerryEvaluationResult, \
 from task_maker.ui import UI
 
 
-class SolutionStatus:
-    def __init__(self) -> None:
-        self.testcase_errors = dict()  # type: Dict[int, str]
-        self.testcase_result = dict()  # type: Dict[int, EvaluationResult]
-        self.testcase_status = dict()  # type: Dict[int, EventStatus]
-        self.subtask_scores = dict()  # type: Dict[int, float]
-        self.score = None  # type: Optional[float]
-        self.compiled = False
-
-    def __repr__(self):
-        return "<SolutionStatus [%s]>" % (", ".join(
-            "%d: %.1f" % (i, tc.score) for i, tc in
-            self.testcase_result.items()))
-
-
-class TerryStatus:
-    def __init__(self) -> None:
-        self.status = WAITING  # type: EventStatus
-        self.errors = None  # type: Optional[str]
-        self.result = None  # type: Optional[TerryEvaluationResult]
-
-
 class SilentUI(UI):
     def __init__(self, solutions: List[str], format: str) -> None:
         super().__init__(solutions, format)

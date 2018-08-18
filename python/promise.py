@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from capnp.lib.capnp import PromiseFulfillerPair, Promise
+from capnp.lib.capnp import PromiseFulfillerPair
 
 
 class UnionPromiseBuilder:
