@@ -81,8 +81,7 @@ kj::Promise<void> Execution::output(OutputContext context) {
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::notifyStart(NotifyStartContext context) {
-  start_promises_.emplace_back(kj::newPromiseAndFulfiller<void>());
-  return std::move(start_promises_.back().promise);
+  return forked_start_.addBranch();
 }
 kj::Promise<void> Execution::getResult(GetResultContext context) {
   util::UnionPromiseBuilder dependencies;
@@ -123,7 +122,8 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
         i++;
       }
     }
-    // TODO: cache
+    // TODO: cache, notify start and not readiness
+    start_.fulfiller->fulfill();
     return frontend_context_.dispatcher_.AddRequest(request_).then(
         [this, context](capnproto::Result::Reader result) mutable {
           context.getResults().setResult(result);

@@ -58,7 +58,8 @@ class Execution : public capnproto::Execution::Server {
   uint32_t stdout_ = 0;
   uint32_t stderr_ = 0;
   uint32_t cache_enabled_ = true;
-  std::vector<kj::PromiseFulfillerPair<void>> start_promises_;
+  kj::PromiseFulfillerPair<void> start_ = kj::newPromiseAndFulfiller<void>();
+  kj::ForkedPromise<void> forked_start_ = start_.promise.fork();
   kj::PromiseFulfillerPair<void> finish_promise_ =
       kj::newPromiseAndFulfiller<void>();
 };
