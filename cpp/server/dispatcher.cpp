@@ -41,31 +41,35 @@ kj::Promise<void> Dispatcher::AddEvaluator(
   }
   auto request_info = std::move(requests_.back());
   requests_.pop_back();
-  auto p = HandleRequest(evaluator, request_info.first);
+  auto p = HandleRequest(evaluator, std::get<0>(request_info));
+  std::get<2>(request_info)->fulfill();
   return p.eagerlyEvaluate(nullptr).then(
-      [fulfiller = std::move(request_info.second)](
+      [request_fulfiller = std::move(std::get<1>(request_info))](
           capnproto::Result::Reader reader) mutable {
-        fulfiller->fulfill(std::move(reader));
+        request_fulfiller->fulfill(std::move(reader));
       });
 }
 
 kj::Promise<capnproto::Result::Reader> Dispatcher::AddRequest(
-    capnproto::Request::Reader request) {
+    capnproto::Request::Reader request,
+    kj::Own<kj::PromiseFulfiller<void>> fulfiller) {
   if (evaluators_.empty()) {
     auto request_promise =
         kj::newPromiseAndFulfiller<capnproto::Result::Reader>();
-    requests_.emplace_back(request, std::move(request_promise.fulfiller));
+    requests_.emplace_back(request, std::move(request_promise.fulfiller),
+                           std::move(fulfiller));
     return std::move(request_promise.promise);
   }
   auto evaluator = std::move(evaluators_.back());
   evaluators_.pop_back();
   auto evaluator_fulfiller = std::move(fulfillers_.back());
   fulfillers_.pop_back();
+  fulfiller->fulfill();
   auto p = HandleRequest(evaluator, request);
   return p.eagerlyEvaluate(nullptr).then(
-      [fulfiller = std::move(evaluator_fulfiller)](
+      [evaluator_fulfiller = std::move(evaluator_fulfiller)](
           capnproto::Result::Reader result) mutable {
-        fulfiller->fulfill();
+        evaluator_fulfiller->fulfill();
         return result;
       });
 }

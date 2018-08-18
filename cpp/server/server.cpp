@@ -122,10 +122,10 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
         i++;
       }
     }
-    // TODO: cache, notify start and not readiness
-    start_.fulfiller->fulfill();
-    return frontend_context_.dispatcher_.AddRequest(request_).then(
-        [this, context](capnproto::Result::Reader result) mutable {
+    // TODO: cache
+    return frontend_context_.dispatcher_
+        .AddRequest(request_, std::move(start_.fulfiller))
+        .then([this, context](capnproto::Result::Reader result) mutable {
           context.getResults().setResult(result);
           finish_promise_.fulfiller->fulfill();
           if (result.getStatus().isInternalError()) return;
