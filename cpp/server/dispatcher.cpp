@@ -41,12 +41,17 @@ kj::Promise<void> Dispatcher::AddEvaluator(
   auto request_info = std::move(requests_.back());
   requests_.pop_back();
   auto p = HandleRequest(evaluator, std::get<0>(request_info));
-  std::get<2>(request_info)->fulfill();
+  // Signal execution started
+  if (std::get<2>(request_info)) {
+    std::get<2>(request_info)->fulfill();
+  }
   return p
-      .then([request_fulfiller = std::move(std::get<1>(request_info))](
-                capnproto::Result::Reader reader) mutable {
-        request_fulfiller->fulfill(std::move(reader));
-      })
+      .then(
+          [request_fulfiller = std::move(std::get<1>(request_info))](
+              capnproto::Result::Reader reader) mutable {
+            request_fulfiller->fulfill(std::move(reader));
+          },
+          [](kj::Exception exc) { KJ_FAIL_ASSERT(exc); })
       .eagerlyEvaluate(nullptr);
 }
 

@@ -14,13 +14,15 @@ class UnionPromiseBuilder:
             self.resolved += 1
             if self.finalized and self.resolved == len(self.promises):
                 self.p.fulfill()
+
         def then2():
             then1(None)
+
         # if there is this method the promise is a VoidPromise
         if hasattr(promise, "as_pypromise"):
-            promise.then(then2)
+            promise.then(then2).eagerlyEvaluate()
         else:
-            promise.then(then1)
+            promise.then(then1).eagerlyEvaluate()
 
     def finalize(self):
         self.finalized = True
@@ -40,6 +42,7 @@ class ForkablePromise:
             for f, fulfiller in self.pending:
                 f(ret)
                 fulfiller.fulfill()
+
         self.promise.then(then)
 
     def then(self, f):

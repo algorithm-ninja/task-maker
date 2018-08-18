@@ -120,7 +120,7 @@ kj::Promise<void> Execution::output(OutputContext context) {
 kj::Promise<void> Execution::notifyStart(NotifyStartContext context) {
   KJ_LOG(INFO, "Execution " + description_, "Waiting for start");
   return forked_start_.addBranch().then(
-      [this]() { KJ_LOG(INFO, "Execution ", description_, ": Started"); });
+      [this]() { KJ_LOG(INFO, "Execution " + description_, "Started"); });
 }
 kj::Promise<void> Execution::getResult(GetResultContext context) {
   KJ_LOG(INFO, "Execution " + description_, "Creating dependency edges");
@@ -163,11 +163,15 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
         i++;
       }
     }
+    KJ_LOG(INFO, "Execution " + description_, request_);
     // TODO: cache
     return frontend_context_.dispatcher_
         .AddRequest(request_, std::move(start_.fulfiller))
         .then([this, context](capnproto::Result::Reader result) mutable {
           KJ_LOG(INFO, "Execution " + description_, "Execution done");
+          KJ_LOG(INFO, "Execution " + description_, result);
+          KJ_ASSERT(!result.getStatus().isInternalError(),
+                    result.getStatus().getInternalError());
           context.getResults().setResult(result);
           finish_promise_.fulfiller->fulfill();
           if (result.getStatus().isInternalError()) return;

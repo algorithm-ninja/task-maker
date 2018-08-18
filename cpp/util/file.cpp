@@ -53,7 +53,7 @@ bool OsMakeImmutable(const std::string& path) {
 const size_t max_path_len = 1 << 15;
 std::string OsTempDir(const std::string& path) {
   std::string tmp = util::File::JoinPath(path, "XXXXXX");
-  KJ_REQUIRE(tmp.size() >= max_path_len, tmp.size(), max_path_len,
+  KJ_REQUIRE(tmp.size() < max_path_len, tmp.size(), max_path_len,
              "Path too long");
   char data[max_path_len + 1];
   data[0] = 0;
@@ -152,6 +152,7 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
     throw std::system_error(errno, std::system_category(), "Write " + path);
   }
   auto finalize = [=]() {
+    KJ_LOG(INFO, "Finalizing " + path);
     if (fd == -1) return;
     if (fsync(fd) == -1 || close(fd) == -1 ||
         OsAtomicMove(temp_file, path, overwrite, exist_ok)) {
@@ -161,8 +162,9 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
       });
     }
   };
-  return [fd, temp_file,
+  return [fd, temp_file, path,
           _ = kj::defer(std::move(finalize))](util::File::Chunk chunk) mutable {
+    KJ_DBG("Chunk for ", path);
     if (fd == -1) return;
     size_t pos = 0;
     while (pos < chunk.size()) {
@@ -194,6 +196,7 @@ void File::Read(const std::string& path, File::ChunkReceiver chunk_receiver) {
 kj::Maybe<File::ChunkReceiver> File::Write(const std::string& path,
                                            bool overwrite, bool exist_ok) {
   MakeDirs(BaseDir(path));
+  KJ_DBG(path, Size(path));
   if (!overwrite && Size(path) >= 0) {
     if (exist_ok) return nullptr;
     throw std::system_error(EEXIST, std::system_category(), "Write " + path);
@@ -289,6 +292,7 @@ int64_t File::Size(const std::string& path) {
 }
 
 TempDir::TempDir(const std::string& base) {
+  File::MakeDirs(base);
   path_ = OsTempDir(base);
   if (path_.empty())
     throw std::system_error(errno, std::system_category(), "mkdtemp");
@@ -296,12 +300,18 @@ TempDir::TempDir(const std::string& base) {
 void TempDir::Keep() { keep_ = true; }
 const std::string& TempDir::Path() const { return path_; }
 TempDir::~TempDir() {
-  if (!keep_) File::RemoveTree(path_);
+  if (!keep_ && !moved_) File::RemoveTree(path_);
 }
 
 std::string File::SHAToPath(const std::string& store_directory,
                             const SHA256_t& hash) {
   return util::File::JoinPath(store_directory, util::File::PathForHash(hash));
+}
+
+kj::Promise<void> File::Receiver::SendChunk(SendChunkContext context) {
+  KJ_DBG("send_chunk");
+  receiver_(context.getParams().getChunk());
+  return kj::READY_NOW;
 }
 
 kj::Promise<void> File::HandleRequestFile(

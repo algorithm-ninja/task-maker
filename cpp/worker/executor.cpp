@@ -13,8 +13,9 @@
 namespace {
 void PrepareFile(const std::string& path, const util::SHA256_t& hash,
                  bool executable) {
-  if (hash.isZero()) return;
-  util::File::Copy(path, util::File::PathForHash(hash));
+  KJ_DBG(hash.Hex(), path);
+  // if (hash.isZero()) return;
+  util::File::Copy(util::File::PathForHash(hash), path);
   if (executable)
     util::File::MakeExecutable(path);
   else
@@ -25,16 +26,17 @@ void RetrieveFile(const std::string& path,
                   capnproto::SHA256::Builder hash_out) {
   auto hash = util::File::Hash(path);
   hash.ToCapnp(hash_out);
-  util::File::Copy(util::File::PathForHash(hash), path);
+  util::File::Copy(path, util::File::PathForHash(hash));
   util::File::MakeImmutable(util::File::PathForHash(hash));
 }
 
 bool ValidateFileName(std::string name, capnproto::Result::Builder result) {
-  if (name.find("..")) {  // TODO: make this more permissive?
+  // TODO: make this more permissive?
+  if (name.find("..") != std::string::npos) {
     result.getStatus().setInternalError("File names should not contain ..!");
     return false;
   }
-  if (name.find('\0')) {
+  if (name.find('\0') != std::string::npos) {
     result.getStatus().setInternalError("File names should not contain NUL!");
     return false;
   }
@@ -102,8 +104,9 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
     cmdline_file << cmdline << std::endl;
   }
 
-  KJ_LOG(INFO, kj::str("Executing:\n", "\tCommand:        ", cmdline, "\n",
-                       "\tInside sandbox: ", tmp.Path()));
+  auto log = kj::str("Executing:\n", "\tCommand:        ", cmdline, "\n",
+                     "\tInside sandbox: ", tmp.Path());
+  KJ_LOG(INFO, log);
 
   std::string sandbox_dir = util::File::JoinPath(tmp.Path(), kBoxDir);
   util::File::MakeDirs(sandbox_dir);
@@ -138,6 +141,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
   last_load = last_load.then(
       [executable, sandbox_dir, exec_options, request, result, stderr_path,
        stdout_path, tmp = std::move(tmp)]() mutable -> kj::Promise<void> {
+        KJ_LOG(INFO, "Files prepared, starting execution");
         if (executable.isLocalFile()) {
           auto local_file = executable.getLocalFile();
           PrepareFile(util::File::JoinPath(sandbox_dir, local_file.getName()),

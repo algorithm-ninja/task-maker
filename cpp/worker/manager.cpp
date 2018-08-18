@@ -47,7 +47,7 @@ void ManagerFun() {
   if (Flags::num_cores == 0) {
     Flags::num_cores = std::thread::hardware_concurrency();
   }
-  size_t num_boxes = std::thread::hardware_concurrency();
+  size_t num_boxes = Flags::num_cores;
   ssize_t num_read = 0;
   std::unordered_set<int> children;
   while ((num_read = read(parentfd, &num_boxes, sizeof(size_t))) != 0) {

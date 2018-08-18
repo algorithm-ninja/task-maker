@@ -3,6 +3,7 @@
 #include <memory>
 
 #include <kj/common.h>
+#include <kj/debug.h>
 #include <kj/function.h>
 #include "capnp/file.capnp.h"
 #include "util/sha256.hpp"
@@ -97,8 +98,11 @@ class File {
       KJ_IF_MAYBE(tmp, Write(PathForHash(hash), /*overwrite=*/true)) {
         receiver_ = std::move(*tmp);
       }
+      else {
+        KJ_FAIL_ASSERT("Write(PathForHash))");
+      }
     }
-    kj::Promise<void> SendChunk(SendChunkContext context);
+    kj::Promise<void> SendChunk(SendChunkContext context) KJ_WARN_UNUSED_RESULT;
 
    private:
     ChunkReceiver receiver_;
@@ -111,7 +115,10 @@ class File {
     auto req = worker.requestFileRequest();
     hash.ToCapnp(req.initHash());
     req.setReceiver(kj::heap<util::File::Receiver>(hash));
-    return req.send().ignoreResult();
+    return req.send()
+        .ignoreResult()
+        .then([]() { KJ_DBG("ciao"); })
+        .eagerlyEvaluate(nullptr);
   }
 
   // Same as Get, but skip zero files and already present files.
@@ -134,14 +141,19 @@ class TempDir {
   void Keep();
   ~TempDir();
 
-  TempDir(TempDir&&) = default;
-  TempDir& operator=(TempDir&&) = default;
-  TempDir(const TempDir&) = delete;
-  TempDir& operator=(const TempDir&) = delete;
+  TempDir(TempDir&& other) { *this = std::move(other); }
+  TempDir& operator=(TempDir&& other) {
+    path_ = std::move(other.path_);
+    keep_ = other.keep_;
+    other.moved_ = true;
+    return *this;
+  }
+  KJ_DISALLOW_COPY(TempDir);
 
  private:
   std::string path_;
   bool keep_ = false;
+  bool moved_ = false;
 };
 
 }  // namespace util

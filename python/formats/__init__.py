@@ -12,7 +12,6 @@ from sha256_capnp import SHA256
 from server_capnp import File, Execution
 from file_capnp import FileSender, FileReceiver
 
-
 CHUNK_SIZE = 1024 * 1024
 
 
@@ -20,19 +19,29 @@ class FileSenderImpl(FileSender.Server):
     def __init__(self):
         self.known_files = dict()
 
+    def hash_to_str(self, hash: SHA256) -> str:
+        return "%d-%d-%d-%d" % (hash.data0, hash.data1, hash.data2, hash.data3)
+
     def provide_file(self, context, path: str, description: str, is_exe: bool):
         hash = get_sha256(path)
-        self.known_files[hash] = path
+        self.known_files[self.hash_to_str(hash)] = path
         return context.provideFile(hash, description, is_exe)
 
-    def requestFile(self, hash: SHA256, receiver: FileReceiver):
+    def requestFile(self, hash: SHA256, receiver: FileReceiver, **kwargs):
+        hash = self.hash_to_str(hash)
         print("Requested file", hash)
         if hash not in self.known_files:
+            print(self.known_files)
             raise RuntimeError("Requested unknown file: %s" % str(hash))
         path = self.known_files[hash]
+        builder = UnionPromiseBuilder()
         with open(path, "rb") as f:
             for chunk in f.read(CHUNK_SIZE):
-                receiver.sendChunk(chunk)
+                print("chunk")
+                builder.add(
+                    receiver.sendChunk(chunk).then(lambda: print("ciao")))
+        print("done")
+        return builder.finalize()
 
 
 def get_sha256(path: str, blocksize=65536) -> SHA256:
@@ -72,7 +81,8 @@ class Dependency:
 
 
 class SourceFile:
-    def __init__(self, path: str, dependencies: List[Dependency], language: Language, write_bin_to: Optional[str],
+    def __init__(self, path: str, dependencies: List[Dependency],
+                 language: Language, write_bin_to: Optional[str],
                  target_arch: Arch, grader: Optional["GraderInfo"]):
         self.path = path
         self.dependencies = dependencies
@@ -81,7 +91,8 @@ class SourceFile:
         self.target_arch = target_arch
         self.grader = grader
         self.name = os.path.basename(path)
-        self.exe_name = os.path.splitext(os.path.basename(write_bin_to or path))[0]
+        self.exe_name = os.path.splitext(
+            os.path.basename(write_bin_to or path))[0]
         self.need_compilation = need_compilation(self.language)
         self.prepared = False
 
@@ -96,15 +107,22 @@ class SourceFile:
         self.prepared = True
 
     def _compile(self, context, file_sender: FileSenderImpl):
-        source = file_sender.provide_file(context, self.path, "Source file for " + self.name, False)
+        source = file_sender.provide_file(
+            context, self.path, "Source file for " + self.name, False)
         if self.language == Language.CPP:
             compiler = "c++"
-            args = ["-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", self.exe_name, self.name]
+            args = [
+                "-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", self.exe_name,
+                self.name
+            ]
             if self.target_arch == Arch.I686:
                 args.append("-m32")
         elif self.language == Language.C:
             compiler = "cc"
-            args = ["-O2", "-std=c11", "-DEVAL", "-Wall", "-o", self.exe_name, self.name]
+            args = [
+                "-O2", "-std=c11", "-DEVAL", "-Wall", "-o", self.exe_name,
+                self.name
+            ]
             if self.target_arch == Arch.I686:
                 args.append("-m32")
         elif self.language == Language.PASCAL:
@@ -112,49 +130,66 @@ class SourceFile:
             args = ["-O2", "-XS", "-dEVAL", "-o", self.exe_name, self.name]
             if self.target_arch == Arch.DEFAULT:
                 raise NotImplementedError(
-                    "Cannot compile %s: targetting Pascal executables is not supported yet" % self.path)
+                    "Cannot compile %s: targetting Pascal executables is not supported yet"
+                    % self.path)
         elif self.language == Language.RUST:
             compiler = "rustc"
             args = ["-O", "--cfg", "EVAL", "-o", self.exe_name, self.name]
             if self.target_arch == Arch.DEFAULT:
                 raise NotImplementedError(
-                    "Cannot compile %s: targetting Rust executables is not supported yet" % self.path)
+                    "Cannot compile %s: targetting Rust executables is not supported yet"
+                    % self.path)
         # TODO add language plugin system
         else:
-            raise NotImplementedError("Cannot compile %s: unknown language" % self.path)
+            raise NotImplementedError(
+                "Cannot compile %s: unknown language" % self.path)
 
         # TODO this should be done by the worker
         compiler = shutil.which(compiler)
         if not compiler:
-            raise FileNotFoundError("Cannot compile %s: missing compiler" % self.path)
+            raise FileNotFoundError(
+                "Cannot compile %s: missing compiler" % self.path)
 
-        self.compilation = context.addExecution("Compilation of %s" % self.name).execution
+        self.compilation = context.addExecution(
+            "Compilation of %s" % self.name).execution
         self.compilation.setExecutablePath(compiler)
         self.compilation.setArgs(args)
         self.compilation.addInput("Source file of " + self.name, source.file)
         for dep in self.dependencies:
-            self.compilation.addInput(dep.name, file_sender.provide_file(context, dep.path, dep.path, False).file)
+            self.compilation.addInput(
+                dep.name,
+                file_sender.provide_file(context, dep.path, dep.path,
+                                         False).file)
         if self.grader:
             for dep in self.grader.files:
-                self.compilation.addInput(dep.name, file_sender.provide_file(context, dep.path, dep.path, False).file)
+                self.compilation.addInput(
+                    dep.name,
+                    file_sender.provide_file(context, dep.path, dep.path,
+                                             False).file)
         self.compilation_stderr = self.compilation.stderr()
         self.executable = self.compilation.output(self.exe_name, True)
         # TODO set cache
         # TODO set time/memory limits?
-        self.compilation.notifyStart().then(lambda _: print("Compilation of %s" % self.name, "started"))
+        self.compilation.notifyStart().then(
+            lambda _: print("Compilation of %s" % self.name, "started"))
         self.compilation.getResult().then(lambda res: print(res))
 
     def _not_compile(self, context, file_sender: FileSenderImpl):
-        self.executable = file_sender.provide_file(context, self.path, "Source file for " + self.name, True)
+        self.executable = file_sender.provide_file(
+            context, self.path, "Source file for " + self.name, True)
 
-    def execute(self, context, file_sender: FileSenderImpl, description: str, args: List[str]) -> Execution:
+    def execute(self, context, file_sender: FileSenderImpl, description: str,
+                args: List[str]) -> Execution:
         execution = context.addExecution(description).execution
         execution.notifyStart().then(lambda _: print(description, "started"))
         execution.setExecutable(self.exe_name, self.executable.file)
         execution.setArgs(args)
         if not self.need_compilation:
             for dep in self.dependencies:
-                execution.addInput(dep.name, file_sender.provide_file(context, dep.path, dep.path, False).file)
+                execution.addInput(
+                    dep.name,
+                    file_sender.provide_file(context, dep.path, dep.path,
+                                             False).file)
         return execution
 
     def __repr__(self):
@@ -162,9 +197,12 @@ class SourceFile:
 
 
 class TestCase:
-    def __init__(self, generator: Optional[SourceFile], generator_args: List[str], extra_deps: List[Dependency],
-                 validator: Optional[SourceFile], validator_args: List[str], input_file: Optional[str],
-                 output_file: Optional[str], write_input_to: Optional[str], write_output_to: Optional[str]):
+    def __init__(self, generator: Optional[SourceFile],
+                 generator_args: List[str], extra_deps: List[Dependency],
+                 validator: Optional[SourceFile], validator_args: List[str],
+                 input_file: Optional[str], output_file: Optional[str],
+                 write_input_to: Optional[str],
+                 write_output_to: Optional[str]):
         self.generator = generator
         self.generator_args = generator_args
         self.extra_deps = extra_deps
@@ -176,17 +214,20 @@ class TestCase:
         self.write_output_to = write_output_to
 
     def __repr__(self):
-        return "<TestCase generator=%s args=%s>" % (self.generator, str(self.generator_args))
+        return "<TestCase generator=%s args=%s>" % (self.generator,
+                                                    str(self.generator_args))
 
 
 class Subtask:
-    def __init__(self, score_mode: ScoreMode, max_score: float, testcases: Dict[int, TestCase]):
+    def __init__(self, score_mode: ScoreMode, max_score: float,
+                 testcases: Dict[int, TestCase]):
         self.score_mode = score_mode
         self.max_score = max_score
         self.testcases = testcases
 
     def __repr__(self):
-        return "<Subtask score_mode=%s max_score=%f>" % (self.score_mode.name, self.max_score)
+        return "<Subtask score_mode=%s max_score=%f>" % (self.score_mode.name,
+                                                         self.max_score)
 
 
 class GraderInfo:
@@ -199,9 +240,11 @@ class GraderInfo:
 
 
 class Task:
-    def __init__(self, name: str, title: str, subtasks: Dict[int, Subtask], official_solution: Optional[SourceFile],
-                 grader_info: List[GraderInfo], checker: Optional[SourceFile], time_limit: float, memory_limit_kb: int,
-                 input_file: str, output_file: str):
+    def __init__(self, name: str, title: str, subtasks: Dict[int, Subtask],
+                 official_solution: Optional[SourceFile],
+                 grader_info: List[GraderInfo], checker: Optional[SourceFile],
+                 time_limit: float, memory_limit_kb: int, input_file: str,
+                 output_file: str):
         self.name = name
         self.title = title
         self.subtasks = subtasks
@@ -218,7 +261,8 @@ class Task:
 
 
 class TerryTask:
-    def __init__(self, name: str, title: str, max_score: float, generator: SourceFile, validator: SourceFile,
+    def __init__(self, name: str, title: str, max_score: float,
+                 generator: SourceFile, validator: SourceFile,
                  checker: SourceFile, solution: SourceFile):
         self.name = name
         self.title = title

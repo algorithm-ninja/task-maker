@@ -203,6 +203,7 @@ void Unix::Child() {
   int stdin_fd = -1;
   int stdout_fd = -1;
   int stderr_fd = -1;
+  // fprintf(stderr, "%s\n", options_->stdin_file);
   if (options_->stdin_file[0]) {
     stdin_fd = open(options_->stdin_file, O_RDONLY | O_CLOEXEC);
     if (stdin_fd == -1) die("open", errno);
