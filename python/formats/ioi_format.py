@@ -14,8 +14,7 @@ from task_maker.dependency_finder import find_dependency
 from task_maker.language import grader_from_file, valid_extensions
 from task_maker.sanitize import sanitize_command
 from task_maker.source_file import from_file
-from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo, SourceFile, provide_file, \
-    FileSenderImpl
+from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo, SourceFile, FileSenderImpl
 
 VALIDATION_INPUT_NAME = "tm_input_file"
 
