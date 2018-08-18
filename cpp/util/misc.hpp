@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <kj/async.h>
+#include <kj/debug.h>
 #include <kj/string.h>
 
 namespace util {
@@ -61,13 +62,15 @@ class UnionPromiseBuilder {
   }
 
   void AddPromise(kj::Promise<void> p) {
-    info_->promises.push_back(std::move(p).eagerlyEvaluate(nullptr).then(
-        [info = info_, fulfiller = fulfiller_]() {
-          info->resolved++;
-          if (info->finalized && info->resolved == info->promises.size()) {
-            fulfiller->fulfill();
-          }
-        }));
+    info_->promises.push_back(
+        std::move(p)
+            .then([info = info_, fulfiller = fulfiller_]() {
+              info->resolved++;
+              if (info->finalized && info->resolved == info->promises.size()) {
+                fulfiller->fulfill();
+              }
+            })
+            .eagerlyEvaluate(nullptr));
   }
 
   kj::Promise<void> Finalize() && KJ_WARN_UNUSED_RESULT {

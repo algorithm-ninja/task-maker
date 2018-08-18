@@ -35,9 +35,9 @@ kj::Promise<void> Execution::setExecutablePath(
 kj::Promise<void> Execution::setExecutable(SetExecutableContext context) {
   return context.getParams().getFile().getIdRequest().send().then(
       [this, context](auto res) mutable {
-        KJ_LOG(INFO, "Execution " + description_,
-               kj::str("Setting exacutable to ", context.getParams().getName(),
-                       " id ", res.getId()));
+        auto log = kj::str("Setting exacutable to ",
+                           context.getParams().getName(), " id ", res.getId());
+        KJ_LOG(INFO, "Execution " + description_, log);
         executable_ = res.getId();
         request_.getExecutable().initLocalFile().setName(
             context.getParams().getName());
@@ -55,7 +55,7 @@ kj::Promise<void> Execution::addInput(AddInputContext context) {
   return context.getParams().getFile().getIdRequest().send().then(
       [this, context](auto res) mutable {
         KJ_LOG(INFO, "Execution " + description_,
-               ": Adding file with id " + std::to_string(res.getId()) +
+               "Adding file with id " + std::to_string(res.getId()) +
                    " as input " + std::string(context.getParams().getName()));
         inputs_.emplace(context.getParams().getName(), res.getId());
       });
@@ -111,9 +111,9 @@ kj::Promise<void> Execution::output(OutputContext context) {
                   "Output " + std::string(context.getParams().getName()) +
                       " of execution " + description_);
   context.getResults().setFile(kj::heap<File>(id));
-  KJ_LOG(INFO, "Execution " + description_,
-         kj::str("Creating output file ", context.getParams().getName(),
-                 " with id ", id));
+  auto log = kj::str("Creating output file ", context.getParams().getName(),
+                     " with id ", id);
+  KJ_LOG(INFO, "Execution " + description_, log);
   outputs_.emplace(context.getParams().getName(), id);
   return kj::READY_NOW;
 }
@@ -187,7 +187,8 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                        "Unexpected output!");
             set_hash(outputs_[output.getName()], output.getHash());
           }
-        });
+        })
+        .eagerlyEvaluate(nullptr);
   });
 }
 
@@ -203,7 +204,8 @@ kj::Promise<void> FrontendContext::provideFile(ProvideFileContext context) {
   return kj::READY_NOW;
 }
 kj::Promise<void> FrontendContext::addExecution(AddExecutionContext context) {
-  KJ_LOG(INFO, "Adding execution", context.getParams().getDescription());
+  KJ_LOG(INFO, "Adding execution " +
+                   std::string(context.getParams().getDescription()));
   // TODO: see Server::registerFrontend
   context.getResults().setExecution(
       kj::heap<Execution>(*this, context.getParams().getDescription()));
@@ -218,13 +220,13 @@ kj::Promise<void> FrontendContext::startEvaluation(
       builder_.AddPromise(
           util::File::MaybeGet(file.second.hash,
                                context.getParams().getSender())
-              .eagerlyEvaluate(nullptr)
               .then([id = file.first,
                      fulfiller =
                          std::move(file.second.promise.fulfiller)]() mutable {
                 KJ_LOG(INFO, "Received file with id " + std::to_string(id));
                 fulfiller->fulfill();
-              }));
+              })
+              .eagerlyEvaluate(nullptr));
     }
     // Wait for all files to be ready
     builder_.AddPromise(file.second.forked_promise.addBranch());
