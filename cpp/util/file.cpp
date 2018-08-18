@@ -1,4 +1,5 @@
 #include "util/file.hpp"
+#include "util/flags.hpp"
 #include "util/sha256.hpp"
 
 #include <cstdlib>
@@ -266,7 +267,9 @@ void File::MakeImmutable(const std::string& path) {
 
 std::string File::PathForHash(const SHA256_t& hash) {
   std::string path = hash.Hex();
-  return JoinPath(JoinPath(path.substr(0, 2), path.substr(2, 2)), path);
+  return JoinPath(
+      Flags::store_directory,
+      JoinPath(JoinPath(path.substr(0, 2), path.substr(2, 2)), path));
 }
 
 std::string File::JoinPath(const std::string& first,
