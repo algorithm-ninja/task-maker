@@ -39,7 +39,7 @@ kj::Promise<void> Execution::setExecutable(SetExecutableContext context) {
                kj::str("Setting exacutable to ", context.getParams().getName(),
                        " id ", res.getId()));
         executable_ = res.getId();
-        request_.getExecutable().getLocalFile().setName(
+        request_.getExecutable().initLocalFile().setName(
             context.getParams().getName());
       });
 }
