@@ -267,7 +267,8 @@ def generate_inputs(context, task: Task, file_sender: FileSenderImpl) -> (
         for tc_num, testcase in subtask.testcases.items():
             # input file
             if testcase.input_file:
-                inputs[(st_num, tc_num)] = provide_file(context, testcase.input_file, "Static input %d" + tc_num, False)
+                inputs[(st_num, tc_num)] = file_sender.provide_file(context, testcase.input_file,
+                                                                    "Static input %d" + tc_num, False)
             else:
                 testcase.generator.prepare(context, file_sender)
                 testcase.validator.prepare(context, file_sender)
@@ -275,7 +276,7 @@ def generate_inputs(context, task: Task, file_sender: FileSenderImpl) -> (
                 gen = testcase.generator.execute(context, file_sender, "Generation of input %d" % tc_num,
                                                  testcase.generator_args)
                 for dep in testcase.extra_deps:
-                    gen.addInput(dep.name, provide_file(context, dep.path, dep.path, False).file)
+                    gen.addInput(dep.name, file_sender.provide_file(context, dep.path, dep.path, False).file)
                 # TODO set cache mode
                 # TODO set limits?
                 inputs[(st_num, tc_num)] = gen.stdout()
@@ -304,8 +305,9 @@ def generate_inputs(context, task: Task, file_sender: FileSenderImpl) -> (
 
             # output file
             if testcase.output_file:
-                outputs[(st_num, tc_num)] = provide_file(context, testcase.output_file, "Static output %d" % tc_num,
-                                                         False)
+                outputs[(st_num, tc_num)] = file_sender.provide_file(context, testcase.output_file,
+                                                                     "Static output %d" % tc_num,
+                                                                     False)
             else:
                 task.official_solution.prepare(context, file_sender)
                 sol = task.official_solution.execute(context, file_sender,
