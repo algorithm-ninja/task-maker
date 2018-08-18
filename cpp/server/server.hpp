@@ -25,6 +25,15 @@ struct FileInfo {
 
 class FrontendContext;
 
+class File : public capnproto::File::Server {
+ public:
+  File(uint32_t id) : id_(id) {}
+  kj::Promise<void> getId(GetIdContext context);
+
+ private:
+  uint32_t id_;
+};
+
 class Execution : public capnproto::Execution::Server {
  public:
   KJ_DISALLOW_COPY(Execution);

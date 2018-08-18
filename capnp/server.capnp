@@ -9,9 +9,8 @@ using import "evaluation.capnp".Evaluator;
 using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("capnproto");
 
-struct File {
-  # This struct should not be modified by the client
-  id @0 :UInt64;
+interface File {
+  getId @0 () -> (id :UInt64);
 }
 
 interface Execution {
