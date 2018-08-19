@@ -28,22 +28,26 @@ Frontend::Frontend(std::string server, int port)
                             .registerFrontendRequest()
                             .send()
                             .then([](auto res) { return res.getContext(); })) {}
-File Frontend::provideFile(const std::string& path,
-                           const std::string& description, bool is_executable) {
+File* Frontend::provideFile(const std::string& path,
+                            const std::string& description,
+                            bool is_executable) {
   auto req = frontend_context_.provideFileRequest();
   util::SHA256_t hash = util::File::Hash(path);
   known_files_.emplace(hash, path);
   hash.ToCapnp(req.initHash());
   req.setDescription(description);
   req.setIsExecutable(is_executable);
-  return File(req.send());
+  files_.push_back(std::make_unique<File>(req.send()));
+  return files_.back().get();
 }
 
-Execution Frontend::addExecution(const std::string& description) {
+Execution* Frontend::addExecution(const std::string& description) {
   auto req = frontend_context_.addExecutionRequest();
   req.setDescription(description);
-  return Execution(req.send().then([](auto r) { return r.getExecution(); }),
-                   builder_);
+  executions_.push_back(std::make_unique<Execution>(
+      req.send().then([](auto r) { return r.getExecution(); }), files_,
+      builder_));
+  return executions_.back().get();
 }
 
 void Frontend::evaluate() {
@@ -58,9 +62,9 @@ void Frontend::evaluate() {
 }
 
 void Frontend::getFileContentsAsString(
-    File& file, std::function<void(const std::string&)> callback) {
+    File* file, std::function<void(const std::string&)> callback) {
   builder_.AddPromise(
-      file.forked_promise.addBranch().then([this, callback](auto file) {
+      file->forked_promise.addBranch().then([this, callback](auto file) {
         auto req = frontend_context_.getFileContentsRequest();
         auto output = kj::heap<std::string>();
         auto output_ptr = output.get();
@@ -75,9 +79,9 @@ void Frontend::getFileContentsAsString(
       }));
 }
 
-void Frontend::getFileContentsToFile(File& file, const std::string& path,
+void Frontend::getFileContentsToFile(File* file, const std::string& path,
                                      bool overwrite, bool exist_ok) {
-  builder_.AddPromise(file.forked_promise.addBranch().then(
+  builder_.AddPromise(file->forked_promise.addBranch().then(
       [this, path, exist_ok, overwrite](auto file) {
         auto req = frontend_context_.getFileContentsRequest();
         req.setFile(file);
@@ -98,27 +102,31 @@ void Frontend::stopEvaluation() {
 void Execution::setExecutablePath(const std::string& path) {
   auto req = execution_.setExecutablePathRequest();
   req.setPath(path);
-  builder_.AddPromise(req.send().ignoreResult());
+  my_builder_.AddPromise(req.send().ignoreResult());
 }
-void Execution::setExecutable(const std::string& name, File& file) {
-  builder_.AddPromise(
-      file.forked_promise.addBranch().then([this, name](auto file) {
+
+void Execution::setExecutable(const std::string& name, File* file) {
+  my_builder_.AddPromise(
+      file->forked_promise.addBranch().then([this, name](auto file) {
         auto req = execution_.setExecutableRequest();
         req.setName(name);
         req.setFile(file);
         builder_.AddPromise(req.send().ignoreResult());
       }));
 }
-void Execution::setStdin(File& file) {
-  builder_.AddPromise(file.forked_promise.addBranch().then([this](auto file) {
-    auto req = execution_.setStdinRequest();
-    req.setFile(file);
-    builder_.AddPromise(req.send().ignoreResult());
-  }));
+
+void Execution::setStdin(File* file) {
+  my_builder_.AddPromise(
+      file->forked_promise.addBranch().then([this](auto file) {
+        auto req = execution_.setStdinRequest();
+        req.setFile(file);
+        builder_.AddPromise(req.send().ignoreResult());
+      }));
 }
-void Execution::addInput(const std::string& name, File& file) {
-  builder_.AddPromise(
-      file.forked_promise.addBranch().then([this, name](auto file) {
+
+void Execution::addInput(const std::string& name, File* file) {
+  my_builder_.AddPromise(
+      file->forked_promise.addBranch().then([this, name](auto file) {
         auto req = execution_.addInputRequest();
         req.setName(name);
         req.setFile(file);
@@ -132,15 +140,17 @@ void Execution::setArgs(const std::vector<std::string>& args) {
   for (size_t i = 0; i < args.size(); i++) {
     req.getArgs().set(i, args[i]);
   }
-  builder_.AddPromise(req.send().ignoreResult());
+  my_builder_.AddPromise(req.send().ignoreResult());
 }
 
 void Execution::disableCache() {
-  builder_.AddPromise(execution_.disableCacheRequest().send().ignoreResult());
+  my_builder_.AddPromise(
+      execution_.disableCacheRequest().send().ignoreResult());
 }
 
 void Execution::makeExclusive() {
-  builder_.AddPromise(execution_.makeExclusiveRequest().send().ignoreResult());
+  my_builder_.AddPromise(
+      execution_.makeExclusiveRequest().send().ignoreResult());
 }
 
 void Execution::setLimits(const Resources& limits) {
@@ -153,25 +163,28 @@ void Execution::setLimits(const Resources& limits) {
   req.getLimits().setFsize(limits.fsize);
   req.getLimits().setMemlock(limits.memlock);
   req.getLimits().setStack(limits.stack);
-  builder_.AddPromise(req.send().ignoreResult());
+  my_builder_.AddPromise(req.send().ignoreResult());
 }
 
-File Execution::stdout(bool is_executable) {
+File* Execution::stdout(bool is_executable) {
   auto req = execution_.stdoutRequest();
   req.setIsExecutable(is_executable);
-  return File(req.send());
+  files_.push_back(std::make_unique<File>(req.send()));
+  return files_.back().get();
 }
 
-File Execution::stderr(bool is_executable) {
+File* Execution::stderr(bool is_executable) {
   auto req = execution_.stderrRequest();
   req.setIsExecutable(is_executable);
-  return File(req.send());
+  files_.push_back(std::make_unique<File>(req.send()));
+  return files_.back().get();
 }
-File Execution::output(const std::string& name, bool is_executable) {
+File* Execution::output(const std::string& name, bool is_executable) {
   auto req = execution_.outputRequest();
   req.setIsExecutable(is_executable);
   req.setName(name);
-  return File(req.send());
+  files_.push_back(std::make_unique<File>(req.send()));
+  return files_.back().get();
 }
 
 void Execution::notifyStart(std::function<void()> callback) {
@@ -181,29 +194,31 @@ void Execution::notifyStart(std::function<void()> callback) {
 
 void Execution::getResult(std::function<void(Result)> callback) {
   builder_.AddPromise(
-      execution_.getResultRequest().send().then([callback](auto res) {
-        auto r = res.getResult();
-        Result result;
-        result.status = r.getStatus().which();
-        if (r.getStatus().isSignal()) {
-          result.signal = r.getStatus().getSignal();
-        }
-        if (r.getStatus().isReturnCode()) {
-          result.return_code = r.getStatus().getReturnCode();
-        }
-        if (r.getStatus().isInternalError()) {
-          result.error = r.getStatus().getInternalError();
-        }
-        result.resources.cpu_time = r.getResourceUsage().getCpuTime();
-        result.resources.sys_time = r.getResourceUsage().getSysTime();
-        result.resources.wall_time = r.getResourceUsage().getWallTime();
-        result.resources.memory = r.getResourceUsage().getMemory();
-        result.resources.nproc = r.getResourceUsage().getNproc();
-        result.resources.nofiles = r.getResourceUsage().getNofiles();
-        result.resources.fsize = r.getResourceUsage().getFsize();
-        result.resources.memlock = r.getResourceUsage().getMemlock();
-        result.resources.stack = r.getResourceUsage().getStack();
-        callback(result);
+      std::move(my_builder_).Finalize().then([this, callback]() {
+        return execution_.getResultRequest().send().then([callback](auto res) {
+          auto r = res.getResult();
+          Result result;
+          result.status = r.getStatus().which();
+          if (r.getStatus().isSignal()) {
+            result.signal = r.getStatus().getSignal();
+          }
+          if (r.getStatus().isReturnCode()) {
+            result.return_code = r.getStatus().getReturnCode();
+          }
+          if (r.getStatus().isInternalError()) {
+            result.error = r.getStatus().getInternalError();
+          }
+          result.resources.cpu_time = r.getResourceUsage().getCpuTime();
+          result.resources.sys_time = r.getResourceUsage().getSysTime();
+          result.resources.wall_time = r.getResourceUsage().getWallTime();
+          result.resources.memory = r.getResourceUsage().getMemory();
+          result.resources.nproc = r.getResourceUsage().getNproc();
+          result.resources.nofiles = r.getResourceUsage().getNofiles();
+          result.resources.fsize = r.getResourceUsage().getFsize();
+          result.resources.memlock = r.getResourceUsage().getMemlock();
+          result.resources.stack = r.getResourceUsage().getStack();
+          callback(result);
+        });
       }));
 }
 }  // namespace frontend

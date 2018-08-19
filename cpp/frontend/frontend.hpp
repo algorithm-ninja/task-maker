@@ -39,6 +39,8 @@ class File {
   friend class Execution;
   kj::Promise<capnproto::File::Reader> promise;
   kj::ForkedPromise<capnproto::File::Reader> forked_promise;
+
+ public:
   template <typename T>
   explicit File(T&& prom)
       : promise(prom.then([](auto r) { return r.getFile(); })),
@@ -48,13 +50,14 @@ class File {
 class Execution {
  public:
   Execution(capnproto::Execution::Client execution,
+            std::vector<std::unique_ptr<File>>& files,
             util::UnionPromiseBuilder& builder)
-      : execution_(execution), builder_(builder) {}
+      : execution_(execution), files_(files), builder_(builder) {}
 
   void setExecutablePath(const std::string& path);
-  void setExecutable(const std::string& name, File& file);
-  void setStdin(File& file);
-  void addInput(const std::string& name, File& file);
+  void setExecutable(const std::string& name, File* file);
+  void setStdin(File* file);
+  void addInput(const std::string& name, File* file);
 
   void setArgs(const std::vector<std::string>& args);
 
@@ -62,9 +65,9 @@ class Execution {
   void makeExclusive();
   void setLimits(const Resources& limits);
 
-  File stdout(bool is_executable);
-  File stderr(bool is_executable);
-  File output(const std::string& name, bool is_executable);
+  File* stdout(bool is_executable);
+  File* stderr(bool is_executable);
+  File* output(const std::string& name, bool is_executable);
 
   void notifyStart(std::function<void()> callback);
 
@@ -72,20 +75,22 @@ class Execution {
 
  private:
   capnproto::Execution::Client execution_;
+  std::vector<std::unique_ptr<File>>& files_;
   util::UnionPromiseBuilder& builder_;
+  util::UnionPromiseBuilder my_builder_;
 };
 
 class Frontend {
  public:
   Frontend(std::string server, int port);
 
-  File provideFile(const std::string& path, const std::string& description,
-                   bool is_executable);
-  Execution addExecution(const std::string& description);
+  File* provideFile(const std::string& path, const std::string& description,
+                    bool is_executable);
+  Execution* addExecution(const std::string& description);
   void evaluate();  // Starts evaluation and returns when complete.
   void getFileContentsAsString(
-      File& file, std::function<void(const std::string&)> callback);
-  void getFileContentsToFile(File& file, const std::string& path,
+      File* file, std::function<void(const std::string&)> callback);
+  void getFileContentsToFile(File* file, const std::string& path,
                              bool overwrite, bool exist_ok);
   void stopEvaluation();
 
@@ -95,6 +100,8 @@ class Frontend {
   std::unordered_map<util::SHA256_t, std::string, util::SHA256_t::Hasher>
       known_files_;
   util::UnionPromiseBuilder builder_;
+  std::vector<std::unique_ptr<File>> files_;
+  std::vector<std::unique_ptr<Execution>> executions_;
 };
 }  // namespace frontend
 
