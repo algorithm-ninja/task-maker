@@ -1,0 +1,1 @@
+pybind11_add_module(task_maker_frontend frontend.cpp)

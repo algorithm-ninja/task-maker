@@ -11,8 +11,8 @@ include(HunterGate)
 include(ThreadSanitizer)
 
 HunterGate(
-    URL "https://github.com/ruslo/hunter/archive/v0.23.14.tar.gz"
-    SHA1 "f58bcf274f29097ac380bfe4955d2a66f077e741"
+    URL "https://github.com/ruslo/hunter/archive/v0.23.16.tar.gz"
+    SHA1 "dbe5b1c966414c4a055983c11d5251a2d8f2f16d"
 )
 
 # extract project version from git tag
@@ -48,6 +48,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 # if hunter is disabled all these lines are noop
 hunter_add_package(GTest)
 hunter_add_package(CapnProto)
+hunter_add_package(pybind11)
 
 # these finders are bundled with cmake
 find_package(GTest REQUIRED)
@@ -56,6 +57,7 @@ find_package(GTest REQUIRED)
 # TODO: add the one for CapnProto
 find_package(CapnProto CONFIG REQUIRED)
 find_package(GMock CONFIG REQUIRED)
+find_package(pybind11 CONFIG REQUIRED)
 
 add_subdirectory(capnp)
 add_subdirectory(cpp)

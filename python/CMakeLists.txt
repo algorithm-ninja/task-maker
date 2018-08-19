@@ -53,6 +53,7 @@ set(REQUIREMENTS_TXT_TGT "${CMAKE_CURRENT_BINARY_DIR}/requirements.txt")
 set(CPP_EXECUTABLES
   "${BIN_DIRECTORY}/task-maker"
 )
+set(FRONTEND_LIB "${SOURCES_MODULE}/task_maker_frontend.so")
 
 # Copy all the files
 add_custom_command(OUTPUT ${CAPNP_TGT}
@@ -83,6 +84,11 @@ add_custom_command(OUTPUT ${TESTS_PY_TGT}
 add_custom_command(OUTPUT ${REQUIREMENTS_TXT_TGT}
   COMMAND ${CMAKE_COMMAND} -E copy ${REQUIREMENTS_TXT} ${REQUIREMENTS_TXT_TGT}
   DEPENDS ${REQUIREMENTS_TXT}
+)
+
+add_custom_command(OUTPUT "${FRONTEND_LIB}"
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:task_maker_frontend> ${FRONTEND_LIB}
+    DEPENDS task_maker_frontend
 )
 
 foreach(task ${TESTS_TASKS})
@@ -161,7 +167,7 @@ endif()
 add_custom_target(module_files ALL
   DEPENDS ${CAPNP_TGT} ${UIS_PY_TGT} ${FORMATS_PY_TGT}
     ${REQUIREMENTS_TXT_TGT} ${TESTS_PY_TGT} "${TESTS_TASKS_TGT}"
-    ${SOURCES_PY_TGT} ${CPP_EXECUTABLES}
+    ${SOURCES_PY_TGT} ${CPP_EXECUTABLES} ${FRONTEND_LIB}
   ${TEMP_DIRECTORY}/stripped
 )
 

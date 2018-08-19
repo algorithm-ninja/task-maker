@@ -1,5 +1,7 @@
 add_subdirectory(sandbox/test)
 
+add_subdirectory(frontend)
+
 add_library(cpp_util
   util/file.cpp
   util/sha256.cpp
