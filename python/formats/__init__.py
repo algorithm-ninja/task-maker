@@ -102,7 +102,7 @@ class SourceFile:
         self.compilation = frontend.addExecution("Compilation of %s" % self.name)
         self.compilation.setExecutablePath(compiler)
         self.compilation.setArgs(args)
-        self.compilation.addInput("Source file of " + self.name, source)
+        self.compilation.addInput(self.name, source)
         for dep in self.dependencies:
             self.compilation.addInput(
                 dep.name,

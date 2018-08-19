@@ -3,18 +3,16 @@
 import argparse
 import glob
 import os
-from task_maker.promise import ForkablePromise
-from task_maker.uis import SolutionStatus, EventStatus
+import yaml
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
-import yaml
-
 from task_maker.dependency_finder import find_dependency
+from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo, SourceFile
 from task_maker.language import grader_from_file, valid_extensions
 from task_maker.sanitize import sanitize_command
 from task_maker.source_file import from_file
-from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo, SourceFile
+from task_maker.uis import SolutionStatus
 
 VALIDATION_INPUT_NAME = "tm_input_file"
 
