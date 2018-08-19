@@ -27,7 +27,9 @@ Frontend::Frontend(std::string server, int port)
       frontend_context_(client_.getMain<capnproto::MainServer>()
                             .registerFrontendRequest()
                             .send()
-                            .then([](auto res) { return res.getContext(); })) {}
+                            .then([](auto res) { return res.getContext(); })),
+      stop_request_(kj::READY_NOW) {}
+
 File* Frontend::provideFile(const std::string& path,
                             const std::string& description,
                             bool is_executable) {
@@ -46,24 +48,23 @@ Execution* Frontend::addExecution(const std::string& description) {
   req.setDescription(description);
   executions_.push_back(std::make_unique<Execution>(
       req.send().then([](auto r) { return r.getExecution(); }), files_,
-      builder_));
+      builder_, finish_builder_));
   return executions_.back().get();
 }
 
 void Frontend::evaluate() {
-  std::move(builder_)
-      .Finalize()
-      .then([this]() {
-        auto req = frontend_context_.startEvaluationRequest();
-        req.setSender(kj::heap<FileProvider>(known_files_));
-        return req.send().ignoreResult();
-      })
-      .wait(client_.getWaitScope());
+  finish_builder_.AddPromise(std::move(builder_).Finalize().then([this]() {
+    auto req = frontend_context_.startEvaluationRequest();
+    req.setSender(kj::heap<FileProvider>(known_files_));
+    return req.send().ignoreResult();
+  }));
+  std::move(finish_builder_).Finalize().wait(client_.getWaitScope());
+  stop_request_.wait(client_.getWaitScope());
 }
 
 void Frontend::getFileContentsAsString(
     File* file, std::function<void(const std::string&)> callback) {
-  builder_.AddPromise(
+  finish_builder_.AddPromise(
       file->forked_promise.addBranch().then([this, callback](auto file) {
         auto req = frontend_context_.getFileContentsRequest();
         auto output = kj::heap<std::string>();
@@ -81,7 +82,7 @@ void Frontend::getFileContentsAsString(
 
 void Frontend::getFileContentsToFile(File* file, const std::string& path,
                                      bool overwrite, bool exist_ok) {
-  builder_.AddPromise(file->forked_promise.addBranch().then(
+  finish_builder_.AddPromise(file->forked_promise.addBranch().then(
       [this, path, exist_ok, overwrite](auto file) {
         auto req = frontend_context_.getFileContentsRequest();
         req.setFile(file);
@@ -96,7 +97,8 @@ void Frontend::getFileContentsToFile(File* file, const std::string& path,
 }
 
 void Frontend::stopEvaluation() {
-  frontend_context_.stopEvaluationRequest().send().wait(client_.getWaitScope());
+  stop_request_ =
+      frontend_context_.stopEvaluationRequest().send().ignoreResult();
 }
 
 void Execution::setExecutablePath(const std::string& path) {
@@ -193,32 +195,42 @@ void Execution::notifyStart(std::function<void()> callback) {
 }
 
 void Execution::getResult(std::function<void(Result)> callback) {
-  builder_.AddPromise(
-      std::move(my_builder_).Finalize().then([this, callback]() {
-        return execution_.getResultRequest().send().then([callback](auto res) {
-          auto r = res.getResult();
-          Result result;
-          result.status = r.getStatus().which();
-          if (r.getStatus().isSignal()) {
-            result.signal = r.getStatus().getSignal();
-          }
-          if (r.getStatus().isReturnCode()) {
-            result.return_code = r.getStatus().getReturnCode();
-          }
-          if (r.getStatus().isInternalError()) {
-            result.error = r.getStatus().getInternalError();
-          }
-          result.resources.cpu_time = r.getResourceUsage().getCpuTime();
-          result.resources.sys_time = r.getResourceUsage().getSysTime();
-          result.resources.wall_time = r.getResourceUsage().getWallTime();
-          result.resources.memory = r.getResourceUsage().getMemory();
-          result.resources.nproc = r.getResourceUsage().getNproc();
-          result.resources.nofiles = r.getResourceUsage().getNofiles();
-          result.resources.fsize = r.getResourceUsage().getFsize();
-          result.resources.memlock = r.getResourceUsage().getMemlock();
-          result.resources.stack = r.getResourceUsage().getStack();
-          callback(result);
-        });
-      }));
+  auto promise = kj::newPromiseAndFulfiller<void>();
+  builder_.AddPromise(std::move(promise.promise));
+  finish_builder_.AddPromise(
+      std::move(my_builder_)
+          .Finalize()
+          .then([this, callback,
+                 fulfiller = std::move(promise.fulfiller)]() mutable {
+            fulfiller->fulfill();
+            return execution_.getResultRequest()
+                .send()
+                .then([callback](auto res) {
+                  auto r = res.getResult();
+                  Result result;
+                  result.status = r.getStatus().which();
+                  if (r.getStatus().isSignal()) {
+                    result.signal = r.getStatus().getSignal();
+                  }
+                  if (r.getStatus().isReturnCode()) {
+                    result.return_code = r.getStatus().getReturnCode();
+                  }
+                  if (r.getStatus().isInternalError()) {
+                    result.error = r.getStatus().getInternalError();
+                  }
+                  result.resources.cpu_time = r.getResourceUsage().getCpuTime();
+                  result.resources.sys_time = r.getResourceUsage().getSysTime();
+                  result.resources.wall_time =
+                      r.getResourceUsage().getWallTime();
+                  result.resources.memory = r.getResourceUsage().getMemory();
+                  result.resources.nproc = r.getResourceUsage().getNproc();
+                  result.resources.nofiles = r.getResourceUsage().getNofiles();
+                  result.resources.fsize = r.getResourceUsage().getFsize();
+                  result.resources.memlock = r.getResourceUsage().getMemlock();
+                  result.resources.stack = r.getResourceUsage().getStack();
+                  callback(result);
+                })
+                .eagerlyEvaluate(nullptr);
+          }));
 }
 }  // namespace frontend

@@ -51,8 +51,12 @@ class Execution {
  public:
   Execution(capnproto::Execution::Client execution,
             std::vector<std::unique_ptr<File>>& files,
-            util::UnionPromiseBuilder& builder)
-      : execution_(execution), files_(files), builder_(builder) {}
+            util::UnionPromiseBuilder& builder,
+            util::UnionPromiseBuilder& finish_builder)
+      : execution_(execution),
+        files_(files),
+        builder_(builder),
+        finish_builder_(finish_builder) {}
 
   void setExecutablePath(const std::string& path);
   void setExecutable(const std::string& name, File* file);
@@ -77,6 +81,7 @@ class Execution {
   capnproto::Execution::Client execution_;
   std::vector<std::unique_ptr<File>>& files_;
   util::UnionPromiseBuilder& builder_;
+  util::UnionPromiseBuilder& finish_builder_;
   util::UnionPromiseBuilder my_builder_;
 };
 
@@ -100,8 +105,10 @@ class Frontend {
   std::unordered_map<util::SHA256_t, std::string, util::SHA256_t::Hasher>
       known_files_;
   util::UnionPromiseBuilder builder_;
+  util::UnionPromiseBuilder finish_builder_;
   std::vector<std::unique_ptr<File>> files_;
   std::vector<std::unique_ptr<Execution>> executions_;
+  kj::Promise<void> stop_request_;
 };
 }  // namespace frontend
 
