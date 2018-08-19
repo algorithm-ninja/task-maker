@@ -18,6 +18,71 @@ from task_maker.task_maker_frontend import File
 VALIDATION_INPUT_NAME = "tm_input_file"
 
 
+class UIInterface:
+    def add_non_solution(self, source_file: SourceFile):
+        print("%20s %20s WAITING" % ("Compile non solution", source_file.name))
+        if source_file.need_compilation:
+            source_file.compilation.notifyStart(
+                lambda: print("%20s %20s STARTED" % ("Compile non solution", source_file.name))
+            )
+            source_file.compilation.getResult(lambda res: print("%20s %20s ENDED: %s" % ("Compile non solution", source_file.name, str(res))))
+        else:
+            print(
+                "%20s %20s ENDED" % ("Compile non solution", source_file.name))
+
+    def add_solution(self, source_file: SourceFile):
+        print("%20s %20s WAITING" % ("Compile solution", source_file.name))
+        if source_file.need_compilation:
+            source_file.compilation.notifyStart(
+                lambda: print("%20s %20s STARTED" % ("Compile solution", source_file.name))
+            )
+            source_file.compilation.getResult(
+                lambda res: print("%20s %20s ENDED: %s" % ("Compile solution", source_file.name, str(res))))
+        else:
+            print("%20s %20s ENDED" % ("Compile solution", source_file.name))
+
+    def add_testcases(self, testcases: Dict[int, List[int]]):
+        print("%20s %20s" % ("Testcases", str(testcases)))
+
+    def add_generation(self, testcase: int, generation):
+        print("%20s %20s WAITING" % ("Generation", "testcase %d" % testcase))
+        generation.notifyStart(
+            lambda: print("%20s %20s STARTED" % ("Generation", "testcase %d" % testcase))
+        )
+        generation.getResult(lambda res: print("%20s %20s ENDED" % ("Generation", "testcase %d" % testcase), res))
+
+    def add_validation(self, testcase: int, validation):
+        print("%20s %20s WAITING" % ("Validation", "testcase %d" % testcase))
+        validation.notifyStart(
+            lambda: print("%20s %20s STARTED" % ("Validation", "testcase %d" % testcase))
+        )
+        validation.getResult(lambda res: print("%20s %20s ENDED" % ("Validation", "testcase %d" % testcase), res))
+
+    def add_solving(self, testcase: int, solving):
+        print("%20s %20s WAITING" % ("Solving", "testcase %d" % testcase))
+        solving.notifyStart(
+            lambda: print("%20s %20s STARTED" % ("Solving", "testcase %d" % testcase))
+        )
+        solving.getResult(lambda res: print("%20s %20s ENDED" % ("Solving", "testcase %d" % testcase), res))
+
+    def add_evaluate_solution(self, testcase: int, solution: str, evaluation):
+        print("%20s %20s WAITING" % ("Testing", "%s on %d" %
+                                     (solution, testcase)))
+        evaluation.notifyStart(
+            lambda: print("%20s %20s STARTED" % ("Testing", "%s on %d" % (solution, testcase)))
+        )
+        evaluation.getResult(lambda res: print("%20s %20s ENDED" % ("Testing", "%s on %d" % (solution, testcase)), res))
+
+    def add_evaluate_checking(self, testcase: int, solution: str, checking):
+        print("%20s %20s WAITING" % ("Checking", "%s on %d" %
+                                     (solution, testcase)))
+        checking.notifyStart(
+            lambda: print("%20s %20s STARTED" % ("Checking", "%s on %d" % (solution, testcase)))
+        )
+        checking.getResult(lambda res: print("%20s %20s ENDED" % ("Checking", "%s on %d" % (solution, testcase)), res))
+        # TODO calculate the status of the solution on this testcase and update the score
+
+
 def list_files(patterns: List[str],
                exclude: Optional[List[str]] = None) -> List[str]:
     if exclude is None:
@@ -266,12 +331,17 @@ def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
 
 
 def evaluate_task(frontend, task: Task, solutions: List[SourceFile]):
-    ins, outs, vals = generate_inputs(frontend, task)
-    return evaluate_solutions(frontend, task, ins, outs, vals, solutions)
+    ui_interface = UIInterface()
+    ui_interface.add_testcases(
+        dict((st_num, [tc for tc in st.testcases.keys()])
+             for st_num, st in task.subtasks.items()))
+    ins, outs, vals = generate_inputs(frontend, task, ui_interface)
+    evaluate_solutions(frontend, task, ins, outs, vals, solutions,
+                       ui_interface)
 
 
-def generate_inputs(frontend,
-                    task: Task) -> (Dict[Tuple[int, int], File], Dict[Tuple[
+def generate_inputs(frontend, task: Task, ui_interface: UIInterface
+                    ) -> (Dict[Tuple[int, int], File], Dict[Tuple[
                         int, int], File], Dict[Tuple[int, int], File]):
     inputs = dict()  # type: Dict[Tuple[int, int], File]
     outputs = dict()  # type: Dict[Tuple[int, int], File]
@@ -283,8 +353,14 @@ def generate_inputs(frontend,
                 inputs[(st_num, tc_num)] = frontend.provideFile(
                     testcase.input_file, "Static input %d" + tc_num, False)
             else:
+                is_gen_prepared = testcase.generator.prepared
+                is_val_prepared = testcase.validator.prepared
                 testcase.generator.prepare(frontend)
                 testcase.validator.prepare(frontend)
+                if not is_gen_prepared:
+                    ui_interface.add_non_solution(testcase.generator)
+                if not is_val_prepared:
+                    ui_interface.add_non_solution(testcase.validator)
 
                 gen = testcase.generator.execute(
                     frontend, "Generation of input %d" % tc_num,
@@ -297,12 +373,8 @@ def generate_inputs(frontend,
                 # TODO set limits?
                 inputs[(st_num, tc_num)] = gen.stdout(False)
 
-                def gen_check_result(result):
-                    if result.status.which() != "success":
-                        # TODO: raise?
-                        frontend.stopEvaluation()
+                ui_interface.add_generation(tc_num, gen)
 
-                gen.getResult(lambda res: gen_check_result(res.result))
                 # TODO write input file
 
                 val = testcase.validator.execute(
@@ -313,13 +385,7 @@ def generate_inputs(frontend,
                 val.addInput(VALIDATION_INPUT_NAME, inputs[(st_num, tc_num)])
                 validations[(st_num, tc_num)] = val.stdout(False)
 
-                def val_check_result(result):
-                    print("Val result:", result)
-                    # if result.status.which() != "success":
-                    #     # TODO: raise?
-                    #     frontend.stopEvaluation()
-
-                val.getResult(lambda res: val_check_result(res.result))
+                ui_interface.add_validation(tc_num, val)
 
             # output file
             if testcase.output_file:
@@ -327,6 +393,9 @@ def generate_inputs(frontend,
                     testcase.output_file, "Static output %d" % tc_num, False)
             else:
                 task.official_solution.prepare(frontend)
+                if not task.official_solution.prepared:
+                    ui_interface.add_non_solution(task.official_solution)
+
                 sol = task.official_solution.execute(
                     frontend, "Generation of output %d" % tc_num, [])
                 # TODO set cache mode
@@ -345,22 +414,19 @@ def generate_inputs(frontend,
                 else:
                     outputs[(st_num, tc_num)] = sol.stdout(False)
 
-                def sol_check_result(result):
-                    if result.status.which() != "success":
-                        # TODO: raise?
-                        frontend.stopEvaluation()
-
-                sol.getResult(lambda res: sol_check_result(res))
+                ui_interface.add_solving(tc_num, sol)
                 # TODO write output file
     return inputs, outputs, validations
 
 
-def evaluate_solutions(
-        frontend, task: Task, inputs: Dict[Tuple[int, int], File],
-        outputs: Dict[Tuple[int, int], File],
-        validations: Dict[Tuple[int, int], File], solutions: List[SourceFile]):
+def evaluate_solutions(frontend, task: Task,
+                       inputs: Dict[Tuple[int, int], File],
+                       outputs: Dict[Tuple[int, int], File],
+                       validations: Dict[Tuple[int, int], File],
+                       solutions: List[SourceFile], ui_interface: UIInterface):
     for solution in solutions:
         solution.prepare(frontend)
+        ui_interface.add_solution(solution)
         for (st_num, tc_num), input in inputs.items():
             eval = solution.execute(
                 frontend,
@@ -368,7 +434,6 @@ def evaluate_solutions(
                 [])
             # TODO set cache mode
             # TODO set limits!
-            # TODO add validation dep
             if (st_num, tc_num) in validations:
                 eval.addInput("tm_wait_validation", validations[(st_num,
                                                                  tc_num)])
@@ -381,36 +446,7 @@ def evaluate_solutions(
             else:
                 output = eval.stdout(False)
 
-            def process_eval_result(result):
-                print("Evaluation of tc %d" % tc_num, result)
-                # which_status = result.status.which()
-                # if which_status == "success":
-                #     status.testcase_status = EventStatus.EXECUTED
-                # else:
-                #     status.testcase_status = EventStatus.FAILURE
-                #     status.testcase_result[tc_num].score = 0
-                #     if which_status == "signal":
-                #         status.testcase_result[tc_num].message = "Exited by signal %d" % result.status.signal
-                #     elif which_status == "returnCode":
-                #         status.testcase_result[tc_num].message = "Exited with code %d" % result.status.returnCode
-                #     elif which_status == "timeLimit":
-                #         status.testcase_result[tc_num].message = "Time limit exceeded"
-                #     elif which_status == "wallLimit":
-                #         status.testcase_result[tc_num].message = "Wall time limit exceeded"
-                #     elif which_status == "memoryLimit":
-                #         status.testcase_result[tc_num].message = "Memory limit exceeded"
-                #     elif which_status == "missingFiles":
-                #         status.testcase_result[tc_num].message = "Missing files"
-                #     elif which_status == "internalError":
-                #         status.testcase_result[tc_num].message = "Internal error: %s" % result.status.internalError
-                #     else:
-                #         raise RuntimeError("Unknown status: " + which_status)
-                # resources = result.resourceUsage
-                # status.testcase_result[tc_num].cpu_time_used = resources.cpuTime + resources.sysTime
-                # status.testcase_result[tc_num].wall_time_used = resources.wallTime
-                # status.testcase_result[tc_num].memory_used_kb = resources.memory
-
-            eval.getResult(lambda res: process_eval_result(res))
+            ui_interface.add_evaluate_solution(tc_num, solution.name, eval)
 
             if task.checker:
                 task.checker.prepare(frontend)
@@ -426,15 +462,10 @@ def evaluate_solutions(
                 diff = shutil.which("diff")
                 check.setExecutablePath(diff)
                 check.setArgs(["-w", "output", "contestant_output"])
-            check.notifyStart(
-                lambda: print("Checking solution %s for testcase %d" % (solution.name, tc_num), "started"))
             check.addInput("output", outputs[(st_num, tc_num)])
             check.addInput("contestant_output", output)
             # TODO set cache mode
-            check.getResult(
-                lambda res: print("Checking of testcase %d" % tc_num, res)
-            )  # TODO
-            # TODO calculate the status of the solution on this testcase and update the score
+            ui_interface.add_evaluate_checking(tc_num, solution.name, check)
     frontend.evaluate()
     print("EVAL FINISHED")
 
