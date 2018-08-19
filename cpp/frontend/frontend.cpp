@@ -33,7 +33,6 @@ Frontend::Frontend(std::string server, int port)
 File* Frontend::provideFile(const std::string& path,
                             const std::string& description,
                             bool is_executable) {
-  KJ_DBG(__func__);
   auto req = frontend_context_.provideFileRequest();
   util::SHA256_t hash = util::File::Hash(path);
   known_files_.emplace(hash, path);
@@ -45,7 +44,6 @@ File* Frontend::provideFile(const std::string& path,
 }
 
 Execution* Frontend::addExecution(const std::string& description) {
-  KJ_DBG(__func__);
   auto req = frontend_context_.addExecutionRequest();
   req.setDescription(description);
   executions_.push_back(std::make_unique<Execution>(
@@ -55,7 +53,6 @@ Execution* Frontend::addExecution(const std::string& description) {
 }
 
 void Frontend::evaluate() {
-  KJ_DBG(__func__);
   finish_builder_.AddPromise(std::move(builder_).Finalize().then([this]() {
     auto req = frontend_context_.startEvaluationRequest();
     req.setSender(kj::heap<FileProvider>(known_files_));
@@ -67,7 +64,6 @@ void Frontend::evaluate() {
 
 void Frontend::getFileContentsAsString(
     File* file, std::function<void(const std::string&)> callback) {
-  KJ_DBG(__func__);
   finish_builder_.AddPromise(
       file->forked_promise.addBranch().then([this, callback](auto file) {
         auto req = frontend_context_.getFileContentsRequest();
@@ -86,7 +82,6 @@ void Frontend::getFileContentsAsString(
 
 void Frontend::getFileContentsToFile(File* file, const std::string& path,
                                      bool overwrite, bool exist_ok) {
-  KJ_DBG(__func__);
   finish_builder_.AddPromise(file->forked_promise.addBranch().then(
       [this, path, exist_ok, overwrite](auto file) {
         auto req = frontend_context_.getFileContentsRequest();
@@ -102,20 +97,17 @@ void Frontend::getFileContentsToFile(File* file, const std::string& path,
 }
 
 void Frontend::stopEvaluation() {
-  KJ_DBG(__func__);
   stop_request_ =
       frontend_context_.stopEvaluationRequest().send().ignoreResult();
 }
 
 void Execution::setExecutablePath(const std::string& path) {
-  KJ_DBG(__func__);
   auto req = execution_.setExecutablePathRequest();
   req.setPath(path);
   my_builder_.AddPromise(req.send().ignoreResult());
 }
 
 void Execution::setExecutable(const std::string& name, File* file) {
-  KJ_DBG(__func__);
   my_builder_.AddPromise(
       file->forked_promise.addBranch().then([this, name](auto file) {
         auto req = execution_.setExecutableRequest();
@@ -126,7 +118,6 @@ void Execution::setExecutable(const std::string& name, File* file) {
 }
 
 void Execution::setStdin(File* file) {
-  KJ_DBG(__func__);
   my_builder_.AddPromise(
       file->forked_promise.addBranch().then([this](auto file) {
         auto req = execution_.setStdinRequest();
@@ -136,7 +127,6 @@ void Execution::setStdin(File* file) {
 }
 
 void Execution::addInput(const std::string& name, File* file) {
-  KJ_DBG(__func__);
   my_builder_.AddPromise(
       file->forked_promise.addBranch().then([this, name](auto file) {
         auto req = execution_.addInputRequest();
@@ -147,7 +137,6 @@ void Execution::addInput(const std::string& name, File* file) {
 }
 
 void Execution::setArgs(const std::vector<std::string>& args) {
-  KJ_DBG(__func__);
   auto req = execution_.setArgsRequest();
   req.initArgs(args.size());
   for (size_t i = 0; i < args.size(); i++) {
@@ -157,19 +146,16 @@ void Execution::setArgs(const std::vector<std::string>& args) {
 }
 
 void Execution::disableCache() {
-  KJ_DBG(__func__);
   my_builder_.AddPromise(
       execution_.disableCacheRequest().send().ignoreResult());
 }
 
 void Execution::makeExclusive() {
-  KJ_DBG(__func__);
   my_builder_.AddPromise(
       execution_.makeExclusiveRequest().send().ignoreResult());
 }
 
 void Execution::setLimits(const Resources& limits) {
-  KJ_DBG(__func__);
   auto req = execution_.setLimitsRequest();
   req.getLimits().setCpuTime(limits.cpu_time);
   req.getLimits().setWallTime(limits.wall_time);
@@ -183,7 +169,6 @@ void Execution::setLimits(const Resources& limits) {
 }
 
 File* Execution::stdout(bool is_executable) {
-  KJ_DBG(__func__);
   auto req = execution_.stdoutRequest();
   req.setIsExecutable(is_executable);
   files_.push_back(File::New(req.send()));
@@ -191,14 +176,12 @@ File* Execution::stdout(bool is_executable) {
 }
 
 File* Execution::stderr(bool is_executable) {
-  KJ_DBG(__func__);
   auto req = execution_.stderrRequest();
   req.setIsExecutable(is_executable);
   files_.push_back(File::New(req.send()));
   return files_.back().get();
 }
 File* Execution::output(const std::string& name, bool is_executable) {
-  KJ_DBG(__func__);
   auto req = execution_.outputRequest();
   req.setIsExecutable(is_executable);
   req.setName(name);
@@ -207,7 +190,6 @@ File* Execution::output(const std::string& name, bool is_executable) {
 }
 
 void Execution::notifyStart(std::function<void()> callback) {
-  KJ_DBG(__func__);
   finish_builder_.AddPromise(execution_.notifyStartRequest()
                                  .send()
                                  .ignoreResult()
@@ -216,7 +198,6 @@ void Execution::notifyStart(std::function<void()> callback) {
 }
 
 void Execution::getResult(std::function<void(Result)> callback) {
-  KJ_DBG(__func__);
   auto promise = kj::newPromiseAndFulfiller<void>();
   builder_.AddPromise(std::move(promise.promise));
   finish_builder_.AddPromise(

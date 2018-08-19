@@ -164,7 +164,6 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
   };
   return [fd, temp_file, path,
           _ = kj::defer(std::move(finalize))](util::File::Chunk chunk) mutable {
-    KJ_DBG("Chunk for ", path);
     if (fd == -1) return;
     size_t pos = 0;
     while (pos < chunk.size()) {
@@ -196,7 +195,6 @@ void File::Read(const std::string& path, File::ChunkReceiver chunk_receiver) {
 kj::Maybe<File::ChunkReceiver> File::Write(const std::string& path,
                                            bool overwrite, bool exist_ok) {
   MakeDirs(BaseDir(path));
-  KJ_DBG(path, Size(path));
   if (!overwrite && Size(path) >= 0) {
     if (exist_ok) return nullptr;
     throw std::system_error(EEXIST, std::system_category(), "Write " + path);
@@ -309,7 +307,6 @@ std::string File::SHAToPath(const std::string& store_directory,
 }
 
 kj::Promise<void> File::Receiver::sendChunk(SendChunkContext context) {
-  KJ_DBG("send_chunk");
   receiver_(context.getParams().getChunk());
   return kj::READY_NOW;
 }

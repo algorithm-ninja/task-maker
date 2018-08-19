@@ -62,12 +62,10 @@ class UnionPromiseBuilder {
   }
 
   void AddPromise(kj::Promise<void> p) {
-    KJ_DBG((uint64_t)this, "ADD");
     info_->promises.push_back(
         std::move(p)
             .then([info = info_, fulfiller = fulfiller_, this]() {
               info->resolved++;
-              KJ_DBG((uint64_t)this, info->resolved, info->promises.size());
               if (info->finalized && info->resolved == info->promises.size()) {
                 fulfiller->fulfill();
               }
@@ -76,7 +74,6 @@ class UnionPromiseBuilder {
   }
 
   kj::Promise<void> Finalize() && KJ_WARN_UNUSED_RESULT {
-    KJ_DBG((uint64_t)this, "finalize");
     info_->finalized = true;
     if (info_->resolved == info_->promises.size()) {
       fulfiller_->fulfill();

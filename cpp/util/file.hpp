@@ -121,7 +121,6 @@ class File {
     req.setReceiver(kj::heap<util::File::Receiver>(hash));
     return req.send()
         .ignoreResult()
-        .then([]() { KJ_DBG("ciao"); })
         .eagerlyEvaluate(nullptr);
   }
 

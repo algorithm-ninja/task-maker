@@ -13,7 +13,6 @@
 namespace {
 void PrepareFile(const std::string& path, const util::SHA256_t& hash,
                  bool executable) {
-  KJ_DBG(hash.Hex(), path);
   if (hash.isZero()) return;
   util::File::Copy(util::File::PathForHash(hash), path);
   if (executable)
