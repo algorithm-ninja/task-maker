@@ -1,8 +1,8 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <pybind11/functional.h>
 #pragma GCC diagnostic pop
 
 #include "frontend/frontend.hpp"
@@ -49,16 +49,21 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def("disableCache", &frontend::Execution::disableCache)
       .def("makeExclusive", &frontend::Execution::makeExclusive)
       .def("setLimits", &frontend::Execution::setLimits)
-      .def("stdout", &frontend::Execution::stdout)
-      .def("stderr", &frontend::Execution::stderr)
-      .def("output", &frontend::Execution::output)
+      .def("stdout", &frontend::Execution::stdout,
+           pybind11::return_value_policy::reference)
+      .def("stderr", &frontend::Execution::stderr,
+           pybind11::return_value_policy::reference)
+      .def("output", &frontend::Execution::output,
+           pybind11::return_value_policy::reference)
       .def("notifyStart", &frontend::Execution::notifyStart)
       .def("getResult", &frontend::Execution::getResult);
 
   pybind11::class_<frontend::Frontend>(m, "Frontend")
       .def(pybind11::init<std::string, int>())
-      .def("provideFile", &frontend::Frontend::provideFile)
-      .def("addExecution", &frontend::Frontend::addExecution)
+      .def("provideFile", &frontend::Frontend::provideFile,
+           pybind11::return_value_policy::reference)
+      .def("addExecution", &frontend::Frontend::addExecution,
+           pybind11::return_value_policy::reference)
       .def("evaluate", &frontend::Frontend::evaluate)
       .def("stopEvaluation", &frontend::Frontend::stopEvaluation)
       .def("getFileContentsAsString",

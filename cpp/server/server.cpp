@@ -34,7 +34,7 @@ kj::Promise<void> Execution::setExecutable(SetExecutableContext context) {
                      " id ", context.getParams().getFile().getId());
   KJ_LOG(INFO, "Execution " + description_, log);
   executable_ = context.getParams().getFile().getId();
-  request_.getExecutable().getLocalFile().setName(
+  request_.getExecutable().initLocalFile().setName(
       context.getParams().getName());
   return kj::READY_NOW;
 }
