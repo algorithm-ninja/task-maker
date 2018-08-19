@@ -158,7 +158,10 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
     // TODO: cache
     return frontend_context_.dispatcher_
         .AddRequest(request_, std::move(start_.fulfiller))
-        .then([this, context](capnproto::Result::Reader result) mutable {
+        .then([this,
+               context](capnp::Response<capnproto::Evaluator::EvaluateResults>
+                            response_result) mutable {
+          auto result = response_result.getResult();
           KJ_LOG(INFO, "Execution " + description_, "Execution done");
           KJ_LOG(INFO, "Execution " + description_, result);
           KJ_ASSERT(!result.getStatus().isInternalError(),

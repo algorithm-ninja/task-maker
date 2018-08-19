@@ -8,9 +8,9 @@ namespace server {
 
 namespace {
 
-kj::Promise<capnproto::Result::Reader> HandleRequest(
-    capnproto::Evaluator::Client evaluator,
-    capnproto::Request::Reader request) {
+kj::Promise<capnp::Response<capnproto::Evaluator::EvaluateResults>>
+HandleRequest(capnproto::Evaluator::Client evaluator,
+              capnproto::Request::Reader request) {
   auto req = evaluator.evaluateRequest();
   req.setRequest(request);
   return req.send().then([evaluator](auto res) mutable {
@@ -25,7 +25,8 @@ kj::Promise<capnproto::Result::Reader> HandleRequest(
       builder.AddPromise(util::File::MaybeGet(result.getStdout(), evaluator));
       load_files = std::move(builder).Finalize();
     }
-    return load_files.then([result]() { return result; });
+    return load_files.then(
+        [res = std::move(res)]() mutable { return std::move(res); });
   });
 }
 };  // namespace
@@ -48,19 +49,17 @@ kj::Promise<void> Dispatcher::AddEvaluator(
   return p
       .then(
           [request_fulfiller = std::move(std::get<1>(request_info))](
-              capnproto::Result::Reader reader) mutable {
-            request_fulfiller->fulfill(std::move(reader));
-          },
+              auto res) mutable { request_fulfiller->fulfill(std::move(res)); },
           [](kj::Exception exc) { KJ_FAIL_ASSERT(exc); })
       .eagerlyEvaluate(nullptr);
 }
 
-kj::Promise<capnproto::Result::Reader> Dispatcher::AddRequest(
-    capnproto::Request::Reader request,
-    kj::Own<kj::PromiseFulfiller<void>> fulfiller) {
+kj::Promise<capnp::Response<capnproto::Evaluator::EvaluateResults>>
+Dispatcher::AddRequest(capnproto::Request::Reader request,
+                       kj::Own<kj::PromiseFulfiller<void>> fulfiller) {
   if (evaluators_.empty()) {
-    auto request_promise =
-        kj::newPromiseAndFulfiller<capnproto::Result::Reader>();
+    auto request_promise = kj::newPromiseAndFulfiller<
+        capnp::Response<capnproto::Evaluator::EvaluateResults>>();
     requests_.emplace_back(request, std::move(request_promise.fulfiller),
                            std::move(fulfiller));
     return std::move(request_promise.promise);
@@ -72,10 +71,10 @@ kj::Promise<capnproto::Result::Reader> Dispatcher::AddRequest(
   fulfiller->fulfill();
   auto p = HandleRequest(evaluator, request);
   return p
-      .then([evaluator_fulfiller = std::move(evaluator_fulfiller)](
-                capnproto::Result::Reader result) mutable {
+      .then([evaluator_fulfiller =
+                 std::move(evaluator_fulfiller)](auto result) mutable {
         evaluator_fulfiller->fulfill();
-        return result;
+        return std::move(result);
       })
       .eagerlyEvaluate(nullptr);
 }
