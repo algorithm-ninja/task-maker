@@ -47,10 +47,14 @@ Execution Frontend::addExecution(const std::string& description) {
 }
 
 void Frontend::evaluate() {
-  auto req = frontend_context_.startEvaluationRequest();
-  req.setSender(kj::heap<FileProvider>(known_files_));
-  builder_.AddPromise(req.send().ignoreResult());
-  std::move(builder_).Finalize().wait(client_.getWaitScope());
+  std::move(builder_)
+      .Finalize()
+      .then([this]() {
+        auto req = frontend_context_.startEvaluationRequest();
+        req.setSender(kj::heap<FileProvider>(known_files_));
+        return req.send().ignoreResult();
+      })
+      .wait(client_.getWaitScope());
 }
 
 void Frontend::getFileContentsAsString(
