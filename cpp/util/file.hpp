@@ -102,7 +102,7 @@ class File {
         KJ_FAIL_ASSERT("Write(PathForHash))");
       }
     }
-    kj::Promise<void> SendChunk(SendChunkContext context) KJ_WARN_UNUSED_RESULT;
+    kj::Promise<void> sendChunk(SendChunkContext context);
 
    private:
     ChunkReceiver receiver_;

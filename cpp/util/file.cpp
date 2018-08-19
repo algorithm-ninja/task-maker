@@ -308,7 +308,7 @@ std::string File::SHAToPath(const std::string& store_directory,
   return util::File::JoinPath(store_directory, util::File::PathForHash(hash));
 }
 
-kj::Promise<void> File::Receiver::SendChunk(SendChunkContext context) {
+kj::Promise<void> File::Receiver::sendChunk(SendChunkContext context) {
   KJ_DBG("send_chunk");
   receiver_(context.getParams().getChunk());
   return kj::READY_NOW;
