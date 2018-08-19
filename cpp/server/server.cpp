@@ -131,9 +131,13 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
   return std::move(dependencies).Finalize().then([this, context]() mutable {
     KJ_LOG(INFO, "Execution " + description_, "Dependencies ready");
     auto get_hash = [this](uint32_t id, capnproto::SHA256::Builder builder) {
-      frontend_context_.file_info_[id].hash.ToCapnp(builder);
+      auto hash = frontend_context_.file_info_[id].hash;
+      KJ_ASSERT(!hash.isZero(), id);
+      hash.ToCapnp(builder);
     };
-    get_hash(stdin_, request_.initStdin());
+    if (stdin_) {
+      get_hash(stdin_, request_.initStdin());
+    }
     if (executable_) {
       get_hash(executable_, request_.getExecutable().getLocalFile().initHash());
     }
