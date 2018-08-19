@@ -39,7 +39,7 @@ File* Frontend::provideFile(const std::string& path,
   hash.ToCapnp(req.initHash());
   req.setDescription(description);
   req.setIsExecutable(is_executable);
-  files_.push_back(std::make_unique<File>(req.send()));
+  files_.push_back(File::New(req.send()));
   return files_.back().get();
 }
 
@@ -171,21 +171,21 @@ void Execution::setLimits(const Resources& limits) {
 File* Execution::stdout(bool is_executable) {
   auto req = execution_.stdoutRequest();
   req.setIsExecutable(is_executable);
-  files_.push_back(std::make_unique<File>(req.send()));
+  files_.push_back(File::New(req.send()));
   return files_.back().get();
 }
 
 File* Execution::stderr(bool is_executable) {
   auto req = execution_.stderrRequest();
   req.setIsExecutable(is_executable);
-  files_.push_back(std::make_unique<File>(req.send()));
+  files_.push_back(File::New(req.send()));
   return files_.back().get();
 }
 File* Execution::output(const std::string& name, bool is_executable) {
   auto req = execution_.outputRequest();
   req.setIsExecutable(is_executable);
   req.setName(name);
-  files_.push_back(std::make_unique<File>(req.send()));
+  files_.push_back(File::New(req.send()));
   return files_.back().get();
 }
 

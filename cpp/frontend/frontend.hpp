@@ -40,12 +40,43 @@ class File {
   kj::Promise<capnproto::File::Reader> promise;
   kj::ForkedPromise<capnproto::File::Reader> forked_promise;
 
+ protected:
+  void SetPromise(kj::Promise<capnproto::File::Reader>&& prom) {
+    promise = std::move(prom);
+    forked_promise = promise.fork();
+  }
+  File() : promise(capnproto::File::Reader()), forked_promise(promise.fork()) {}
+
  public:
   template <typename T>
-  explicit File(T&& prom)
-      : promise(prom.then([](auto r) { return r.getFile(); })),
-        forked_promise(promise.fork()) {}
+  static std::unique_ptr<File> New(kj::Promise<T>&& p);
+  virtual ~File() = default;
 };
+
+template <typename T>
+class FileInst : public File {
+ public:
+  FileInst(T&& p)
+      : pf(kj::newPromiseAndFulfiller<capnproto::File::Reader>()),
+        promise(std::move(p)) {
+    SetPromise(std::move(pf.promise));
+    promise = promise
+                  .then([this](auto res) {
+                    pf.fulfiller->fulfill(res.getFile());
+                    return std::move(res);
+                  })
+                  .eagerlyEvaluate(nullptr);
+  }
+
+ private:
+  kj::PromiseFulfillerPair<capnproto::File::Reader> pf;
+  T promise;
+};
+
+template <typename T>
+std::unique_ptr<File> File::New(kj::Promise<T>&& p) {
+  return std::make_unique<FileInst<kj::Promise<T>>>(std::move(p));
+}
 
 class Execution {
  public:

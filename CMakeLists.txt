@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
@@ -8,6 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 14)
 
 include(HunterGate)
+include(AddressSanitizer)
 include(ThreadSanitizer)
 
 HunterGate(
@@ -45,7 +47,7 @@ include(GoogleTest)
 find_package(PythonInterp 3.5 REQUIRED)
 
 # Enable colors in ninja
-set(CMAKE_CXX_FLAGS "-fdiagnostics-color=always -Wall -Wextra -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always -Wall -Wextra -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # if hunter is disabled all these lines are noop
