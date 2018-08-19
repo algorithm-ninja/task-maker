@@ -38,6 +38,7 @@ class SourceFile:
     def __init__(self, path: str, dependencies: List[Dependency],
                  language: Language, write_bin_to: Optional[str],
                  target_arch: Arch, grader: Optional["GraderInfo"]):
+        print("SourceFile:", path)
         self.path = path
         self.dependencies = dependencies
         self.language = language
@@ -69,6 +70,8 @@ class SourceFile:
                 "-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", self.exe_name,
                 self.name
             ]
+            if self.grader:
+                args += [f.name for f in self.grader.files]
             if self.target_arch == Arch.I686:
                 args.append("-m32")
         elif self.language == Language.C:
@@ -77,11 +80,15 @@ class SourceFile:
                 "-O2", "-std=c11", "-DEVAL", "-Wall", "-o", self.exe_name,
                 self.name
             ]
+            if self.grader:
+                args += [f.name for f in self.grader.files]
             if self.target_arch == Arch.I686:
                 args.append("-m32")
         elif self.language == Language.PASCAL:
             compiler = "fpc"
             args = ["-O2", "-XS", "-dEVAL", "-o", self.exe_name, self.name]
+            if self.grader:
+                args += [f.name for f in self.grader.files]
             if self.target_arch == Arch.DEFAULT:
                 raise NotImplementedError(
                     "Cannot compile %s: targetting Pascal executables is not supported yet"
@@ -122,7 +129,7 @@ class SourceFile:
         # TODO set time/memory limits?
         self.compilation.notifyStart(
             lambda: print("Compilation of %s" % self.name, "started"))
-        self.compilation.getResult(lambda res: print(res))
+        self.compilation.getResult(lambda res: print("Finished to compile %s" % self.name, res))
 
     def _not_compile(self, frontend):
         self.executable = frontend.provideFile(

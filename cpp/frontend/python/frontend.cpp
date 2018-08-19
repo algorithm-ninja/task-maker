@@ -36,7 +36,30 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def_readonly("signal", &frontend::Result::signal)
       .def_readonly("return_code", &frontend::Result::return_code)
       .def_readonly("error", &frontend::Result::error)
-      .def_readonly("resources", &frontend::Result::resources);
+      .def_readonly("resources", &frontend::Result::resources)
+      .def("__repr__", [](const frontend::Result& res) {
+        std::string message = "<Result ";
+        if (res.status == capnproto::Result::Status::Which::SUCCESS)
+          message += "SUCCESS";
+        else if (res.status == capnproto::Result::Status::Which::SIGNAL)
+          message += "SIGNAL " + std::to_string(res.signal);
+        else if (res.status == capnproto::Result::Status::Which::RETURN_CODE)
+          message += "RETURN_CODE " + std::to_string(res.return_code);
+        else if (res.status == capnproto::Result::Status::Which::TIME_LIMIT)
+          message += "TIME_LIMIT";
+        else if (res.status == capnproto::Result::Status::Which::WALL_LIMIT)
+          message += "WALL_LIMIT";
+        else if (res.status == capnproto::Result::Status::Which::MEMORY_LIMIT)
+          message += "MEMORY_LIMIT";
+        else if (res.status == capnproto::Result::Status::Which::MISSING_FILES)
+          message += "MISSING_FILES";
+        else if (res.status == capnproto::Result::Status::Which::INTERNAL_ERROR)
+          message += "INTERNAL_ERROR";
+        else
+          message += "UNKNOWN";
+        message += ">";
+        return message;
+      });
 
   pybind11::class_<frontend::File>(m, "File");
 

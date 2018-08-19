@@ -3,16 +3,17 @@
 import argparse
 import glob
 import os
+import shutil
 import yaml
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
 from task_maker.dependency_finder import find_dependency
 from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo
-from task_maker.source_file import SourceFile
 from task_maker.language import grader_from_file, valid_extensions
 from task_maker.sanitize import sanitize_command
-from task_maker.uis import SolutionStatus
+from task_maker.source_file import SourceFile
+from task_maker.task_maker_frontend import File
 
 VALIDATION_INPUT_NAME = "tm_input_file"
 
@@ -90,9 +91,14 @@ def gen_testcases(
     generator = get_generator()
     if not generator:
         return load_testcases()
+    else:
+        generator = SourceFile.from_file(generator, copy_compiled
+                                         and "bin/generator")
     validator = get_validator()
     if not validator:
         raise RuntimeError("No validator found")
+    validator = SourceFile.from_file(validator, copy_compiled
+                                     and "bin/validator")
     official_solution = get_official_solution()
     if official_solution is None:
         raise RuntimeError("No official solution found")
@@ -122,12 +128,10 @@ def gen_testcases(
                 subtask_num = 0
             args = line.split()
             arg_deps = sanitize_command(args)
-            testcase.generator = SourceFile.from_file(
-                generator, copy_compiled and "bin/generator")
+            testcase.generator = generator
             testcase.generator_args.extend(args)
             testcase.extra_deps.extend(arg_deps)
-            testcase.validator = SourceFile.from_file(
-                validator, copy_compiled and "bin/validator")
+            testcase.validator = validator
             # in the old format the subtask number is 1-based
             testcase.validator_args.extend(
                 [VALIDATION_INPUT_NAME,
@@ -266,12 +270,12 @@ def evaluate_task(frontend, task: Task, solutions: List[SourceFile]):
     return evaluate_solutions(frontend, task, ins, outs, vals, solutions)
 
 
-def generate_inputs(frontend, task: Task) -> (Dict[Tuple[int, int], Any], Dict[
-        Tuple[int, int], Any], Dict[Tuple[int, int], Any]):
-    # TODO change Any with File
-    inputs = dict()  # type: Dict[Tuple[int, int], Any]
-    outputs = dict()  # type: Dict[Tuple[int, int], Any]
-    validations = dict()  # type: Dict[Tuple[int, int], Any]
+def generate_inputs(frontend,
+                    task: Task) -> (Dict[Tuple[int, int], File], Dict[Tuple[
+                        int, int], File], Dict[Tuple[int, int], File]):
+    inputs = dict()  # type: Dict[Tuple[int, int], File]
+    outputs = dict()  # type: Dict[Tuple[int, int], File]
+    validations = dict()  # type: Dict[Tuple[int, int], File]
     for st_num, subtask in task.subtasks.items():
         for tc_num, testcase in subtask.testcases.items():
             # input file
@@ -352,12 +356,11 @@ def generate_inputs(frontend, task: Task) -> (Dict[Tuple[int, int], Any], Dict[
 
 
 def evaluate_solutions(
-        frontend, task: Task, inputs: Dict[Tuple[int, int], Any],
-        outputs: Dict[Tuple[int, int], Any],
-        validations: Dict[Tuple[int, int], Any], solutions: List[SourceFile]):
+        frontend, task: Task, inputs: Dict[Tuple[int, int], File],
+        outputs: Dict[Tuple[int, int], File],
+        validations: Dict[Tuple[int, int], File], solutions: List[SourceFile]):
     for solution in solutions:
         solution.prepare(frontend)
-        status = SolutionStatus()
         for (st_num, tc_num), input in inputs.items():
             eval = solution.execute(
                 frontend,
@@ -379,7 +382,7 @@ def evaluate_solutions(
                 output = eval.stdout(False)
 
             def process_eval_result(result):
-                print("Result: ", result)
+                print("Evaluation of tc %d" % tc_num, result)
                 # which_status = result.status.which()
                 # if which_status == "success":
                 #     status.testcase_status = EventStatus.EXECUTED
@@ -420,14 +423,17 @@ def evaluate_solutions(
                 check = frontend.addExecution(
                     "Checking solution %s for testcase %d" % (solution.name,
                                                               tc_num))
-                check.setExecutablePath("diff")
+                diff = shutil.which("diff")
+                check.setExecutablePath(diff)
                 check.setArgs(["-w", "output", "contestant_output"])
             check.notifyStart(
                 lambda: print("Checking solution %s for testcase %d" % (solution.name, tc_num), "started"))
             check.addInput("output", outputs[(st_num, tc_num)])
             check.addInput("contestant_output", output)
             # TODO set cache mode
-            check.getResult(lambda res: print(res))  # TODO
+            check.getResult(
+                lambda res: print("Checking of testcase %d" % tc_num, res)
+            )  # TODO
             # TODO calculate the status of the solution on this testcase and update the score
     frontend.evaluate()
     print("EVAL FINISHED")
