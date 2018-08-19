@@ -190,7 +190,7 @@ File* Execution::output(const std::string& name, bool is_executable) {
 }
 
 void Execution::notifyStart(std::function<void()> callback) {
-  builder_.AddPromise(
+  finish_builder_.AddPromise(
       execution_.notifyStartRequest().send().ignoreResult().then(callback));
 }
 
