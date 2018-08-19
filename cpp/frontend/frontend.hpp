@@ -61,10 +61,16 @@ class FileInst : public File {
         promise(std::move(p)) {
     SetPromise(std::move(pf.promise));
     promise = promise
-                  .then([this](auto res) {
-                    pf.fulfiller->fulfill(res.getFile());
-                    return std::move(res);
-                  })
+                  .then(
+                      [this](auto res) {
+                        pf.fulfiller->fulfill(res.getFile());
+                        return std::move(res);
+                      },
+                      [this](kj::Exception exc) {
+                        pf.fulfiller->rejectIfThrows(
+                            []() { KJ_FAIL_ASSERT("Request failed"); });
+                        return exc;
+                      })
                   .eagerlyEvaluate(nullptr);
   }
 

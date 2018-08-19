@@ -162,34 +162,46 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
     // TODO: cache
     return frontend_context_.dispatcher_
         .AddRequest(request_, std::move(start_.fulfiller))
-        .then([this,
-               context](capnp::Response<capnproto::Evaluator::EvaluateResults>
-                            response_result) mutable {
-          auto result = response_result.getResult();
-          KJ_LOG(INFO, "Execution " + description_, "Execution done");
-          KJ_LOG(INFO, "Execution " + description_, result);
-          KJ_ASSERT(!result.getStatus().isInternalError(),
-                    result.getStatus().getInternalError());
-          context.getResults().setResult(result);
-          finish_promise_.fulfiller->fulfill();
-          if (result.getStatus().isInternalError()) return;
-          auto set_hash = [this](uint32_t id, const util::SHA256_t& hash) {
-            frontend_context_.file_info_[id].hash = hash;
-            frontend_context_.file_info_[id].promise.fulfiller->fulfill();
-          };
-          if (stdout_) {
-            set_hash(stdout_, result.getStdout());
-          }
-          if (stderr_) {
-            set_hash(stderr_, result.getStderr());
-          }
-          for (auto output : result.getOutputFiles()) {
-            std::string name = output.getName();
-            KJ_REQUIRE(outputs_.count(output.getName()), output.getName(),
-                       "Unexpected output!");
-            set_hash(outputs_[output.getName()], output.getHash());
-          }
-        })
+        .then(
+            [this,
+             context](capnp::Response<capnproto::Evaluator::EvaluateResults>
+                          response_result) mutable {
+              auto result = response_result.getResult();
+              KJ_LOG(INFO, "Execution " + description_, "Execution done");
+              KJ_LOG(INFO, "Execution " + description_, result);
+              KJ_ASSERT(!result.getStatus().isInternalError(),
+                        result.getStatus().getInternalError());
+              context.getResults().setResult(result);
+              finish_promise_.fulfiller->fulfill();
+              if (result.getStatus().isInternalError()) return;
+              auto set_hash = [this](uint32_t id, const util::SHA256_t& hash) {
+                frontend_context_.file_info_[id].hash = hash;
+                frontend_context_.file_info_[id].promise.fulfiller->fulfill();
+              };
+              if (stdout_) {
+                set_hash(stdout_, result.getStdout());
+              }
+              if (stderr_) {
+                set_hash(stderr_, result.getStderr());
+              }
+              for (auto output : result.getOutputFiles()) {
+                std::string name = output.getName();
+                KJ_REQUIRE(outputs_.count(output.getName()), output.getName(),
+                           "Unexpected output!");
+                set_hash(outputs_[output.getName()], output.getHash());
+              }
+              // Reject all the non-fulfilled promises. TODO: use reject
+              // and not rejectIfThrows
+              for (auto f : inputs_) {
+                auto& ff =
+                    frontend_context_.file_info_[f.second].promise.fulfiller;
+                if (ff)
+                  ff->rejectIfThrows([]() { KJ_FAIL_ASSERT("Missing file"); });
+              }
+            },
+            [this](kj::Exception exc) {
+              finish_promise_.fulfiller->reject(std::move(exc));
+            })
         .eagerlyEvaluate(nullptr);
   });
 }
@@ -218,15 +230,20 @@ kj::Promise<void> FrontendContext::startEvaluation(
   evaluation_start_.fulfiller->fulfill();  // Starts the evaluation
   for (auto& file : file_info_) {
     if (file.second.provided) {
+      auto ff = file.second.promise.fulfiller.get();
       builder_.AddPromise(
           util::File::MaybeGet(file.second.hash,
                                context.getParams().getSender())
-              .then([id = file.first,
-                     fulfiller =
-                         std::move(file.second.promise.fulfiller)]() mutable {
-                KJ_LOG(INFO, "Received file with id " + std::to_string(id));
-                fulfiller->fulfill();
-              })
+              .then(
+                  [id = file.first,
+                   fulfiller =
+                       std::move(file.second.promise.fulfiller)]() mutable {
+                    KJ_LOG(INFO, "Received file with id " + std::to_string(id));
+                    fulfiller->fulfill();
+                  },
+                  [fulfiller = ff](kj::Exception exc) {
+                    fulfiller->reject(std::move(exc));
+                  })
               .eagerlyEvaluate(nullptr));
     }
     // Wait for all files to be ready

@@ -46,11 +46,14 @@ kj::Promise<void> Dispatcher::AddEvaluator(
   if (std::get<2>(request_info)) {
     std::get<2>(request_info)->fulfill();
   }
+  auto ff = std::get<1>(request_info).get();
   return p
       .then(
           [request_fulfiller = std::move(std::get<1>(request_info))](
               auto res) mutable { request_fulfiller->fulfill(std::move(res)); },
-          [](kj::Exception exc) { KJ_FAIL_ASSERT(exc); })
+          [fulfiller = ff](kj::Exception exc) {
+            fulfiller->reject(std::move(exc));
+          })
       .eagerlyEvaluate(nullptr);
 }
 
@@ -70,12 +73,19 @@ Dispatcher::AddRequest(capnproto::Request::Reader request,
   fulfillers_.pop_back();
   fulfiller->fulfill();
   auto p = HandleRequest(evaluator, request);
+  auto ff = evaluator_fulfiller.get();
   return p
-      .then([evaluator_fulfiller =
-                 std::move(evaluator_fulfiller)](auto result) mutable {
-        evaluator_fulfiller->fulfill();
-        return std::move(result);
-      })
+      .then(
+          [evaluator_fulfiller =
+               std::move(evaluator_fulfiller)](auto result) mutable {
+            evaluator_fulfiller->fulfill();
+            return std::move(result);
+          },
+          [fulfiller = ff](kj::Exception exc) {
+            fulfiller->rejectIfThrows(
+                []() { KJ_FAIL_ASSERT("Execution failed"); });
+            return exc;
+          })
       .eagerlyEvaluate(nullptr);
 }
 

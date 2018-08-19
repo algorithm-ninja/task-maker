@@ -200,40 +200,50 @@ void Execution::notifyStart(std::function<void()> callback) {
 void Execution::getResult(std::function<void(Result)> callback) {
   auto promise = kj::newPromiseAndFulfiller<void>();
   builder_.AddPromise(std::move(promise.promise));
+  auto ff = promise.fulfiller.get();
   finish_builder_.AddPromise(
       std::move(my_builder_)
           .Finalize()
-          .then([this, callback,
-                 fulfiller = std::move(promise.fulfiller)]() mutable {
-            fulfiller->fulfill();
-            return execution_.getResultRequest()
-                .send()
-                .then([callback](auto res) {
-                  auto r = res.getResult();
-                  Result result;
-                  result.status = r.getStatus().which();
-                  if (r.getStatus().isSignal()) {
-                    result.signal = r.getStatus().getSignal();
-                  }
-                  if (r.getStatus().isReturnCode()) {
-                    result.return_code = r.getStatus().getReturnCode();
-                  }
-                  if (r.getStatus().isInternalError()) {
-                    result.error = r.getStatus().getInternalError();
-                  }
-                  result.resources.cpu_time = r.getResourceUsage().getCpuTime();
-                  result.resources.sys_time = r.getResourceUsage().getSysTime();
-                  result.resources.wall_time =
-                      r.getResourceUsage().getWallTime();
-                  result.resources.memory = r.getResourceUsage().getMemory();
-                  result.resources.nproc = r.getResourceUsage().getNproc();
-                  result.resources.nofiles = r.getResourceUsage().getNofiles();
-                  result.resources.fsize = r.getResourceUsage().getFsize();
-                  result.resources.memlock = r.getResourceUsage().getMemlock();
-                  result.resources.stack = r.getResourceUsage().getStack();
-                  callback(result);
-                })
-                .eagerlyEvaluate(nullptr);
-          }));
+          .then(
+              [this, callback,
+               fulfiller = std::move(promise.fulfiller)]() mutable {
+                fulfiller->fulfill();
+                return execution_.getResultRequest()
+                    .send()
+                    .then([callback](auto res) {
+                      auto r = res.getResult();
+                      Result result;
+                      result.status = r.getStatus().which();
+                      if (r.getStatus().isSignal()) {
+                        result.signal = r.getStatus().getSignal();
+                      }
+                      if (r.getStatus().isReturnCode()) {
+                        result.return_code = r.getStatus().getReturnCode();
+                      }
+                      if (r.getStatus().isInternalError()) {
+                        result.error = r.getStatus().getInternalError();
+                      }
+                      result.resources.cpu_time =
+                          r.getResourceUsage().getCpuTime();
+                      result.resources.sys_time =
+                          r.getResourceUsage().getSysTime();
+                      result.resources.wall_time =
+                          r.getResourceUsage().getWallTime();
+                      result.resources.memory =
+                          r.getResourceUsage().getMemory();
+                      result.resources.nproc = r.getResourceUsage().getNproc();
+                      result.resources.nofiles =
+                          r.getResourceUsage().getNofiles();
+                      result.resources.fsize = r.getResourceUsage().getFsize();
+                      result.resources.memlock =
+                          r.getResourceUsage().getMemlock();
+                      result.resources.stack = r.getResourceUsage().getStack();
+                      callback(result);
+                    })
+                    .eagerlyEvaluate(nullptr);
+              },
+              [fulfiller = ff](kj::Exception exc) {
+                fulfiller->reject(std::move(exc));
+              }));
 }
 }  // namespace frontend

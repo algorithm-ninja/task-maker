@@ -64,12 +64,17 @@ class UnionPromiseBuilder {
   void AddPromise(kj::Promise<void> p) {
     info_->promises.push_back(
         std::move(p)
-            .then([info = info_, fulfiller = fulfiller_, this]() {
-              info->resolved++;
-              if (info->finalized && info->resolved == info->promises.size()) {
-                fulfiller->fulfill();
-              }
-            })
+            .then(
+                [info = info_, fulfiller = fulfiller_]() {
+                  info->resolved++;
+                  if (info->finalized &&
+                      info->resolved == info->promises.size()) {
+                    fulfiller->fulfill();
+                  }
+                },
+                [fulfiller = fulfiller_](kj::Exception exc) {
+                  fulfiller->reject(std::move(exc));
+                })
             .eagerlyEvaluate(nullptr));
   }
 
