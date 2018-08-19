@@ -8,10 +8,10 @@ from typing import Dict, List, Any, Tuple
 from typing import Optional
 
 from task_maker.dependency_finder import find_dependency
-from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo, SourceFile
+from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo
+from task_maker.source_file import SourceFile
 from task_maker.language import grader_from_file, valid_extensions
 from task_maker.sanitize import sanitize_command
-from task_maker.source_file import from_file
 from task_maker.uis import SolutionStatus
 
 VALIDATION_INPUT_NAME = "tm_input_file"
@@ -120,10 +120,10 @@ def gen_testcases(
                 subtask_num = 0
             args = line.split()
             arg_deps = sanitize_command(args)
-            testcase.generator = from_file(generator, copy_compiled and "bin/generator")
+            testcase.generator = SourceFile.from_file(generator, copy_compiled and "bin/generator")
             testcase.generator_args.extend(args)
             testcase.extra_deps.extend(arg_deps)
-            testcase.validator = from_file(validator, copy_compiled and "bin/validator")
+            testcase.validator = SourceFile.from_file(validator, copy_compiled and "bin/validator")
             # in the old format the subtask number is 1-based
             testcase.validator_args.extend([VALIDATION_INPUT_NAME,
                                             str(subtask_num + 1)])
@@ -232,11 +232,11 @@ def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
 
     official_solution, subtasks = gen_testcases(copy_compiled)
     if official_solution:
-        task.official_solution = from_file(official_solution, copy_compiled and "bin/official_solution",
+        task.official_solution = SourceFile.from_file(official_solution, copy_compiled and "bin/official_solution",
                                            grader_map=grader_map)
 
     if checker is not None:
-        task.checker = from_file(checker, copy_compiled and "bin/checker")
+        task.checker = SourceFile.from_file(checker, copy_compiled and "bin/checker")
     for subtask_num, subtask in subtasks.items():
         task.subtasks[subtask_num] = subtask
 
@@ -244,7 +244,7 @@ def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
     for solution in solutions:
         path, ext = os.path.splitext(os.path.basename(solution))
         bin_file = copy_compiled and "bin/" + path + "_" + ext[1:]
-        sols.extend([from_file(solution, bin_file, grader_map=grader_map)])
+        sols.extend([SourceFile.from_file(solution, bin_file, grader_map=grader_map)])
 
     return task, sols
 
