@@ -146,7 +146,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
           PrepareFile(util::File::JoinPath(sandbox_dir, local_file.getName()),
                       local_file.getHash(), true);
         }
-        if (request.hasStdin()) {
+        if (!util::SHA256_t(request.getStdin()).isZero()) {
           auto stdin_path = util::File::JoinPath(tmp.Path(), "stdin");
           PrepareFile(stdin_path, request.getStdin(), true);
           sandbox::ExecutionOptions::stringcpy(exec_options.stdin_file,
