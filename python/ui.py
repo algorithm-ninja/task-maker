@@ -26,8 +26,7 @@ class UI:
         elif event_type == "compilation":
             compilation = event.compilation
             self.set_compilation_status(compilation.filename,
-                                        compilation.status,
-                                        compilation.stderr,
+                                        compilation.status, compilation.stderr,
                                         compilation.from_cache)
         elif event_type == "generation":
             generation = event.generation
@@ -35,22 +34,20 @@ class UI:
                                        generation.error, generation.from_cache)
         elif event_type == "terry_generation":
             generation = event.terry_generation
-            self.set_terry_generation_status(generation.solution,
-                                             generation.status,
-                                             generation.error,
-                                             generation.from_cache)
+            self.set_terry_generation_status(
+                generation.solution, generation.status, generation.error,
+                generation.from_cache)
         elif event_type == "evaluation":
             evaluation = event.evaluation
             res = evaluation.result if evaluation.HasField("result") else None
-            self.set_evaluation_status(evaluation.testcase, evaluation.solution,
-                                       evaluation.status, res, None,
-                                       evaluation.from_cache)
+            self.set_evaluation_status(evaluation.testcase,
+                                       evaluation.solution, evaluation.status,
+                                       res, None, evaluation.from_cache)
         elif event_type == "terry_evaluation":
             evaluation = event.terry_evaluation
-            self.set_terry_evaluation_status(evaluation.solution,
-                                             evaluation.status,
-                                             evaluation.errors,
-                                             evaluation.from_cache)
+            self.set_terry_evaluation_status(
+                evaluation.solution, evaluation.status, evaluation.errors,
+                evaluation.from_cache)
         elif event_type == "terry_check":
             check = event.terry_check
             res = check.result if check.HasField("result") else None
@@ -75,17 +72,23 @@ class UI:
                          testcases: List[int]) -> None:
         raise NotImplementedError("Please subclass this class")
 
-    def set_compilation_status(self, file_name: str, status: EventStatus,
+    def set_compilation_status(self,
+                               file_name: str,
+                               status: EventStatus,
                                warnings: Optional[str] = None,
                                from_cache: bool = False):
         raise NotImplementedError("Please subclass this class")
 
-    def set_generation_status(self, testcase_num: int, status: EventStatus,
+    def set_generation_status(self,
+                              testcase_num: int,
+                              status: EventStatus,
                               stderr: Optional[str] = None,
                               from_cache: bool = False):
         raise NotImplementedError("Please subclass this class")
 
-    def set_terry_generation_status(self, solution: str, status: EventStatus,
+    def set_terry_generation_status(self,
+                                    solution: str,
+                                    status: EventStatus,
                                     stderr: Optional[str] = None,
                                     from_cache: bool = False):
         raise NotImplementedError("Please subclass this class")
@@ -96,16 +99,19 @@ class UI:
                               status: EventStatus,
                               result: Optional[EvaluationResult] = None,
                               error: Optional[str] = None,
-                              from_cache: bool = False
-                              ):
+                              from_cache: bool = False):
         raise NotImplementedError("Please subclass this class")
 
-    def set_terry_evaluation_status(self, solution: str, status: EventStatus,
+    def set_terry_evaluation_status(self,
+                                    solution: str,
+                                    status: EventStatus,
                                     error: Optional[str] = None,
                                     from_cache: bool = False):
         raise NotImplementedError("Please subclass this class")
 
-    def set_terry_check_status(self, solution: str, status: EventStatus,
+    def set_terry_check_status(self,
+                               solution: str,
+                               status: EventStatus,
                                error: Optional[str] = None,
                                score: Optional[float] = None,
                                from_cache: bool = False):

@@ -4,7 +4,8 @@ from typing import Dict, Optional
 
 
 class EvaluationResult:
-    def __init__(self, score: float, message: str, cpu_time_used: float, wall_time_used: float, memory_used_kb: float):
+    def __init__(self, score: float, message: str, cpu_time_used: float,
+                 wall_time_used: float, memory_used_kb: float):
         self.score = score
         self.message = message
         self.cpu_time_used = cpu_time_used
@@ -38,8 +39,8 @@ class SolutionStatus:
 
     def __repr__(self):
         return "<SolutionStatus [%s]>" % (", ".join(
-            "%d: %.1f" % (i, tc.score) for i, tc in
-            self.testcase_result.items()))
+            "%d: %.1f" % (i, tc.score)
+            for i, tc in self.testcase_result.items()))
 
 
 class TerryStatus:

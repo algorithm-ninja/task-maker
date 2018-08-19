@@ -17,6 +17,7 @@ from task_maker import CacheMode
 #     print = PrintUI
 #     silent = SilentUI
 
+
 class UIS(Enum):
     CURSES = 0
     PRINT = 1
@@ -24,12 +25,12 @@ class UIS(Enum):
 
 
 for cls in [UIS, CacheMode, Arch]:
+
     def from_string(cls, name: str):
         try:
             return cls[name.upper()]
         except:
             raise ValueError()
-
 
     cls.__new__ = from_string
     cls.__str__ = lambda self: self.name.lower()
@@ -192,8 +193,8 @@ def add_terry_group(parser: argparse.ArgumentParser):
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="The new cmsMake!")
-    parser.add_argument("--version", action="version",
-                        version=TASK_MAKER_VERSION)
+    parser.add_argument(
+        "--version", action="version", version=TASK_MAKER_VERSION)
     add_generic_group(parser)
     add_remote_group(parser)
     add_execution_group(parser)

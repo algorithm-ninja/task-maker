@@ -24,9 +24,8 @@ def list_files(patterns: List[str],
     files = [_file for pattern in patterns
              for _file in glob.glob(pattern)]  # type: List[str]
     return [
-        res
-        for res in files
-        if res not in exclude and os.path.splitext(res)[1] in valid_extensions()
+        res for res in files if res not in exclude
+        and os.path.splitext(res)[1] in valid_extensions()
     ]
 
 
@@ -41,8 +40,10 @@ def load_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
     subtask = Subtask(ScoreMode.SUM, 100, {})
 
     for num in sorted(nums):
-        testcase = TestCase(None, [], [], None, [], os.path.join("input", "input%d.txt" % num),
-                            os.path.join("output", "output%d.txt" % num), get_write_input_file(num),
+        testcase = TestCase(None, [], [], None, [],
+                            os.path.join("input", "input%d.txt" % num),
+                            os.path.join("output", "output%d.txt" % num),
+                            get_write_input_file(num),
                             get_write_output_file(num))
         subtask.testcases[num] = testcase
     return None, {0: subtask}
@@ -101,7 +102,8 @@ def gen_testcases(
     testcase_num = 0
     current_score = 0.0
     for line in open("gen/GEN"):
-        testcase = TestCase(None, [], [], None, [], None, None, get_write_input_file(testcase_num),
+        testcase = TestCase(None, [], [], None, [], None, None,
+                            get_write_input_file(testcase_num),
                             get_write_output_file(testcase_num))
         if line.startswith("#ST: "):
             create_subtask(subtask_num, current_testcases, current_score)
@@ -120,13 +122,16 @@ def gen_testcases(
                 subtask_num = 0
             args = line.split()
             arg_deps = sanitize_command(args)
-            testcase.generator = SourceFile.from_file(generator, copy_compiled and "bin/generator")
+            testcase.generator = SourceFile.from_file(
+                generator, copy_compiled and "bin/generator")
             testcase.generator_args.extend(args)
             testcase.extra_deps.extend(arg_deps)
-            testcase.validator = SourceFile.from_file(validator, copy_compiled and "bin/validator")
+            testcase.validator = SourceFile.from_file(
+                validator, copy_compiled and "bin/validator")
             # in the old format the subtask number is 1-based
-            testcase.validator_args.extend([VALIDATION_INPUT_NAME,
-                                            str(subtask_num + 1)])
+            testcase.validator_args.extend(
+                [VALIDATION_INPUT_NAME,
+                 str(subtask_num + 1)])
         current_testcases[testcase_num] = testcase
         testcase_num += 1
 
@@ -182,8 +187,9 @@ def create_task_from_yaml(data: Dict[str, Any]) -> Task:
     input_file = get_options(data, ["infile"], "input.txt")
     output_file = get_options(data, ["outfile"], "output.txt")
 
-    task = Task(name, title, {}, None, [], None, time_limit, memory_limit, input_file if input_file else "",
-                output_file if output_file else "")
+    task = Task(name, title, {}, None, [], None, time_limit, memory_limit,
+                input_file if input_file else "", output_file
+                if output_file else "")
     return task
 
 
@@ -226,17 +232,22 @@ def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
 
     for grader in graders:
         name = os.path.basename(grader)
-        info = GraderInfo(grader_from_file(grader), [Dependency(name, grader)] + find_dependency(grader))
+        info = GraderInfo(
+            grader_from_file(grader),
+            [Dependency(name, grader)] + find_dependency(grader))
         grader_map[info.for_language] = info
         task.grader_info.extend([info])
 
     official_solution, subtasks = gen_testcases(copy_compiled)
     if official_solution:
-        task.official_solution = SourceFile.from_file(official_solution, copy_compiled and "bin/official_solution",
-                                           grader_map=grader_map)
+        task.official_solution = SourceFile.from_file(
+            official_solution,
+            copy_compiled and "bin/official_solution",
+            grader_map=grader_map)
 
     if checker is not None:
-        task.checker = SourceFile.from_file(checker, copy_compiled and "bin/checker")
+        task.checker = SourceFile.from_file(checker, copy_compiled
+                                            and "bin/checker")
     for subtask_num, subtask in subtasks.items():
         task.subtasks[subtask_num] = subtask
 
@@ -244,7 +255,8 @@ def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
     for solution in solutions:
         path, ext = os.path.splitext(os.path.basename(solution))
         bin_file = copy_compiled and "bin/" + path + "_" + ext[1:]
-        sols.extend([SourceFile.from_file(solution, bin_file, grader_map=grader_map)])
+        sols.extend(
+            [SourceFile.from_file(solution, bin_file, grader_map=grader_map)])
 
     return task, sols
 
@@ -254,9 +266,8 @@ def evaluate_task(frontend, task: Task, solutions: List[SourceFile]):
     return evaluate_solutions(frontend, task, ins, outs, vals, solutions)
 
 
-def generate_inputs(frontend, task: Task) -> (
-        Dict[Tuple[int, int], Any], Dict[Tuple[int, int], Any],
-        Dict[Tuple[int, int], Any]):
+def generate_inputs(frontend, task: Task) -> (Dict[Tuple[int, int], Any], Dict[
+        Tuple[int, int], Any], Dict[Tuple[int, int], Any]):
     # TODO change Any with File
     inputs = dict()  # type: Dict[Tuple[int, int], Any]
     outputs = dict()  # type: Dict[Tuple[int, int], Any]
@@ -265,16 +276,19 @@ def generate_inputs(frontend, task: Task) -> (
         for tc_num, testcase in subtask.testcases.items():
             # input file
             if testcase.input_file:
-                inputs[(st_num, tc_num)] = frontend.provideFile(testcase.input_file,
-                                                                "Static input %d" + tc_num, False)
+                inputs[(st_num, tc_num)] = frontend.provideFile(
+                    testcase.input_file, "Static input %d" + tc_num, False)
             else:
                 testcase.generator.prepare(frontend)
                 testcase.validator.prepare(frontend)
 
-                gen = testcase.generator.execute(frontend, "Generation of input %d" % tc_num,
-                                                 testcase.generator_args)
+                gen = testcase.generator.execute(
+                    frontend, "Generation of input %d" % tc_num,
+                    testcase.generator_args)
                 for dep in testcase.extra_deps:
-                    gen.addInput(dep.name, frontend.provideFile(dep.path, dep.path, False))
+                    gen.addInput(
+                        dep.name,
+                        frontend.provideFile(dep.path, dep.path, False))
                 # TODO set cache mode
                 # TODO set limits?
                 inputs[(st_num, tc_num)] = gen.stdout(False)
@@ -287,8 +301,9 @@ def generate_inputs(frontend, task: Task) -> (
                 gen.getResult(lambda res: gen_check_result(res.result))
                 # TODO write input file
 
-                val = testcase.validator.execute(frontend, "Validation of input %d" % tc_num,
-                                                 testcase.validator_args)
+                val = testcase.validator.execute(
+                    frontend, "Validation of input %d" % tc_num,
+                    testcase.validator_args)
                 # TODO set cache mode
                 # TODO set limits?
                 val.addInput(VALIDATION_INPUT_NAME, inputs[(st_num, tc_num)])
@@ -304,24 +319,25 @@ def generate_inputs(frontend, task: Task) -> (
 
             # output file
             if testcase.output_file:
-                outputs[(st_num, tc_num)] = frontend.provideFile(testcase.output_file,
-                                                                 "Static output %d" % tc_num,
-                                                                 False)
+                outputs[(st_num, tc_num)] = frontend.provideFile(
+                    testcase.output_file, "Static output %d" % tc_num, False)
             else:
                 task.official_solution.prepare(frontend)
-                sol = task.official_solution.execute(frontend,
-                                                     "Generation of output %d" % tc_num, [])
+                sol = task.official_solution.execute(
+                    frontend, "Generation of output %d" % tc_num, [])
                 # TODO set cache mode
                 # TODO set limits?
 
                 if tc_num in validations:
-                    sol.addInput("wait_for_validation", validations[(st_num, tc_num)])
+                    sol.addInput("wait_for_validation", validations[(st_num,
+                                                                     tc_num)])
                 if task.input_file:
                     sol.addInput(task.input_file, inputs[(st_num, tc_num)])
                 else:
                     sol.stdin(inputs[(st_num, tc_num)])
                 if task.output_file:
-                    outputs[(st_num, tc_num)] = sol.output(task.output_file, False)
+                    outputs[(st_num, tc_num)] = sol.output(
+                        task.output_file, False)
                 else:
                     outputs[(st_num, tc_num)] = sol.stdout(False)
 
@@ -335,20 +351,24 @@ def generate_inputs(frontend, task: Task) -> (
     return inputs, outputs, validations
 
 
-def evaluate_solutions(frontend, task: Task, inputs: Dict[Tuple[int, int], Any],
-                       outputs: Dict[Tuple[int, int], Any],
-                       validations: Dict[Tuple[int, int], Any], solutions: List[SourceFile]):
+def evaluate_solutions(
+        frontend, task: Task, inputs: Dict[Tuple[int, int], Any],
+        outputs: Dict[Tuple[int, int], Any],
+        validations: Dict[Tuple[int, int], Any], solutions: List[SourceFile]):
     for solution in solutions:
         solution.prepare(frontend)
         status = SolutionStatus()
         for (st_num, tc_num), input in inputs.items():
-            eval = solution.execute(frontend,
-                                    "Evaluation of %s on testcase %d" % (solution.name, tc_num), [])
+            eval = solution.execute(
+                frontend,
+                "Evaluation of %s on testcase %d" % (solution.name, tc_num),
+                [])
             # TODO set cache mode
             # TODO set limits!
             # TODO add validation dep
             if (st_num, tc_num) in validations:
-                eval.addInput("tm_wait_validation", validations[(st_num, tc_num)])
+                eval.addInput("tm_wait_validation", validations[(st_num,
+                                                                 tc_num)])
             if task.input_file:
                 eval.addInput(task.input_file, inputs[(st_num, tc_num)])
             else:
@@ -391,14 +411,15 @@ def evaluate_solutions(frontend, task: Task, inputs: Dict[Tuple[int, int], Any],
 
             if task.checker:
                 task.checker.prepare(frontend)
-                check = task.checker.execute(frontend,
-                                             "Checking solution %s for testcase %d"
-                                             % (solution.name, tc_num),
-                                             ["input", "output", "contestant_output"])
+                check = task.checker.execute(
+                    frontend, "Checking solution %s for testcase %d" %
+                    (solution.name, tc_num),
+                    ["input", "output", "contestant_output"])
                 check.addInput("input", inputs[(st_num, tc_num)])
             else:
                 check = frontend.addExecution(
-                    "Checking solution %s for testcase %d" % (solution.name, tc_num))
+                    "Checking solution %s for testcase %d" % (solution.name,
+                                                              tc_num))
                 check.setExecutablePath("diff")
                 check.setArgs(["-w", "output", "contestant_output"])
             check.notifyStart(
@@ -421,8 +442,8 @@ def clean():
         try:
             os.rmdir(path)
         except OSError:
-            print("Directory %s not empty, kept non-%s files" % (path,
-                                                                 pattern))
+            print(
+                "Directory %s not empty, kept non-%s files" % (path, pattern))
 
     def remove_file(path: str) -> None:
         try:

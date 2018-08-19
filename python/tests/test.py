@@ -31,11 +31,15 @@ class TestingUI(SilentUI):
 
 # inject the testing UI to the valid UIs
 task_maker.args.UIS = Enum("UIS", {"testing": TestingUI})
+
+
 def from_string(cls, name):
     try:
         return cls[name]
     except:
         raise ValueError()
+
+
 task_maker.args.UIS.__new__ = from_string
 task_maker.args.UIS.__str__ = lambda self: self.name
 

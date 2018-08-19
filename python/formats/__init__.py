@@ -74,9 +74,9 @@ class GraderInfo:
 class Task:
     def __init__(self, name: str, title: str, subtasks: Dict[int, Subtask],
                  official_solution: Optional["SourceFile"],
-                 grader_info: List[GraderInfo], checker: Optional["SourceFile"],
-                 time_limit: float, memory_limit_kb: int, input_file: str,
-                 output_file: str):
+                 grader_info: List[GraderInfo],
+                 checker: Optional["SourceFile"], time_limit: float,
+                 memory_limit_kb: int, input_file: str, output_file: str):
         self.name = name
         self.title = title
         self.subtasks = subtasks

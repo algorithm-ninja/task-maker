@@ -28,33 +28,37 @@ class PrintUI(UI):
         print("Subtask %d has max score %.2f and %d testcases" %
               (subtask_num, max_score, len(testcases)))
 
-    def set_compilation_status(self, file_name: str, status: EventStatus,
+    def set_compilation_status(self,
+                               file_name: str,
+                               status: EventStatus,
                                warnings: Optional[str] = None,
                                from_cache: bool = False):
         is_solution = file_name in self.solutions
         print("%sStatus of the compilation of %s is %s%s" %
-              ("[sol] " if is_solution else "",
-               file_name,
-               EventStatus.Name(status),
-               " [cached]" if from_cache else ""))
+              ("[sol] " if is_solution else "", file_name,
+               EventStatus.Name(status), " [cached]" if from_cache else ""))
         if warnings:
             print("Compiler output:", warnings, sep="\n")
 
-    def set_generation_status(self, testcase_num: int, status: EventStatus,
+    def set_generation_status(self,
+                              testcase_num: int,
+                              status: EventStatus,
                               stderr: Optional[str] = None,
                               from_cache: bool = False):
-        print("Status of the generation of testcase %d is %s%s"
-              % (testcase_num, EventStatus.Name(status),
-                 " [cached]" if from_cache else ""))
+        print("Status of the generation of testcase %d is %s%s" %
+              (testcase_num, EventStatus.Name(status), " [cached]"
+               if from_cache else ""))
         if stderr:
             print("Errors:", stderr, sep="\n")
 
-    def set_terry_generation_status(self, solution: str, status: EventStatus,
+    def set_terry_generation_status(self,
+                                    solution: str,
+                                    status: EventStatus,
                                     stderr: Optional[str] = None,
                                     from_cache: bool = False):
-        print("Status of the generation of input for %s is %s%s"
-              % (solution, EventStatus.Name(status),
-                 " [cached]" if from_cache else ""))
+        print("Status of the generation of input for %s is %s%s" %
+              (solution, EventStatus.Name(status), " [cached]"
+               if from_cache else ""))
         if stderr:
             print("Errors:", stderr, sep="\n")
 
@@ -64,11 +68,11 @@ class PrintUI(UI):
                               status: EventStatus,
                               result: Optional[EvaluationResult] = None,
                               error: Optional[str] = None,
-                              from_cache: bool = False
-                              ):
-        print("Status of the evaluation of solution %s on testcase %d: %s%s" %
-              (solution_name, testcase_num, EventStatus.Name(status),
-               " [cached]" if from_cache else ""))
+                              from_cache: bool = False):
+        print(
+            "Status of the evaluation of solution %s on testcase %d: %s%s" %
+            (solution_name, testcase_num, EventStatus.Name(status), " [cached]"
+             if from_cache else ""))
         if error:
             print("Errors:", error, sep="\n")
         if status == DONE:
@@ -78,12 +82,14 @@ class PrintUI(UI):
                   (result.cpu_time_used, result.wall_time_used,
                    result.memory_used_kb / 1024))
 
-    def set_terry_evaluation_status(self, solution: str, status: EventStatus,
+    def set_terry_evaluation_status(self,
+                                    solution: str,
+                                    status: EventStatus,
                                     error: Optional[str] = None,
                                     from_cache: bool = False):
-        print("Status of the evaluation of solution %s is %s%s"
-              % (solution, EventStatus.Name(status),
-                 " [cached]" if from_cache else ""))
+        print("Status of the evaluation of solution %s is %s%s" %
+              (solution, EventStatus.Name(status), " [cached]"
+               if from_cache else ""))
         if error:
             print("Errors:", error, sep="\n")
 
@@ -92,11 +98,10 @@ class PrintUI(UI):
                                status: EventStatus,
                                error: Optional[str] = None,
                                result: Optional[TerryEvaluationResult] = None,
-                               from_cache: bool = False
-                               ):
-        print("Status of the checking of solution %s is %s%s"
-              % (solution, EventStatus.Name(status),
-                 " [cached]" if from_cache else ""))
+                               from_cache: bool = False):
+        print("Status of the checking of solution %s is %s%s" %
+              (solution, EventStatus.Name(status), " [cached]"
+               if from_cache else ""))
         if error:
             print("Errors:", error, sep="\n")
         if result is not None:
@@ -126,10 +131,8 @@ class PrintUI(UI):
                   (solution_name, self._scores[solution_name]))
         for solution_name in self._scores:
             print("Solution %-{0}s has the following scores on subtasks: %s"
-                  .format(max_sol_name) %
-                  (solution_name, " ".join([
-                      "%6.2f" % info[1:]
-                      for info in sorted(
+                  .format(max_sol_name) % (solution_name, " ".join([
+                      "%6.2f" % info[1:] for info in sorted(
                           self._subtasks_scores[solution_name].items())
                   ])))
 

@@ -88,8 +88,8 @@ class TMValidator:
             if not arg.startswith("$"):
                 args.append(arg)
             else:
-                args.append(parse_variable(arg, testcase, subtask, tc_num,
-                                           st_num))
+                args.append(
+                    parse_variable(arg, testcase, subtask, tc_num, st_num))
         return args
 
     def __repr__(self):
@@ -149,7 +149,7 @@ def parse_variable(arg: str, testcase: "TMTestcase", subtask: "TMSubtask",
         for constraint in subtask.constraints:
             if constraint.name == var and \
                     constraint.lower_bound is not None:
-                value = max(value or -10 ** 18, constraint.lower_bound)
+                value = max(value or -10**18, constraint.lower_bound)
         if value is None:
             raise ValueError("There are no constraints for the "
                              "minimum of '%s'" % var)
@@ -160,7 +160,7 @@ def parse_variable(arg: str, testcase: "TMTestcase", subtask: "TMSubtask",
         for constraint in subtask.constraints:
             if constraint.name == var and \
                     constraint.upper_bound is not None:
-                value = min(value or 10 ** 18, constraint.upper_bound)
+                value = min(value or 10**18, constraint.upper_bound)
         if value is None:
             raise ValueError("There are no constraints for the "
                              "maximum of '%s'" % var)
@@ -168,8 +168,8 @@ def parse_variable(arg: str, testcase: "TMTestcase", subtask: "TMSubtask",
     elif cmd in testcase.matched_params:
         return testcase.matched_params[cmd]
     else:
-        raise ValueError("Cannot match variable '%s' in testcase %s" %
-                         (arg, testcase))
+        raise ValueError(
+            "Cannot match variable '%s' in testcase %s" % (arg, testcase))
 
 
 def parse_cases(gen: IO) -> List[TMSubtask]:
@@ -207,12 +207,13 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
         # global GEN definitions
         if not subtasks:
             if len(args) < 2:
-                raise ValueError("The GEN command needs al least 2 arguments: "
-                                 "name path [args [args ...]] (line %d)" %
-                                 (lineno))
+                raise ValueError(
+                    "The GEN command needs al least 2 arguments: "
+                    "name path [args [args ...]] (line %d)" % (lineno))
             name = args[0]
             if name in generators:
-                raise ValueError("Duplicate GEN definition at line %d" % lineno)
+                raise ValueError(
+                    "Duplicate GEN definition at line %d" % lineno)
             generator = TMGenerator(name, args[1], args[2:])
             generators[name] = generator
             if name == "default":
@@ -220,12 +221,13 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
         # subtask local GEN
         else:
             if len(args) != 1:
-                raise ValueError("The GEN command for overriding the generator "
-                                 "needs only one parameter (line %d)" % lineno)
+                raise ValueError(
+                    "The GEN command for overriding the generator "
+                    "needs only one parameter (line %d)" % lineno)
             name = args[0]
             if name not in generators:
-                raise ValueError("Generator '%s' not declared (line %d)" %
-                                 lineno)
+                raise ValueError(
+                    "Generator '%s' not declared (line %d)" % lineno)
             current_gen = generators[name]
 
     def process_VAL(args):
@@ -233,12 +235,13 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
         # global VAL definitions
         if not subtasks:
             if len(args) < 2:
-                raise ValueError("The VAL command needs al least 2 arguments: "
-                                 "name path [args [args ...]] (line %d)" %
-                                 (lineno))
+                raise ValueError(
+                    "The VAL command needs al least 2 arguments: "
+                    "name path [args [args ...]] (line %d)" % (lineno))
             name = args[0]
             if name in validators:
-                raise ValueError("Duplicate VAL definition at line %d" % lineno)
+                raise ValueError(
+                    "Duplicate VAL definition at line %d" % lineno)
             validator = TMValidator(name, args[1], args[2:])
             validators[name] = validator
             if name == "default":
@@ -246,12 +249,13 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
         # subtask local VAL
         else:
             if len(args) != 1:
-                raise ValueError("The VAL command for overriding the validator "
-                                 "needs only one parameter (line %d)" % lineno)
+                raise ValueError(
+                    "The VAL command for overriding the validator "
+                    "needs only one parameter (line %d)" % lineno)
             name = args[0]
             if name not in validators:
-                raise ValueError("Validator '%s' not declared (line %d)" %
-                                 lineno)
+                raise ValueError(
+                    "Validator '%s' not declared (line %d)" % lineno)
             current_val = validators[name]
 
     def process_CONSTRAINT(args):
@@ -266,8 +270,8 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
                              "CONSTRAINT (line %d)" % lineno)
         if args[1] not in ["<", "<=", ">", ">="] or \
                 (len(args) == 5 and args[3] not in ["<", "<="]):
-            raise ValueError("Invalid operator passed to CONSTRAINT (line %d)" %
-                             lineno)
+            raise ValueError(
+                "Invalid operator passed to CONSTRAINT (line %d)" % lineno)
         if args[1][0] == "<":
             more_or_equal = args[1] == "<="
         else:
@@ -299,8 +303,8 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
             hiest_ok = float(args[4]) if less_or_equal else float(args[4]) - 1
             var = args[2][1:]
             if lowest_ok > hiest_ok:
-                raise ValueError("CONSTRAINT is always false (line %d)" %
-                                 lineno)
+                raise ValueError(
+                    "CONSTRAINT is always false (line %d)" % lineno)
             constraint = TMConstraint(var, float(args[0]), float(args[4]),
                                       more_or_equal, less_or_equal)
         # case d
@@ -312,7 +316,8 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
             constraint = TMConstraint(var, float(args[2]), None, more_or_equal,
                                       False)
         else:
-            raise ValueError("Invalid format for CONSTRAINT (line %d)" % lineno)
+            raise ValueError(
+                "Invalid format for CONSTRAINT (line %d)" % lineno)
 
         # global constraints
         if not subtasks:
@@ -327,8 +332,8 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
             raise ValueError("Invalid arguments to SUBTASK: max_score [name] "
                              "(line %d)" % lineno)
         if not is_float(args[0]):
-            raise ValueError("Invalid SUBTASK score '%s' (line %d)" %
-                             (args[0], lineno))
+            raise ValueError(
+                "Invalid SUBTASK score '%s' (line %d)" % (args[0], lineno))
         st_num += 1
         name = " ".join(args[1:])
         subtask = TMSubtask(float(args[0]), name)
@@ -340,8 +345,8 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
 
     def process_DESCRIPTION(args):
         if not subtasks:
-            raise ValueError("Cannot DESCRIPTION without subtasks (line %d)" %
-                             lineno)
+            raise ValueError(
+                "Cannot DESCRIPTION without subtasks (line %d)" % lineno)
         if not args:
             raise ValueError("No description provided (line %s)" % lineno)
         desc = " ".join(args)
@@ -351,13 +356,13 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
         if not subtasks:
             raise ValueError("Cannot COPY without subtasks (line %d)" % lineno)
         if len(args) != 1:
-            raise ValueError("Invalid number of arguments to COPY (line %d)"
-                             % lineno)
+            raise ValueError(
+                "Invalid number of arguments to COPY (line %d)" % lineno)
         if not current_val:
             raise ValueError("No VAL available (line %d)" % lineno)
         testcase = TMTestcase([args[0]], TMCopyGenerator(), current_val)
-        testcase.val_args = testcase.validator.get_args(testcase, subtasks[-1],
-                                                        tc_num, st_num)
+        testcase.val_args = testcase.validator.get_args(
+            testcase, subtasks[-1], tc_num, st_num)
         subtasks[-1].testcases.append(testcase)
 
     def add_testcase(args: List[str], generator: TMGenerator,
@@ -379,9 +384,8 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
                         continue
                     if not constraint.accept(float(value)):
                         raise ValueError("Constraint not met: %s when %s=%f "
-                                         "(line %d)" %
-                                         (constraint, name, float(value),
-                                          lineno))
+                                         "(line %d)" % (constraint, name,
+                                                        float(value), lineno))
         testcase.val_args = validator.get_args(testcase, subtasks[-1], tc_num,
                                                st_num)
         subtasks[-1].testcases.append(testcase)
@@ -391,8 +395,8 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
         if not subtasks:
             raise ValueError("Cannot RUN without subtasks (line %d)" % lineno)
         if len(args) < 1:
-            raise ValueError("RUN needs al least an argument (line %d)" %
-                             lineno)
+            raise ValueError(
+                "RUN needs al least an argument (line %d)" % lineno)
         name = args[0]
         if name not in generators:
             raise ValueError("Generator '%s' not declared (line %d)" % lineno)
@@ -400,8 +404,8 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
 
     def process_TESTCASE(args):
         if not subtasks:
-            raise ValueError("Cannot add a testcase  without subtasks (line %d)"
-                             % lineno)
+            raise ValueError(
+                "Cannot add a testcase  without subtasks (line %d)" % lineno)
         if not current_gen:
             raise ValueError("No GEN available (line %d)" % lineno)
         if not current_val:
@@ -461,7 +465,8 @@ def generate_gen_GEN(subtasks: List[TMSubtask]):
                 GEN += "#COPY: %s\n" % testcase.gen_args[0]
             else:
                 # TODO add a custom wrapper to make this works with cmsMake
-                GEN += "%s %s\n" % (testcase.generator.path, " ".join(testcase.gen_args))
+                GEN += "%s %s\n" % (testcase.generator.path, " ".join(
+                    testcase.gen_args))
     return GEN
 
 
@@ -476,8 +481,8 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
     solutions = get_solutions(args.solutions, graders)
     checker = get_checker()
     if checker is not None:
-        task.checker.CopyFrom(from_file(checker,
-                                        copy_compiled and "bin/checker"))
+        task.checker.CopyFrom(
+            from_file(checker, copy_compiled and "bin/checker"))
     official_solution = get_official_solution()
     if official_solution is None:
         raise RuntimeError("No official solution found")
@@ -501,12 +506,14 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
                 validator = testcase.validator
                 arg_deps = sanitize_command(testcase.gen_args)
 
-                tc.generator.CopyFrom(from_file(generator.path, copy_compiled
-                                                and "bin/generator"))
+                tc.generator.CopyFrom(
+                    from_file(generator.path, copy_compiled
+                              and "bin/generator"))
                 tc.generator_args.extend(testcase.gen_args)
                 tc.extra_deps.extend(arg_deps)
-                tc.validator.CopyFrom(from_file(validator.path, copy_compiled
-                                                and "bin/validator"))
+                tc.validator.CopyFrom(
+                    from_file(validator.path, copy_compiled
+                              and "bin/validator"))
                 tc.validator_args.extend(testcase.val_args)
             st.testcases[testcase_num].CopyFrom(tc)
             testcase_num += 1
@@ -516,8 +523,8 @@ def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
         info = GraderInfo()
         info.for_language = grader_from_file(grader)
         name = os.path.basename(grader)
-        info.files.extend(
-            [Dependency(name=name, path=grader)] + find_dependency(grader))
+        info.files.extend([Dependency(name=name, path=grader)] +
+                          find_dependency(grader))
         task.grader_info.extend([info])
 
     request = EvaluateTaskRequest()

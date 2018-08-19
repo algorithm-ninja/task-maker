@@ -12,15 +12,19 @@ from task_maker.language import Language, from_file as language_from_file, need_
 
 class SourceFile:
     @staticmethod
-    def from_file(path: str, write_to: Optional[str] = None,
-                  target_arch=Arch.DEFAULT, grader_map: Dict[Language, GraderInfo] = dict()) -> "SourceFile":
+    def from_file(
+            path: str,
+            write_to: Optional[str] = None,
+            target_arch=Arch.DEFAULT,
+            grader_map: Dict[Language, GraderInfo] = dict()) -> "SourceFile":
         old_path = path
         if not os.path.exists(path):
             path = find_executable(path)
         if not path:
             raise ValueError("Cannot find %s" % old_path)
         language = language_from_file(path)
-        source_file = SourceFile(path, find_dependency(path), language, None, target_arch, grader_map.get(language))
+        source_file = SourceFile(path, find_dependency(path), language, None,
+                                 target_arch, grader_map.get(language))
         if write_to:
             if not os.path.isabs(write_to):
                 write_to = os.path.join(os.getcwd(), write_to)
@@ -57,7 +61,8 @@ class SourceFile:
         self.prepared = True
 
     def _compile(self, frontend):
-        source = frontend.provideFile(self.path, "Source file for " + self.name, False)
+        source = frontend.provideFile(self.path,
+                                      "Source file for " + self.name, False)
         if self.language == Language.CPP:
             compiler = "c++"
             args = [
@@ -99,39 +104,38 @@ class SourceFile:
             raise FileNotFoundError(
                 "Cannot compile %s: missing compiler" % self.path)
 
-        self.compilation = frontend.addExecution("Compilation of %s" % self.name)
+        self.compilation = frontend.addExecution(
+            "Compilation of %s" % self.name)
         self.compilation.setExecutablePath(compiler)
         self.compilation.setArgs(args)
         self.compilation.addInput(self.name, source)
         for dep in self.dependencies:
             self.compilation.addInput(
-                dep.name,
-                frontend.provideFile(dep.path, dep.path, False))
+                dep.name, frontend.provideFile(dep.path, dep.path, False))
         if self.grader:
             for dep in self.grader.files:
                 self.compilation.addInput(
-                    dep.name,
-                    frontend.provideFile(dep.path, dep.path, False))
+                    dep.name, frontend.provideFile(dep.path, dep.path, False))
         self.compilation_stderr = self.compilation.stderr(False)
         self.executable = self.compilation.output(self.exe_name, True)
         # TODO set cache
         # TODO set time/memory limits?
-        self.compilation.notifyStart(lambda: print("Compilation of %s" % self.name, "started"))
+        self.compilation.notifyStart(
+            lambda: print("Compilation of %s" % self.name, "started"))
         self.compilation.getResult(lambda res: print(res))
 
     def _not_compile(self, frontend):
-        self.executable = frontend.provideFile(self.path, "Source file for " + self.name, True)
+        self.executable = frontend.provideFile(
+            self.path, "Source file for " + self.name, True)
 
-    def execute(self, frontend, description: str,
-                args: List[str]):
+    def execute(self, frontend, description: str, args: List[str]):
         execution = frontend.addExecution(description)
         execution.setExecutable(self.exe_name, self.executable)
         execution.setArgs(args)
         if not self.need_compilation:
             for dep in self.dependencies:
                 execution.addInput(
-                    dep.name,
-                    frontend.provideFile(dep.path, dep.path, False))
+                    dep.name, frontend.provideFile(dep.path, dep.path, False))
         return execution
 
     def __repr__(self):

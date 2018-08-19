@@ -12,15 +12,16 @@ EXEFLAG_32BITS = 0x0010
 EXEFLAG_64BITS = 0x0020
 
 # Keep signatures sorted by size
-_EXE_SIGNATURES = (
-    (b"\x4D\x5A", EXEFLAG_WINDOWS),
-    (b"\xCE\xFA\xED\xFE", EXEFLAG_MACOS | EXEFLAG_32BITS),
-    (b"\xCF\xFA\xED\xFE", EXEFLAG_MACOS | EXEFLAG_64BITS),
-    (b"\xBE\xBA\xFE\xCA", EXEFLAG_MACOS | EXEFLAG_32BITS | EXEFLAG_MACOS_FAT),
-    (b"\xBF\xBA\xFE\xCA", EXEFLAG_MACOS | EXEFLAG_64BITS | EXEFLAG_MACOS_FAT),
-    (b"\x7F\x45\x4C\x46\x01", EXEFLAG_LINUX | EXEFLAG_32BITS),
-    (b"\x7F\x45\x4C\x46\x02", EXEFLAG_LINUX | EXEFLAG_64BITS)
-)
+_EXE_SIGNATURES = ((b"\x4D\x5A",
+                    EXEFLAG_WINDOWS), (b"\xCE\xFA\xED\xFE",
+                                       EXEFLAG_MACOS | EXEFLAG_32BITS),
+                   (b"\xCF\xFA\xED\xFE", EXEFLAG_MACOS | EXEFLAG_64BITS),
+                   (b"\xBE\xBA\xFE\xCA",
+                    EXEFLAG_MACOS | EXEFLAG_32BITS | EXEFLAG_MACOS_FAT),
+                   (b"\xBF\xBA\xFE\xCA",
+                    EXEFLAG_MACOS | EXEFLAG_64BITS | EXEFLAG_MACOS_FAT),
+                   (b"\x7F\x45\x4C\x46\x01", EXEFLAG_LINUX | EXEFLAG_32BITS),
+                   (b"\x7F\x45\x4C\x46\x02", EXEFLAG_LINUX | EXEFLAG_64BITS))
 
 
 def get_exeflags(filepath: str) -> int:

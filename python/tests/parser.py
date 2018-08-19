@@ -12,10 +12,13 @@ DEFAULT_STRING_MAX_LEN = 4096
 
 
 class TokenStream:
-    def __init__(self, file, strict_spaces=False,
+    def __init__(self,
+                 file,
+                 strict_spaces=False,
                  int_max_len=DEFAULT_INT_MAX_LEN,
                  float_max_len=DEFAULT_FLOAT_MAX_LEN,
-                 str_max_len=DEFAULT_STRING_MAX_LEN, spaces=" \t\n"):
+                 str_max_len=DEFAULT_STRING_MAX_LEN,
+                 spaces=" \t\n"):
         """
         :param file: file object of the output
         :param strict_spaces: whether to consider spaces as tokens, manual
@@ -49,13 +52,21 @@ class TokenStream:
 
     def int(self, validate=lambda x: True):
         """Read an integer"""
-        return self._parse_number(self.int_max_len, int, "+-0123456789",
-                                  validate, advance_buffer=True)
+        return self._parse_number(
+            self.int_max_len,
+            int,
+            "+-0123456789",
+            validate,
+            advance_buffer=True)
 
     def float(self, validate=lambda x: True):
         """Read a float"""
-        return self._parse_number(self.float_max_len, float, "+-e0123456789.",
-                                  validate, advance_buffer=True)
+        return self._parse_number(
+            self.float_max_len,
+            float,
+            "+-e0123456789.",
+            validate,
+            advance_buffer=True)
 
     def str(self, validate=lambda x: True):
         """Read a string"""
@@ -197,8 +208,12 @@ class TokenStream:
         if not self.strict_spaces:
             self._skip_spaces()
         try:
-            self._parse_number(self.int_max_len, int, "+-0123456789",
-                               lambda x: True, advance_buffer=False)
+            self._parse_number(
+                self.int_max_len,
+                int,
+                "+-0123456789",
+                lambda x: True,
+                advance_buffer=False)
         except:
             return False
         else:
@@ -209,8 +224,12 @@ class TokenStream:
         if not self.strict_spaces:
             self._skip_spaces()
         try:
-            self._parse_number(self.float_max_len, float, "+-e0123456789.",
-                               lambda x: True, advance_buffer=False)
+            self._parse_number(
+                self.float_max_len,
+                float,
+                "+-e0123456789.",
+                lambda x: True,
+                advance_buffer=False)
         except:
             return False
         else:
@@ -261,7 +280,11 @@ class TokenStream:
         self.char_buffer.extend(char)
         return char
 
-    def _parse_number(self, max_len, type, allowed_chars, validate,
+    def _parse_number(self,
+                      max_len,
+                      type,
+                      allowed_chars,
+                      validate,
                       advance_buffer=True):
         """
         Read and parse a number
@@ -303,7 +326,7 @@ class TokenStream:
         """tries to match the "Case #" prefix in the buffer, returns the
         index of mismatch, -1 if match"""
         for i in range(len("Case #")):
-            if self.char_buffer[i].lower() != "case #"[i]:
+            if self.char_buffer[i].lower() != "case #" [i]:
                 return i
         return -1
 
@@ -343,34 +366,39 @@ class Parser:
         output = {
             "score": 0.0,
             "validation": {
-                "cases": [{"status": "missing"} for _ in
-                          range(self.num_inputs)],
+                "cases": [{
+                    "status": "missing"
+                } for _ in range(self.num_inputs)],
                 "alerts": []
             },
             "feedback": {
-                "cases": [{"correct": False} for _ in range(self.num_inputs)],
+                "cases": [{
+                    "correct": False
+                } for _ in range(self.num_inputs)],
                 "alerts": []
             }
         }
 
         def add_warning(message):
-            output["validation"]["alerts"].append(
-                {"severity": "warning", "message": message})
+            output["validation"]["alerts"].append({
+                "severity": "warning",
+                "message": message
+            })
 
         while True:
             try:
                 num, line_no, skipped, skipped_from = \
                     self.stream.seek_next_testcase()
                 if len(skipped) > 0:
-                    add_warning("Skipped data from line %d: %s" % (
-                        skipped_from, skipped))
+                    add_warning("Skipped data from line %d: %s" %
+                                (skipped_from, skipped))
                 if num in testcases_seen:
-                    add_warning("Skipped duplicate testcase %d at line %d" % (
-                        num, line_no))
+                    add_warning("Skipped duplicate testcase %d at line %d" %
+                                (num, line_no))
                     continue
                 if num > self.num_inputs:
-                    add_warning("Skipped testcase %d > %d at line %d" % (
-                        num, self.num_inputs, line_no))
+                    add_warning("Skipped testcase %d > %d at line %d" %
+                                (num, self.num_inputs, line_no))
                     continue
                 testcases_seen.add(num)
                 output["validation"]["cases"][num - 1]["status"] = "parsed"
@@ -378,8 +406,8 @@ class Parser:
                     "message"] = "Found from line %d" % line_no
             except EOFError as ex:
                 if len(ex.args) >= 3 and len(ex.args[1]) > 0:
-                    add_warning("Skipped data from line %d: %s" % (
-                        ex.args[2], ex.args[1]))
+                    add_warning("Skipped data from line %d: %s" % (ex.args[2],
+                                                                   ex.args[1]))
                 break
 
             try:

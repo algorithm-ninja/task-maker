@@ -47,4 +47,6 @@ def grader_from_file(path: str) -> Language:
 
 
 def need_compilation(language: Language) -> bool:
-    return language in [Language.CPP, Language.C, Language.PASCAL, Language.RUST]
+    return language in [
+        Language.CPP, Language.C, Language.PASCAL, Language.RUST
+    ]

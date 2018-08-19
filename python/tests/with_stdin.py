@@ -12,9 +12,9 @@ def test_task():
                            [(1, "Output is correct")] * 4)
     interface.add_solution("noop.py", 0, [0],
                            [(0, "Output is not correct")] * 4)
-    interface.add_solution("wa.cpp", 50, [50],
-                           [(1, "Output is correct")] * 2 +
-                           [(0, "Output is not correct")] * 2)
+    interface.add_solution(
+        "wa.cpp", 50, [50],
+        [(1, "Output is correct")] * 2 + [(0, "Output is not correct")] * 2)
     interface.add_solution("wrong_file.cpp", 0, [0],
                            [(0, "Output is not correct")] * 4)
     interface.run_checks(TestingUI.inst)

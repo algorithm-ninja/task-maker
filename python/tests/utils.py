@@ -74,8 +74,8 @@ class TerryTestSolution:
         assert self.name in ui.solutions
         assert ui._compilation_status[self.name] == DONE
         solution = ui._terry_test_status[self.name]
-        assert abs(
-            solution.result.score * self.task.max_score - self.score) < 0.0001
+        assert abs(solution.result.score * self.task.max_score -
+                   self.score) < 0.0001
         if self.tc_score:
             for status, expected in zip(solution.result.testcases,
                                         self.tc_score):
@@ -94,10 +94,13 @@ class TestInterface:
         self.timelimit = timelimit
         self.memlimit = memlimit
 
-    def add_solution(self, name: str, score: float, st_score=None,
+    def add_solution(self,
+                     name: str,
+                     score: float,
+                     st_score=None,
                      tc_outcome=None):
-        self.solutions.append(TestSolutionCompile(self, name, score, st_score,
-                                                  tc_outcome))
+        self.solutions.append(
+            TestSolutionCompile(self, name, score, st_score, tc_outcome))
 
     def add_not_compile(self, name: str, message=None):
         self.solutions.append(TestSolutionNotCompile(self, name, message))

@@ -7,8 +7,8 @@ from event_pb2 import CORRECT, MISSING, WRONG
 
 def test_task():
     from task_maker.tests.utils import TerryTestInterface
-    interface = TerryTestInterface("terry_with_validator", "Testing task-maker",
-                                   100)
+    interface = TerryTestInterface("terry_with_validator",
+                                   "Testing task-maker", 100)
     interface.set_generator("generator.py")
     interface.set_validator("validator.py")
     interface.set_checker("checker.py")
@@ -16,8 +16,8 @@ def test_task():
     interface.add_solution("unordered.py", 100, [CORRECT] * 5)
     interface.add_solution("wrong.py", 0, [WRONG] * 5)
     interface.add_solution("missing.py", 0, [MISSING] * 5)
-    interface.add_solution("partial.py", 40, [CORRECT, CORRECT, WRONG,
-                                              MISSING, MISSING])
+    interface.add_solution("partial.py", 40,
+                           [CORRECT, CORRECT, WRONG, MISSING, MISSING])
     interface.run_checks(TestingUI.inst)
 
 

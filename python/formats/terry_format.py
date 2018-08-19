@@ -50,8 +50,9 @@ def get_manager(manager, target_arch, optional=False):
         return None
     if len(managers) != 1:
         raise ValueError("Ambiguous manager: " + ", ".join(managers))
-    return from_file(managers[0], "managers/%s%s" %
-                     (manager, get_extension(target_arch)), target_arch)
+    return from_file(managers[0],
+                     "managers/%s%s" % (manager, get_extension(target_arch)),
+                     target_arch)
 
 
 def get_request(args: argparse.Namespace):
@@ -79,8 +80,8 @@ def get_request(args: argparse.Namespace):
 
     if args.solutions:
         solutions = list_files([
-            sol +
-            "*" if sol.startswith("solutions/") else "solutions/" + sol + "*"
+            sol + "*"
+            if sol.startswith("solutions/") else "solutions/" + sol + "*"
             for sol in args.solutions
         ])
     else:

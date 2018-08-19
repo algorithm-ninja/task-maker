@@ -21,15 +21,16 @@ class CursesUI(SilentUI):
         self._done = False
         self._stopped = False
         self._failure = None  # type: Optional[str]
-        self._ui_thread = threading.Thread(target=curses.wrapper,
-                                           args=(self._ui,))
+        self._ui_thread = threading.Thread(
+            target=curses.wrapper, args=(self._ui, ))
         self._ui_thread.start()
 
-    def set_compilation_status(self, file_name: str, status: EventStatus,
+    def set_compilation_status(self,
+                               file_name: str,
+                               status: EventStatus,
                                warnings: Optional[str] = None,
                                from_cache: bool = False):
-        super().set_compilation_status(file_name, status, warnings,
-                                       from_cache)
+        super().set_compilation_status(file_name, status, warnings, from_cache)
         self._max_sol_len = max(self._max_sol_len, len(file_name))
 
     # pylint: disable=no-self-use
@@ -55,8 +56,8 @@ class CursesUI(SilentUI):
                            printer: Printer) -> None:
         for comp in sorted(sources):
             printer.text("%{}s: ".format(self._max_sol_len) % comp)
-            self._print_compilation_status(comp, self._compilation_status[comp],
-                                           loading, printer)
+            self._print_compilation_status(
+                comp, self._compilation_status[comp], loading, printer)
 
     def _print_generation_status(self, printer: Printer) -> None:
         for subtask in sorted(self._subtask_testcases):
@@ -186,10 +187,9 @@ class CursesUI(SilentUI):
                     printer.bold("  " + loading + " ")
                 elif self._compilation_status[sol] == DONE:
                     printer.green(" OK ")
-                    printer.text(
-                        " % 3d/%d  " %
-                        (len(self._solution_status[sol].testcase_result),
-                         self._num_testcases))
+                    printer.text(" % 3d/%d  " % (len(
+                        self._solution_status[sol].testcase_result),
+                                                 self._num_testcases))
                     self._print_subtasks_scores(self._solution_status[sol],
                                                 loading, printer)
                 else:
@@ -309,8 +309,8 @@ class CursesUI(SilentUI):
             printer.right("[%s]" % sol)
 
         if self._generation_cache:
-            printer.text("%d/%d inputs and outputs come from the cache\n\n" % (
-                len(self._generation_cache), self._num_testcases))
+            printer.text("%d/%d inputs and outputs come from the cache\n\n" %
+                         (len(self._generation_cache), self._num_testcases))
 
         for sol in sorted(self._solution_status):
             status = self._solution_status[sol]
@@ -318,8 +318,9 @@ class CursesUI(SilentUI):
             if status.score is None:
                 printer.red("not available\n")
             elif status.score == self.max_score:
-                printer.green("%.2f / %.2f\n" % (status.score, self.max_score),
-                              bold=False)
+                printer.green(
+                    "%.2f / %.2f\n" % (status.score, self.max_score),
+                    bold=False)
             else:
                 printer.text("%.2f / %.2f\n" % (status.score, self.max_score))
 
@@ -376,9 +377,10 @@ class CursesUI(SilentUI):
 
         def print_phase_stats(phase, cpu_time, wall_time, memory_kb, cached):
             # type: (str, float, float, float, bool) -> None
-            printer.text("%10s: %.3fs | %.3fs | %.1fMiB%s\n"
-                         % (phase, cpu_time, wall_time, memory_kb / 1024,
-                            " [cached]" if cached else ""))
+            printer.text(
+                "%10s: %.3fs | %.3fs | %.1fMiB%s\n" %
+                (phase, cpu_time, wall_time, memory_kb / 1024, " [cached]"
+                 if cached else ""))
 
         for solution, status in sorted(self._terry_test_status.items()):
             result = status.result

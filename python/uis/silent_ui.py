@@ -44,7 +44,9 @@ class SilentUI(UI):
         self._subtask_max_scores[subtask_num] = max_score
         self._num_testcases = max(self._num_testcases, max(testcases) + 1)
 
-    def set_compilation_status(self, file_name: str, status: EventStatus,
+    def set_compilation_status(self,
+                               file_name: str,
+                               status: EventStatus,
                                warnings: Optional[str] = None,
                                from_cache: bool = False):
         is_solution = file_name in self.solutions
@@ -60,7 +62,9 @@ class SilentUI(UI):
         if from_cache:
             self._compilation_cache.add(file_name)
 
-    def set_generation_status(self, testcase_num: int, status: EventStatus,
+    def set_generation_status(self,
+                              testcase_num: int,
+                              status: EventStatus,
                               stderr: Optional[str] = None,
                               from_cache: bool = False):
         self._generation_status[testcase_num] = status
@@ -69,7 +73,9 @@ class SilentUI(UI):
         if from_cache:
             self._generation_cache.add(testcase_num)
 
-    def set_terry_generation_status(self, solution: str, status: EventStatus,
+    def set_terry_generation_status(self,
+                                    solution: str,
+                                    status: EventStatus,
                                     stderr: Optional[str] = None,
                                     from_cache: bool = False):
         if solution not in self._terry_test_status:
@@ -85,8 +91,7 @@ class SilentUI(UI):
                               status: EventStatus,
                               result: Optional[EvaluationResult] = None,
                               error: Optional[str] = None,
-                              from_cache: bool = False
-                              ):
+                              from_cache: bool = False):
         solution_name = os.path.basename(solution_name)
         if solution_name not in self._solution_status:
             self._solution_status[solution_name] = SolutionStatus()
@@ -99,7 +104,9 @@ class SilentUI(UI):
         if from_cache:
             self._evaluation_cache.add((solution_name, testcase_num))
 
-    def set_terry_evaluation_status(self, solution: str, status: EventStatus,
+    def set_terry_evaluation_status(self,
+                                    solution: str,
+                                    status: EventStatus,
                                     error: Optional[str] = None,
                                     from_cache: bool = False):
         if solution not in self._terry_test_status:
@@ -114,8 +121,7 @@ class SilentUI(UI):
                                status: EventStatus,
                                error: Optional[str] = None,
                                result: Optional[TerryEvaluationResult] = None,
-                               from_cache: bool = False
-                               ):
+                               from_cache: bool = False):
         if solution not in self._terry_test_status:
             self._terry_test_status[solution] = TerryStatus()
         self._terry_test_status[solution].status = status

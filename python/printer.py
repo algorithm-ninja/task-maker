@@ -46,19 +46,19 @@ class StdoutPrinter(Printer):
     def red(self, what: str, bold: bool = True) -> None:
         print(
             self.red_fmt + (self.bold_fmt
-            if bold else "") + what + self.reset_fmt,
+                            if bold else "") + what + self.reset_fmt,
             end="")
 
     def green(self, what: str, bold: bool = True) -> None:
         print(
             self.green_fmt + (self.bold_fmt
-            if bold else "") + what + self.reset_fmt,
+                              if bold else "") + what + self.reset_fmt,
             end="")
 
     def blue(self, what: str, bold: bool = True) -> None:
         print(
             self.blue_fmt + (self.bold_fmt
-            if bold else "") + what + self.reset_fmt,
+                             if bold else "") + what + self.reset_fmt,
             end="")
 
     def bold(self, what: str, bold: bool = True) -> None:
@@ -87,11 +87,11 @@ class CursesPrinter(Printer):
 
     def green(self, what: str, bold: bool = True) -> None:
         self.stdscr.addstr(what, self.green_fmt | (self.bold_fmt
-        if bold else 0))
+                                                   if bold else 0))
 
     def blue(self, what: str, bold: bool = True) -> None:
         self.stdscr.addstr(what, self.blue_fmt | (self.bold_fmt
-        if bold else 0))
+                                                  if bold else 0))
 
     def bold(self, what: str, bold: bool = True) -> None:
         self.stdscr.addstr(what, self.bold_fmt)
