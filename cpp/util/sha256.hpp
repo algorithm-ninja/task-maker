@@ -28,6 +28,20 @@ class SHA256_t {
     return true;
   }
 
+  friend class Hasher;
+  struct Hasher {
+    uint64_t operator()(const SHA256_t& h) const {
+      uint64_t hash = 0;
+      for (int i = 0; i < 8; i++) {
+        hash <<= 8;
+        hash |= h.hash_[i];
+      }
+      return hash;
+    };
+  };
+
+  bool operator==(const SHA256_t& other) const { return hash_ == other.hash_; }
+
   static const SHA256_t ZERO;
 };
 

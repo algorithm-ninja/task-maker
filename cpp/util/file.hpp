@@ -78,9 +78,13 @@ class File {
   static std::string SHAToPath(const std::string& store_directory,
                                const SHA256_t& hash);
 
-  // Utility to implement RequestFile methods, given the hash and the receiver
+  // Utility to implement RequestFile methods, given the path and the receiver
   static kj::Promise<void> HandleRequestFile(
-      const util::SHA256_t& hash, capnproto::FileReceiver::Client receiver);
+      const std::string& path, capnproto::FileReceiver::Client receiver);
+  static kj::Promise<void> HandleRequestFile(
+      const util::SHA256_t hash, capnproto::FileReceiver::Client receiver) {
+    return HandleRequestFile(PathForHash(hash), receiver);
+  }
 
   // Utility to implement RequestFile methods
   template <typename RequestFileContext>

@@ -1,1 +1,2 @@
 pybind11_add_module(task_maker_frontend frontend.cpp)
+target_link_libraries(task_maker_frontend PRIVATE cpp_frontend)
