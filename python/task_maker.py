@@ -5,9 +5,8 @@ from task_maker.syspath_patch import patch_sys_path
 patch_sys_path()
 
 import os.path
-import capnp
 
-import server_capnp
+from task_maker.task_maker_frontend import Frontend
 
 # from task_maker.formats import ioi_format, terry_format, tm_format
 from task_maker.formats import ioi_format
@@ -88,14 +87,14 @@ def main() -> None:
             raise ValueError("Format %s not supported" % format)
         return
 
-    client = capnp.TwoPartyClient("localhost:%d" % args.manager_port)
-    main_server = client.bootstrap().cast_as(server_capnp.MainServer)
-    frontend = main_server.registerFrontend().wait().context
+    # client = capnp.TwoPartyClient("localhost:%d" % args.manager_port)
+    # main_server = client.bootstrap().cast_as(server_capnp.MainServer)
+    # frontend = main_server.registerFrontend().wait().context
+    frontend = Frontend("localhost", args.manager_port)
 
     if format == "ioi":
         task, solutions = ioi_format.get_request(args)
-        prom = ioi_format.evaluate_task(frontend, task, solutions)
-        prom.wait()
+        ioi_format.evaluate_task(frontend, task, solutions)
     # elif format == "tm":
     #     request = tm_format.get_request(args)
     #     solutions = [os.path.basename(sol.path) for sol in request.solutions]

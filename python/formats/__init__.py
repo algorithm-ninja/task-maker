@@ -5,57 +5,7 @@ import shutil
 
 from enum import Enum
 from task_maker.language import Language, need_compilation
-from task_maker.promise import UnionPromiseBuilder, ForkablePromise
 from typing import List, Dict, Optional
-
-from sha256_capnp import SHA256
-from server_capnp import File, Execution
-from file_capnp import FileSender, FileReceiver
-
-CHUNK_SIZE = 1024 * 1024
-
-
-class FileSenderImpl(FileSender.Server):
-    def __init__(self):
-        self.known_files = dict()
-
-    def hash_to_str(self, hash: SHA256) -> str:
-        return "%d-%d-%d-%d" % (hash.data0, hash.data1, hash.data2, hash.data3)
-
-    def provide_file(self, context, path: str, description: str, is_exe: bool):
-        hash = get_sha256(path)
-        self.known_files[self.hash_to_str(hash)] = path
-        return context.provideFile(hash, description, is_exe)
-
-    def requestFile(self, hash: SHA256, receiver: FileReceiver, **kwargs):
-        hash = self.hash_to_str(hash)
-        print("Requested file", hash)
-        if hash not in self.known_files:
-            print(self.known_files)
-            raise RuntimeError("Requested unknown file: %s" % str(hash))
-        path = self.known_files[hash]
-        builder = UnionPromiseBuilder()
-        with open(path, "rb") as f:
-            for chunk in f.read(CHUNK_SIZE):
-                print("chunk")
-                builder.add(
-                    receiver.sendChunk(chunk).then(lambda: print("ciao")))
-        print("done")
-        return builder.finalize()
-
-
-def get_sha256(path: str, blocksize=65536) -> SHA256:
-    sha256 = hashlib.sha256()
-    with open(path, "br") as f:
-        for block in iter(lambda: f.read(blocksize), b""):
-            sha256.update(block)
-    digest = sha256.digest()
-    sha256 = SHA256.new_message()
-    sha256.data0 = int.from_bytes(digest[0:8], "little")
-    sha256.data1 = int.from_bytes(digest[8:16], "little")
-    sha256.data2 = int.from_bytes(digest[16:24], "little")
-    sha256.data3 = int.from_bytes(digest[24:32], "little")
-    return sha256
 
 
 class ScoreMode(Enum):
@@ -97,18 +47,17 @@ class SourceFile:
         self.prepared = False
 
     # prepare the source file for execution, compile the source if needed
-    def prepare(self, context, file_sender: FileSenderImpl):
+    def prepare(self, frontend):
         if self.prepared:
             return
         if self.need_compilation:
-            self._compile(context, file_sender)
+            self._compile(frontend)
         else:
-            self._not_compile(context, file_sender)
+            self._not_compile(frontend)
         self.prepared = True
 
-    def _compile(self, context, file_sender: FileSenderImpl):
-        source = file_sender.provide_file(
-            context, self.path, "Source file for " + self.name, False)
+    def _compile(self, frontend):
+        source = frontend.provideFile(self.path, "Source file for " + self.name, False)
         if self.language == Language.CPP:
             compiler = "c++"
             args = [
@@ -150,46 +99,40 @@ class SourceFile:
             raise FileNotFoundError(
                 "Cannot compile %s: missing compiler" % self.path)
 
-        self.compilation = context.addExecution(
-            "Compilation of %s" % self.name).execution
+        self.compilation = frontend.addExecution("Compilation of %s" % self.name)
         self.compilation.setExecutablePath(compiler)
         self.compilation.setArgs(args)
-        self.compilation.addInput("Source file of " + self.name, source.file)
+        self.compilation.addInput("Source file of " + self.name, source)
         for dep in self.dependencies:
             self.compilation.addInput(
                 dep.name,
-                file_sender.provide_file(context, dep.path, dep.path,
-                                         False).file)
+                frontend.provideFile(dep.path, dep.path, False))
         if self.grader:
             for dep in self.grader.files:
                 self.compilation.addInput(
                     dep.name,
-                    file_sender.provide_file(context, dep.path, dep.path,
-                                             False).file)
-        self.compilation_stderr = self.compilation.stderr()
+                    frontend.provideFile(dep.path, dep.path, False))
+        self.compilation_stderr = self.compilation.stderr(False)
         self.executable = self.compilation.output(self.exe_name, True)
         # TODO set cache
         # TODO set time/memory limits?
-        self.compilation.notifyStart().then(
-            lambda _: print("Compilation of %s" % self.name, "started"))
-        self.compilation.getResult().then(lambda res: print(res))
+        self.compilation.notifyStart(lambda: print("Compilation of %s" % self.name, "started"))
+        self.compilation.getResult(lambda res: print(res))
 
-    def _not_compile(self, context, file_sender: FileSenderImpl):
-        self.executable = file_sender.provide_file(
-            context, self.path, "Source file for " + self.name, True)
+    def _not_compile(self, frontend):
+        self.executable = frontend.provideFile(self.path, "Source file for " + self.name, True)
 
-    def execute(self, context, file_sender: FileSenderImpl, description: str,
-                args: List[str]) -> Execution:
-        execution = context.addExecution(description).execution
-        execution.notifyStart().then(lambda _: print(description, "started"))
-        execution.setExecutable(self.exe_name, self.executable.file)
+    def execute(self, frontend, description: str,
+                args: List[str]):
+        execution = frontend.addExecution(description)
+        execution.notifyStart(lambda: print(description, "started"))
+        execution.setExecutable(self.exe_name, self.executable)
         execution.setArgs(args)
         if not self.need_compilation:
             for dep in self.dependencies:
                 execution.addInput(
                     dep.name,
-                    file_sender.provide_file(context, dep.path, dep.path,
-                                             False).file)
+                    frontend.provideFile(dep.path, dep.path, False))
         return execution
 
     def __repr__(self):

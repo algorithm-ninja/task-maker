@@ -1,6 +1,8 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/functional.h>
 #pragma GCC diagnostic pop
 
 #include "frontend/frontend.hpp"

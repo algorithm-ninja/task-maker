@@ -14,7 +14,7 @@ from task_maker.dependency_finder import find_dependency
 from task_maker.language import grader_from_file, valid_extensions
 from task_maker.sanitize import sanitize_command
 from task_maker.source_file import from_file
-from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo, SourceFile, FileSenderImpl
+from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo, SourceFile
 
 VALIDATION_INPUT_NAME = "tm_input_file"
 
@@ -251,15 +251,15 @@ def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
     return task, sols
 
 
-def evaluate_task(context, task: Task, solutions: List[SourceFile]):
-    file_sender = FileSenderImpl()
-    ins, outs, vals = generate_inputs(context, task, file_sender)
-    return evaluate_solutions(context, task, ins, outs, vals, solutions, file_sender)
+def evaluate_task(frontend, task: Task, solutions: List[SourceFile]):
+    ins, outs, vals = generate_inputs(frontend, task)
+    return evaluate_solutions(frontend, task, ins, outs, vals, solutions)
 
 
-def generate_inputs(context, task: Task, file_sender: FileSenderImpl) -> (
+def generate_inputs(frontend, task: Task) -> (
         Dict[Tuple[int, int], Any], Dict[Tuple[int, int], Any],
         Dict[Tuple[int, int], Any]):
+    # TODO change Any with File
     inputs = dict()  # type: Dict[Tuple[int, int], Any]
     outputs = dict()  # type: Dict[Tuple[int, int], Any]
     validations = dict()  # type: Dict[Tuple[int, int], Any]
@@ -267,60 +267,61 @@ def generate_inputs(context, task: Task, file_sender: FileSenderImpl) -> (
         for tc_num, testcase in subtask.testcases.items():
             # input file
             if testcase.input_file:
-                inputs[(st_num, tc_num)] = file_sender.provide_file(context, testcase.input_file,
-                                                                    "Static input %d" + tc_num, False)
+                inputs[(st_num, tc_num)] = frontend.provideFile(testcase.input_file,
+                                                                "Static input %d" + tc_num, False)
             else:
-                testcase.generator.prepare(context, file_sender)
-                testcase.validator.prepare(context, file_sender)
+                testcase.generator.prepare(frontend)
+                testcase.validator.prepare(frontend)
 
-                gen = testcase.generator.execute(context, file_sender, "Generation of input %d" % tc_num,
+                gen = testcase.generator.execute(frontend, "Generation of input %d" % tc_num,
                                                  testcase.generator_args)
                 for dep in testcase.extra_deps:
-                    gen.addInput(dep.name, file_sender.provide_file(context, dep.path, dep.path, False).file)
+                    gen.addInput(dep.name, frontend.provideFile(dep.path, dep.path, False))
                 # TODO set cache mode
                 # TODO set limits?
-                inputs[(st_num, tc_num)] = gen.stdout()
+                inputs[(st_num, tc_num)] = gen.stdout(False)
 
                 def gen_check_result(result):
                     if result.status.which() != "success":
                         # TODO: raise?
-                        context.stopEvaluation()
+                        frontend.stopEvaluation()
 
-                gen.getResult().then(lambda res: gen_check_result(res.result))
+                gen.getResult(lambda res: gen_check_result(res.result))
                 # TODO write input file
 
-                val = testcase.validator.execute(context, file_sender, "Validation of input %d" % tc_num,
+                val = testcase.validator.execute(frontend, "Validation of input %d" % tc_num,
                                                  testcase.validator_args)
                 # TODO set cache mode
                 # TODO set limits?
-                val.addInput(VALIDATION_INPUT_NAME, inputs[(st_num, tc_num)].file)
-                validations[(st_num, tc_num)] = ForkablePromise(val.stdout())
+                val.addInput(VALIDATION_INPUT_NAME, inputs[(st_num, tc_num)])
+                validations[(st_num, tc_num)] = val.stdout(False)
 
                 def val_check_result(result):
-                    if result.status.which() != "success":
-                        # TODO: raise?
-                        context.stopEvaluation()
+                    print("Val result:", result)
+                    # if result.status.which() != "success":
+                    #     # TODO: raise?
+                    #     frontend.stopEvaluation()
 
-                val.getResult().then(lambda res: val_check_result(res.result))
+                val.getResult(lambda res: val_check_result(res.result))
 
             # output file
             if testcase.output_file:
-                outputs[(st_num, tc_num)] = file_sender.provide_file(context, testcase.output_file,
-                                                                     "Static output %d" % tc_num,
-                                                                     False)
+                outputs[(st_num, tc_num)] = frontend.provideFile(testcase.output_file,
+                                                                 "Static output %d" % tc_num,
+                                                                 False)
             else:
-                task.official_solution.prepare(context, file_sender)
-                sol = task.official_solution.execute(context, file_sender,
+                task.official_solution.prepare(frontend)
+                sol = task.official_solution.execute(frontend,
                                                      "Generation of output %d" % tc_num, [])
                 # TODO set cache mode
                 # TODO set limits?
 
                 if tc_num in validations:
-                    sol.addInput("wait_for_validation", validations[(st_num, tc_num)].file)
+                    sol.addInput("wait_for_validation", validations[(st_num, tc_num)])
                 if task.input_file:
-                    sol.addInput(task.input_file, inputs[(st_num, tc_num)].file)
+                    sol.addInput(task.input_file, inputs[(st_num, tc_num)])
                 else:
-                    sol.stdin(inputs[(st_num, tc_num)].file)
+                    sol.stdin(inputs[(st_num, tc_num)])
                 if task.output_file:
                     outputs[(st_num, tc_num)] = sol.output(task.output_file, False)
                 else:
@@ -329,85 +330,88 @@ def generate_inputs(context, task: Task, file_sender: FileSenderImpl) -> (
                 def sol_check_result(result):
                     if result.status.which() != "success":
                         # TODO: raise?
-                        context.stopEvaluation()
+                        frontend.stopEvaluation()
 
-                sol.getResult().then(lambda res: sol_check_result(res))
+                sol.getResult(lambda res: sol_check_result(res))
                 # TODO write output file
     return inputs, outputs, validations
 
 
-def evaluate_solutions(context, task: Task, inputs: Dict[Tuple[int, int], Any],
+def evaluate_solutions(frontend, task: Task, inputs: Dict[Tuple[int, int], Any],
                        outputs: Dict[Tuple[int, int], Any],
-                       validations: Dict[Tuple[int, int], Any], solutions: List[SourceFile],
-                       file_sender: FileSenderImpl):
+                       validations: Dict[Tuple[int, int], Any], solutions: List[SourceFile]):
     for solution in solutions:
-        solution.prepare(context, file_sender)
+        solution.prepare(frontend)
         status = SolutionStatus()
         for (st_num, tc_num), input in inputs.items():
-            eval = solution.execute(context, file_sender,
+            eval = solution.execute(frontend,
                                     "Evaluation of %s on testcase %d" % (solution.name, tc_num), [])
             # TODO set cache mode
             # TODO set limits!
             # TODO add validation dep
+            if (st_num, tc_num) in validations:
+                eval.addInput("tm_wait_validation", validations[(st_num, tc_num)])
             if task.input_file:
-                eval.addInput(task.input_file, inputs[(st_num, tc_num)].file)
+                eval.addInput(task.input_file, inputs[(st_num, tc_num)])
             else:
-                eval.stdin(inputs[(st_num, tc_num)].file)
+                eval.stdin(inputs[(st_num, tc_num)])
             if task.output_file:
                 output = eval.output(task.output_file, False)
             else:
                 output = eval.stdout(False)
 
             def process_eval_result(result):
-                which_status = result.status.which()
-                if which_status == "success":
-                    status.testcase_status = EventStatus.EXECUTED
-                else:
-                    status.testcase_status = EventStatus.FAILURE
-                    status.testcase_result[tc_num].score = 0
-                    if which_status == "signal":
-                        status.testcase_result[tc_num].message = "Exited by signal %d" % result.status.signal
-                    elif which_status == "returnCode":
-                        status.testcase_result[tc_num].message = "Exited with code %d" % result.status.returnCode
-                    elif which_status == "timeLimit":
-                        status.testcase_result[tc_num].message = "Time limit exceeded"
-                    elif which_status == "wallLimit":
-                        status.testcase_result[tc_num].message = "Wall time limit exceeded"
-                    elif which_status == "memoryLimit":
-                        status.testcase_result[tc_num].message = "Memory limit exceeded"
-                    elif which_status == "missingFiles":
-                        status.testcase_result[tc_num].message = "Missing files"
-                    elif which_status == "internalError":
-                        status.testcase_result[tc_num].message = "Internal error: %s" % result.status.internalError
-                    else:
-                        raise RuntimeError("Unknown status: " + which_status)
-                resources = result.resourceUsage
-                status.testcase_result[tc_num].cpu_time_used = resources.cpuTime + resources.sysTime
-                status.testcase_result[tc_num].wall_time_used = resources.wallTime
-                status.testcase_result[tc_num].memory_used_kb = resources.memory
                 print("Result: ", result)
+                # which_status = result.status.which()
+                # if which_status == "success":
+                #     status.testcase_status = EventStatus.EXECUTED
+                # else:
+                #     status.testcase_status = EventStatus.FAILURE
+                #     status.testcase_result[tc_num].score = 0
+                #     if which_status == "signal":
+                #         status.testcase_result[tc_num].message = "Exited by signal %d" % result.status.signal
+                #     elif which_status == "returnCode":
+                #         status.testcase_result[tc_num].message = "Exited with code %d" % result.status.returnCode
+                #     elif which_status == "timeLimit":
+                #         status.testcase_result[tc_num].message = "Time limit exceeded"
+                #     elif which_status == "wallLimit":
+                #         status.testcase_result[tc_num].message = "Wall time limit exceeded"
+                #     elif which_status == "memoryLimit":
+                #         status.testcase_result[tc_num].message = "Memory limit exceeded"
+                #     elif which_status == "missingFiles":
+                #         status.testcase_result[tc_num].message = "Missing files"
+                #     elif which_status == "internalError":
+                #         status.testcase_result[tc_num].message = "Internal error: %s" % result.status.internalError
+                #     else:
+                #         raise RuntimeError("Unknown status: " + which_status)
+                # resources = result.resourceUsage
+                # status.testcase_result[tc_num].cpu_time_used = resources.cpuTime + resources.sysTime
+                # status.testcase_result[tc_num].wall_time_used = resources.wallTime
+                # status.testcase_result[tc_num].memory_used_kb = resources.memory
 
-            eval.getResult().then(lambda res: process_eval_result(res))
+            eval.getResult(lambda res: process_eval_result(res))
 
             if task.checker:
-                task.checker.prepare(context, file_sender)
-                check = task.checker.execute(context, file_sender,
+                task.checker.prepare(frontend)
+                check = task.checker.execute(frontend,
                                              "Checking solution %s for testcase %d"
                                              % (solution.name, tc_num),
                                              ["input", "output", "contestant_output"])
-                check.addInput("input", inputs[(st_num, tc_num)].file)
+                check.addInput("input", inputs[(st_num, tc_num)])
             else:
-                check = context.addExecution("Checking solution %s for testcase %d" % (solution.name, tc_num)).execution
+                check = frontend.addExecution(
+                    "Checking solution %s for testcase %d" % (solution.name, tc_num))
                 check.setExecutablePath("diff")
                 check.setArgs(["-w", "output", "contestant_output"])
-            check.notifyStart().then(
-                lambda _: print("Checking solution %s for testcase %d" % (solution.name, tc_num), "started"))
-            check.addInput("output", outputs[(st_num, tc_num)].file)
-            check.addInput("contestant_output", output.file)
+            check.notifyStart(
+                lambda: print("Checking solution %s for testcase %d" % (solution.name, tc_num), "started"))
+            check.addInput("output", outputs[(st_num, tc_num)])
+            check.addInput("contestant_output", output)
             # TODO set cache mode
-            check.getResult().then(lambda res: print(res))  # TODO
+            check.getResult(lambda res: print(res))  # TODO
             # TODO calculate the status of the solution on this testcase and update the score
-    return context.startEvaluation(file_sender).then(lambda res: print("EVAL FINISHED", res))
+    frontend.evaluate()
+    print("EVAL FINISHED")
 
 
 def clean():
