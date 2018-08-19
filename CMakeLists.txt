@@ -13,7 +13,10 @@ include(ThreadSanitizer)
 HunterGate(
     URL "https://github.com/ruslo/hunter/archive/v0.23.16.tar.gz"
     SHA1 "dbe5b1c966414c4a055983c11d5251a2d8f2f16d"
+    FILEPATH "${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake"
 )
+
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
 # extract project version from git tag
 execute_process(
