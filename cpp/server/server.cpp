@@ -9,19 +9,16 @@ namespace server {
 namespace {
 uint32_t AddFileInfo(uint32_t& last_file_id,
                      std::unordered_map<uint32_t, detail::FileInfo>& info,
-                     bool executable, const std::string& description) {
+                     capnproto::File::Builder builder, bool executable,
+                     const std::string& description) {
   uint32_t id = last_file_id++;
   info[id].id = id;
   info[id].description = description;
   info[id].executable = executable;
+  builder.setId(id);
   return id;
 }
 }  // namespace
-
-kj::Promise<void> File::getId(GetIdContext context) {
-  context.getResults().setId(id_);
-  return kj::READY_NOW;
-}
 
 kj::Promise<void> Execution::setExecutablePath(
     SetExecutablePathContext context) {
@@ -33,32 +30,29 @@ kj::Promise<void> Execution::setExecutablePath(
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::setExecutable(SetExecutableContext context) {
-  return context.getParams().getFile().getIdRequest().send().then(
-      [this, context](auto res) mutable {
-        auto log = kj::str("Setting exacutable to ",
-                           context.getParams().getName(), " id ", res.getId());
-        KJ_LOG(INFO, "Execution " + description_, log);
-        executable_ = res.getId();
-        request_.getExecutable().initLocalFile().setName(
-            context.getParams().getName());
-      });
+  auto log = kj::str("Setting exacutable to ", context.getParams().getName(),
+                     " id ", context.getParams().getFile().getId());
+  KJ_LOG(INFO, "Execution " + description_, log);
+  executable_ = context.getParams().getFile().getId();
+  request_.getExecutable().getLocalFile().setName(
+      context.getParams().getName());
+  return kj::READY_NOW;
 }
 kj::Promise<void> Execution::setStdin(SetStdinContext context) {
-  return context.getParams().getFile().getIdRequest().send().then(
-      [this](auto res) mutable {
-        KJ_LOG(INFO, "Execution " + description_,
-               "Setting stdin file with id " + std::to_string(res.getId()));
-        stdin_ = res.getId();
-      });
+  KJ_LOG(INFO, "Execution " + description_,
+         "Setting stdin file with id " +
+             std::to_string(context.getParams().getFile().getId()));
+  stdin_ = context.getParams().getFile().getId();
+  return kj::READY_NOW;
 }
 kj::Promise<void> Execution::addInput(AddInputContext context) {
-  return context.getParams().getFile().getIdRequest().send().then(
-      [this, context](auto res) mutable {
-        KJ_LOG(INFO, "Execution " + description_,
-               "Adding file with id " + std::to_string(res.getId()) +
-                   " as input " + std::string(context.getParams().getName()));
-        inputs_.emplace(context.getParams().getName(), res.getId());
-      });
+  KJ_LOG(INFO, "Execution " + description_,
+         ": Adding file with id " +
+             std::to_string(context.getParams().getFile().getId()) +
+             " as input " + std::string(context.getParams().getName()));
+  inputs_.emplace(context.getParams().getName(),
+                  context.getParams().getFile().getId());
+  return kj::READY_NOW;
 }
 kj::Promise<void> Execution::setArgs(SetArgsContext context) {
   std::string args;
@@ -85,35 +79,32 @@ kj::Promise<void> Execution::setLimits(SetLimitsContext context) {
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::stdout(StdoutContext context) {
-  stdout_ =
-      AddFileInfo(frontend_context_.last_file_id_, frontend_context_.file_info_,
-                  context.getParams().getIsExecutable(),
-                  "Standard output of execution " + description_);
-  context.getResults().setFile(kj::heap<File>(stdout_));
+  stdout_ = AddFileInfo(
+      frontend_context_.last_file_id_, frontend_context_.file_info_,
+      context.getResults().initFile(), context.getParams().getIsExecutable(),
+      "Standard output of execution " + description_);
   KJ_LOG(INFO, "Execution " + description_,
          "Creating stdout file with id " + std::to_string(stdout_));
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::stderr(StderrContext context) {
-  stderr_ =
-      AddFileInfo(frontend_context_.last_file_id_, frontend_context_.file_info_,
-                  context.getParams().getIsExecutable(),
-                  "Standard error of execution " + description_);
-  context.getResults().setFile(kj::heap<File>(stderr_));
+  stderr_ = AddFileInfo(
+      frontend_context_.last_file_id_, frontend_context_.file_info_,
+      context.getResults().initFile(), context.getParams().getIsExecutable(),
+      "Standard error of execution " + description_);
   KJ_LOG(INFO, "Execution " + description_,
          "Creating stderr file with id " + std::to_string(stderr_));
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::output(OutputContext context) {
-  uint32_t id =
-      AddFileInfo(frontend_context_.last_file_id_, frontend_context_.file_info_,
-                  context.getParams().getIsExecutable(),
-                  "Output " + std::string(context.getParams().getName()) +
-                      " of execution " + description_);
-  context.getResults().setFile(kj::heap<File>(id));
-  auto log = kj::str("Creating output file ", context.getParams().getName(),
-                     " with id ", id);
-  KJ_LOG(INFO, "Execution " + description_, log);
+  uint32_t id = AddFileInfo(
+      frontend_context_.last_file_id_, frontend_context_.file_info_,
+      context.getResults().initFile(), context.getParams().getIsExecutable(),
+      "Output " + std::string(context.getParams().getName()) +
+          " of execution " + description_);
+  KJ_LOG(INFO, "Execution " + description_,
+         kj::str("Creating output file ", context.getParams().getName(),
+                 " with id ", id));
   outputs_.emplace(context.getParams().getName(), id);
   return kj::READY_NOW;
 }
@@ -197,10 +188,10 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
 }
 
 kj::Promise<void> FrontendContext::provideFile(ProvideFileContext context) {
-  uint32_t id = AddFileInfo(last_file_id_, file_info_,
-                            context.getParams().getIsExecutable(),
-                            context.getParams().getDescription());
-  context.getResults().setFile(kj::heap<File>(id));
+  uint32_t id =
+      AddFileInfo(last_file_id_, file_info_, context.getResults().initFile(),
+                  context.getParams().getIsExecutable(),
+                  context.getParams().getDescription());
   KJ_LOG(INFO, "Generating file with id " + std::to_string(id),
          context.getParams().getDescription());
   file_info_[id].provided = true;
@@ -240,18 +231,15 @@ kj::Promise<void> FrontendContext::startEvaluation(
 }
 kj::Promise<void> FrontendContext::getFileContents(
     GetFileContentsContext context) {
-  return context.getParams().getFile().getIdRequest().send().then(
-      [this, context](auto res) mutable {
-        uint32_t id = res.getId();
-        KJ_LOG(INFO, "Requested file with id " + std::to_string(id));
-        return file_info_.at(id).forked_promise.addBranch().then(
-            [id, context, this]() mutable {
-              auto hash = file_info_.at(id).hash;
-              return util::File::HandleRequestFile(
-                         hash, context.getParams().getReceiver())
-                  .then([id]() {
-                    KJ_LOG(INFO, "Sent file with id " + std::to_string(id));
-                  });
+  uint32_t id = context.getParams().getFile().getId();
+  KJ_LOG(INFO, "Requested file with id " + std::to_string(id));
+  return file_info_.at(id).forked_promise.addBranch().then(
+      [id, context, this]() mutable {
+        auto hash = file_info_.at(id).hash;
+        return util::File::HandleRequestFile(hash,
+                                             context.getParams().getReceiver())
+            .then([id]() {
+              KJ_LOG(INFO, "Sent file with id " + std::to_string(id));
             });
       });
 }
