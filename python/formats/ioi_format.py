@@ -279,7 +279,7 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile]):
                        ui_interface)
 
     frontend.evaluate()
-    ui.stop()
+    # ui.stop()
 
 
 def generate_inputs(frontend, task: Task, ui_interface: IOILikeUIInterface

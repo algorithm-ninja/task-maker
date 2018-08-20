@@ -7,10 +7,9 @@ from task_maker.language import Language
 
 
 class ScoreMode(Enum):
-    INVALID_SCORE_MODE = 0
-    MIN = 1
-    MAX = 2
-    SUM = 3
+    MIN = 0
+    MAX = 1
+    SUM = 2
 
 
 class Arch(Enum):

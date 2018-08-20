@@ -107,8 +107,10 @@ class SourceFile:
         # TODO this should be done by the worker
         compiler = shutil.which(compiler)
         if not compiler:
-            raise FileNotFoundError(
-                "Cannot compile %s: missing compiler" % self.path)
+            # TODO fix the error when the compiler is missing
+            compiler = "/usr/bin/false"
+            # raise FileNotFoundError(
+            #     "Cannot compile %s: missing compiler" % self.path)
 
         self.compilation = frontend.addExecution(
             "Compilation of %s" % self.name)

@@ -3,7 +3,7 @@ import curses
 import threading
 from task_maker.printer import CursesPrinter
 from task_maker.ui import IOILikeUIInterface, SourceFileCompilationStatus, \
-    TestcaseGenerationStatus
+    TestcaseGenerationStatus, SubtaskSolutionResult, TestcaseSolutionResult
 
 
 def print_solution_column(printer: CursesPrinter, solution: str,
@@ -44,6 +44,50 @@ def print_testcase_generation_status(printer: CursesPrinter,
         printer.green("S", bold=True)
     else:
         printer.red("F", bold=True)
+
+
+def print_subtask_result(printer: CursesPrinter, text: str,
+                         result: SubtaskSolutionResult):
+    if result == SubtaskSolutionResult.WAITING:
+        printer.text(text)
+    elif result == SubtaskSolutionResult.ACCEPTED:
+        printer.green(text)
+    elif result == SubtaskSolutionResult.PARTIAL:
+        printer.yellow(text)
+    elif result == SubtaskSolutionResult.REJECTED:
+        printer.red(text)
+    else:
+        printer.text(text)
+
+
+def print_testcase_solution_result(printer: CursesPrinter, loading: str,
+                                   result: TestcaseSolutionResult):
+    if result == TestcaseSolutionResult.WAITING:
+        printer.text(".")
+    elif result == TestcaseSolutionResult.SOLVING:
+        printer.blue(loading)
+    elif result == TestcaseSolutionResult.SOLVED:
+        printer.blue("s")
+    elif result == TestcaseSolutionResult.CHECKING:
+        printer.text(loading)
+    elif result == TestcaseSolutionResult.ACCEPTED:
+        printer.green("A", bold=True)
+    elif result == TestcaseSolutionResult.WRONG_ANSWER:
+        printer.red("W", bold=True)
+    elif result == TestcaseSolutionResult.SIGNAL:
+        printer.red("R", bold=True)
+    elif result == TestcaseSolutionResult.RETURN_CODE:
+        printer.red("R", bold=True)
+    elif result == TestcaseSolutionResult.TIME_LIMIT:
+        printer.red("T", bold=True)
+    elif result == TestcaseSolutionResult.WALL_LIMIT:
+        printer.red("T", bold=True)
+    elif result == TestcaseSolutionResult.MEMORY_LIMIT:
+        printer.red("M", bold=True)
+    elif result == TestcaseSolutionResult.MEMORY_LIMIT:
+        printer.bold("I", bold=True)
+    elif result == TestcaseSolutionResult.INTERNAL_ERROR:
+        printer.bold("I", bold=True)
 
 
 class IOILikeCursesUI:
@@ -114,6 +158,16 @@ class IOILikeCursesUI:
         printer.blue("Evaluation:\n", bold=True)
         for solution, status in self.interface.testing.items():
             print_solution_column(printer, solution, max_sol_len)
-            printer.text(str(status.score))
+            printer.text("%5.0f |" % status.score)
+
+            for score in status.subtask_scores.values():
+                printer.text(" %5.0f" % score)
+            printer.text("   ")
+            for (st_num, testcases), st_result in zip(
+                    status.testcase_results.items(), status.subtask_results):
+                print_subtask_result(printer, "[", st_result)
+                for tc_num, testcase in testcases.items():
+                    print_testcase_solution_result(printer, loading, testcase)
+                print_subtask_result(printer, "]", st_result)
 
             printer.text("\n")

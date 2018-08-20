@@ -15,6 +15,9 @@ class Printer:
     def blue(self, what: str, bold: bool = True) -> None:
         pass
 
+    def yellow(self, what: str, bold: bool = True) -> None:
+        pass
+
     def bold(self, what: str, bold: bool = True) -> None:
         pass
 
@@ -31,6 +34,7 @@ class StdoutPrinter(Printer):
             self.green_fmt = _get_color(curses.COLOR_GREEN)
         self.red_fmt = _get_color(curses.COLOR_RED)
         self.blue_fmt = _get_color(curses.COLOR_BLUE)
+        self.yellow_fmt = _get_color(curses.COLOR_YELLOW)
         self.reset_fmt = curses.tparm(curses.tigetstr("sgr0")).decode()
         self.right_fmt = curses.tparm(curses.tigetstr("cuf"), 1000).decode()
 
@@ -61,6 +65,12 @@ class StdoutPrinter(Printer):
                              if bold else "") + what + self.reset_fmt,
             end="")
 
+    def yellow(self, what: str, bold: bool = True) -> None:
+        print(
+            self.yellow_fmt + (self.bold_fmt
+                               if bold else "") + what + self.reset_fmt,
+            end="")
+
     def bold(self, what: str, bold: bool = True) -> None:
         print(self.bold_fmt + what + self.reset_fmt, end="")
 
@@ -78,6 +88,7 @@ class CursesPrinter(Printer):
             self.green_fmt = curses.color_pair(curses.COLOR_GREEN)
         self.red_fmt = curses.color_pair(curses.COLOR_RED)
         self.blue_fmt = curses.color_pair(curses.COLOR_BLUE)
+        self.yellow_fmt = curses.color_pair(curses.COLOR_YELLOW)
 
     def text(self, what: str) -> None:
         self.stdscr.addstr(what)
@@ -92,6 +103,10 @@ class CursesPrinter(Printer):
     def blue(self, what: str, bold: bool = True) -> None:
         self.stdscr.addstr(what, self.blue_fmt | (self.bold_fmt
                                                   if bold else 0))
+
+    def yellow(self, what: str, bold: bool = True) -> None:
+        self.stdscr.addstr(what, self.yellow_fmt | (self.bold_fmt
+                                                    if bold else 0))
 
     def bold(self, what: str, bold: bool = True) -> None:
         self.stdscr.addstr(what, self.bold_fmt)

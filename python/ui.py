@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from enum import Enum
-from task_maker.formats import Task
+from task_maker.formats import Task, ScoreMode
 from typing import List, Dict
 
 from task_maker.source_file import SourceFile
@@ -25,25 +25,20 @@ class SourceFileCompilationStatus(Enum):
     FAILURE = 3
 
 
-class TestcaseSolutionStatus(Enum):
+class TestcaseSolutionResult(Enum):
     WAITING = 0
     SOLVING = 1
     SOLVED = 2
     CHECKING = 3
-    DONE = 4
-    FAILURE = 5
-
-
-class TestcaseSolutionResult(Enum):
-    WAITING = 0
-    SUCCESS = 1
-    SIGNAL = 2
-    RETURN_CODE = 3
-    TIME_LIMIT = 4
-    WALL_LIMIT = 5
-    MEMORY_LIMIT = 6
-    MISSING_FILES = 7
-    INTERNAL_ERROR = 8
+    ACCEPTED = 4
+    WRONG_ANSWER = 5
+    SIGNAL = 6
+    RETURN_CODE = 7
+    TIME_LIMIT = 8
+    WALL_LIMIT = 9
+    MEMORY_LIMIT = 10
+    MISSING_FILES = 11
+    INTERNAL_ERROR = 12
 
 
 class SubtaskSolutionResult(Enum):
@@ -54,30 +49,95 @@ class SubtaskSolutionResult(Enum):
 
 
 class SolutionStatus:
-    def __init__(self, subtasks: Dict[int, List[int]]):
-        self.testcase_status = dict(
-        )  # type: Dict[int, Dict[int, TestcaseSolutionStatus]]
-        self.score = None
-        self.subtask_scores = [0.0] * len(subtasks)
+    def __init__(self, task: Task, subtasks: Dict[int, List[int]]):
+        self.task = task
+        self.score = 0.0
+        self.subtask_scores = dict((st_num, 0.0) for st_num in subtasks)
         self.subtask_results = [SubtaskSolutionResult.WAITING] * len(subtasks)
-        self.testcase_results = dict((st_num,
-                                      dict((tc_num,
-                                            TestcaseSolutionResult.WAITING)
-                                           for tc_num in subtask))
-                                     for st_num, subtask in subtasks.items())
+        self.testcase_results = dict(
+        )  # type: Dict[int, Dict[int, TestcaseSolutionResult]]
+        self.testcase_scores = dict()
+        self.st_remaining_cases = [
+            len(subtask) for subtask in subtasks.values()
+        ]
+
         for st_num, subtask in subtasks.items():
-            self.testcase_status[st_num] = dict()
+            self.testcase_results[st_num] = dict()
+            self.testcase_scores[st_num] = dict()
             for tc_num in subtask:
-                self.testcase_status[st_num][
-                    tc_num] = TestcaseSolutionStatus.WAITING
+                self.testcase_results[st_num][
+                    tc_num] = TestcaseSolutionResult.WAITING
+                self.testcase_scores[st_num][tc_num] = 0.0
 
     def update_eval_result(self, subtask: int, testcase: int, result: Result):
-        # TODO implement this
-        pass
+        if result.status == ResultStatus.SIGNAL:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.SIGNAL
+        elif result.status == ResultStatus.RETURN_CODE:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.RETURN_CODE
+        elif result.status == ResultStatus.TIME_LIMIT:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.TIME_LIMIT
+        elif result.status == ResultStatus.WALL_LIMIT:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.WALL_LIMIT
+        elif result.status == ResultStatus.MEMORY_LIMIT:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.MEMORY_LIMIT
+        elif result.status == ResultStatus.MISSING_FILES:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.MISSING_FILES
+        elif result.status == ResultStatus.INTERNAL_ERROR:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.INTERNAL_ERROR
+        else:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.SOLVED
+        # TODO store used resources
 
     def update_check_result(self, subtask: int, testcase: int, result: Result):
-        # TODO implement this
-        pass
+        print("Checker result on ", subtask, testcase, result)
+        if result.status == ResultStatus.SIGNAL:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.INTERNAL_ERROR
+        elif result.status == ResultStatus.INTERNAL_ERROR:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.INTERNAL_ERROR
+        # TODO check if the task has a custom checker
+        else:
+            if result.status == ResultStatus.SUCCESS:
+                self.testcase_scores[subtask][testcase] = 1.0
+                self.testcase_results[subtask][
+                    testcase] = TestcaseSolutionResult.ACCEPTED
+            else:
+                self.testcase_scores[subtask][testcase] = 0.0
+                self.testcase_results[subtask][
+                    testcase] = TestcaseSolutionResult.WRONG_ANSWER
+            self.st_remaining_cases[subtask] -= 1
+            if self.st_remaining_cases[subtask] == 0:
+                self._compute_st_score(subtask)
+
+    def _compute_st_score(self, subtask: int):
+        scores = self.testcase_scores[subtask].values()
+        score_mode = self.task.subtasks[subtask].score_mode
+        if score_mode == ScoreMode.MIN:
+            score = min(scores)
+        elif score_mode == ScoreMode.MAX:
+            score = max(scores)
+        elif score_mode == ScoreMode.SUM:
+            score = sum(scores) / len(scores)
+        else:
+            raise ValueError("Invalid score mode", score_mode)
+        score *= self.task.subtasks[subtask].max_score
+        self.subtask_scores[subtask] = score
+        self.score = sum(self.subtask_scores.values())
+        if min(scores) == 1.0:
+            self.subtask_results[subtask] = SubtaskSolutionResult.ACCEPTED
+        elif score == 0.0:
+            self.subtask_results[subtask] = SubtaskSolutionResult.REJECTED
+        else:
+            self.subtask_results[subtask] = SubtaskSolutionResult.PARTIAL
 
 
 class IOILikeUIInterface:
@@ -101,6 +161,7 @@ class IOILikeUIInterface:
         name = source_file.name
         self.non_solutions[name] = SourceFileCompilationStatus.WAITING
         if source_file.need_compilation:
+
             def notifyStartCompiltion():
                 self.non_solutions[
                     name] = SourceFileCompilationStatus.COMPILING
@@ -121,9 +182,10 @@ class IOILikeUIInterface:
     def add_solution(self, source_file: SourceFile):
         name = source_file.name
         self.solutions[name] = SourceFileCompilationStatus.WAITING
-        self.testing[name] = SolutionStatus(self.testcases)
+        self.testing[name] = SolutionStatus(self.task, self.testcases)
 
         if source_file.need_compilation:
+
             def notifyStartCompiltion():
                 self.solutions[name] = SourceFileCompilationStatus.COMPILING
 
@@ -194,8 +256,8 @@ class IOILikeUIInterface:
     def add_evaluate_solution(self, subtask: int, testcase: int, solution: str,
                               evaluation: Execution):
         def notifyStartEvaluation():
-            self.testing[solution].testcase_status[subtask][
-                testcase] = TestcaseSolutionStatus.SOLVING
+            self.testing[solution].testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.SOLVING
 
         def getResultEvaluation(result: Result):
             self.testing[solution].update_eval_result(subtask, testcase,
@@ -207,8 +269,8 @@ class IOILikeUIInterface:
     def add_evaluate_checking(self, subtask: int, testcase: int, solution: str,
                               checking: Execution):
         def notifyStartChecking():
-            self.testing[solution].testcase_status[subtask][
-                testcase] = TestcaseSolutionStatus.CHECKING
+            self.testing[solution].testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.CHECKING
 
         def getResultChecking(result: Result):
             self.testing[solution].update_check_result(subtask, testcase,
