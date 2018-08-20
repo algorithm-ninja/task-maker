@@ -86,6 +86,8 @@ class FrontendContext : public capnproto::FrontendContext::Server {
       evaluation_start_.promise.fork();
   kj::PromiseFulfillerPair<void> evaluation_early_stop_ =
       kj::newPromiseAndFulfiller<void>();
+  uint32_t ready_tasks_ = 0;
+  uint32_t scheduled_tasks_ = 0;
 };
 
 class Server : public capnproto::MainServer::Server {

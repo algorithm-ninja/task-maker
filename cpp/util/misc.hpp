@@ -72,8 +72,15 @@ class UnionPromiseBuilder {
                     fulfiller->fulfill();
                   }
                 },
-                [fulfiller = fulfiller_](kj::Exception exc) {
-                  fulfiller->reject(std::move(exc));
+                [fulfiller = fulfiller_, info = info_,
+                 idx = info_->promises.size()](kj::Exception exc) {
+                  fulfiller->reject(kj::cp(exc));
+                  // Cancel all other promises
+                  std::swap(info->promises[0], info->promises[idx]);
+                  while (info->promises.size() > 1) {
+                    info->promises.pop_back();
+                  }
+                  return exc;
                 })
             .eagerlyEvaluate(nullptr));
   }
