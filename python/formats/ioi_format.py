@@ -8,6 +8,7 @@ import yaml
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
+from task_maker.uis.curses_ui import IOILikeCursesUI
 from task_maker.ui import IOILikeUIInterface
 from task_maker.dependency_finder import find_dependency
 from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo
@@ -268,11 +269,18 @@ def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
 
 def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile]):
     ui_interface = IOILikeUIInterface(
+        task,
         dict((st_num, [tc for tc in st.testcases.keys()])
              for st_num, st in task.subtasks.items()))
+    ui = IOILikeCursesUI(ui_interface)
+    ui.start()
     ins, outs, vals = generate_inputs(frontend, task, ui_interface)
     evaluate_solutions(frontend, task, ins, outs, vals, solutions,
                        ui_interface)
+
+    frontend.evaluate()
+    print("EVAL FINISHED")
+    ui.stop()
 
 
 def generate_inputs(frontend, task: Task, ui_interface: IOILikeUIInterface
@@ -286,7 +294,7 @@ def generate_inputs(frontend, task: Task, ui_interface: IOILikeUIInterface
             # input file
             if testcase.input_file:
                 inputs[(st_num, tc_num)] = frontend.provideFile(
-                    testcase.input_file, "Static input %d" + tc_num, False)
+                    testcase.input_file, "Static input %d" % tc_num, False)
             else:
                 is_gen_prepared = testcase.generator.prepared
                 is_val_prepared = testcase.validator.prepared
@@ -327,8 +335,9 @@ def generate_inputs(frontend, task: Task, ui_interface: IOILikeUIInterface
                 outputs[(st_num, tc_num)] = frontend.provideFile(
                     testcase.output_file, "Static output %d" % tc_num, False)
             else:
+                is_sol_prepared = task.official_solution.prepared
                 task.official_solution.prepare(frontend)
-                if not task.official_solution.prepared:
+                if not is_sol_prepared:
                     ui_interface.add_non_solution(task.official_solution)
 
                 sol = task.official_solution.execute(
@@ -336,7 +345,7 @@ def generate_inputs(frontend, task: Task, ui_interface: IOILikeUIInterface
                 # TODO set cache mode
                 # TODO set limits?
 
-                if tc_num in validations:
+                if (st_num, tc_num) in validations:
                     sol.addInput("wait_for_validation", validations[(st_num,
                                                                      tc_num)])
                 if task.input_file:
@@ -403,8 +412,6 @@ def evaluate_solutions(
             # TODO set cache mode
             ui_interface.add_evaluate_checking(st_num, tc_num, solution.name,
                                                check)
-    frontend.evaluate()
-    print("EVAL FINISHED")
 
 
 def clean():
