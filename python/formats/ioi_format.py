@@ -15,7 +15,7 @@ from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, G
 from task_maker.language import grader_from_file, valid_extensions
 from task_maker.sanitize import sanitize_command
 from task_maker.source_file import SourceFile
-from task_maker.task_maker_frontend import File, Frontend
+from task_maker.task_maker_frontend import File, Frontend, Resources
 
 VALIDATION_INPUT_NAME = "tm_input_file"
 
@@ -279,7 +279,6 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile]):
                        ui_interface)
 
     frontend.evaluate()
-    print("EVAL FINISHED")
     ui.stop()
 
 
@@ -377,7 +376,11 @@ def evaluate_solutions(
                 "Evaluation of %s on testcase %d" % (solution.name, tc_num),
                 [])
             # TODO set cache mode
-            # TODO set limits!
+            limits = Resources()
+            limits.cpu_time = task.time_limit
+            limits.wall_time = task.time_limit * 1.5
+            limits.memory = task.memory_limit_kb
+            eval.setLimits(limits)
             if (st_num, tc_num) in validations:
                 eval.addInput("tm_wait_validation", validations[(st_num,
                                                                  tc_num)])

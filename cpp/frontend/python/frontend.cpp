@@ -10,6 +10,7 @@
 PYBIND11_MODULE(task_maker_frontend, m) {
   m.doc() = "Task-maker frontend module";
   pybind11::class_<frontend::Resources>(m, "Resources")
+      .def(pybind11::init<>())
       .def_readwrite("cpu_time", &frontend::Resources::cpu_time)
       .def_readwrite("sys_time", &frontend::Resources::sys_time)
       .def_readwrite("wall_time", &frontend::Resources::wall_time)

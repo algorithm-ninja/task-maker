@@ -86,9 +86,6 @@ def main() -> None:
             raise ValueError("Format %s not supported" % format)
         return
 
-    # client = capnp.TwoPartyClient("localhost:%d" % args.manager_port)
-    # main_server = client.bootstrap().cast_as(server_capnp.MainServer)
-    # frontend = main_server.registerFrontend().wait().context
     frontend = Frontend("localhost", args.manager_port)
 
     if format == "ioi":
