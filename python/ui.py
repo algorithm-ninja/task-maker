@@ -1,137 +1,159 @@
 #!/usr/bin/env python3
+from enum import Enum
+from typing import List, Dict
 
-from typing import List, Optional
-
-from event_pb2 import Event, EventStatus, EvaluationResult,\
-    RunningTaskInfo
+from task_maker.source_file import SourceFile
+from task_maker.task_maker_frontend import Execution
 
 
-class UI:
-    def __init__(self, solutions: List[str], format: str) -> None:
-        self.task_name = ""
-        self.solutions = solutions
-        self.format = format
+class TestcaseGenerationStatus(Enum):
+    WAITING = 0
+    GENERATING = 1
+    GENERATED = 2
+    VALIDATING = 3
+    VALIDATED = 4
+    SOLVING = 5
+    SOLVED = 6
+    CHECKING = 7
+    DONE = 8
+    FAILURE = 9
 
-    def from_event(self, event: Event) -> None:
-        event_type = event.WhichOneof("event_oneof")
-        if event_type == "fatal_error":
-            self.fatal_error(event.fatal_error.msg)
-        elif event_type == "task_score":
-            self.set_task_score(event.task_score.solution,
-                                event.task_score.score)
-        elif event_type == "subtask_score":
-            self.set_subtask_score(event.subtask_score.subtask_id,
-                                   event.subtask_score.solution,
-                                   event.subtask_score.score)
-        elif event_type == "compilation":
-            compilation = event.compilation
-            self.set_compilation_status(compilation.filename,
-                                        compilation.status, compilation.stderr,
-                                        compilation.from_cache)
-        elif event_type == "generation":
-            generation = event.generation
-            self.set_generation_status(generation.testcase, generation.status,
-                                       generation.error, generation.from_cache)
-        elif event_type == "terry_generation":
-            generation = event.terry_generation
-            self.set_terry_generation_status(
-                generation.solution, generation.status, generation.error,
-                generation.from_cache)
-        elif event_type == "evaluation":
-            evaluation = event.evaluation
-            res = evaluation.result if evaluation.HasField("result") else None
-            self.set_evaluation_status(evaluation.testcase,
-                                       evaluation.solution, evaluation.status,
-                                       res, None, evaluation.from_cache)
-        elif event_type == "terry_evaluation":
-            evaluation = event.terry_evaluation
-            self.set_terry_evaluation_status(
-                evaluation.solution, evaluation.status, evaluation.errors,
-                evaluation.from_cache)
-        elif event_type == "terry_check":
-            check = event.terry_check
-            res = check.result if check.HasField("result") else None
-            self.set_terry_check_status(check.solution, check.status,
-                                        check.errors, res, check.from_cache)
-        elif event_type == "running_tasks":
-            self.set_running_tasks(event.running_tasks.task)
 
-    def set_task_name(self, task_name: str) -> None:
-        self.task_name = task_name
+class SourceFileCompilationStatus(Enum):
+    WAITING = 0
+    COMPILING = 1
+    DONE = 2
+    FAILURE = 3
 
-    def set_max_score(self, max_score: float) -> None:
-        self.max_score = max_score
 
-    def set_time_limit(self, time_limit: float) -> None:
-        raise NotImplementedError("Please subclass this class")
+class TestcaseSolutionStatus(Enum):
+    WAITING = 0
+    SOLVING = 1
+    SOLVED = 2
+    CHECKING = 3
+    DONE = 4
+    FAILURE = 5
 
-    def set_memory_limit(self, memory_limit: int) -> None:
-        raise NotImplementedError("Please subclass this class")
 
-    def set_subtask_info(self, subtask_num: int, max_score: float,
-                         testcases: List[int]) -> None:
-        raise NotImplementedError("Please subclass this class")
+class IOILikeUIInterface:
+    def __init__(self, testcases: Dict[int, List[int]]):
+        self.subtasks = dict(
+        )  # type: Dict[int, Dict[int, TestcaseGenerationStatus]]
+        self.non_solutions = dict(
+        )  # type: Dict[str, SourceFileCompilationStatus]
+        self.solutions = dict()  # type: Dict[str, SourceFileCompilationStatus]
+        self.testing = dict(
+        )  # type: Dict[str, Dict[int, Dict[int, TestcaseSolutionStatus]]]
 
-    def set_compilation_status(self,
-                               file_name: str,
-                               status: EventStatus,
-                               warnings: Optional[str] = None,
-                               from_cache: bool = False):
-        raise NotImplementedError("Please subclass this class")
+        for st_num, subtask in testcases.items():
+            self.subtasks[st_num] = dict()
+            for tc_num in subtask:
+                self.subtasks[st_num][
+                    tc_num] = TestcaseGenerationStatus.WAITING
 
-    def set_generation_status(self,
-                              testcase_num: int,
-                              status: EventStatus,
-                              stderr: Optional[str] = None,
-                              from_cache: bool = False):
-        raise NotImplementedError("Please subclass this class")
+    def add_non_solution(self, source_file: SourceFile):
+        name = source_file.name
+        self.non_solutions[name] = SourceFileCompilationStatus.WAITING
+        if source_file.need_compilation:
 
-    def set_terry_generation_status(self,
-                                    solution: str,
-                                    status: EventStatus,
-                                    stderr: Optional[str] = None,
-                                    from_cache: bool = False):
-        raise NotImplementedError("Please subclass this class")
+            def notifyStartCompiltion():
+                self.non_solutions[
+                    name] = SourceFileCompilationStatus.COMPILING
 
-    def set_evaluation_status(self,
-                              testcase_num: int,
-                              solution_name: str,
-                              status: EventStatus,
-                              result: Optional[EvaluationResult] = None,
-                              error: Optional[str] = None,
-                              from_cache: bool = False):
-        raise NotImplementedError("Please subclass this class")
+            def getResultCompilation(result):
+                pass  # TODO implement this
 
-    def set_terry_evaluation_status(self,
-                                    solution: str,
-                                    status: EventStatus,
-                                    error: Optional[str] = None,
-                                    from_cache: bool = False):
-        raise NotImplementedError("Please subclass this class")
+            source_file.compilation.notifyStart(notifyStartCompiltion)
+            source_file.compilation.getResult(getResultCompilation)
+        else:
+            self.non_solutions[name] = SourceFileCompilationStatus.DONE
 
-    def set_terry_check_status(self,
-                               solution: str,
-                               status: EventStatus,
-                               error: Optional[str] = None,
-                               score: Optional[float] = None,
-                               from_cache: bool = False):
-        raise NotImplementedError("Please subclass this class")
+    def add_solution(self, source_file: SourceFile):
+        name = source_file.name
+        self.solutions[name] = SourceFileCompilationStatus.WAITING
+        self.testing[name] = dict()
+        for st_num, subtask in self.subtasks.items():
+            self.testing[name][st_num] = dict()
+            for tc_num in subtask.keys():
+                self.testing[name][st_num][
+                    tc_num] = TestcaseSolutionStatus.WAITING
+        if source_file.need_compilation:
 
-    def set_subtask_score(self, subtask_num: int, solution_name: str,
-                          score: float) -> None:
-        raise NotImplementedError("Please subclass this class")
+            def notifyStartCompiltion():
+                self.solutions[name] = SourceFileCompilationStatus.COMPILING
 
-    def set_task_score(self, solution_name: str, score: float) -> None:
-        raise NotImplementedError("Please subclass this class")
+            def getResultCompilation(result):
+                pass  # TODO implement this
 
-    def set_running_tasks(self, tasks: List[RunningTaskInfo]):
-        raise NotImplementedError("Please subclass this class")
+            source_file.compilation.notifyStart(notifyStartCompiltion)
+            source_file.compilation.getResult(getResultCompilation)
+        else:
+            self.solutions[name] = SourceFileCompilationStatus.DONE
 
-    def print_final_status(self) -> None:
-        raise NotImplementedError("Please subclass this class")
+    def add_generation(self, subtask: int, testcase: int,
+                       generation: Execution):
+        def notifyStartGeneration():
+            self.subtasks[subtask][
+                testcase] = TestcaseGenerationStatus.GENERATING
 
-    def fatal_error(self, msg: str) -> None:
-        raise NotImplementedError("Please subclass this class")
+        def getResultGeneration():
+            # TODO implement this really
+            self.subtasks[subtask][
+                testcase] = TestcaseGenerationStatus.GENERATED
 
-    def stop(self, msg: str) -> None:
-        raise NotImplementedError("Please subclass this class")
+        generation.notifyStart(notifyStartGeneration)
+        generation.getResult(getResultGeneration)
+
+    def add_validation(self, subtask: int, testcase: int,
+                       validation: Execution):
+        def notifyStartValidation():
+            self.subtasks[subtask][
+                testcase] = TestcaseGenerationStatus.VALIDATING
+
+        def getResultValidation():
+            # TODO implement this really
+            self.subtasks[subtask][
+                testcase] = TestcaseGenerationStatus.VALIDATED
+
+        validation.notifyStart(notifyStartValidation)
+        validation.getResult(getResultValidation)
+
+    def add_solving(self, subtask: int, testcase: int, solving: Execution):
+        def notifyStartSolving():
+            self.subtasks[subtask][testcase] = TestcaseGenerationStatus.SOLVING
+
+        def getResultSolving():
+            # TODO implement this really
+            self.subtasks[subtask][testcase] = TestcaseGenerationStatus.SOLVED
+
+        solving.notifyStart(notifyStartSolving)
+        solving.getResult(getResultSolving)
+
+    def add_evaluate_solution(self, subtask: int, testcase: int, solution: str,
+                              evaluation: Execution):
+        def notifyStartEvaluation():
+            self.testing[solution][subtask][
+                testcase] = TestcaseSolutionStatus.SOLVING
+
+        def getResultEvaluation():
+            # TODO implement this really
+            self.testing[solution][subtask][
+                testcase] = TestcaseSolutionStatus.SOLVED
+
+        evaluation.notifyStart(notifyStartEvaluation)
+        evaluation.getResult(getResultEvaluation)
+
+    def add_evaluate_checking(self, subtask: int, testcase: int, solution: str,
+                              checking: Execution):
+        def notifyStartChecking():
+            self.testing[solution][subtask][
+                testcase] = TestcaseSolutionStatus.CHECKING
+
+        def getResultChecking():
+            # TODO implement this really
+            self.testing[solution][subtask][
+                testcase] = TestcaseSolutionStatus.DONE
+
+        checking.notifyStart(notifyStartChecking)
+        checking.getResult(getResultChecking)
+        # TODO calculate the status of the solution on this testcase and update the score

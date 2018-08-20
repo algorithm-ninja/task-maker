@@ -18,6 +18,7 @@ setup(
     package_data={
         'task_maker.bin': ['*'],
         'task_maker.venv': [test[len("task_maker/venv/"):] for test in venv],
+        'task_maker': ['*.so']
     },
     entry_points={
         "console_scripts": ["task-maker = task_maker.task_maker:main"]

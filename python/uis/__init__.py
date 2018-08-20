@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from enum import Enum
 from typing import Dict, Optional
 
 
@@ -11,21 +10,6 @@ class EvaluationResult:
         self.cpu_time_used = cpu_time_used
         self.wall_time_used = wall_time_used
         self.memory_used_kb = memory_used_kb
-
-
-class EventStatus(Enum):
-    WAITING = 0
-    RUNNING = 1
-    GENERATING = 2
-    GENERATED = 3
-    VALIDATING = 4
-    VALIDATED = 5
-    SOLVING = 6
-    EXECUTING = 7
-    EXECUTED = 8
-    CHECKING = 9
-    DONE = 10
-    FAILURE = 11
 
 
 class SolutionStatus:
@@ -43,8 +27,8 @@ class SolutionStatus:
             for i, tc in self.testcase_result.items()))
 
 
-class TerryStatus:
-    def __init__(self):
-        self.status = EventStatus.WAITING  # type: EventStatus
-        self.errors = None  # type: Optional[str]
-        # self.result = None  # type: Optional[TerryEvaluationResult]
+# class TerryStatus:
+#     def __init__(self):
+#         self.status = EventStatus.WAITING  # type: EventStatus
+#         self.errors = None  # type: Optional[str]
+#         # self.result = None  # type: Optional[TerryEvaluationResult]

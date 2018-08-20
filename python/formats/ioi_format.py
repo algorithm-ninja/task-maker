@@ -8,79 +8,15 @@ import yaml
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
+from task_maker.ui import IOILikeUIInterface
 from task_maker.dependency_finder import find_dependency
 from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo
 from task_maker.language import grader_from_file, valid_extensions
 from task_maker.sanitize import sanitize_command
 from task_maker.source_file import SourceFile
-from task_maker.task_maker_frontend import File
+from task_maker.task_maker_frontend import File, Frontend
 
 VALIDATION_INPUT_NAME = "tm_input_file"
-
-
-class UIInterface:
-    def add_non_solution(self, source_file: SourceFile):
-        print("%20s %20s WAITING" % ("Compile non solution", source_file.name))
-        if source_file.need_compilation:
-            source_file.compilation.notifyStart(
-                lambda: print("%20s %20s STARTED" % ("Compile non solution", source_file.name))
-            )
-            source_file.compilation.getResult(lambda res: print("%20s %20s ENDED: %s" % ("Compile non solution", source_file.name, str(res))))
-        else:
-            print(
-                "%20s %20s ENDED" % ("Compile non solution", source_file.name))
-
-    def add_solution(self, source_file: SourceFile):
-        print("%20s %20s WAITING" % ("Compile solution", source_file.name))
-        if source_file.need_compilation:
-            source_file.compilation.notifyStart(
-                lambda: print("%20s %20s STARTED" % ("Compile solution", source_file.name))
-            )
-            source_file.compilation.getResult(
-                lambda res: print("%20s %20s ENDED: %s" % ("Compile solution", source_file.name, str(res))))
-        else:
-            print("%20s %20s ENDED" % ("Compile solution", source_file.name))
-
-    def add_testcases(self, testcases: Dict[int, List[int]]):
-        print("%20s %20s" % ("Testcases", str(testcases)))
-
-    def add_generation(self, testcase: int, generation):
-        print("%20s %20s WAITING" % ("Generation", "testcase %d" % testcase))
-        generation.notifyStart(
-            lambda: print("%20s %20s STARTED" % ("Generation", "testcase %d" % testcase))
-        )
-        generation.getResult(lambda res: print("%20s %20s ENDED" % ("Generation", "testcase %d" % testcase), res))
-
-    def add_validation(self, testcase: int, validation):
-        print("%20s %20s WAITING" % ("Validation", "testcase %d" % testcase))
-        validation.notifyStart(
-            lambda: print("%20s %20s STARTED" % ("Validation", "testcase %d" % testcase))
-        )
-        validation.getResult(lambda res: print("%20s %20s ENDED" % ("Validation", "testcase %d" % testcase), res))
-
-    def add_solving(self, testcase: int, solving):
-        print("%20s %20s WAITING" % ("Solving", "testcase %d" % testcase))
-        solving.notifyStart(
-            lambda: print("%20s %20s STARTED" % ("Solving", "testcase %d" % testcase))
-        )
-        solving.getResult(lambda res: print("%20s %20s ENDED" % ("Solving", "testcase %d" % testcase), res))
-
-    def add_evaluate_solution(self, testcase: int, solution: str, evaluation):
-        print("%20s %20s WAITING" % ("Testing", "%s on %d" %
-                                     (solution, testcase)))
-        evaluation.notifyStart(
-            lambda: print("%20s %20s STARTED" % ("Testing", "%s on %d" % (solution, testcase)))
-        )
-        evaluation.getResult(lambda res: print("%20s %20s ENDED" % ("Testing", "%s on %d" % (solution, testcase)), res))
-
-    def add_evaluate_checking(self, testcase: int, solution: str, checking):
-        print("%20s %20s WAITING" % ("Checking", "%s on %d" %
-                                     (solution, testcase)))
-        checking.notifyStart(
-            lambda: print("%20s %20s STARTED" % ("Checking", "%s on %d" % (solution, testcase)))
-        )
-        checking.getResult(lambda res: print("%20s %20s ENDED" % ("Checking", "%s on %d" % (solution, testcase)), res))
-        # TODO calculate the status of the solution on this testcase and update the score
 
 
 def list_files(patterns: List[str],
@@ -330,9 +266,8 @@ def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
     return task, sols
 
 
-def evaluate_task(frontend, task: Task, solutions: List[SourceFile]):
-    ui_interface = UIInterface()
-    ui_interface.add_testcases(
+def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile]):
+    ui_interface = IOILikeUIInterface(
         dict((st_num, [tc for tc in st.testcases.keys()])
              for st_num, st in task.subtasks.items()))
     ins, outs, vals = generate_inputs(frontend, task, ui_interface)
@@ -340,7 +275,7 @@ def evaluate_task(frontend, task: Task, solutions: List[SourceFile]):
                        ui_interface)
 
 
-def generate_inputs(frontend, task: Task, ui_interface: UIInterface
+def generate_inputs(frontend, task: Task, ui_interface: IOILikeUIInterface
                     ) -> (Dict[Tuple[int, int], File], Dict[Tuple[
                         int, int], File], Dict[Tuple[int, int], File]):
     inputs = dict()  # type: Dict[Tuple[int, int], File]
@@ -373,7 +308,7 @@ def generate_inputs(frontend, task: Task, ui_interface: UIInterface
                 # TODO set limits?
                 inputs[(st_num, tc_num)] = gen.stdout(False)
 
-                ui_interface.add_generation(tc_num, gen)
+                ui_interface.add_generation(st_num, tc_num, gen)
 
                 # TODO write input file
 
@@ -385,7 +320,7 @@ def generate_inputs(frontend, task: Task, ui_interface: UIInterface
                 val.addInput(VALIDATION_INPUT_NAME, inputs[(st_num, tc_num)])
                 validations[(st_num, tc_num)] = val.stdout(False)
 
-                ui_interface.add_validation(tc_num, val)
+                ui_interface.add_validation(st_num, tc_num, val)
 
             # output file
             if testcase.output_file:
@@ -414,16 +349,16 @@ def generate_inputs(frontend, task: Task, ui_interface: UIInterface
                 else:
                     outputs[(st_num, tc_num)] = sol.stdout(False)
 
-                ui_interface.add_solving(tc_num, sol)
+                ui_interface.add_solving(st_num, tc_num, sol)
                 # TODO write output file
     return inputs, outputs, validations
 
 
-def evaluate_solutions(frontend, task: Task,
-                       inputs: Dict[Tuple[int, int], File],
-                       outputs: Dict[Tuple[int, int], File],
-                       validations: Dict[Tuple[int, int], File],
-                       solutions: List[SourceFile], ui_interface: UIInterface):
+def evaluate_solutions(
+        frontend, task: Task, inputs: Dict[Tuple[int, int], File],
+        outputs: Dict[Tuple[int, int], File],
+        validations: Dict[Tuple[int, int], File], solutions: List[SourceFile],
+        ui_interface: IOILikeUIInterface):
     for solution in solutions:
         solution.prepare(frontend)
         ui_interface.add_solution(solution)
@@ -446,7 +381,8 @@ def evaluate_solutions(frontend, task: Task,
             else:
                 output = eval.stdout(False)
 
-            ui_interface.add_evaluate_solution(tc_num, solution.name, eval)
+            ui_interface.add_evaluate_solution(st_num, tc_num, solution.name,
+                                               eval)
 
             if task.checker:
                 task.checker.prepare(frontend)
@@ -465,7 +401,8 @@ def evaluate_solutions(frontend, task: Task,
             check.addInput("output", outputs[(st_num, tc_num)])
             check.addInput("contestant_output", output)
             # TODO set cache mode
-            ui_interface.add_evaluate_checking(tc_num, solution.name, check)
+            ui_interface.add_evaluate_checking(st_num, tc_num, solution.name,
+                                               check)
     frontend.evaluate()
     print("EVAL FINISHED")
 
