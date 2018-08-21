@@ -28,8 +28,8 @@ Frontend::Frontend(std::string server, int port)
                             .registerFrontendRequest()
                             .send()
                             .then([](auto res) { return res.getContext(); })),
-      stop_request_(kj::READY_NOW),
-      finish_builder_(false) {}
+      finish_builder_(false),
+      stop_request_(kj::READY_NOW) {}
 
 File* Frontend::provideFile(const std::string& path,
                             const std::string& description,
@@ -102,7 +102,6 @@ void Frontend::getFileContentsToFile(File* file, const std::string& path,
 }
 
 void Frontend::stopEvaluation() {
-  KJ_DBG("Sending stop request");
   stop_request_ =
       frontend_context_.stopEvaluationRequest().send().ignoreResult();
 }

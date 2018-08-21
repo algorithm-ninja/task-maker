@@ -246,7 +246,6 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                               KJ_LOG(WARNING, "Execution stalled",
                                      frontend_context_.ready_tasks_,
                                      frontend_context_.scheduled_tasks_);
-                              frontend_context_.builder_.PrintRemainig();
                               frontend_context_.evaluation_early_stop_
                                   .fulfiller->reject(KJ_EXCEPTION(
                                       FAILED, "Execution stalled!"));
@@ -311,13 +310,13 @@ kj::Promise<void> FrontendContext::startEvaluation(
           util::File::MaybeGet(file.second.hash,
                                context.getParams().getSender())
               .then(
-                  [this, id = file.first,
+                  [id = file.first,
                    fulfiller =
                        std::move(file.second.promise.fulfiller)]() mutable {
                     KJ_LOG(INFO, "Received file with id " + std::to_string(id));
                     fulfiller->fulfill();
                   },
-                  [this, fulfiller = ff](kj::Exception exc) {
+                  [fulfiller = ff](kj::Exception exc) {
                     fulfiller->reject(kj::cp(exc));
                     return exc;
                   })

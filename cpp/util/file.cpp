@@ -129,7 +129,6 @@ int OsRead(const std::string& path, util::File::ChunkReceiver& chunk_receiver) {
     while ((amount = read(fd, buf, util::kChunkSize))) {  // NOLINT
       if (amount == -1 && errno == EINTR) continue;
       if (amount == -1) break;
-      KJ_DBG("READ from", path, "of size", amount, std::string(buf, buf + 20));
       chunk_receiver(util::File::Chunk(buf, amount));
     }
   } catch (...) {
@@ -161,7 +160,6 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
           _ = kj::defer(std::move(finalize))](util::File::Chunk chunk) mutable {
     if (fd == -1) return;
     if (chunk.size() == 0) {
-      KJ_DBG("Finalizing " + path);
       *done = true;
       if (fsync(fd) == -1 || close(fd) == -1 ||
           OsAtomicMove(temp_file, path, overwrite, exist_ok)) {
@@ -180,10 +178,6 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
         throw std::system_error(errno, std::system_category(),
                                 "write " + temp_file);
       }
-      KJ_DBG(
-          "WRITE to", path, "of size", chunk.size(),
-          std::string(chunk.asChars().begin(), chunk.asChars().begin() + 20));
-      ;
       pos += written;
     }
   };
