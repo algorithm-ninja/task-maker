@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD 14)
 include(HunterGate)
 include(AddressSanitizer)
 include(ThreadSanitizer)
+include(UndefinedSanitizer)
 
 HunterGate(
     URL "https://github.com/ruslo/hunter/archive/v0.23.16.tar.gz"
