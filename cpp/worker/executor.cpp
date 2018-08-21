@@ -13,6 +13,7 @@
 namespace {
 void PrepareFile(const std::string& path, const util::SHA256_t& hash,
                  bool executable) {
+  KJ_DBG("Prepare file", path, hash.Hex());
   if (hash.isZero()) return;
   util::File::Copy(util::File::PathForHash(hash), path);
   if (executable)
@@ -24,6 +25,7 @@ void PrepareFile(const std::string& path, const util::SHA256_t& hash,
 void RetrieveFile(const std::string& path,
                   capnproto::SHA256::Builder hash_out) {
   auto hash = util::File::Hash(path);
+  KJ_DBG("Retrieve file", path, hash.Hex());
   hash.ToCapnp(hash_out);
   util::File::Copy(path, util::File::PathForHash(hash));
   util::File::MakeImmutable(util::File::PathForHash(hash));
@@ -69,6 +71,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
   {
     util::UnionPromiseBuilder builder;
     for (const auto& input : request.getInputFiles()) {
+      KJ_DBG("MaybeGet", input.getHash());
       builder.AddPromise(util::File::MaybeGet(input.getHash(), server_));
     }
     builder.AddPromise(util::File::MaybeGet(request.getStdin(), server_));

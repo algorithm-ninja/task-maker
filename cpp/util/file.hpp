@@ -119,9 +119,7 @@ class File {
     auto req = worker.requestFileRequest();
     hash.ToCapnp(req.initHash());
     req.setReceiver(kj::heap<util::File::Receiver>(hash));
-    return req.send()
-        .ignoreResult()
-        .eagerlyEvaluate(nullptr);
+    return req.send().ignoreResult().then([]() {}).eagerlyEvaluate(nullptr);
   }
 
   // Same as Get, but skip zero files and already present files.
