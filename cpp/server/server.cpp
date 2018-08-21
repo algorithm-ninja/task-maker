@@ -196,6 +196,8 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                                           const util::SHA256_t& hash) {
                         frontend_context_.file_info_[id].hash = hash;
                         if (!result.getStatus().isSuccess()) {
+                          KJ_LOG(INFO, "Marking file as failed", id,
+                                 description_);
                           frontend_context_.file_info_[id]
                               .promise.fulfiller->reject(
                                   KJ_EXCEPTION(FAILED, "Dependency failed"));
@@ -242,6 +244,7 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                                   .fulfiller->reject(KJ_EXCEPTION(
                                       FAILED, "Execution stalled!"));
                             } else {
+                              KJ_LOG(INFO, "Finished execution", description_);
                               finish_promise_.fulfiller->fulfill();
                             }
                           })
@@ -254,7 +257,9 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                 .eagerlyEvaluate(nullptr);
           },
           [this](kj::Exception exc) {
+            KJ_LOG(INFO, "Marking execution as failed", description_);
             for (auto f : outputs_) {
+              KJ_LOG(INFO, "Marking as failed", f.first, f.second);
               auto& ff =
                   frontend_context_.file_info_[f.second].promise.fulfiller;
               if (ff) ff->reject(KJ_EXCEPTION(FAILED, "Dependency failed"));
@@ -292,13 +297,13 @@ kj::Promise<void> FrontendContext::startEvaluation(
           util::File::MaybeGet(file.second.hash,
                                context.getParams().getSender())
               .then(
-                  [id = file.first,
+                  [this, id = file.first,
                    fulfiller =
                        std::move(file.second.promise.fulfiller)]() mutable {
                     KJ_LOG(INFO, "Received file with id " + std::to_string(id));
                     fulfiller->fulfill();
                   },
-                  [fulfiller = ff](kj::Exception exc) {
+                  [this, fulfiller = ff](kj::Exception exc) {
                     fulfiller->reject(kj::cp(exc));
                     return exc;
                   })

@@ -266,17 +266,22 @@ class IOILikeUIInterface:
                                                       result)
 
         evaluation.notifyStart(notifyStartEvaluation)
-        evaluation.getResult(getResultEvaluation)
+        evaluation.getResult(
+            getResultEvaluation,
+            lambda: print("Skipped evaluation", subtask, testcase, solution))
 
     def add_evaluate_checking(self, subtask: int, testcase: int, solution: str,
                               checking: Execution):
         def notifyStartChecking():
             self.testing[solution].testcase_results[subtask][
                 testcase] = TestcaseSolutionResult.CHECKING
+            print("Started checking", subtask, testcase, solution)
 
         def getResultChecking(result: Result):
             self.testing[solution].update_check_result(subtask, testcase,
                                                        result)
 
         checking.notifyStart(notifyStartChecking)
-        checking.getResult(getResultChecking)
+        checking.getResult(
+            getResultChecking,
+            lambda: print("Skipped checking", subtask, testcase, solution))

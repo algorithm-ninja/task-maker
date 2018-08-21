@@ -54,7 +54,8 @@ class UnionPromiseBuilder {
   };
 
  public:
-  UnionPromiseBuilder() : p_(kj::newPromiseAndFulfiller<void>()) {
+  UnionPromiseBuilder(bool fatalFailure = true)
+      : fatalFailure_(fatalFailure), p_(kj::newPromiseAndFulfiller<void>()) {
     auto info = kj::heap<Info>();
     info_ = info.get();
     fulfiller_ = p_.fulfiller.get();
@@ -72,13 +73,21 @@ class UnionPromiseBuilder {
                     fulfiller->fulfill();
                   }
                 },
-                [fulfiller = fulfiller_, info = info_,
+                [fatalFailure_, fulfiller = fulfiller_, info = info_,
                  idx = info_->promises.size()](kj::Exception exc) {
-                  fulfiller->reject(kj::cp(exc));
                   // Cancel all other promises
-                  std::swap(info->promises[0], info->promises[idx]);
-                  while (info->promises.size() > 1) {
-                    info->promises.pop_back();
+                  if (fatalFailure_) {
+                    std::swap(info->promises[0], info->promises[idx]);
+                    while (info->promises.size() > 1) {
+                      info->promises.pop_back();
+                    }
+                    fulfiller->reject(kj::cp(exc));
+                  } else {
+                    info->resolved++;
+                    if (info->finalized &&
+                        info->resolved == info->promises.size()) {
+                      fulfiller->fulfill();
+                    }
                   }
                   return exc;
                 })
@@ -93,8 +102,12 @@ class UnionPromiseBuilder {
     return std::move(p_.promise);
   }
 
+  int GetMissing() { return info_->promises.size() - info_->resolved; }
+
  private:
+  bool fatalFailure_;
   kj::PromiseFulfillerPair<void> p_;
+  // TODO use std::move(this) rather that kj::heap
   Info* info_ = nullptr;
   kj::PromiseFulfiller<void>* fulfiller_ = nullptr;
 };

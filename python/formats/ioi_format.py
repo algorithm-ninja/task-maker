@@ -273,7 +273,7 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile]):
         dict((st_num, [tc for tc in st.testcases.keys()])
              for st_num, st in task.subtasks.items()))
     ui = IOILikeCursesUI(ui_interface)
-    ui.start()
+    # ui.start()
     ins, outs, vals = generate_inputs(frontend, task, ui_interface)
     evaluate_solutions(frontend, task, ins, outs, vals, solutions,
                        ui_interface)

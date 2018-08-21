@@ -28,6 +28,7 @@ Frontend::Frontend(std::string server, int port)
                             .registerFrontendRequest()
                             .send()
                             .then([](auto res) { return res.getContext(); })),
+      builder_(false),
       stop_request_(kj::READY_NOW) {}
 
 File* Frontend::provideFile(const std::string& path,
@@ -198,6 +199,11 @@ void Execution::notifyStart(std::function<void()> callback) {
 }
 
 void Execution::getResult(std::function<void(Result)> callback) {
+  getResult(std::move(callback), []() {});
+}
+
+void Execution::getResult(std::function<void(Result)> callback,
+                          std::function<void()> errored) {
   auto promise = kj::newPromiseAndFulfiller<void>();
   builder_.AddPromise(std::move(promise.promise));
   auto ff = promise.fulfiller.get();
@@ -205,7 +211,7 @@ void Execution::getResult(std::function<void(Result)> callback) {
       std::move(my_builder_)
           .Finalize()
           .then(
-              [this, callback,
+              [this, callback, errored,
                fulfiller = std::move(promise.fulfiller)]() mutable {
                 fulfiller->fulfill();
                 return execution_.getResultRequest()
@@ -244,7 +250,7 @@ void Execution::getResult(std::function<void(Result)> callback) {
                               r.getResourceUsage().getStack();
                           callback(result);
                         },
-                        [](auto exc) {})
+                        [errored](auto exc) { errored(); })
                     .eagerlyEvaluate(nullptr);
               },
               [this, fulfiller = ff](kj::Exception exc) {

@@ -114,6 +114,8 @@ class Execution {
   void notifyStart(std::function<void()> callback);
 
   void getResult(std::function<void(Result)> callback);
+  void getResult(std::function<void(Result)> callback,
+                 std::function<void()> errored);
 
  private:
   std::string description_;

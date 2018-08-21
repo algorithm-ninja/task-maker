@@ -80,7 +80,13 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def("output", &frontend::Execution::output,
            pybind11::return_value_policy::reference)
       .def("notifyStart", &frontend::Execution::notifyStart)
-      .def("getResult", &frontend::Execution::getResult);
+      .def("getResult", (void (frontend::Execution::*)(
+                            std::function<void(frontend::Result)>)) &
+                            frontend::Execution::getResult)
+      .def("getResult",
+           (void (frontend::Execution::*)(std::function<void(frontend::Result)>,
+                                          std::function<void()>)) &
+               frontend::Execution::getResult);
 
   pybind11::class_<frontend::Frontend>(m, "Frontend")
       .def(pybind11::init<std::string, int>())
