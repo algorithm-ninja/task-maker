@@ -350,7 +350,7 @@ def generate_inputs(frontend, task: Task, ui_interface: IOILikeUIInterface
                 if task.input_file:
                     sol.addInput(task.input_file, inputs[(st_num, tc_num)])
                 else:
-                    sol.stdin(inputs[(st_num, tc_num)])
+                    sol.setStdin(inputs[(st_num, tc_num)])
                 if task.output_file:
                     outputs[(st_num, tc_num)] = sol.output(
                         task.output_file, False)
@@ -387,7 +387,7 @@ def evaluate_solutions(
             if task.input_file:
                 eval.addInput(task.input_file, inputs[(st_num, tc_num)])
             else:
-                eval.stdin(inputs[(st_num, tc_num)])
+                eval.setStdin(inputs[(st_num, tc_num)])
             if task.output_file:
                 output = eval.output(task.output_file, False)
             else:
@@ -397,7 +397,11 @@ def evaluate_solutions(
                                                eval)
 
             if task.checker:
+                is_check_prepared = task.checker.prepared
                 task.checker.prepare(frontend)
+                if not is_check_prepared:
+                    ui_interface.add_non_solution(task.checker)
+
                 check = task.checker.execute(
                     frontend, "Checking solution %s for testcase %d" %
                     (solution.name, tc_num),

@@ -86,11 +86,12 @@ std::unique_ptr<File> File::New(kj::Promise<T>&& p) {
 
 class Execution {
  public:
-  Execution(capnproto::Execution::Client execution,
+  Execution(std::string description, capnproto::Execution::Client execution,
             std::vector<std::unique_ptr<File>>& files,
             util::UnionPromiseBuilder& builder,
             util::UnionPromiseBuilder& finish_builder)
-      : execution_(execution),
+      : description_(std::move(description)),
+        execution_(execution),
         files_(files),
         builder_(builder),
         finish_builder_(finish_builder) {}
@@ -115,6 +116,7 @@ class Execution {
   void getResult(std::function<void(Result)> callback);
 
  private:
+  std::string description_;
   capnproto::Execution::Client execution_;
   std::vector<std::unique_ptr<File>>& files_;
   util::UnionPromiseBuilder& builder_;

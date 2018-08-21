@@ -49,7 +49,9 @@ class SubtaskSolutionResult(Enum):
 
 
 class SolutionStatus:
-    def __init__(self, task: Task, subtasks: Dict[int, List[int]]):
+    def __init__(self, source_file: SourceFile, task: Task,
+                 subtasks: Dict[int, List[int]]):
+        self.source_file = source_file
         self.task = task
         self.score = 0.0
         self.subtask_scores = dict((st_num, 0.0) for st_num in subtasks)
@@ -97,7 +99,6 @@ class SolutionStatus:
         # TODO store used resources
 
     def update_check_result(self, subtask: int, testcase: int, result: Result):
-        print("Checker result on ", subtask, testcase, result)
         if result.status == ResultStatus.SIGNAL:
             self.testcase_results[subtask][
                 testcase] = TestcaseSolutionResult.INTERNAL_ERROR
@@ -182,7 +183,8 @@ class IOILikeUIInterface:
     def add_solution(self, source_file: SourceFile):
         name = source_file.name
         self.solutions[name] = SourceFileCompilationStatus.WAITING
-        self.testing[name] = SolutionStatus(self.task, self.testcases)
+        self.testing[name] = SolutionStatus(source_file, self.task,
+                                            self.testcases)
 
         if source_file.need_compilation:
 

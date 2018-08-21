@@ -47,8 +47,8 @@ Execution* Frontend::addExecution(const std::string& description) {
   auto req = frontend_context_.addExecutionRequest();
   req.setDescription(description);
   executions_.push_back(std::make_unique<Execution>(
-      req.send().then([](auto r) { return r.getExecution(); }), files_,
-      builder_, finish_builder_));
+      description, req.send().then([](auto r) { return r.getExecution(); }),
+      files_, builder_, finish_builder_));
   return executions_.back().get();
 }
 
@@ -210,39 +210,44 @@ void Execution::getResult(std::function<void(Result)> callback) {
                 fulfiller->fulfill();
                 return execution_.getResultRequest()
                     .send()
-                    .then([callback](auto res) {
-                      auto r = res.getResult();
-                      Result result;
-                      result.status = r.getStatus().which();
-                      if (r.getStatus().isSignal()) {
-                        result.signal = r.getStatus().getSignal();
-                      }
-                      if (r.getStatus().isReturnCode()) {
-                        result.return_code = r.getStatus().getReturnCode();
-                      }
-                      if (r.getStatus().isInternalError()) {
-                        result.error = r.getStatus().getInternalError();
-                      }
-                      result.resources.cpu_time =
-                          r.getResourceUsage().getCpuTime();
-                      result.resources.sys_time =
-                          r.getResourceUsage().getSysTime();
-                      result.resources.wall_time =
-                          r.getResourceUsage().getWallTime();
-                      result.resources.memory =
-                          r.getResourceUsage().getMemory();
-                      result.resources.nproc = r.getResourceUsage().getNproc();
-                      result.resources.nofiles =
-                          r.getResourceUsage().getNofiles();
-                      result.resources.fsize = r.getResourceUsage().getFsize();
-                      result.resources.memlock =
-                          r.getResourceUsage().getMemlock();
-                      result.resources.stack = r.getResourceUsage().getStack();
-                      callback(result);
-                    })
+                    .then(
+                        [this, callback](auto res) {
+                          auto r = res.getResult();
+                          Result result;
+                          result.status = r.getStatus().which();
+                          if (r.getStatus().isSignal()) {
+                            result.signal = r.getStatus().getSignal();
+                          }
+                          if (r.getStatus().isReturnCode()) {
+                            result.return_code = r.getStatus().getReturnCode();
+                          }
+                          if (r.getStatus().isInternalError()) {
+                            result.error = r.getStatus().getInternalError();
+                          }
+                          result.resources.cpu_time =
+                              r.getResourceUsage().getCpuTime();
+                          result.resources.sys_time =
+                              r.getResourceUsage().getSysTime();
+                          result.resources.wall_time =
+                              r.getResourceUsage().getWallTime();
+                          result.resources.memory =
+                              r.getResourceUsage().getMemory();
+                          result.resources.nproc =
+                              r.getResourceUsage().getNproc();
+                          result.resources.nofiles =
+                              r.getResourceUsage().getNofiles();
+                          result.resources.fsize =
+                              r.getResourceUsage().getFsize();
+                          result.resources.memlock =
+                              r.getResourceUsage().getMemlock();
+                          result.resources.stack =
+                              r.getResourceUsage().getStack();
+                          callback(result);
+                        },
+                        [](auto exc) {})
                     .eagerlyEvaluate(nullptr);
               },
-              [fulfiller = ff](kj::Exception exc) {
+              [this, fulfiller = ff](kj::Exception exc) {
                 fulfiller->reject(std::move(exc));
               }));
 }
