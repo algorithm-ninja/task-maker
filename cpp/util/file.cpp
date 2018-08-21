@@ -141,6 +141,7 @@ int OsRead(const std::string& path, util::File::ChunkReceiver& chunk_receiver) {
     close(fd);
     return error;
   }
+  chunk_receiver(util::File::Chunk());
   return close(fd) == -1 ? errno : 0;
 }
 
@@ -152,20 +153,22 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
   if (fd == -1) {
     throw std::system_error(errno, std::system_category(), "Write " + path);
   }
-  auto finalize = [=]() {
-    KJ_DBG("Finalizing " + path);
-    if (fd == -1) return;
-    if (fsync(fd) == -1 || close(fd) == -1 ||
-        OsAtomicMove(temp_file, path, overwrite, exist_ok)) {
-      kj::UnwindDetector detector;
-      detector.catchExceptionsIfUnwinding([path]() {
-        throw std::system_error(errno, std::system_category(), "Write " + path);
-      });
-    }
+  auto done = kj::heap<bool>();
+  auto finalize = [done = done.get()]() {
+    KJ_REQUIRE(*done, "File never finalized!");
   };
-  return [fd, temp_file, path,
+  return [fd, temp_file, path, overwrite, exist_ok, done = std::move(done),
           _ = kj::defer(std::move(finalize))](util::File::Chunk chunk) mutable {
     if (fd == -1) return;
+    if (chunk.size() == 0) {
+      KJ_DBG("Finalizing " + path);
+      *done = true;
+      if (fsync(fd) == -1 || close(fd) == -1 ||
+          OsAtomicMove(temp_file, path, overwrite, exist_ok)) {
+        throw std::system_error(errno, std::system_category(), "Write " + path);
+      }
+      return;
+    }
     size_t pos = 0;
     while (pos < chunk.size()) {
       ssize_t written = write(fd, chunk.begin() + pos,  // NOLINT

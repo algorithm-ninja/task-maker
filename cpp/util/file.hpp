@@ -15,7 +15,8 @@ static const constexpr uint32_t kChunkSize = 1024 * 1024;
 class File {
  public:
   using Chunk = kj::ArrayPtr<const kj::byte>;
-  using ChunkReceiver = kj::Function<void(Chunk)>;
+  using ChunkReceiver =
+      kj::Function<void(Chunk)>;  // Empty chunk = end of file.
 
   // Reads the file specified by path in chunks.
   static void Read(const std::string& path, ChunkReceiver chunk_receiver);
