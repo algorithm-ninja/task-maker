@@ -224,7 +224,7 @@ void Execution::getResult(std::function<void(Result)> callback,
                 return execution_.getResultRequest()
                     .send()
                     .then(
-                        [this, callback](auto res) {
+                        [callback](auto res) {
                           auto r = res.getResult();
                           Result result;
                           result.status = r.getStatus().which();
@@ -260,7 +260,7 @@ void Execution::getResult(std::function<void(Result)> callback,
                         [errored](auto exc) { errored(); })
                     .eagerlyEvaluate(nullptr);
               },
-              [this, fulfiller = ff](kj::Exception exc) {
+              [fulfiller = ff](kj::Exception exc) {
                 fulfiller->reject(std::move(exc));
               }),
       "Get result " + description_);
