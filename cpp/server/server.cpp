@@ -118,7 +118,8 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
   util::UnionPromiseBuilder dependencies;
   auto add_dep = [&dependencies, this](uint32_t id) {
     dependencies.AddPromise(
-        frontend_context_.file_info_[id].forked_promise.addBranch());
+        frontend_context_.file_info_[id].forked_promise.addBranch(),
+        description_ + " dep to " + std::to_string(id));
   };
   if (executable_) add_dep(executable_);
   if (stdin_) add_dep(stdin_);
@@ -126,8 +127,10 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
     add_dep(input.second);
   }
   dependencies.AddPromise(
-      frontend_context_.forked_evaluation_start_.addBranch());
-  frontend_context_.builder_.AddPromise(std::move(finish_promise_.promise));
+      frontend_context_.forked_evaluation_start_.addBranch(),
+      description_ + " evaluation start");
+  frontend_context_.builder_.AddPromise(std::move(finish_promise_.promise),
+                                        description_ + " finish_promise_");
   frontend_context_.scheduled_tasks_++;
   return std::move(dependencies)
       .Finalize()
@@ -205,8 +208,10 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                         } else {
                           frontend_context_.file_info_[id]
                               .promise.fulfiller->fulfill();
-                          builder.AddPromise(frontend_context_.file_info_[id]
-                                                 .forked_promise.addBranch());
+                          builder.AddPromise(
+                              frontend_context_.file_info_[id]
+                                  .forked_promise.addBranch(),
+                              description_ + " output " + std::to_string(id));
                         }
                       };
                       if (stdout_) {
@@ -241,6 +246,7 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                               KJ_LOG(WARNING, "Execution stalled",
                                      frontend_context_.ready_tasks_,
                                      frontend_context_.scheduled_tasks_);
+                              frontend_context_.builder_.PrintRemainig();
                               frontend_context_.evaluation_early_stop_
                                   .fulfiller->reject(KJ_EXCEPTION(
                                       FAILED, "Execution stalled!"));
@@ -262,6 +268,8 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                 INFO,
                 "Marking execution as failed because its dependencies failed",
                 description_);
+            start_.fulfiller->reject(kj::cp(exc));
+            finish_promise_.fulfiller->reject(kj::cp(exc));
             for (auto f : outputs_) {
               KJ_LOG(INFO, "Marking as failed", f.first, f.second);
               auto& ff =
@@ -313,10 +321,14 @@ kj::Promise<void> FrontendContext::startEvaluation(
                     fulfiller->reject(kj::cp(exc));
                     return exc;
                   })
-              .eagerlyEvaluate(nullptr));
+              .eagerlyEvaluate(nullptr),
+          "MaybeGet file " + std::to_string(file.first) + " " +
+              file.second.description);
     }
     // Wait for all files to be ready
-    builder_.AddPromise(file.second.forked_promise.addBranch());
+    builder_.AddPromise(file.second.forked_promise.addBranch(),
+                        "Input file " + std::to_string(file.first) + " " +
+                            file.second.description);
   }
   return std::move(builder_)
       .Finalize()

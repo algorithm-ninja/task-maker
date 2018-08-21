@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <set>
 
 #include <kj/async.h>
 #include <kj/debug.h>
@@ -52,6 +53,7 @@ class UnionPromiseBuilder {
     size_t resolved = 0;
     std::vector<kj::Promise<void>> promises;
     bool finalized = false;
+    std::multiset<std::string> pending;
   };
 
  public:
@@ -64,30 +66,35 @@ class UnionPromiseBuilder {
     p_.promise = p_.promise.attach(std::move(info), std::move(p_.fulfiller));
   }
 
-  void AddPromise(kj::Promise<void> p) {
+  void AddPromise(kj::Promise<void> p, std::string what = "unanamed") {
+    info_->pending.insert(what);
     info_->promises.push_back(
         std::move(p)
             .then(
-                [info = info_, fulfiller = fulfiller_]() {
+                [this, info = info_, fulfiller = fulfiller_, what]() {
                   info->resolved++;
-                  if (!info->fatalFailure) {
-                    KJ_DBG("XXX Promise success", info->resolved,
-                           info->promises.size());
-                  }
+                  info->pending.erase(info->pending.find(what));
+//                  if (!info->fatalFailure) {
+//                    KJ_DBG("XXX Promise success", info->resolved,
+//                           info->promises.size(), what);
+//                    PrintRemainig();
+//                  }
                   if (info->finalized &&
                       info->resolved == info->promises.size()) {
                     fulfiller->fulfill();
                   }
                 },
-                [fulfiller = fulfiller_, info = info_,
-                 idx = info_->promises.size()](kj::Exception exc) {
+                [this, fulfiller = fulfiller_, info = info_,
+                 idx = info_->promises.size(), what](kj::Exception exc) {
+                  info->pending.erase(info->pending.find(what));
                   // Cancel all other promises
                   if (info->fatalFailure) {
                     fulfiller->reject(kj::cp(exc));
                   } else {
                     info->resolved++;
-                    KJ_DBG("XXX Promise failed", info->resolved,
-                           info->promises.size());
+//                    KJ_DBG("XXX Promise failed", info->resolved,
+//                           info->promises.size(), what);
+//                    PrintRemainig();
                     if (info->finalized &&
                         info->resolved == info->promises.size()) {
                       fulfiller->fulfill();
@@ -110,6 +117,12 @@ class UnionPromiseBuilder {
   }
 
   int GetMissing() { return info_->promises.size() - info_->resolved; }
+
+  void PrintRemainig() {
+    KJ_DBG("YYY Pending promises:");
+    for (std::string w : info_->pending)
+      KJ_DBG("YYY    ", w);
+  }
 
  private:
   kj::PromiseFulfillerPair<void> p_;

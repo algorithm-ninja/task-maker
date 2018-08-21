@@ -28,7 +28,8 @@ Frontend::Frontend(std::string server, int port)
                             .registerFrontendRequest()
                             .send()
                             .then([](auto res) { return res.getContext(); })),
-      stop_request_(kj::READY_NOW) {}
+      stop_request_(kj::READY_NOW),
+      finish_builder_(false) {}
 
 File* Frontend::provideFile(const std::string& path,
                             const std::string& description,
@@ -57,7 +58,8 @@ void Frontend::evaluate() {
     auto req = frontend_context_.startEvaluationRequest();
     req.setSender(kj::heap<FileProvider>(known_files_));
     return req.send().ignoreResult();
-  }));
+  }),
+                             "Evaluate");
   std::move(finish_builder_).Finalize().wait(client_.getWaitScope());
   stop_request_.wait(client_.getWaitScope());
 }
@@ -77,13 +79,15 @@ void Frontend::getFileContentsAsString(
         kj::Promise<void> ret = req.send().ignoreResult().then(
             [output_ptr, callback]() { callback(*output_ptr); });
         return std::move(ret);
-      }));
+      }),
+      "Get file");
 }
 
 void Frontend::getFileContentsToFile(File* file, const std::string& path,
                                      bool overwrite, bool exist_ok) {
-  finish_builder_.AddPromise(file->forked_promise.addBranch().then(
-      [this, path, exist_ok, overwrite](auto file) {
+  finish_builder_.AddPromise(
+      file->forked_promise.addBranch().then([this, path, exist_ok,
+                                             overwrite](auto file) {
         auto req = frontend_context_.getFileContentsRequest();
         req.setFile(file);
         KJ_IF_MAYBE(receiver, util::File::Write(path, overwrite, exist_ok)) {
@@ -93,10 +97,12 @@ void Frontend::getFileContentsToFile(File* file, const std::string& path,
           KJ_FAIL_REQUIRE("getFileContentsToFile", strerror(errno));
         }
         return req.send().ignoreResult();
-      }));
+      }),
+      "Get file");
 }
 
 void Frontend::stopEvaluation() {
+  KJ_DBG("Sending stop request");
   stop_request_ =
       frontend_context_.stopEvaluationRequest().send().ignoreResult();
 }
@@ -190,11 +196,13 @@ File* Execution::output(const std::string& name, bool is_executable) {
 }
 
 void Execution::notifyStart(std::function<void()> callback) {
-  finish_builder_.AddPromise(execution_.notifyStartRequest()
-                                 .send()
-                                 .ignoreResult()
-                                 .then([callback]() { callback(); })
-                                 .eagerlyEvaluate(nullptr));
+  finish_builder_.AddPromise(
+      execution_.notifyStartRequest()
+          .send()
+          .ignoreResult()
+          .then([callback]() { callback(); }, [](auto exc) {})
+          .eagerlyEvaluate(nullptr),
+      "Notify start " + description_);
 }
 
 void Execution::getResult(std::function<void(Result)> callback) {
@@ -254,6 +262,7 @@ void Execution::getResult(std::function<void(Result)> callback,
               },
               [this, fulfiller = ff](kj::Exception exc) {
                 fulfiller->reject(std::move(exc));
-              }));
+              }),
+      "Get result " + description_);
 }
 }  // namespace frontend
