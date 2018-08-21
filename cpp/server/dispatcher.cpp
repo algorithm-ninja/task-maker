@@ -82,8 +82,7 @@ Dispatcher::AddRequest(capnproto::Request::Reader request,
             return std::move(result);
           },
           [fulfiller = ff](kj::Exception exc) {
-            fulfiller->rejectIfThrows(
-                []() { KJ_FAIL_ASSERT("Execution failed"); });
+            fulfiller->reject(KJ_EXCEPTION(FAILED, kj::cp(exc)));
             return exc;
           })
       .eagerlyEvaluate(nullptr);

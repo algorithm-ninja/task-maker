@@ -318,11 +318,14 @@ kj::Promise<void> File::HandleRequestFile(
   // still guaranteeing in-order processing (when capnp implements streams?)
   // Possibly by using UnionPromiseBuilder?
   Read(path, [receiver, &prev_chunk](Chunk chunk) mutable {
-    prev_chunk = prev_chunk.then([receiver, chunk]() mutable {
-      auto req = receiver.sendChunkRequest();
-      req.setChunk(chunk);
-      return req.send().ignoreResult();
-    });
+    prev_chunk = prev_chunk.then(
+        [receiver,
+         chunk = std::string(chunk.asChars().begin(), chunk.size())]() mutable {
+          auto req = receiver.sendChunkRequest();
+          req.setChunk(
+              kj::ArrayPtr<const char>(chunk.c_str(), chunk.size()).asBytes());
+          return req.send().ignoreResult();
+        });
   });
   return prev_chunk;
 }
