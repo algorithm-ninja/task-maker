@@ -67,7 +67,8 @@ class Execution : public capnproto::Execution::Server {
 class FrontendContext : public capnproto::FrontendContext::Server {
  public:
   KJ_DISALLOW_COPY(FrontendContext);
-  FrontendContext(server::Dispatcher& dispatcher) : dispatcher_(dispatcher) {}
+  FrontendContext(server::Dispatcher& dispatcher)
+      : dispatcher_(dispatcher), builder_(false) {}
   kj::Promise<void> provideFile(ProvideFileContext context);
   kj::Promise<void> addExecution(AddExecutionContext context);
   kj::Promise<void> startEvaluation(StartEvaluationContext context);

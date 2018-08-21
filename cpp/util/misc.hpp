@@ -48,6 +48,7 @@ inline std::function<bool(kj::StringPtr)> setInt(int& var) {
 
 class UnionPromiseBuilder {
   struct Info {
+    bool fatalFailure;
     size_t resolved = 0;
     std::vector<kj::Promise<void>> promises;
     bool finalized = false;
@@ -55,9 +56,10 @@ class UnionPromiseBuilder {
 
  public:
   UnionPromiseBuilder(bool fatalFailure = true)
-      : fatalFailure_(fatalFailure), p_(kj::newPromiseAndFulfiller<void>()) {
+      : p_(kj::newPromiseAndFulfiller<void>()) {
     auto info = kj::heap<Info>();
     info_ = info.get();
+    info_->fatalFailure = fatalFailure;
     fulfiller_ = p_.fulfiller.get();
     p_.promise = p_.promise.attach(std::move(info), std::move(p_.fulfiller));
   }
@@ -68,22 +70,24 @@ class UnionPromiseBuilder {
             .then(
                 [info = info_, fulfiller = fulfiller_]() {
                   info->resolved++;
+                  if (!info->fatalFailure) {
+                    KJ_DBG("XXX Promise success", info->resolved,
+                           info->promises.size());
+                  }
                   if (info->finalized &&
                       info->resolved == info->promises.size()) {
                     fulfiller->fulfill();
                   }
                 },
-                [fatalFailure_, fulfiller = fulfiller_, info = info_,
+                [fulfiller = fulfiller_, info = info_,
                  idx = info_->promises.size()](kj::Exception exc) {
                   // Cancel all other promises
-                  if (fatalFailure_) {
-                    std::swap(info->promises[0], info->promises[idx]);
-                    while (info->promises.size() > 1) {
-                      info->promises.pop_back();
-                    }
+                  if (info->fatalFailure) {
                     fulfiller->reject(kj::cp(exc));
                   } else {
                     info->resolved++;
+                    KJ_DBG("XXX Promise failed", info->resolved,
+                           info->promises.size());
                     if (info->finalized &&
                         info->resolved == info->promises.size()) {
                       fulfiller->fulfill();
@@ -96,6 +100,9 @@ class UnionPromiseBuilder {
 
   kj::Promise<void> Finalize() && KJ_WARN_UNUSED_RESULT {
     info_->finalized = true;
+    if (!info_->fatalFailure) {
+      KJ_DBG("XXX Finalizing builder", info_->resolved, info_->promises.size());
+    }
     if (info_->resolved == info_->promises.size()) {
       fulfiller_->fulfill();
     }
@@ -105,7 +112,6 @@ class UnionPromiseBuilder {
   int GetMissing() { return info_->promises.size() - info_->resolved; }
 
  private:
-  bool fatalFailure_;
   kj::PromiseFulfillerPair<void> p_;
   // TODO use std::move(this) rather that kj::heap
   Info* info_ = nullptr;

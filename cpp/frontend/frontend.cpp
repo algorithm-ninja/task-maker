@@ -28,7 +28,6 @@ Frontend::Frontend(std::string server, int port)
                             .registerFrontendRequest()
                             .send()
                             .then([](auto res) { return res.getContext(); })),
-      builder_(false),
       stop_request_(kj::READY_NOW) {}
 
 File* Frontend::provideFile(const std::string& path,

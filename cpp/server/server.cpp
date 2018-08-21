@@ -199,8 +199,9 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                           KJ_LOG(INFO, "Marking file as failed", id,
                                  description_);
                           frontend_context_.file_info_[id]
-                              .promise.fulfiller->reject(
-                                  KJ_EXCEPTION(FAILED, "Dependency failed"));
+                              .promise.fulfiller->reject(KJ_EXCEPTION(
+                                  FAILED, "File generation failed caused by " +
+                                              description_));
                         } else {
                           frontend_context_.file_info_[id]
                               .promise.fulfiller->fulfill();
@@ -257,12 +258,17 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                 .eagerlyEvaluate(nullptr);
           },
           [this](kj::Exception exc) {
-            KJ_LOG(INFO, "Marking execution as failed", description_);
+            KJ_LOG(
+                INFO,
+                "Marking execution as failed because its dependencies failed",
+                description_);
             for (auto f : outputs_) {
               KJ_LOG(INFO, "Marking as failed", f.first, f.second);
               auto& ff =
                   frontend_context_.file_info_[f.second].promise.fulfiller;
-              if (ff) ff->reject(KJ_EXCEPTION(FAILED, "Dependency failed"));
+              if (ff)
+                ff->reject(
+                    KJ_EXCEPTION(FAILED, "Dependency failed: " + description_));
             }
             kj::throwRecoverableException(std::move(exc));
           });
@@ -315,7 +321,7 @@ kj::Promise<void> FrontendContext::startEvaluation(
   return std::move(builder_)
       .Finalize()
       .then([]() { KJ_LOG(INFO, "Evaluation success"); },
-            [](kj::Exception ex) { KJ_LOG(INFO, "Execution killed by", ex); })
+            [](kj::Exception ex) { KJ_LOG(INFO, "Evaluation killed by", ex); })
       .exclusiveJoin(std::move(evaluation_early_stop_.promise))
       .eagerlyEvaluate(nullptr);
 }
