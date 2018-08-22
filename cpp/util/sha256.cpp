@@ -91,6 +91,7 @@ void SHA256::init() {
 }
 
 void SHA256::update(const unsigned char* message, unsigned int len) {
+  if (!len) return;
   unsigned int block_nb;
   unsigned int new_len, rem_len, tmp_len;
   const unsigned char* shifted_message;
