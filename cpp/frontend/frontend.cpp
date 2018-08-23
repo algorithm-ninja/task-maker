@@ -22,6 +22,43 @@ class FileProvider : public capnproto::FileSender::Server {
 
 }  // namespace
 
+void File::getContentsAsString(
+    std::function<void(const std::string&)> callback) {
+  frontend_.finish_builder_.AddPromise(
+      forked_promise.addBranch().then([this, callback](auto file) {
+        auto req = frontend_.frontend_context_.getFileContentsRequest();
+        auto output = kj::heap<std::string>();
+        auto output_ptr = output.get();
+        req.setFile(file);
+        req.setReceiver(kj::heap<util::File::Receiver>(
+            [output = std::move(output)](util::File::Chunk data) mutable {
+              *output += std::string(data.asChars().begin(), data.size());
+            }));
+        kj::Promise<void> ret = req.send().ignoreResult().then(
+            [output_ptr, callback]() { callback(*output_ptr); });
+        return std::move(ret);
+      }),
+      "Get file");
+}
+
+void File::getContentsToFile(const std::string& path, bool overwrite,
+                                 bool exist_ok) {
+  frontend_.finish_builder_.AddPromise(
+      forked_promise.addBranch().then([this, path, exist_ok,
+                                       overwrite](auto file) {
+        auto req = frontend_.frontend_context_.getFileContentsRequest();
+        req.setFile(file);
+        KJ_IF_MAYBE(receiver, util::File::Write(path, overwrite, exist_ok)) {
+          req.setReceiver(kj::heap<util::File::Receiver>(std::move(*receiver)));
+        }
+        else {
+          KJ_FAIL_REQUIRE("getFileContentsToFile", strerror(errno));
+        }
+        return req.send().ignoreResult();
+      }),
+      "Get file");
+}
+
 Frontend::Frontend(std::string server, int port)
     : client_(server, port),
       frontend_context_(client_.getMain<capnproto::MainServer>()
@@ -40,7 +77,7 @@ File* Frontend::provideFile(const std::string& path,
   hash.ToCapnp(req.initHash());
   req.setDescription(description);
   req.setIsExecutable(is_executable);
-  files_.push_back(File::New(req.send()));
+  files_.push_back(File::New(req.send(), *this));
   return files_.back().get();
 }
 
@@ -49,7 +86,7 @@ Execution* Frontend::addExecution(const std::string& description) {
   req.setDescription(description);
   executions_.push_back(std::make_unique<Execution>(
       description, req.send().then([](auto r) { return r.getExecution(); }),
-      files_, builder_, finish_builder_));
+      files_, builder_, finish_builder_, *this));
   return executions_.back().get();
 }
 
@@ -62,43 +99,6 @@ void Frontend::evaluate() {
                              "Evaluate");
   std::move(finish_builder_).Finalize().wait(client_.getWaitScope());
   stop_request_.wait(client_.getWaitScope());
-}
-
-void Frontend::getFileContentsAsString(
-    File* file, std::function<void(const std::string&)> callback) {
-  finish_builder_.AddPromise(
-      file->forked_promise.addBranch().then([this, callback](auto file) {
-        auto req = frontend_context_.getFileContentsRequest();
-        auto output = kj::heap<std::string>();
-        auto output_ptr = output.get();
-        req.setFile(file);
-        req.setReceiver(kj::heap<util::File::Receiver>(
-            [output = std::move(output)](util::File::Chunk data) mutable {
-              *output += std::string(data.asChars().begin(), data.size());
-            }));
-        kj::Promise<void> ret = req.send().ignoreResult().then(
-            [output_ptr, callback]() { callback(*output_ptr); });
-        return std::move(ret);
-      }),
-      "Get file");
-}
-
-void Frontend::getFileContentsToFile(File* file, const std::string& path,
-                                     bool overwrite, bool exist_ok) {
-  finish_builder_.AddPromise(
-      file->forked_promise.addBranch().then([this, path, exist_ok,
-                                             overwrite](auto file) {
-        auto req = frontend_context_.getFileContentsRequest();
-        req.setFile(file);
-        KJ_IF_MAYBE(receiver, util::File::Write(path, overwrite, exist_ok)) {
-          req.setReceiver(kj::heap<util::File::Receiver>(std::move(*receiver)));
-        }
-        else {
-          KJ_FAIL_REQUIRE("getFileContentsToFile", strerror(errno));
-        }
-        return req.send().ignoreResult();
-      }),
-      "Get file");
 }
 
 void Frontend::stopEvaluation() {
@@ -176,21 +176,21 @@ void Execution::setLimits(const Resources& limits) {
 File* Execution::stdout(bool is_executable) {
   auto req = execution_.stdoutRequest();
   req.setIsExecutable(is_executable);
-  files_.push_back(File::New(req.send()));
+  files_.push_back(File::New(req.send(), frontend_));
   return files_.back().get();
 }
 
 File* Execution::stderr(bool is_executable) {
   auto req = execution_.stderrRequest();
   req.setIsExecutable(is_executable);
-  files_.push_back(File::New(req.send()));
+  files_.push_back(File::New(req.send(), frontend_));
   return files_.back().get();
 }
 File* Execution::output(const std::string& name, bool is_executable) {
   auto req = execution_.outputRequest();
   req.setIsExecutable(is_executable);
   req.setName(name);
-  files_.push_back(File::New(req.send()));
+  files_.push_back(File::New(req.send(), frontend_));
   return files_.back().get();
 }
 

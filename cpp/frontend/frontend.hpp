@@ -34,6 +34,8 @@ struct Result {
   Resources resources;
 };
 
+class Frontend;
+
 class File {
   friend class Frontend;
   friend class Execution;
@@ -41,23 +43,34 @@ class File {
   kj::ForkedPromise<capnproto::File::Reader> forked_promise;
 
  protected:
+  Frontend& frontend_;
+
   void SetPromise(kj::Promise<capnproto::File::Reader>&& prom) {
     promise = std::move(prom);
     forked_promise = promise.fork();
   }
-  File() : promise(capnproto::File::Reader()), forked_promise(promise.fork()) {}
+  File(Frontend& frontend)
+      : promise(capnproto::File::Reader()),
+        forked_promise(promise.fork()),
+        frontend_(frontend) {}
 
  public:
   template <typename T>
-  static std::unique_ptr<File> New(kj::Promise<T>&& p);
+  static std::unique_ptr<File> New(kj::Promise<T>&& p, Frontend& frontend);
   virtual ~File() = default;
+
+  void getContentsAsString(
+      std::function<void(const std::string&)> callback);
+  void getContentsToFile(const std::string& path, bool overwrite,
+                             bool exist_ok);
 };
 
 template <typename T>
 class FileInst : public File {
  public:
-  FileInst(T&& p)
-      : pf(kj::newPromiseAndFulfiller<capnproto::File::Reader>()),
+  FileInst(T&& p, Frontend& frontend)
+      : File(frontend),
+        pf(kj::newPromiseAndFulfiller<capnproto::File::Reader>()),
         promise(std::move(p)) {
     SetPromise(std::move(pf.promise));
     promise = promise
@@ -80,8 +93,8 @@ class FileInst : public File {
 };
 
 template <typename T>
-std::unique_ptr<File> File::New(kj::Promise<T>&& p) {
-  return std::make_unique<FileInst<kj::Promise<T>>>(std::move(p));
+std::unique_ptr<File> File::New(kj::Promise<T>&& p, Frontend& frontend) {
+  return std::make_unique<FileInst<kj::Promise<T>>>(std::move(p), frontend);
 }
 
 class Execution {
@@ -89,12 +102,14 @@ class Execution {
   Execution(std::string description, capnproto::Execution::Client execution,
             std::vector<std::unique_ptr<File>>& files,
             util::UnionPromiseBuilder& builder,
-            util::UnionPromiseBuilder& finish_builder)
+            util::UnionPromiseBuilder& finish_builder,
+            Frontend& frontend)
       : description_(std::move(description)),
         execution_(execution),
         files_(files),
         builder_(builder),
-        finish_builder_(finish_builder) {}
+        finish_builder_(finish_builder),
+        frontend_(frontend) {}
 
   void setExecutablePath(const std::string& path);
   void setExecutable(const std::string& name, File* file);
@@ -124,9 +139,11 @@ class Execution {
   util::UnionPromiseBuilder& builder_;
   util::UnionPromiseBuilder& finish_builder_;
   util::UnionPromiseBuilder my_builder_;
+  Frontend& frontend_;
 };
 
 class Frontend {
+  friend class File;
  public:
   Frontend(std::string server, int port);
 
@@ -134,10 +151,6 @@ class Frontend {
                     bool is_executable);
   Execution* addExecution(const std::string& description);
   void evaluate();  // Starts evaluation and returns when complete.
-  void getFileContentsAsString(
-      File* file, std::function<void(const std::string&)> callback);
-  void getFileContentsToFile(File* file, const std::string& path,
-                             bool overwrite, bool exist_ok);
   void stopEvaluation();
 
  private:

@@ -158,9 +158,12 @@ class IOILikeUIInterface:
         self.testcases = testcases
         self.non_solutions = dict(
         )  # type: Dict[str, SourceFileCompilationStatus]
+        self.non_solutions_stderr = dict()  # type: Dict[str, str]
         self.solutions = dict()  # type: Dict[str, SourceFileCompilationStatus]
+        self.solutions_stderr = dict()  # type: Dict[str, str]
         self.testing = dict()  # type: Dict[str, SolutionStatus]
         self.running = dict()  # type: Dict[str, float]
+
         if do_print:
             self.printer = StdoutPrinter()
         else:
@@ -197,6 +200,12 @@ class IOILikeUIInterface:
                     self.non_solutions[
                         name] = SourceFileCompilationStatus.FAILURE
 
+            def getStderr(stderr):
+                self.printer.text(log_prefix + "STDERR\n")
+                self.printer.text(stderr)
+                self.non_solutions_stderr[name] = stderr
+
+            source_file.compilation_stderr.getContentsAsString(getStderr)
             source_file.compilation.notifyStart(notifyStartCompiltion)
             source_file.compilation.getResult(getResultCompilation)
         else:
@@ -229,6 +238,12 @@ class IOILikeUIInterface:
                     # TODO: write somewhere why
                     self.solutions[name] = SourceFileCompilationStatus.FAILURE
 
+            def getStderr(stderr):
+                self.printer.text(log_prefix + "STDERR\n")
+                self.printer.text(stderr)
+                self.solutions_stderr[name] = stderr
+
+            source_file.compilation_stderr.getContentsAsString(getStderr)
             source_file.compilation.notifyStart(notifyStartCompiltion)
             source_file.compilation.getResult(getResultCompilation)
         else:

@@ -62,7 +62,10 @@ PYBIND11_MODULE(task_maker_frontend, m) {
         return message;
       });
 
-  pybind11::class_<frontend::File>(m, "File");
+  pybind11::class_<frontend::File>(m, "File")
+      .def("getContentsAsString",
+           &frontend::File::getContentsAsString)
+      .def("getContentsToFile", &frontend::File::getContentsToFile);
 
   pybind11::class_<frontend::Execution>(m, "Execution")
       .def("setExecutablePath", &frontend::Execution::setExecutablePath)
@@ -95,8 +98,5 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def("addExecution", &frontend::Frontend::addExecution,
            pybind11::return_value_policy::reference)
       .def("evaluate", &frontend::Frontend::evaluate)
-      .def("stopEvaluation", &frontend::Frontend::stopEvaluation)
-      .def("getFileContentsAsString",
-           &frontend::Frontend::getFileContentsAsString)
-      .def("getFileContentsToFile", &frontend::Frontend::getFileContentsToFile);
+      .def("stopEvaluation", &frontend::Frontend::stopEvaluation);
 }
