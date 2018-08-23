@@ -79,6 +79,8 @@ def print_testcase_solution_result(printer: CursesPrinter, loading: str,
         printer.green("A", bold=True)
     elif result == TestcaseSolutionResult.WRONG_ANSWER:
         printer.red("W", bold=True)
+    elif result == TestcaseSolutionResult.PARTIAL:
+        printer.yellow("P", bold=True)
     elif result == TestcaseSolutionResult.SIGNAL:
         printer.red("R", bold=True)
     elif result == TestcaseSolutionResult.RETURN_CODE:

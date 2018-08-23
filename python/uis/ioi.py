@@ -35,21 +35,53 @@ class TestcaseSolutionResult(Enum):
     CHECKING = 3
     ACCEPTED = 4
     WRONG_ANSWER = 5
-    SIGNAL = 6
-    RETURN_CODE = 7
-    TIME_LIMIT = 8
-    WALL_LIMIT = 9
-    MEMORY_LIMIT = 10
-    MISSING_FILES = 11
-    INTERNAL_ERROR = 12
-    SKIPPED = 13
+    PARTIAL = 6
+    SIGNAL = 7
+    RETURN_CODE = 8
+    TIME_LIMIT = 9
+    WALL_LIMIT = 10
+    MEMORY_LIMIT = 11
+    MISSING_FILES = 12
+    INTERNAL_ERROR = 13
+    SKIPPED = 14
 
 
 class SubtaskSolutionResult(Enum):
+    # TODO add running?
     WAITING = 0
     ACCEPTED = 1
     PARTIAL = 2
     REJECTED = 3
+
+
+class CustomCheckerState:
+    def __init__(self, solution: str):
+        self.solution = solution
+        self.result = None  # type: Result
+        self.stdout = None  # type: str
+        self.stderr = None  # type: str
+        self.callback = None
+
+    def set_result(self, result: Result):
+        self.result = result
+        self._check()
+
+    def set_stdout(self, stdout: str):
+        self.stdout = stdout
+        self._check()
+
+    def set_stderr(self, stderr: str):
+        self.stderr = stderr
+        self._check()
+
+    def set_callback(self, callback):
+        self.callback = callback
+        self._check()
+
+    def _check(self):
+        if self.result is not None and self.stdout is not None and \
+                self.stderr is not None and self.callback is not None:
+            self.callback()
 
 
 class SolutionStatus:
@@ -76,6 +108,7 @@ class SolutionStatus:
                 self.testcase_scores[st_num][tc_num] = 0.0
 
     def update_eval_result(self, subtask: int, testcase: int, result: Result):
+        # TODO generate and store somewhere the message
         if result.status == ResultStatus.SIGNAL:
             self.testcase_results[subtask][
                 testcase] = TestcaseSolutionResult.SIGNAL
@@ -106,26 +139,60 @@ class SolutionStatus:
                 self._compute_st_score(subtask)
         # TODO store used resources
 
-    def update_check_result(self, subtask: int, testcase: int, result: Result):
-        if result.status == ResultStatus.SIGNAL:
+    def update_default_check_result(self, subtask: int, testcase: int,
+                                    result: Result):
+        if result.status == ResultStatus.SUCCESS:
+            self.testcase_scores[subtask][testcase] = 1.0
             self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.INTERNAL_ERROR
-        elif result.status == ResultStatus.INTERNAL_ERROR:
+                testcase] = TestcaseSolutionResult.ACCEPTED
+        elif result.status == ResultStatus.RETURN_CODE:
+            self.testcase_scores[subtask][testcase] = 0.0
             self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.INTERNAL_ERROR
-        # TODO check if the task has a custom checker
+                testcase] = TestcaseSolutionResult.WRONG_ANSWER
         else:
-            if result.status == ResultStatus.SUCCESS:
-                self.testcase_scores[subtask][testcase] = 1.0
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.INTERNAL_ERROR
+
+        self.st_remaining_cases[subtask] -= 1
+        if self.st_remaining_cases[subtask] == 0:
+            self._compute_st_score(subtask)
+
+    def update_custom_check_result(self, subtask: int, testcase: int,
+                                   state: CustomCheckerState):
+        if state.result.status != ResultStatus.SUCCESS:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.INTERNAL_ERROR
+            return
+        try:
+            score = float(state.stdout)
+        except ValueError:
+            if state.result.status != ResultStatus.SUCCESS:
                 self.testcase_results[subtask][
-                    testcase] = TestcaseSolutionResult.ACCEPTED
-            else:
-                self.testcase_scores[subtask][testcase] = 0.0
-                self.testcase_results[subtask][
-                    testcase] = TestcaseSolutionResult.WRONG_ANSWER
-            self.st_remaining_cases[subtask] -= 1
-            if self.st_remaining_cases[subtask] == 0:
-                self._compute_st_score(subtask)
+                    testcase] = TestcaseSolutionResult.INTERNAL_ERROR
+            return
+        if not 0.0 <= score <= 1.0:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.INTERNAL_ERROR
+            return
+        self.testcase_scores[subtask][testcase] = score
+        if score == 1.0:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.ACCEPTED
+            message = "Accepted"
+        elif score == 0.0:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.WRONG_ANSWER
+            message = "Wrong answer"
+        else:
+            self.testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.PARTIAL
+            message = "Parial score"
+        if state.stdout:
+            message = state.stdout
+
+        self.st_remaining_cases[subtask] -= 1
+        if self.st_remaining_cases[subtask] == 0:
+            self._compute_st_score(subtask)
 
     def _compute_st_score(self, subtask: int):
         scores = self.testcase_scores[subtask].values()
@@ -389,6 +456,8 @@ class IOIUIInterface:
                               checking: Execution):
         log_prefix = "Checking {} on case {} ".format(solution,
                                                       testcase).ljust(50)
+        has_custom_checker = self.task.checker
+        custom_checker_state = CustomCheckerState(solution)
         self.printer.text(log_prefix + "WAITING\n")
 
         def notifyStartChecking():
@@ -398,18 +467,35 @@ class IOIUIInterface:
             self.running[log_prefix] = time.monotonic()
 
         def getResultChecking(result: Result):
-            # TODO check if there is a custom checker
             del self.running[log_prefix]
-            if result.status == ResultStatus.SUCCESS:
-                self.printer.green(log_prefix + "SUCCESS\n")
+            if has_custom_checker:
+                if result.status == ResultStatus.SUCCESS:
+                    self.printer.green(log_prefix + "SUCCESS\n")
+                    custom_checker_state.set_result(result)
+                else:
+                    self.printer.red(log_prefix +
+                                     "FAIL: {}\n".format(result.status))
             else:
-                self.printer.red(log_prefix +
-                                 "FAIL: {}\n".format(result.status))
-            self.testing[solution].update_check_result(subtask, testcase,
-                                                       result)
+                self.printer.green(log_prefix + "SUCCESS\n")
+                self.testing[solution].update_default_check_result(
+                    subtask, testcase, result)
 
         def skippedChecking():
             self.printer.yellow(log_prefix + "SKIPPED\n")
 
+        def getStdout(stdout):
+            custom_checker_state.set_stdout(stdout)
+
+        def getStderr(stderr):
+            custom_checker_state.set_stderr(stderr)
+
+        def customCheckerResult():
+            self.testing[solution].update_custom_check_result(
+                subtask, testcase, custom_checker_state)
+
+        if has_custom_checker:
+            custom_checker_state.set_callback(customCheckerResult)
+            checking.stdout(False).getContentsAsString(getStdout)
+            checking.stderr(False).getContentsAsString(getStderr)
         checking.notifyStart(notifyStartChecking)
         checking.getResult(getResultChecking, skippedChecking)
