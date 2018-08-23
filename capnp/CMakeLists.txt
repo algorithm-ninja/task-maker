@@ -3,6 +3,7 @@ capnp_generate_cpp(CAPNP_SOURCES CAPNP_HEADERS
   file.capnp
   evaluation.capnp
   server.capnp
+  cache.capnp
 )
 
 add_library(

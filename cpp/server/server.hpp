@@ -2,6 +2,7 @@
 #define SERVER_SERVER_HPP
 
 #include "capnp/server.capnp.h"
+#include "server/cache.hpp"
 #include "server/dispatcher.hpp"
 #include "util/misc.hpp"
 #include "util/sha256.hpp"
@@ -67,8 +68,10 @@ class Execution : public capnproto::Execution::Server {
 class FrontendContext : public capnproto::FrontendContext::Server {
  public:
   KJ_DISALLOW_COPY(FrontendContext);
-  FrontendContext(server::Dispatcher& dispatcher)
-      : dispatcher_(dispatcher), builder_(false) {}
+  FrontendContext(Dispatcher& dispatcher, CacheManager& cache_manager)
+      : dispatcher_(dispatcher),
+        builder_(false),
+        cache_manager_(cache_manager) {}
   kj::Promise<void> provideFile(ProvideFileContext context);
   kj::Promise<void> addExecution(AddExecutionContext context);
   kj::Promise<void> startEvaluation(StartEvaluationContext context);
@@ -89,6 +92,7 @@ class FrontendContext : public capnproto::FrontendContext::Server {
       kj::newPromiseAndFulfiller<void>();
   uint32_t ready_tasks_ = 0;
   uint32_t scheduled_tasks_ = 0;
+  CacheManager& cache_manager_;
 };
 
 class Server : public capnproto::MainServer::Server {
@@ -100,6 +104,7 @@ class Server : public capnproto::MainServer::Server {
 
  private:
   Dispatcher dispatcher_;
+  CacheManager cache_manager_;
 };
 
 }  // namespace server

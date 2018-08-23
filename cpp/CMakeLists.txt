@@ -81,6 +81,7 @@ add_library(cpp_server
   server/dispatcher.cpp
   server/server.cpp
   server/main.cpp
+  server/cache.cpp
 )
 target_link_libraries(cpp_server
   cpp_util
