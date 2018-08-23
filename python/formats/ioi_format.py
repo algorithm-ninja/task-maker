@@ -6,6 +6,7 @@ import os
 import shutil
 import yaml
 from task_maker import args
+from task_maker.uis.ioi_finish_ui import IOIFinishUI
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
@@ -122,6 +123,11 @@ def gen_testcases(
             continue
         elif line.startswith("#COPY: "):
             testcase.input_file = line[7:].strip()
+            testcase.validator = validator
+            # in the old format the subtask number is 1-based
+            testcase.validator_args.extend(
+                [VALIDATION_INPUT_NAME,
+                 str(subtask_num + 1)])
         else:
             line = line.split("#")[0].strip()
             if not line:
@@ -285,6 +291,10 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile],
     if ui == args.UIS.CURSES:
         curses_ui.stop()
 
+    if ui != args.UIS.SILENT:
+        finish_ui = IOIFinishUI(task, ui_interface)
+        finish_ui.print()
+
 
 def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface
                     ) -> (Dict[Tuple[int, int], File], Dict[Tuple[
@@ -294,19 +304,32 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface
     validations = dict()  # type: Dict[Tuple[int, int], File]
     for st_num, subtask in task.subtasks.items():
         for tc_num, testcase in subtask.testcases.items():
+            if testcase.validator:
+                is_val_prepared = testcase.validator.prepared
+                testcase.validator.prepare(frontend)
+                if not is_val_prepared:
+                    ui_interface.add_non_solution(testcase.validator)
+
             # input file
             if testcase.input_file:
                 inputs[(st_num, tc_num)] = frontend.provideFile(
                     testcase.input_file, "Static input %d" % tc_num, False)
+                if testcase.validator:
+                    val = testcase.validator.execute(
+                        frontend, "Validation of input %d" % tc_num,
+                        testcase.validator_args)
+                    # TODO set cache mode
+                    # TODO set limits?
+                    val.addInput(VALIDATION_INPUT_NAME, inputs[(st_num,
+                                                                tc_num)])
+                    validations[(st_num, tc_num)] = val.stdout(False)
+
+                    ui_interface.add_validation(st_num, tc_num, val)
             else:
                 is_gen_prepared = testcase.generator.prepared
-                is_val_prepared = testcase.validator.prepared
                 testcase.generator.prepare(frontend)
-                testcase.validator.prepare(frontend)
                 if not is_gen_prepared:
                     ui_interface.add_non_solution(testcase.generator)
-                if not is_val_prepared:
-                    ui_interface.add_non_solution(testcase.validator)
 
                 gen = testcase.generator.execute(
                     frontend, "Generation of input %d" % tc_num,

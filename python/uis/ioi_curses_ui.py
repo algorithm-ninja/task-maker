@@ -2,22 +2,25 @@
 import time
 import curses
 import threading
+from task_maker.formats import Task
 
-from task_maker.printer import CursesPrinter
+from task_maker.printer import CursesPrinter, Printer
 from task_maker.uis.ioi import IOIUIInterface, SourceFileCompilationStatus, \
-    TestcaseGenerationStatus, SubtaskSolutionResult, TestcaseSolutionResult
+    TestcaseGenerationStatus, SubtaskSolutionResult, TestcaseSolutionStatus, \
+    SolutionStatus
 
 # frames per second of the UI
+from typing import Dict
+
 FPS = 10
 
 
-def print_solution_column(printer: CursesPrinter, solution: str,
-                          max_sol_len: int):
+def print_solution_column(printer: Printer, solution: str, max_sol_len: int):
     printer.text("%{}s ".format(max_sol_len) % solution)
 
 
-def print_compilation_status(printer: CursesPrinter, solution: str,
-                             max_sol_len: int, loading_char: str,
+def print_compilation_status(printer: Printer, solution: str, max_sol_len: int,
+                             loading_char: str,
                              status: SourceFileCompilationStatus):
     print_solution_column(printer, solution, max_sol_len)
     if status == SourceFileCompilationStatus.WAITING:
@@ -31,7 +34,7 @@ def print_compilation_status(printer: CursesPrinter, solution: str,
     printer.text("\n")
 
 
-def print_testcase_generation_status(printer: CursesPrinter,
+def print_testcase_generation_status(printer: Printer,
                                      status: TestcaseGenerationStatus):
     if status == TestcaseGenerationStatus.WAITING:
         printer.text(".")
@@ -51,7 +54,7 @@ def print_testcase_generation_status(printer: CursesPrinter,
         printer.red("F", bold=True)
 
 
-def print_subtask_result(printer: CursesPrinter, text: str,
+def print_subtask_result(printer: Printer, text: str,
                          result: SubtaskSolutionResult):
     if result == SubtaskSolutionResult.WAITING:
         printer.text(text)
@@ -67,40 +70,88 @@ def print_subtask_result(printer: CursesPrinter, text: str,
         raise ValueError(result)
 
 
-def print_testcase_solution_result(printer: CursesPrinter, loading: str,
-                                   result: TestcaseSolutionResult):
-    if result == TestcaseSolutionResult.WAITING:
+def print_testcase_solution_result(printer: Printer, loading: str,
+                                   result: TestcaseSolutionStatus):
+    if result == TestcaseSolutionStatus.WAITING:
         printer.text(".")
-    elif result == TestcaseSolutionResult.SOLVING:
+    elif result == TestcaseSolutionStatus.SOLVING:
         printer.blue(loading)
-    elif result == TestcaseSolutionResult.SOLVED:
+    elif result == TestcaseSolutionStatus.SOLVED:
         printer.text("s")
-    elif result == TestcaseSolutionResult.CHECKING:
+    elif result == TestcaseSolutionStatus.CHECKING:
         printer.text(loading)
-    elif result == TestcaseSolutionResult.ACCEPTED:
+    elif result == TestcaseSolutionStatus.ACCEPTED:
         printer.green("A", bold=True)
-    elif result == TestcaseSolutionResult.WRONG_ANSWER:
+    elif result == TestcaseSolutionStatus.WRONG_ANSWER:
         printer.red("W", bold=True)
-    elif result == TestcaseSolutionResult.PARTIAL:
+    elif result == TestcaseSolutionStatus.PARTIAL:
         printer.yellow("P", bold=True)
-    elif result == TestcaseSolutionResult.SIGNAL:
+    elif result == TestcaseSolutionStatus.SIGNAL:
         printer.red("R", bold=True)
-    elif result == TestcaseSolutionResult.RETURN_CODE:
+    elif result == TestcaseSolutionStatus.RETURN_CODE:
         printer.red("R", bold=True)
-    elif result == TestcaseSolutionResult.TIME_LIMIT:
+    elif result == TestcaseSolutionStatus.TIME_LIMIT:
         printer.red("T", bold=True)
-    elif result == TestcaseSolutionResult.WALL_LIMIT:
+    elif result == TestcaseSolutionStatus.WALL_LIMIT:
         printer.red("T", bold=True)
-    elif result == TestcaseSolutionResult.MEMORY_LIMIT:
+    elif result == TestcaseSolutionStatus.MEMORY_LIMIT:
         printer.red("M", bold=True)
-    elif result == TestcaseSolutionResult.MISSING_FILES:
+    elif result == TestcaseSolutionStatus.MISSING_FILES:
         printer.red("F", bold=True)
-    elif result == TestcaseSolutionResult.INTERNAL_ERROR:
+    elif result == TestcaseSolutionStatus.INTERNAL_ERROR:
         printer.bold("I", bold=True)
-    elif result == TestcaseSolutionResult.SKIPPED:
+    elif result == TestcaseSolutionStatus.SKIPPED:
         printer.text("X")
     else:
         raise ValueError(result)
+
+
+def print_solutions_result(printer: Printer, task: Task,
+                           solutions: Dict[str, SolutionStatus],
+                           max_sol_len: int, loading: str):
+    printer.text(" " * max_sol_len + " ")
+    max_score = sum(st.max_score for st in task.subtasks.values())
+    printer.bold("{:^5.0f}|".format(max_score))
+    for subtask in task.subtasks.values():
+        printer.bold("{:^5.0f}".format(subtask.max_score))
+    printer.text("\n")
+
+    for solution, status in solutions.items():
+        print_solution_column(printer, solution, max_sol_len)
+        if all([
+                s == SubtaskSolutionResult.WAITING
+                for s in status.subtask_results
+        ]):
+            printer.text(" ... ")
+        elif any([
+                s == SubtaskSolutionResult.RUNNING
+                for s in status.subtask_results
+        ]):
+            printer.text("  {}  ".format(loading))
+        else:
+            printer.text(" {:^3.0f} ".format(status.score))
+        printer.text("|")
+
+        for score, result in zip(status.subtask_scores.values(),
+                                 status.subtask_results):
+            if result == SubtaskSolutionResult.WAITING:
+                printer.text(" ... ")
+            elif result == SubtaskSolutionResult.RUNNING:
+                printer.text("  {}  ".format(loading))
+            else:
+                print_subtask_result(printer, " {:^3.0f} ".format(score),
+                                     result)
+
+        printer.text("  ")
+        for (st_num, testcases), st_result in zip(
+                status.testcase_results.items(), status.subtask_results):
+            print_subtask_result(printer, "[", st_result)
+            for tc_num, testcase in testcases.items():
+                print_testcase_solution_result(printer, loading,
+                                               testcase.status)
+            print_subtask_result(printer, "]", st_result)
+
+        printer.text("\n")
 
 
 class IOICursesUI:
@@ -143,7 +194,7 @@ class IOICursesUI:
         curses.endwin()
 
     def _loop(self, printer: CursesPrinter, loading: str):
-        max_sol_len = 4 + max([len(s) for s in self.interface.non_solutions] +
+        max_sol_len = 1 + max([len(s) for s in self.interface.non_solutions] +
                               [len(s) for s in self.interface.solutions] + [0])
 
         printer.bold("Running... %s\n" % self.interface.task.name)
@@ -153,58 +204,28 @@ class IOICursesUI:
         printer.text("\n")
 
         printer.blue("Compilation:\n", bold=True)
-        for name, status in self.interface.non_solutions.items():
+        for name, result in self.interface.non_solutions.items():
             print_compilation_status(printer, name, max_sol_len, loading,
-                                     status)
+                                     result.status)
         printer.text("\n")
-        for name, status in self.interface.solutions.items():
+        for name, result in self.interface.solutions.items():
             print_compilation_status(printer, name, max_sol_len, loading,
-                                     status)
+                                     result.status)
         printer.text("\n")
 
         printer.blue("Generation: ", bold=True)
         for st_num, subtask in self.interface.subtasks.items():
             printer.text("[")
             for tc_num, testcase in subtask.items():
-                print_testcase_generation_status(printer, testcase)
+                print_testcase_generation_status(printer, testcase.status)
             printer.text("]")
         printer.text("\n\n")
 
         printer.blue("Evaluation:\n", bold=True)
-        for solution, status in self.interface.testing.items():
-            print_solution_column(printer, solution, max_sol_len)
-            if all([
-                    s == SubtaskSolutionResult.WAITING
-                    for s in status.subtask_results
-            ]):
-                printer.text(" ... ")
-            elif any([
-                    s == SubtaskSolutionResult.RUNNING
-                    for s in status.subtask_results
-            ]):
-                printer.text("  {}  ".format(loading))
-            else:
-                printer.text(" {:^3.0f} ".format(status.score))
-            printer.text("|")
 
-            for score, result in zip(status.subtask_scores.values(),
-                                     status.subtask_results):
-                if result == SubtaskSolutionResult.WAITING:
-                    printer.text(" ... ")
-                elif result == SubtaskSolutionResult.RUNNING:
-                    printer.text("  {}  ".format(loading))
-                else:
-                    print_subtask_result(printer, " {:^3.0f} ".format(score), result)
+        print_solutions_result(printer, self.interface.task,
+                               self.interface.testing, max_sol_len, loading)
 
-            printer.text("  ")
-            for (st_num, testcases), st_result in zip(
-                    status.testcase_results.items(), status.subtask_results):
-                print_subtask_result(printer, "[", st_result)
-                for tc_num, testcase in testcases.items():
-                    print_testcase_solution_result(printer, loading, testcase)
-                print_subtask_result(printer, "]", st_result)
-
-            printer.text("\n")
         printer.text("\n")
 
         printer.blue("Running tasks:\n", bold=True)
