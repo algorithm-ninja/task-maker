@@ -204,10 +204,6 @@ void Execution::notifyStart(std::function<void()> callback) {
       "Notify start " + description_);
 }
 
-void Execution::getResult(std::function<void(Result)> callback) {
-  getResult(std::move(callback), []() {});
-}
-
 void Execution::getResult(std::function<void(Result)> callback,
                           std::function<void()> errored) {
   auto promise = kj::newPromiseAndFulfiller<void>();
@@ -256,7 +252,9 @@ void Execution::getResult(std::function<void(Result)> callback,
                               r.getResourceUsage().getStack();
                           callback(result);
                         },
-                        [errored](auto exc) { errored(); })
+                        [errored](auto exc) {
+                          if (errored) errored();
+                        })
                     .eagerlyEvaluate(nullptr);
               },
               [fulfiller = ff](kj::Exception exc) {

@@ -7,6 +7,27 @@
 
 #include "frontend/frontend.hpp"
 
+using namespace pybind11::literals;
+
+template <typename T>
+class DestroyWithGIL {
+ public:
+  explicit DestroyWithGIL(T t) : t_(t) {}
+  T& operator*() { return t_; }
+  ~DestroyWithGIL() {
+    pybind11::gil_scoped_acquire acquire;
+    t_ = T();
+  }
+
+ private:
+  T t_;
+};
+
+template <typename T>
+DestroyWithGIL<T> destroy_with_gil(T t) {
+  return DestroyWithGIL<T>(t);
+}
+
 PYBIND11_MODULE(task_maker_frontend, m) {
   m.doc() = "Task-maker frontend module";
   pybind11::class_<frontend::Resources>(m, "Resources")
@@ -64,7 +85,13 @@ PYBIND11_MODULE(task_maker_frontend, m) {
 
   pybind11::class_<frontend::File>(m, "File")
       .def("getContentsAsString",
-           &frontend::File::getContentsAsString)
+           [](frontend::File& f, std::function<void(std::string)> cb) {
+             f.getContentsAsString(
+                 [cb = destroy_with_gil(cb)](std::string s) mutable {
+                   pybind11::gil_scoped_acquire acquire;
+                   (*cb)(s);
+                 });
+           })
       .def("getContentsToFile", &frontend::File::getContentsToFile);
 
   pybind11::class_<frontend::Execution>(m, "Execution")
@@ -82,14 +109,27 @@ PYBIND11_MODULE(task_maker_frontend, m) {
            pybind11::return_value_policy::reference)
       .def("output", &frontend::Execution::output,
            pybind11::return_value_policy::reference)
-      .def("notifyStart", &frontend::Execution::notifyStart)
-      .def("getResult", (void (frontend::Execution::*)(
-                            std::function<void(frontend::Result)>)) &
-                            frontend::Execution::getResult)
+      .def("notifyStart",
+           [](frontend::Execution& f, std::function<void()> cb) {
+             f.notifyStart([cb = destroy_with_gil(cb)]() mutable {
+               pybind11::gil_scoped_acquire acquire;
+               (*cb)();
+             });
+           })
       .def("getResult",
-           (void (frontend::Execution::*)(std::function<void(frontend::Result)>,
-                                          std::function<void()>)) &
-               frontend::Execution::getResult);
+           [](frontend::Execution& f, std::function<void(frontend::Result)> cb,
+              std::function<void()> err = nullptr) {
+             f.getResult(
+                 [cb = destroy_with_gil(cb)](frontend::Result res) mutable {
+                   pybind11::gil_scoped_acquire acquire;
+                   (*cb)(res);
+                 },
+                 [err = destroy_with_gil(err)]() mutable {
+                   pybind11::gil_scoped_acquire acquire;
+                   if (*err) (*err)();
+                 });
+           },
+           "callback"_a, "error"_a = nullptr);
 
   pybind11::class_<frontend::Frontend>(m, "Frontend")
       .def(pybind11::init<std::string, int>())
@@ -97,6 +137,7 @@ PYBIND11_MODULE(task_maker_frontend, m) {
            pybind11::return_value_policy::reference)
       .def("addExecution", &frontend::Frontend::addExecution,
            pybind11::return_value_policy::reference)
-      .def("evaluate", &frontend::Frontend::evaluate)
+      .def("evaluate", &frontend::Frontend::evaluate,
+           pybind11::call_guard<pybind11::gil_scoped_release>())
       .def("stopEvaluation", &frontend::Frontend::stopEvaluation);
 }

@@ -126,9 +126,8 @@ class Execution {
 
   void notifyStart(std::function<void()> callback);
 
-  void getResult(std::function<void(Result)> callback);
   void getResult(std::function<void(Result)> callback,
-                 std::function<void()> errored);
+                 std::function<void()> errored = nullptr);
 
  private:
   std::string description_;
@@ -142,6 +141,7 @@ class Execution {
 
 class Frontend {
   friend class File;
+
  public:
   Frontend(std::string server, int port);
 
