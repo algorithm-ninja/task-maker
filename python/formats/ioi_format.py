@@ -5,6 +5,7 @@ import glob
 import os
 import shutil
 import yaml
+from task_maker import args
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
@@ -267,19 +268,23 @@ def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
     return task, sols
 
 
-def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile]):
+def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile],
+                  ui: args.UIS):
     ui_interface = IOILikeUIInterface(
         task,
         dict((st_num, [tc for tc in st.testcases.keys()])
-             for st_num, st in task.subtasks.items()))
-    ui = IOILikeCursesUI(ui_interface)
-    # ui.start()
+             for st_num, st in task.subtasks.items()), ui == args.UIS.PRINT)
+    if ui == args.UIS.CURSES:
+        ui = IOILikeCursesUI(ui_interface)
+        ui.start()
     ins, outs, vals = generate_inputs(frontend, task, ui_interface)
     evaluate_solutions(frontend, task, ins, outs, vals, solutions,
                        ui_interface)
 
     frontend.evaluate()
-    # ui.stop()
+    if ui == args.UIS.CURSES:
+        # ui.stop()
+        pass
 
 
 def generate_inputs(frontend, task: Task, ui_interface: IOILikeUIInterface

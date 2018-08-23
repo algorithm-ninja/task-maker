@@ -24,23 +24,17 @@ class Printer:
 
 class StdoutPrinter(Printer):
     def __init__(self) -> None:
-        def _get_color(color: int) -> str:
-            return curses.tparm(curses.tigetstr("setaf"), color).decode("utf8")
-
-        self.bold_fmt = curses.tparm(curses.tigetstr("bold")).decode()
-        if curses.COLORS >= 256:
-            self.green_fmt = _get_color(82)
-        else:
-            self.green_fmt = _get_color(curses.COLOR_GREEN)
-        self.red_fmt = _get_color(curses.COLOR_RED)
-        self.blue_fmt = _get_color(curses.COLOR_BLUE)
-        self.yellow_fmt = _get_color(curses.COLOR_YELLOW)
-        self.reset_fmt = curses.tparm(curses.tigetstr("sgr0")).decode()
-        self.right_fmt = curses.tparm(curses.tigetstr("cuf"), 1000).decode()
+        self.bold_fmt = "\033[1m"
+        self.green_fmt = "\033[32m"
+        self.red_fmt = "\033[31m"
+        self.blue_fmt = "\033[34m"
+        self.yellow_fmt = "\033[33m"
+        self.reset_fmt = "\033[0m"
+        self.right_fmt = "\033[1000C"
 
     # pylint: disable=no-self-use
     def left_fmt(self, amount: int) -> str:
-        return curses.tparm(curses.tigetstr("cub"), amount).decode()
+        return "\033[%dD" % amount
 
     # pylint: enable=no-self-use
 

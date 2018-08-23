@@ -90,7 +90,7 @@ def main() -> None:
 
     if format == "ioi":
         task, solutions = ioi_format.get_request(args)
-        ioi_format.evaluate_task(frontend, task, solutions)
+        ioi_format.evaluate_task(frontend, task, solutions, args.ui)
     # elif format == "tm":
     #     request = tm_format.get_request(args)
     #     solutions = [os.path.basename(sol.path) for sol in request.solutions]

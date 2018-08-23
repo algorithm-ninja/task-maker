@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from enum import Enum
 from task_maker.formats import Task, ScoreMode
+from task_maker.printer import StdoutPrinter, Printer
 from typing import List, Dict
 
 from task_maker.source_file import SourceFile
@@ -142,7 +143,8 @@ class SolutionStatus:
 
 
 class IOILikeUIInterface:
-    def __init__(self, task: Task, testcases: Dict[int, List[int]]):
+    def __init__(self, task: Task, testcases: Dict[int, List[int]],
+                 do_print: bool):
         self.task = task
         self.subtasks = dict(
         )  # type: Dict[int, Dict[int, TestcaseGenerationStatus]]
@@ -151,6 +153,10 @@ class IOILikeUIInterface:
         )  # type: Dict[str, SourceFileCompilationStatus]
         self.solutions = dict()  # type: Dict[str, SourceFileCompilationStatus]
         self.testing = dict()  # type: Dict[str, SolutionStatus]
+        if do_print:
+            self.printer = StdoutPrinter()
+        else:
+            self.printer = Printer()
 
         for st_num, subtask in testcases.items():
             self.subtasks[st_num] = dict()
@@ -160,17 +166,23 @@ class IOILikeUIInterface:
 
     def add_non_solution(self, source_file: SourceFile):
         name = source_file.name
+        log_prefix = "Compilation of non-solution {} ".format(name).ljust(50)
         self.non_solutions[name] = SourceFileCompilationStatus.WAITING
+        self.printer.text(log_prefix + "WAITING\n")
         if source_file.need_compilation:
 
             def notifyStartCompiltion():
+                self.printer.text(log_prefix + "START\n")
                 self.non_solutions[
                     name] = SourceFileCompilationStatus.COMPILING
 
             def getResultCompilation(result: Result):
                 if result.status == ResultStatus.SUCCESS:
+                    self.printer.green(log_prefix + "SUCCESS\n")
                     self.non_solutions[name] = SourceFileCompilationStatus.DONE
                 else:
+                    self.printer.red(log_prefix +
+                                     "FAIL: {}\n".format(result.status))
                     # TODO: write somewhere why
                     self.non_solutions[
                         name] = SourceFileCompilationStatus.FAILURE
@@ -178,110 +190,173 @@ class IOILikeUIInterface:
             source_file.compilation.notifyStart(notifyStartCompiltion)
             source_file.compilation.getResult(getResultCompilation)
         else:
+            self.printer.green(log_prefix + "SUCCESS\n")
             self.non_solutions[name] = SourceFileCompilationStatus.DONE
 
     def add_solution(self, source_file: SourceFile):
         name = source_file.name
+        log_prefix = "Compilation of solution {} ".format(name).ljust(50)
         self.solutions[name] = SourceFileCompilationStatus.WAITING
         self.testing[name] = SolutionStatus(source_file, self.task,
                                             self.testcases)
+        self.printer.text(log_prefix + "WAITING\n")
 
         if source_file.need_compilation:
 
             def notifyStartCompiltion():
+                self.printer.text(log_prefix + "START\n")
                 self.solutions[name] = SourceFileCompilationStatus.COMPILING
 
             def getResultCompilation(result: Result):
                 if result.status == ResultStatus.SUCCESS:
+                    self.printer.green(log_prefix + "SUCCESS\n")
                     self.solutions[name] = SourceFileCompilationStatus.DONE
                 else:
+                    self.printer.red(log_prefix +
+                                     "FAIL: {}\n".format(result.status))
                     # TODO: write somewhere why
                     self.solutions[name] = SourceFileCompilationStatus.FAILURE
 
             source_file.compilation.notifyStart(notifyStartCompiltion)
             source_file.compilation.getResult(getResultCompilation)
         else:
+            self.printer.green(log_prefix + "SUCCESS\n")
             self.solutions[name] = SourceFileCompilationStatus.DONE
 
     def add_generation(self, subtask: int, testcase: int,
                        generation: Execution):
+        log_prefix = "Generation of input {} of subtask {} ".format(
+            testcase, subtask).ljust(50)
+        self.printer.text(log_prefix + "WAITING\n")
+
         def notifyStartGeneration():
+            self.printer.text(log_prefix + "START\n")
             self.subtasks[subtask][
                 testcase] = TestcaseGenerationStatus.GENERATING
 
         def getResultGeneration(result: Result):
             if result.status == ResultStatus.SUCCESS:
+                self.printer.green(log_prefix + "SUCCESS\n")
                 self.subtasks[subtask][
                     testcase] = TestcaseGenerationStatus.GENERATED
             else:
+                self.printer.red(log_prefix +
+                                 "FAIL: {}\n".format(result.status))
                 # TODO: write somewhere why
                 self.subtasks[subtask][
                     testcase] = TestcaseGenerationStatus.FAILURE
 
+        def skippedGeneration():
+            self.printer.red(log_prefix + "SKIPPED\n")
+
         generation.notifyStart(notifyStartGeneration)
-        generation.getResult(getResultGeneration)
+        generation.getResult(getResultGeneration, skippedGeneration)
 
     def add_validation(self, subtask: int, testcase: int,
                        validation: Execution):
+        log_prefix = "Validation of input {} of subtask {} ".format(
+            testcase, subtask).ljust(50)
+        self.printer.text(log_prefix + "WAITING\n")
+
         def notifyStartValidation():
+            self.printer.text(log_prefix + "START\n")
             self.subtasks[subtask][
                 testcase] = TestcaseGenerationStatus.VALIDATING
 
         def getResultValidation(result: Result):
             if result.status == ResultStatus.SUCCESS:
+                self.printer.green(log_prefix + "SUCCESS\n")
                 self.subtasks[subtask][
                     testcase] = TestcaseGenerationStatus.VALIDATED
             else:
+                self.printer.red(log_prefix +
+                                 "FAIL: {}\n".format(result.status))
                 # TODO: write somewhere why
                 self.subtasks[subtask][
                     testcase] = TestcaseGenerationStatus.FAILURE
 
+        def skippedValidation():
+            self.printer.red(log_prefix + "SKIPPED\n")
+
         validation.notifyStart(notifyStartValidation)
-        validation.getResult(getResultValidation)
+        validation.getResult(getResultValidation, skippedValidation)
 
     def add_solving(self, subtask: int, testcase: int, solving: Execution):
+        log_prefix = "Generation of output {} of subtask {} ".format(
+            testcase, subtask).ljust(50)
+        self.printer.text(log_prefix + "WAITING\n")
+
         def notifyStartSolving():
+            self.printer.text(log_prefix + "START\n")
             self.subtasks[subtask][testcase] = TestcaseGenerationStatus.SOLVING
 
         def getResultSolving(result: Result):
             if result.status == ResultStatus.SUCCESS:
+                self.printer.green(log_prefix + "SUCCESS\n")
                 self.subtasks[subtask][
                     testcase] = TestcaseGenerationStatus.DONE
             else:
+                self.printer.red(log_prefix +
+                                 "FAIL: {}\n".format(result.status))
                 # TODO: write somewhere why
                 self.subtasks[subtask][
                     testcase] = TestcaseGenerationStatus.FAILURE
 
+        def skippedSolving():
+            self.printer.red(log_prefix + "SKIPPED\n")
+
         solving.notifyStart(notifyStartSolving)
-        solving.getResult(getResultSolving)
+        solving.getResult(getResultSolving, skippedSolving)
 
     def add_evaluate_solution(self, subtask: int, testcase: int, solution: str,
                               evaluation: Execution):
+        log_prefix = "Evaluate {} on case {} ".format(solution,
+                                                      testcase).ljust(50)
+        self.printer.text(log_prefix + "WAITING\n")
+
         def notifyStartEvaluation():
+            self.printer.text(log_prefix + "START\n")
             self.testing[solution].testcase_results[subtask][
                 testcase] = TestcaseSolutionResult.SOLVING
 
         def getResultEvaluation(result: Result):
+            if result.status == ResultStatus.SUCCESS:
+                self.printer.green(log_prefix + "SUCCESS\n")
+            else:
+                self.printer.red(log_prefix +
+                                 "FAIL: {}\n".format(result.status))
+
             self.testing[solution].update_eval_result(subtask, testcase,
                                                       result)
 
+        def skippedEvaluation():
+            self.printer.yellow(log_prefix + "SKIPPED\n")
+
         evaluation.notifyStart(notifyStartEvaluation)
-        evaluation.getResult(
-            getResultEvaluation,
-            lambda: print("Skipped evaluation", subtask, testcase, solution))
+        evaluation.getResult(getResultEvaluation, skippedEvaluation)
 
     def add_evaluate_checking(self, subtask: int, testcase: int, solution: str,
                               checking: Execution):
+        log_prefix = "Checking {} on case {} ".format(solution,
+                                                      testcase).ljust(50)
+        self.printer.text(log_prefix + "WAITING\n")
+
         def notifyStartChecking():
+            self.printer.text(log_prefix + "START\n")
             self.testing[solution].testcase_results[subtask][
                 testcase] = TestcaseSolutionResult.CHECKING
-            print("Started checking", subtask, testcase, solution)
 
         def getResultChecking(result: Result):
+            if result.status == ResultStatus.SUCCESS:
+                self.printer.green(log_prefix + "SUCCESS\n")
+            else:
+                self.printer.red(log_prefix +
+                                 "FAIL: {}\n".format(result.status))
             self.testing[solution].update_check_result(subtask, testcase,
                                                        result)
 
+        def skippedChecking():
+            self.printer.yellow(log_prefix + "SKIPPED\n")
+
         checking.notifyStart(notifyStartChecking)
-        checking.getResult(
-            getResultChecking,
-            lambda: print("Skipped checking", subtask, testcase, solution))
+        checking.getResult(getResultChecking, skippedChecking)
