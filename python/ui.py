@@ -100,6 +100,10 @@ class SolutionStatus:
         else:
             self.testcase_results[subtask][
                 testcase] = TestcaseSolutionResult.SOLVED
+        if result.status != ResultStatus.SUCCESS:
+            self.st_remaining_cases[subtask] -= 1
+            if self.st_remaining_cases[subtask] == 0:
+                self._compute_st_score(subtask)
         # TODO store used resources
 
     def update_check_result(self, subtask: int, testcase: int, result: Result):

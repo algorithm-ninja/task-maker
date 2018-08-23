@@ -62,7 +62,7 @@ def print_subtask_result(printer: CursesPrinter, text: str,
     elif result == SubtaskSolutionResult.REJECTED:
         printer.red(text)
     else:
-        printer.text(text)
+        raise ValueError(result)
 
 
 def print_testcase_solution_result(printer: CursesPrinter, loading: str,
