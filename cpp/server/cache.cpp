@@ -1,8 +1,12 @@
 #include "server/cache.hpp"
 #include <capnp/message.h>
+#include <capnp/serialize.h>
 #include <kj/debug.h>
 #include <algorithm>
+#include <fstream>
 #include "capnp/cache.capnp.h"
+#include "util/file.hpp"
+#include "util/flags.hpp"
 #include "util/sha256.hpp"
 
 namespace server {
@@ -116,7 +120,22 @@ bool RequestComparator::operator()(capnproto::Request::Reader a,
 }  // namespace detail
 
 CacheManager::CacheManager() {
-  // TODO: read
+  std::ifstream fin(Path());
+  if (fin) {
+    kj::std::StdInputStream is(fin);
+    while (true) {
+      try {
+        builders_.push_back(kj::heap<capnp::MallocMessageBuilder>());
+        capnp::readMessageCopy(is, *builders_.back());
+        auto entry = builders_.back()->getRoot<capnproto::CacheEntry>();
+        data_.emplace(entry.getRequest(), entry.getResult());
+      } catch (kj::Exception& exc) {
+        break;
+      }
+    }
+    fin.close();
+  }
+  fout_.open(Path(), std::ios_base::out | std::ios_base::app);
 }
 
 bool CacheManager::Has(capnproto::Request::Reader req) {
@@ -136,7 +155,12 @@ void CacheManager::Set(capnproto::Request::Reader req,
   entry.setRequest(req);
   entry.setResult(res);
   data_.emplace(entry.getRequest(), entry.getResult());
-  // TODO: write
+  capnp::writeMessage(os_, *builders_.back());
+  fout_.flush();
+}
+
+std::string CacheManager::Path() {
+  return util::File::JoinPath(Flags::store_directory, "cache");
 }
 
 }  // namespace server

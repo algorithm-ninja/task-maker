@@ -1,5 +1,7 @@
 #ifndef SERVER_CACHE_HPP
 #define SERVER_CACHE_HPP
+#include <kj/std/iostream.h>
+#include <fstream>
 #include <unordered_map>
 #include "server/dispatcher.hpp"
 
@@ -25,6 +27,10 @@ class CacheManager {
                      detail::RequestHasher, detail::RequestComparator>
       data_;
   std::vector<kj::Own<capnp::MessageBuilder>> builders_;
+  std::ofstream fout_;
+  kj::std::StdOutputStream os_{fout_};
+
+  static std::string Path();
 };
 }  // namespace server
 
