@@ -11,12 +11,6 @@ from task_maker.formats import Arch
 from task_maker.version import TASK_MAKER_VERSION
 from task_maker import CacheMode
 
-# TODO restore the UIs classes
-# class UIS(Enum):
-#     curses = CursesUI
-#     print = PrintUI
-#     silent = SilentUI
-
 
 class UIS(Enum):
     CURSES = 0

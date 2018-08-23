@@ -9,7 +9,7 @@ from task_maker import args
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
-from task_maker.uis.curses_ui import IOILikeCursesUI
+from task_maker.uis.ioi_curses_ui import IOILikeCursesUI
 from task_maker.ui import IOILikeUIInterface
 from task_maker.dependency_finder import find_dependency
 from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo

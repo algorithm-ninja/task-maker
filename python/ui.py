@@ -196,13 +196,12 @@ class IOILikeUIInterface:
                 else:
                     self.printer.red(log_prefix +
                                      "FAIL: {}\n".format(result.status))
-                    # TODO: write somewhere why
                     self.non_solutions[
                         name] = SourceFileCompilationStatus.FAILURE
 
             def getStderr(stderr):
-                self.printer.text(log_prefix + "STDERR\n")
-                self.printer.text(stderr)
+                if stderr:
+                    self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
                 self.non_solutions_stderr[name] = stderr
 
             source_file.compilation_stderr.getContentsAsString(getStderr)
@@ -235,12 +234,11 @@ class IOILikeUIInterface:
                 else:
                     self.printer.red(log_prefix +
                                      "FAIL: {}\n".format(result.status))
-                    # TODO: write somewhere why
                     self.solutions[name] = SourceFileCompilationStatus.FAILURE
 
             def getStderr(stderr):
-                self.printer.text(log_prefix + "STDERR\n")
-                self.printer.text(repr(stderr) + "\n")
+                if stderr:
+                    self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
                 self.solutions_stderr[name] = stderr
 
             source_file.compilation_stderr.getContentsAsString(getStderr)
@@ -278,6 +276,11 @@ class IOILikeUIInterface:
         def skippedGeneration():
             self.printer.red(log_prefix + "SKIPPED\n")
 
+        def getStderr(stderr):
+            if stderr:
+                self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+
+        generation.stderr(False).getContentsAsString(getStderr)
         generation.notifyStart(notifyStartGeneration)
         generation.getResult(getResultGeneration, skippedGeneration)
 
@@ -309,6 +312,11 @@ class IOILikeUIInterface:
         def skippedValidation():
             self.printer.red(log_prefix + "SKIPPED\n")
 
+        def getStderr(stderr):
+            if stderr:
+                self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+
+        validation.stderr(False).getContentsAsString(getStderr)
         validation.notifyStart(notifyStartValidation)
         validation.getResult(getResultValidation, skippedValidation)
 
@@ -338,6 +346,11 @@ class IOILikeUIInterface:
         def skippedSolving():
             self.printer.red(log_prefix + "SKIPPED\n")
 
+        def getStderr(stderr):
+            if stderr:
+                self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+
+        solving.stderr(False).getContentsAsString(getStderr)
         solving.notifyStart(notifyStartSolving)
         solving.getResult(getResultSolving, skippedSolving)
 
@@ -385,6 +398,7 @@ class IOILikeUIInterface:
             self.running[log_prefix] = time.monotonic()
 
         def getResultChecking(result: Result):
+            # TODO check if there is a custom checker
             del self.running[log_prefix]
             if result.status == ResultStatus.SUCCESS:
                 self.printer.green(log_prefix + "SUCCESS\n")
