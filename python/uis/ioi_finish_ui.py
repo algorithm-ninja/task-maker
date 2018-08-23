@@ -136,7 +136,7 @@ class IOIFinishUI:
         self.printer.text("\n")
         if self.interface.solutions[
                 solution].status == SourceFileCompilationStatus.FAILURE:
-            self.printer.red("Skipped due to compilation failed", bold=False)
+            self.printer.red("Skipped due to compilation failure", bold=False)
             self.printer.right("[{}]".format(solution))
             return
 

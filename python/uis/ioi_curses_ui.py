@@ -12,7 +12,7 @@ from task_maker.uis.ioi import IOIUIInterface, SourceFileCompilationStatus, \
 # frames per second of the UI
 from typing import Dict
 
-FPS = 10
+FPS = 30
 
 
 def print_solution_column(printer: Printer, solution: str, max_sol_len: int):
@@ -175,19 +175,36 @@ class IOICursesUI:
         for i in range(1, curses.COLORS):
             curses.init_pair(i, i, -1)
         curses.halfdelay(1)
-        pad = curses.newpad(1000, 1000)
+        pad = curses.newpad(10000, 1000)
         printer = CursesPrinter(pad)
         loading_chars = "-\\|/"
         cur_loading_char = 0
         pos_x, pos_y = 0, 0
         while not self.stopped:
             last_draw = time.monotonic()
-            max_y, max_x = stdscr.getmaxyx()
             cur_loading_char = (cur_loading_char + 1) % len(loading_chars)
             loading = loading_chars[cur_loading_char]
             pad.clear()
             self._loop(printer, loading)
+
+            try:
+                pressed_key = stdscr.getkey()
+                if pressed_key == "KEY_UP":
+                    pos_y -= 1
+                elif pressed_key == "KEY_DOWN":
+                    pos_y += 1
+                elif pressed_key == "KEY_LEFT":
+                    pos_x -= 1
+                elif pressed_key == "KEY_RIGHT":
+                    pos_x += 1
+                pos_x = max(pos_x, 0)
+                pos_y = max(pos_y, 0)
+            except curses.error:
+                pass
+
+            max_y, max_x = stdscr.getmaxyx()
             pad.refresh(pos_y, pos_x, 0, 0, max_y - 1, max_x - 1)
+
             if time.monotonic() - last_draw < 1 / FPS:
                 time.sleep(1 / FPS - (time.monotonic() - last_draw))
 
