@@ -275,16 +275,15 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile],
         dict((st_num, [tc for tc in st.testcases.keys()])
              for st_num, st in task.subtasks.items()), ui == args.UIS.PRINT)
     if ui == args.UIS.CURSES:
-        ui = IOILikeCursesUI(ui_interface)
-        ui.start()
+        curses_ui = IOILikeCursesUI(ui_interface)
+        curses_ui.start()
     ins, outs, vals = generate_inputs(frontend, task, ui_interface)
     evaluate_solutions(frontend, task, ins, outs, vals, solutions,
                        ui_interface)
 
     frontend.evaluate()
     if ui == args.UIS.CURSES:
-        # ui.stop()
-        pass
+        curses_ui.stop()
 
 
 def generate_inputs(frontend, task: Task, ui_interface: IOILikeUIInterface

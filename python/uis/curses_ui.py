@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
+import time
 import curses
 import threading
+
 from task_maker.printer import CursesPrinter
 from task_maker.ui import IOILikeUIInterface, SourceFileCompilationStatus, \
     TestcaseGenerationStatus, SubtaskSolutionResult, TestcaseSolutionResult
+
+# frames per second of the UI
+FPS = 10
 
 
 def print_solution_column(printer: CursesPrinter, solution: str,
@@ -67,7 +72,7 @@ def print_testcase_solution_result(printer: CursesPrinter, loading: str,
     elif result == TestcaseSolutionResult.SOLVING:
         printer.blue(loading)
     elif result == TestcaseSolutionResult.SOLVED:
-        printer.blue("s")
+        printer.text("s")
     elif result == TestcaseSolutionResult.CHECKING:
         printer.text(loading)
     elif result == TestcaseSolutionResult.ACCEPTED:
@@ -84,10 +89,14 @@ def print_testcase_solution_result(printer: CursesPrinter, loading: str,
         printer.red("T", bold=True)
     elif result == TestcaseSolutionResult.MEMORY_LIMIT:
         printer.red("M", bold=True)
-    elif result == TestcaseSolutionResult.MEMORY_LIMIT:
-        printer.bold("I", bold=True)
+    elif result == TestcaseSolutionResult.MISSING_FILES:
+        printer.red("F", bold=True)
     elif result == TestcaseSolutionResult.INTERNAL_ERROR:
         printer.bold("I", bold=True)
+    elif result == TestcaseSolutionResult.SKIPPED:
+        printer.text("X")
+    else:
+        raise ValueError(result)
 
 
 class IOILikeCursesUI:
@@ -117,13 +126,15 @@ class IOILikeCursesUI:
         cur_loading_char = 0
         pos_x, pos_y = 0, 0
         while not self.stopped:
+            last_draw = time.monotonic()
             max_y, max_x = stdscr.getmaxyx()
             cur_loading_char = (cur_loading_char + 1) % len(loading_chars)
             loading = loading_chars[cur_loading_char]
-
             pad.clear()
             self._loop(printer, loading)
             pad.refresh(pos_y, pos_x, 0, 0, max_y - 1, max_x - 1)
+            if time.monotonic() - last_draw < 1 / FPS:
+                time.sleep(1/FPS - (time.monotonic() - last_draw))
 
         curses.endwin()
 
@@ -171,3 +182,13 @@ class IOILikeCursesUI:
                 print_subtask_result(printer, "]", st_result)
 
             printer.text("\n")
+        printer.text("\n")
+
+        printer.blue("Running tasks:\n", bold=True)
+        running = sorted(
+            (t, n) for n, t in self.interface.running.copy().items())
+        now = time.monotonic()
+        for start, task in running:
+            duration = now - start
+            printer.text(" - {0: <50} {1: .1f}s\n".format(
+                task.strip(), duration))

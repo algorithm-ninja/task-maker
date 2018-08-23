@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import time
+
 from enum import Enum
 from task_maker.formats import Task, ScoreMode
 from task_maker.printer import StdoutPrinter, Printer
@@ -40,6 +42,7 @@ class TestcaseSolutionResult(Enum):
     MEMORY_LIMIT = 10
     MISSING_FILES = 11
     INTERNAL_ERROR = 12
+    SKIPPED = 13
 
 
 class SubtaskSolutionResult(Enum):
@@ -153,6 +156,7 @@ class IOILikeUIInterface:
         )  # type: Dict[str, SourceFileCompilationStatus]
         self.solutions = dict()  # type: Dict[str, SourceFileCompilationStatus]
         self.testing = dict()  # type: Dict[str, SolutionStatus]
+        self.running = dict()  # type: Dict[str, float]
         if do_print:
             self.printer = StdoutPrinter()
         else:
@@ -175,8 +179,10 @@ class IOILikeUIInterface:
                 self.printer.text(log_prefix + "START\n")
                 self.non_solutions[
                     name] = SourceFileCompilationStatus.COMPILING
+                self.running[log_prefix] = time.monotonic()
 
             def getResultCompilation(result: Result):
+                del self.running[log_prefix]
                 if result.status == ResultStatus.SUCCESS:
                     self.printer.green(log_prefix + "SUCCESS\n")
                     self.non_solutions[name] = SourceFileCompilationStatus.DONE
@@ -206,8 +212,10 @@ class IOILikeUIInterface:
             def notifyStartCompiltion():
                 self.printer.text(log_prefix + "START\n")
                 self.solutions[name] = SourceFileCompilationStatus.COMPILING
+                self.running[log_prefix] = time.monotonic()
 
             def getResultCompilation(result: Result):
+                del self.running[log_prefix]
                 if result.status == ResultStatus.SUCCESS:
                     self.printer.green(log_prefix + "SUCCESS\n")
                     self.solutions[name] = SourceFileCompilationStatus.DONE
@@ -233,8 +241,10 @@ class IOILikeUIInterface:
             self.printer.text(log_prefix + "START\n")
             self.subtasks[subtask][
                 testcase] = TestcaseGenerationStatus.GENERATING
+            self.running[log_prefix] = time.monotonic()
 
         def getResultGeneration(result: Result):
+            del self.running[log_prefix]
             if result.status == ResultStatus.SUCCESS:
                 self.printer.green(log_prefix + "SUCCESS\n")
                 self.subtasks[subtask][
@@ -262,8 +272,10 @@ class IOILikeUIInterface:
             self.printer.text(log_prefix + "START\n")
             self.subtasks[subtask][
                 testcase] = TestcaseGenerationStatus.VALIDATING
+            self.running[log_prefix] = time.monotonic()
 
         def getResultValidation(result: Result):
+            del self.running[log_prefix]
             if result.status == ResultStatus.SUCCESS:
                 self.printer.green(log_prefix + "SUCCESS\n")
                 self.subtasks[subtask][
@@ -289,8 +301,10 @@ class IOILikeUIInterface:
         def notifyStartSolving():
             self.printer.text(log_prefix + "START\n")
             self.subtasks[subtask][testcase] = TestcaseGenerationStatus.SOLVING
+            self.running[log_prefix] = time.monotonic()
 
         def getResultSolving(result: Result):
+            del self.running[log_prefix]
             if result.status == ResultStatus.SUCCESS:
                 self.printer.green(log_prefix + "SUCCESS\n")
                 self.subtasks[subtask][
@@ -318,8 +332,10 @@ class IOILikeUIInterface:
             self.printer.text(log_prefix + "START\n")
             self.testing[solution].testcase_results[subtask][
                 testcase] = TestcaseSolutionResult.SOLVING
+            self.running[log_prefix] = time.monotonic()
 
         def getResultEvaluation(result: Result):
+            del self.running[log_prefix]
             if result.status == ResultStatus.SUCCESS:
                 self.printer.green(log_prefix + "SUCCESS\n")
             else:
@@ -330,6 +346,8 @@ class IOILikeUIInterface:
                                                       result)
 
         def skippedEvaluation():
+            self.testing[solution].testcase_results[subtask][
+                testcase] = TestcaseSolutionResult.SKIPPED
             self.printer.yellow(log_prefix + "SKIPPED\n")
 
         evaluation.notifyStart(notifyStartEvaluation)
@@ -345,8 +363,10 @@ class IOILikeUIInterface:
             self.printer.text(log_prefix + "START\n")
             self.testing[solution].testcase_results[subtask][
                 testcase] = TestcaseSolutionResult.CHECKING
+            self.running[log_prefix] = time.monotonic()
 
         def getResultChecking(result: Result):
+            del self.running[log_prefix]
             if result.status == ResultStatus.SUCCESS:
                 self.printer.green(log_prefix + "SUCCESS\n")
             else:
