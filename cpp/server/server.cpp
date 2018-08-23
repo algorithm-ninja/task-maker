@@ -281,13 +281,17 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                 description_);
             start_.fulfiller->reject(kj::cp(exc));
             finish_promise_.fulfiller->reject(kj::cp(exc));
-            for (auto f : outputs_) {
-              KJ_LOG(INFO, "Marking as failed", f.first, f.second);
-              auto& ff =
-                  frontend_context_.file_info_[f.second].promise.fulfiller;
+            auto mark_as_failed = [this](std::string name, int id) {
+              KJ_LOG(INFO, description_, "Marking as failed", name, id);
+              auto& ff = frontend_context_.file_info_[id].promise.fulfiller;
               if (ff)
                 ff->reject(
                     KJ_EXCEPTION(FAILED, "Dependency failed: " + description_));
+            };
+            mark_as_failed("stdout", stdout_);
+            mark_as_failed("stdout", stderr_);
+            for (auto f : outputs_) {
+              mark_as_failed(f.first, f.second);
             }
             kj::throwRecoverableException(std::move(exc));
           });

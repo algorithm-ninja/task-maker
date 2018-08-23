@@ -1,6 +1,7 @@
 #ifndef UTIL_MISC_HPP
 #define UTIL_MISC_HPP
 #include <functional>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -52,6 +53,9 @@ class UnionPromiseBuilder {
     size_t resolved = 0;
     std::vector<kj::Promise<void>> promises;
     bool finalized = false;
+#ifdef DEBUG_UPB
+    std::multiset<std::string> pending;
+#endif
   };
 
  public:
@@ -66,22 +70,49 @@ class UnionPromiseBuilder {
 
   void AddPromise(kj::Promise<void> p, std::string what = "unanamed") {
     KJ_LOG(INFO, "Adding promise " + what);
+#ifdef DEBUG_UPB
+    info_->pending.insert(what);
+#endif
     info_->promises.push_back(
         std::move(p)
             .then(
-                [info = info_, fulfiller = fulfiller_, what]() {
+                [
+#ifdef DEBUG_UPB
+                    this,
+#endif
+                    info = info_, fulfiller = fulfiller_, what]() {
                   info->resolved++;
+#ifdef DEBUG_UPB
+                  info->pending.erase(info->pending.find(what));
+                  if (!info->fatalFailure) {
+                    KJ_DBG("XXX Promise success", info->resolved,
+                           info->promises.size(), what);
+                    PrintRemaining();
+                  }
+#endif
                   if (info->finalized &&
                       info->resolved == info->promises.size()) {
                     fulfiller->fulfill();
                   }
                 },
-                [fulfiller = fulfiller_, info = info_,
-                 idx = info_->promises.size(), what](kj::Exception exc) {
+                [
+#ifdef DEBUG_UPB
+                    this,
+#endif
+                    fulfiller = fulfiller_, info = info_,
+                    idx = info_->promises.size(), what](kj::Exception exc) {
+#ifdef DEBUG_UPB
+                  info->pending.erase(info->pending.find(what));
+#endif
                   if (info->fatalFailure) {
                     fulfiller->reject(kj::cp(exc));
                   } else {
                     info->resolved++;
+#ifdef DEBUG_UPB
+                    KJ_DBG("XXX Promise failed", info->resolved,
+                           info->promises.size(), what);
+                    PrintRemaining();
+#endif
                     if (info->finalized &&
                         info->resolved == info->promises.size()) {
                       fulfiller->fulfill();
@@ -103,6 +134,17 @@ class UnionPromiseBuilder {
   }
 
   int GetMissing() { return info_->promises.size() - info_->resolved; }
+
+#ifdef DEBUG_UPB
+  void PrintRemaining() {
+    KJ_DBG("YYY Pending promises:");
+    int i = 0;
+    for (std::string w : info_->pending) {
+      KJ_DBG("YYY    ", w);
+      if (i++ > 5) break;
+    }
+  }
+#endif
 
  private:
   kj::PromiseFulfillerPair<void> p_;
