@@ -321,8 +321,6 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface
 
                 ui_interface.add_generation(st_num, tc_num, gen)
 
-                # TODO write input file
-
                 val = testcase.validator.execute(
                     frontend, "Validation of input %d" % tc_num,
                     testcase.validator_args)
@@ -332,6 +330,10 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface
                 validations[(st_num, tc_num)] = val.stdout(False)
 
                 ui_interface.add_validation(st_num, tc_num, val)
+
+            if testcase.write_input_to:
+                inputs[(st_num, tc_num)].getContentsToFile(
+                    testcase.write_input_to, True, True)
 
             # output file
             if testcase.output_file:
@@ -362,7 +364,10 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface
                     outputs[(st_num, tc_num)] = sol.stdout(False)
 
                 ui_interface.add_solving(st_num, tc_num, sol)
-                # TODO write output file
+
+            if testcase.write_output_to:
+                outputs[(st_num, tc_num)].getContentsToFile(
+                    testcase.write_output_to, True, True)
     return inputs, outputs, validations
 
 
