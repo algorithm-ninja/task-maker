@@ -2,6 +2,7 @@
 #define SERVER_SERVER_HPP
 
 #include "capnp/server.capnp.h"
+#include "server/cache.hpp"
 #include "server/dispatcher.hpp"
 #include "util/misc.hpp"
 #include "util/sha256.hpp"
@@ -89,6 +90,7 @@ class FrontendContext : public capnproto::FrontendContext::Server {
       kj::newPromiseAndFulfiller<void>();
   uint32_t ready_tasks_ = 0;
   uint32_t scheduled_tasks_ = 0;
+  CacheManager cache_manager_;
 };
 
 class Server : public capnproto::MainServer::Server {

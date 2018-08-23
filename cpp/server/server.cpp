@@ -179,82 +179,88 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
               }
             }
             KJ_LOG(INFO, "Execution " + description_, request_);
-            // TODO: cache
+            auto process_result = [this, context](capnproto::Result::Reader
+                                                      result) mutable {
+              KJ_LOG(INFO, "Execution " + description_, "Execution done");
+              KJ_LOG(INFO, "Execution " + description_, result);
+              KJ_ASSERT(!result.getStatus().isInternalError(),
+                        result.getStatus().getInternalError());
+              if (cache_enabled_) {
+                frontend_context_.cache_manager_.Set(request_, result);
+              }
+              context.getResults().setResult(result);
+              util::UnionPromiseBuilder builder;
+              auto set_hash = [this, &builder, &result](
+                                  uint32_t id, const util::SHA256_t& hash) {
+                frontend_context_.file_info_[id].hash = hash;
+                if (!result.getStatus().isSuccess()) {
+                  KJ_LOG(INFO, "Marking file as failed", id, description_);
+                  frontend_context_.file_info_[id].promise.fulfiller->reject(
+                      KJ_EXCEPTION(FAILED, "File generation failed caused by " +
+                                               description_));
+                } else {
+                  frontend_context_.file_info_[id].promise.fulfiller->fulfill();
+                  builder.AddPromise(
+                      frontend_context_.file_info_[id]
+                          .forked_promise.addBranch(),
+                      description_ + " output " + std::to_string(id));
+                }
+              };
+              if (stdout_) {
+                set_hash(stdout_, result.getStdout());
+              }
+              if (stderr_) {
+                set_hash(stderr_, result.getStderr());
+              }
+              for (auto output : result.getOutputFiles()) {
+                std::string name = output.getName();
+                KJ_REQUIRE(outputs_.count(output.getName()), output.getName(),
+                           "Unexpected output!");
+                set_hash(outputs_[output.getName()], output.getHash());
+              }
+              // Reject all the non-fulfilled promises. TODO: use
+              // reject and not rejectIfThrows
+              for (auto f : outputs_) {
+                auto& ff =
+                    frontend_context_.file_info_[f.second].promise.fulfiller;
+                if (ff) ff->reject(KJ_EXCEPTION(FAILED, "Missing file"));
+              }
+              // Wait for all the outputs to be processed, then run a
+              // "number of ready tasks" check.
+              return std::move(builder)
+                  .Finalize()
+                  .then([this]() {
+                    frontend_context_.ready_tasks_--;
+                    frontend_context_.scheduled_tasks_--;
+                    if (!frontend_context_.ready_tasks_ &&
+                        frontend_context_.scheduled_tasks_) {
+                      KJ_LOG(WARNING, "Execution stalled",
+                             frontend_context_.ready_tasks_,
+                             frontend_context_.scheduled_tasks_);
+                      frontend_context_.evaluation_early_stop_.fulfiller
+                          ->reject(KJ_EXCEPTION(FAILED, "Execution stalled!"));
+                    } else {
+                      KJ_LOG(INFO, "Finished execution", description_);
+                      finish_promise_.fulfiller->fulfill();
+                    }
+                  })
+                  .eagerlyEvaluate(nullptr);
+            };
+
+            if (cache_enabled_ &&
+                frontend_context_.cache_manager_.Has(request_)) {
+              start_.fulfiller->fulfill();
+              return process_result(
+                  frontend_context_.cache_manager_.Get(request_));
+            }
+
             return frontend_context_.dispatcher_
                 .AddRequest(request_, std::move(start_.fulfiller))
                 .then(
-                    [this, context](
+                    [process_result](
                         capnp::Response<capnproto::Evaluator::EvaluateResults>
-                            response_result) mutable {
-                      auto result = response_result.getResult();
-                      KJ_LOG(INFO, "Execution " + description_,
-                             "Execution done");
-                      KJ_LOG(INFO, "Execution " + description_, result);
-                      KJ_ASSERT(!result.getStatus().isInternalError(),
-                                result.getStatus().getInternalError());
-                      context.getResults().setResult(result);
-                      util::UnionPromiseBuilder builder;
-                      auto set_hash = [this, &builder, &result](
-                                          uint32_t id,
-                                          const util::SHA256_t& hash) {
-                        frontend_context_.file_info_[id].hash = hash;
-                        if (!result.getStatus().isSuccess()) {
-                          KJ_LOG(INFO, "Marking file as failed", id,
-                                 description_);
-                          frontend_context_.file_info_[id]
-                              .promise.fulfiller->reject(KJ_EXCEPTION(
-                                  FAILED, "File generation failed caused by " +
-                                              description_));
-                        } else {
-                          frontend_context_.file_info_[id]
-                              .promise.fulfiller->fulfill();
-                          builder.AddPromise(
-                              frontend_context_.file_info_[id]
-                                  .forked_promise.addBranch(),
-                              description_ + " output " + std::to_string(id));
-                        }
-                      };
-                      if (stdout_) {
-                        set_hash(stdout_, result.getStdout());
-                      }
-                      if (stderr_) {
-                        set_hash(stderr_, result.getStderr());
-                      }
-                      for (auto output : result.getOutputFiles()) {
-                        std::string name = output.getName();
-                        KJ_REQUIRE(outputs_.count(output.getName()),
-                                   output.getName(), "Unexpected output!");
-                        set_hash(outputs_[output.getName()], output.getHash());
-                      }
-                      // Reject all the non-fulfilled promises. TODO: use reject
-                      // and not rejectIfThrows
-                      for (auto f : outputs_) {
-                        auto& ff = frontend_context_.file_info_[f.second]
-                                       .promise.fulfiller;
-                        if (ff)
-                          ff->reject(KJ_EXCEPTION(FAILED, "Missing file"));
-                      }
-                      // Wait for all the outputs to be processed, then run a
-                      // "number of ready tasks" check.
-                      return std::move(builder)
-                          .Finalize()
-                          .then([this]() {
-                            frontend_context_.ready_tasks_--;
-                            frontend_context_.scheduled_tasks_--;
-                            if (!frontend_context_.ready_tasks_ &&
-                                frontend_context_.scheduled_tasks_) {
-                              KJ_LOG(WARNING, "Execution stalled",
-                                     frontend_context_.ready_tasks_,
-                                     frontend_context_.scheduled_tasks_);
-                              frontend_context_.evaluation_early_stop_
-                                  .fulfiller->reject(KJ_EXCEPTION(
-                                      FAILED, "Execution stalled!"));
-                            } else {
-                              KJ_LOG(INFO, "Finished execution", description_);
-                              finish_promise_.fulfiller->fulfill();
-                            }
-                          })
-                          .eagerlyEvaluate(nullptr);
+                            results) mutable {
+                      return process_result(results.getResult());
                     },
                     [this](kj::Exception exc) {
                       finish_promise_.fulfiller->reject(kj::cp(exc));
@@ -341,7 +347,7 @@ kj::Promise<void> FrontendContext::getFileContents(
   uint32_t id = context.getParams().getFile().getId();
   KJ_LOG(INFO, "Requested file with id " + std::to_string(id));
   auto send_file = [id, context, this]() mutable {
-    auto hash = file_info_[id].hash;
+    auto hash = file_info_.at(id).hash;
     return util::File::HandleRequestFile(hash,
                                          context.getParams().getReceiver())
         .then([id]() {
@@ -352,10 +358,10 @@ kj::Promise<void> FrontendContext::getFileContents(
       [send_file]() mutable { return send_file(); },
       [send_file, this, id](kj::Exception exc) mutable {
         auto hash = file_info_[id].hash;
-        if (hash.isZero())
+        if (hash.isZero()) {
           kj::throwRecoverableException(std::move(exc));
-        else
-          return send_file();
+        }
+        return send_file();
       });
 }
 kj::Promise<void> FrontendContext::stopEvaluation(
