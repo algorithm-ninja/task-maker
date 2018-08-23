@@ -55,6 +55,8 @@ def print_subtask_result(printer: CursesPrinter, text: str,
                          result: SubtaskSolutionResult):
     if result == SubtaskSolutionResult.WAITING:
         printer.text(text)
+    elif result == SubtaskSolutionResult.RUNNING:
+        printer.text(text)
     elif result == SubtaskSolutionResult.ACCEPTED:
         printer.green(text)
     elif result == SubtaskSolutionResult.PARTIAL:
@@ -171,11 +173,30 @@ class IOICursesUI:
         printer.blue("Evaluation:\n", bold=True)
         for solution, status in self.interface.testing.items():
             print_solution_column(printer, solution, max_sol_len)
-            printer.text("%5.0f |" % status.score)
+            if all([
+                    s == SubtaskSolutionResult.WAITING
+                    for s in status.subtask_results
+            ]):
+                printer.text(" ... ")
+            elif any([
+                    s == SubtaskSolutionResult.RUNNING
+                    for s in status.subtask_results
+            ]):
+                printer.text("  {}  ".format(loading))
+            else:
+                printer.text(" {:^3.0f} ".format(status.score))
+            printer.text("|")
 
-            for score in status.subtask_scores.values():
-                printer.text(" %5.0f" % score)
-            printer.text("   ")
+            for score, result in zip(status.subtask_scores.values(),
+                                     status.subtask_results):
+                if result == SubtaskSolutionResult.WAITING:
+                    printer.text(" ... ")
+                elif result == SubtaskSolutionResult.RUNNING:
+                    printer.text("  {}  ".format(loading))
+                else:
+                    print_subtask_result(printer, " {:^3.0f} ".format(score), result)
+
+            printer.text("  ")
             for (st_num, testcases), st_result in zip(
                     status.testcase_results.items(), status.subtask_results):
                 print_subtask_result(printer, "[", st_result)

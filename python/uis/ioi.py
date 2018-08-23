@@ -47,11 +47,11 @@ class TestcaseSolutionResult(Enum):
 
 
 class SubtaskSolutionResult(Enum):
-    # TODO add running?
     WAITING = 0
-    ACCEPTED = 1
-    PARTIAL = 2
-    REJECTED = 3
+    RUNNING = 1
+    ACCEPTED = 2
+    PARTIAL = 3
+    REJECTED = 4
 
 
 class CustomCheckerState:
@@ -108,6 +108,7 @@ class SolutionStatus:
                 self.testcase_scores[st_num][tc_num] = 0.0
 
     def update_eval_result(self, subtask: int, testcase: int, result: Result):
+        self.subtask_results[subtask] = SubtaskSolutionResult.RUNNING
         # TODO generate and store somewhere the message
         if result.status == ResultStatus.SIGNAL:
             self.testcase_results[subtask][
