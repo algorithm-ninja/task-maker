@@ -149,7 +149,7 @@ class SolutionStatus:
             self.subtask_results[subtask] = SubtaskSolutionResult.PARTIAL
 
 
-class IOILikeUIInterface:
+class IOIUIInterface:
     def __init__(self, task: Task, testcases: Dict[int, List[int]],
                  do_print: bool):
         self.task = task

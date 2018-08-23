@@ -4,7 +4,7 @@ import curses
 import threading
 
 from task_maker.printer import CursesPrinter
-from task_maker.ui import IOILikeUIInterface, SourceFileCompilationStatus, \
+from task_maker.uis.ioi import IOIUIInterface, SourceFileCompilationStatus, \
     TestcaseGenerationStatus, SubtaskSolutionResult, TestcaseSolutionResult
 
 # frames per second of the UI
@@ -99,8 +99,8 @@ def print_testcase_solution_result(printer: CursesPrinter, loading: str,
         raise ValueError(result)
 
 
-class IOILikeCursesUI:
-    def __init__(self, interface: IOILikeUIInterface):
+class IOICursesUI:
+    def __init__(self, interface: IOIUIInterface):
         self.interface = interface
         self.thread = threading.Thread(
             target=curses.wrapper, args=(self._wrapper, ))
@@ -134,7 +134,7 @@ class IOILikeCursesUI:
             self._loop(printer, loading)
             pad.refresh(pos_y, pos_x, 0, 0, max_y - 1, max_x - 1)
             if time.monotonic() - last_draw < 1 / FPS:
-                time.sleep(1/FPS - (time.monotonic() - last_draw))
+                time.sleep(1 / FPS - (time.monotonic() - last_draw))
 
         curses.endwin()
 

@@ -9,8 +9,8 @@ from task_maker import args
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
-from task_maker.uis.ioi_curses_ui import IOILikeCursesUI
-from task_maker.ui import IOILikeUIInterface
+from task_maker.uis.ioi_curses_ui import IOICursesUI
+from task_maker.uis.ioi import IOIUIInterface
 from task_maker.dependency_finder import find_dependency
 from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo
 from task_maker.language import grader_from_file, valid_extensions
@@ -270,12 +270,12 @@ def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
 
 def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile],
                   ui: args.UIS):
-    ui_interface = IOILikeUIInterface(
+    ui_interface = IOIUIInterface(
         task,
         dict((st_num, [tc for tc in st.testcases.keys()])
              for st_num, st in task.subtasks.items()), ui == args.UIS.PRINT)
     if ui == args.UIS.CURSES:
-        curses_ui = IOILikeCursesUI(ui_interface)
+        curses_ui = IOICursesUI(ui_interface)
         curses_ui.start()
     ins, outs, vals = generate_inputs(frontend, task, ui_interface)
     evaluate_solutions(frontend, task, ins, outs, vals, solutions,
@@ -286,7 +286,7 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile],
         curses_ui.stop()
 
 
-def generate_inputs(frontend, task: Task, ui_interface: IOILikeUIInterface
+def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface
                     ) -> (Dict[Tuple[int, int], File], Dict[Tuple[
                         int, int], File], Dict[Tuple[int, int], File]):
     inputs = dict()  # type: Dict[Tuple[int, int], File]
@@ -370,7 +370,7 @@ def evaluate_solutions(
         frontend, task: Task, inputs: Dict[Tuple[int, int], File],
         outputs: Dict[Tuple[int, int], File],
         validations: Dict[Tuple[int, int], File], solutions: List[SourceFile],
-        ui_interface: IOILikeUIInterface):
+        ui_interface: IOIUIInterface):
     for solution in solutions:
         solution.prepare(frontend)
         ui_interface.add_solution(solution)
