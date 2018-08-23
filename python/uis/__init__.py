@@ -1,34 +1,27 @@
 #!/usr/bin/env python3
-from typing import Dict, Optional
+import signal
+
+from task_maker.task_maker_frontend import Result, ResultStatus
 
 
-class EvaluationResult:
-    def __init__(self, score: float, message: str, cpu_time_used: float,
-                 wall_time_used: float, memory_used_kb: float):
-        self.score = score
-        self.message = message
-        self.cpu_time_used = cpu_time_used
-        self.wall_time_used = wall_time_used
-        self.memory_used_kb = memory_used_kb
-
-
-class SolutionStatus:
-    def __init__(self):
-        self.testcase_errors = dict()  # type: Dict[int, str]
-        self.testcase_result = dict()  # type: Dict[int, EvaluationResult]
-        self.testcase_status = dict()  # type: Dict[int, EventStatus]
-        self.subtask_scores = dict()  # type: Dict[int, float]
-        self.score = None  # type: Optional[float]
-        self.compiled = False
-
-    def __repr__(self):
-        return "<SolutionStatus [%s]>" % (", ".join(
-            "%d: %.1f" % (i, tc.score)
-            for i, tc in self.testcase_result.items()))
-
-
-# class TerryStatus:
-#     def __init__(self):
-#         self.status = EventStatus.WAITING  # type: EventStatus
-#         self.errors = None  # type: Optional[str]
-#         # self.result = None  # type: Optional[TerryEvaluationResult]
+def result_to_str(result: Result) -> str:
+    status = result.status
+    if status == ResultStatus.SUCCESS:
+        return "Success"
+    elif status == ResultStatus.SIGNAL:
+        return "Killed with signal %d (%s)" % (
+            result.signal, signal.Signals(result.signal).name)
+    elif status == ResultStatus.RETURN_CODE:
+        return "Exited with code %d" % result.return_code
+    elif status == ResultStatus.TIME_LIMIT:
+        return "Time limit exceeded"
+    elif status == ResultStatus.WALL_LIMIT:
+        return "Wall time limit exceeded"
+    elif status == ResultStatus.MEMORY_LIMIT:
+        return "Memory limit exceeded"
+    elif status == ResultStatus.MISSING_FILES:
+        return "Some files are missing"
+    elif status == ResultStatus.INTERNAL_ERROR:
+        return "Internal error: " + result.error
+    else:
+        raise ValueError(status)

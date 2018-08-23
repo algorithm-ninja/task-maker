@@ -4,6 +4,7 @@ import time
 from enum import Enum
 from task_maker.formats import Task, ScoreMode
 from task_maker.printer import StdoutPrinter, Printer
+from task_maker.uis import result_to_str
 from typing import List, Dict
 
 from task_maker.source_file import SourceFile
@@ -28,7 +29,7 @@ class SourceFileCompilationStatus(Enum):
     FAILURE = 3
 
 
-class TestcaseSolutionResult(Enum):
+class TestcaseSolutionStatus(Enum):
     WAITING = 0
     SOLVING = 1
     SOLVED = 2
@@ -52,6 +53,32 @@ class SubtaskSolutionResult(Enum):
     ACCEPTED = 2
     PARTIAL = 3
     REJECTED = 4
+
+
+class TestcaseSolutionInfo:
+    def __init__(self):
+        self.result = None  # type: Result
+        self.status = TestcaseSolutionStatus.WAITING
+        self.score = 0.0
+        self.message = "Waiting..."
+
+
+class SourceFileCompilationResult:
+    def __init__(self, need_compilation):
+        self.need_compilation = need_compilation
+        self.status = SourceFileCompilationStatus.WAITING
+        self.stderr = ""
+        self.result = None  # type: Result
+
+
+class TestcaseGenerationResult:
+    def __init__(self):
+        self.status = TestcaseGenerationStatus.WAITING
+        self.generation_result = None  # type: Result
+        self.generation_stderr = ""
+        self.validation_result = None  # type: Result
+        self.validation_stderr = ""
+        self.solution_result = None  # type: Result
 
 
 class CustomCheckerState:
@@ -93,66 +120,56 @@ class SolutionStatus:
         self.subtask_scores = dict((st_num, 0.0) for st_num in subtasks)
         self.subtask_results = [SubtaskSolutionResult.WAITING] * len(subtasks)
         self.testcase_results = dict(
-        )  # type: Dict[int, Dict[int, TestcaseSolutionResult]]
-        self.testcase_scores = dict()
+        )  # type: Dict[int, Dict[int, TestcaseSolutionInfo]]
         self.st_remaining_cases = [
             len(subtask) for subtask in subtasks.values()
         ]
 
         for st_num, subtask in subtasks.items():
             self.testcase_results[st_num] = dict()
-            self.testcase_scores[st_num] = dict()
             for tc_num in subtask:
-                self.testcase_results[st_num][
-                    tc_num] = TestcaseSolutionResult.WAITING
-                self.testcase_scores[st_num][tc_num] = 0.0
+                self.testcase_results[st_num][tc_num] = TestcaseSolutionInfo()
 
     def update_eval_result(self, subtask: int, testcase: int, result: Result):
         self.subtask_results[subtask] = SubtaskSolutionResult.RUNNING
-        # TODO generate and store somewhere the message
+        testcase_status = self.testcase_results[subtask][testcase]
+        testcase_status.result = result
         if result.status == ResultStatus.SIGNAL:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.SIGNAL
+            testcase_status.status = TestcaseSolutionStatus.SIGNAL
         elif result.status == ResultStatus.RETURN_CODE:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.RETURN_CODE
+            testcase_status.status = TestcaseSolutionStatus.RETURN_CODE
         elif result.status == ResultStatus.TIME_LIMIT:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.TIME_LIMIT
+            testcase_status.status = TestcaseSolutionStatus.TIME_LIMIT
         elif result.status == ResultStatus.WALL_LIMIT:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.WALL_LIMIT
+            testcase_status.status = TestcaseSolutionStatus.WALL_LIMIT
         elif result.status == ResultStatus.MEMORY_LIMIT:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.MEMORY_LIMIT
+            testcase_status.status = TestcaseSolutionStatus.MEMORY_LIMIT
         elif result.status == ResultStatus.MISSING_FILES:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.MISSING_FILES
+            testcase_status.status = TestcaseSolutionStatus.MISSING_FILES
         elif result.status == ResultStatus.INTERNAL_ERROR:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.INTERNAL_ERROR
+            testcase_status.status = TestcaseSolutionStatus.INTERNAL_ERROR
         else:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.SOLVED
+            testcase_status.status = TestcaseSolutionStatus.SOLVED
+        testcase_status.message = result_to_str(result)
         if result.status != ResultStatus.SUCCESS:
             self.st_remaining_cases[subtask] -= 1
             if self.st_remaining_cases[subtask] == 0:
                 self._compute_st_score(subtask)
-        # TODO store used resources
 
     def update_default_check_result(self, subtask: int, testcase: int,
                                     result: Result):
+        testcase_status = self.testcase_results[subtask][testcase]
         if result.status == ResultStatus.SUCCESS:
-            self.testcase_scores[subtask][testcase] = 1.0
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.ACCEPTED
+            testcase_status.status = TestcaseSolutionStatus.ACCEPTED
+            testcase_status.message = "Output is correct"
+            self.testcase_results[subtask][testcase].score = 1.0
         elif result.status == ResultStatus.RETURN_CODE:
-            self.testcase_scores[subtask][testcase] = 0.0
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.WRONG_ANSWER
+            testcase_status.status = TestcaseSolutionStatus.WRONG_ANSWER
+            testcase_status.message = "Output is not correct"
+            self.testcase_results[subtask][testcase].score = 0.0
         else:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.INTERNAL_ERROR
+            testcase_status.status = TestcaseSolutionStatus.INTERNAL_ERROR
+            testcase_status.message = "Internal error: " + result.error
 
         self.st_remaining_cases[subtask] -= 1
         if self.st_remaining_cases[subtask] == 0:
@@ -160,43 +177,44 @@ class SolutionStatus:
 
     def update_custom_check_result(self, subtask: int, testcase: int,
                                    state: CustomCheckerState):
+        testcase_status = self.testcase_results[subtask][testcase]
         if state.result.status != ResultStatus.SUCCESS:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.INTERNAL_ERROR
+            testcase_status.status = TestcaseSolutionStatus.INTERNAL_ERROR
+            testcase_status.message = "Failed to check: " + result_to_str(
+                state.result)
             return
         try:
             score = float(state.stdout)
         except ValueError:
             if state.result.status != ResultStatus.SUCCESS:
-                self.testcase_results[subtask][
-                    testcase] = TestcaseSolutionResult.INTERNAL_ERROR
+                testcase_status.status = TestcaseSolutionStatus.INTERNAL_ERROR
+                testcase_status.message = \
+                    "Failed to check: invalid score: {}".format(state.stdout)
             return
         if not 0.0 <= score <= 1.0:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.INTERNAL_ERROR
+            testcase_status.status = TestcaseSolutionStatus.INTERNAL_ERROR
+            testcase_status.message = \
+                "Failed to check: invalid score: {}".format(state.stdout)
             return
-        self.testcase_scores[subtask][testcase] = score
+        self.testcase_results[subtask][testcase].score = score
         if score == 1.0:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.ACCEPTED
-            message = "Accepted"
+            testcase_status.status = TestcaseSolutionStatus.ACCEPTED
+            testcase_status.message = "Output is correct"
         elif score == 0.0:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.WRONG_ANSWER
-            message = "Wrong answer"
+            testcase_status.status = TestcaseSolutionStatus.WRONG_ANSWER
+            testcase_status.message = "Output is not correct"
         else:
-            self.testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.PARTIAL
-            message = "Parial score"
+            testcase_status.status = TestcaseSolutionStatus.PARTIAL
+            testcase_status.message = "Output is partially correct"
         if state.stdout:
-            message = state.stdout
+            testcase_status.message = state.stderr.strip()
 
         self.st_remaining_cases[subtask] -= 1
         if self.st_remaining_cases[subtask] == 0:
             self._compute_st_score(subtask)
 
     def _compute_st_score(self, subtask: int):
-        scores = self.testcase_scores[subtask].values()
+        scores = [t.score for t in self.testcase_results[subtask].values()]
         score_mode = self.task.subtasks[subtask].score_mode
         if score_mode == ScoreMode.MIN:
             score = min(scores)
@@ -222,13 +240,11 @@ class IOIUIInterface:
                  do_print: bool):
         self.task = task
         self.subtasks = dict(
-        )  # type: Dict[int, Dict[int, TestcaseGenerationStatus]]
+        )  # type: Dict[int, Dict[int, TestcaseGenerationResult]]
         self.testcases = testcases
         self.non_solutions = dict(
-        )  # type: Dict[str, SourceFileCompilationStatus]
-        self.non_solutions_stderr = dict()  # type: Dict[str, str]
-        self.solutions = dict()  # type: Dict[str, SourceFileCompilationStatus]
-        self.solutions_stderr = dict()  # type: Dict[str, str]
+        )  # type: Dict[str, SourceFileCompilationResult]
+        self.solutions = dict()  # type: Dict[str, SourceFileCompilationResult]
         self.testing = dict()  # type: Dict[str, SolutionStatus]
         self.running = dict()  # type: Dict[str, float]
 
@@ -240,49 +256,52 @@ class IOIUIInterface:
         for st_num, subtask in testcases.items():
             self.subtasks[st_num] = dict()
             for tc_num in subtask:
-                self.subtasks[st_num][
-                    tc_num] = TestcaseGenerationStatus.WAITING
+                self.subtasks[st_num][tc_num] = TestcaseGenerationResult()
 
     def add_non_solution(self, source_file: SourceFile):
         name = source_file.name
         log_prefix = "Compilation of non-solution {} ".format(name).ljust(50)
-        self.non_solutions[name] = SourceFileCompilationStatus.WAITING
+        self.non_solutions[name] = SourceFileCompilationResult(
+            source_file.need_compilation)
         self.printer.text(log_prefix + "WAITING\n")
         if source_file.need_compilation:
 
             def notifyStartCompiltion():
                 self.printer.text(log_prefix + "START\n")
                 self.non_solutions[
-                    name] = SourceFileCompilationStatus.COMPILING
+                    name].status = SourceFileCompilationStatus.COMPILING
                 self.running[log_prefix] = time.monotonic()
 
             def getResultCompilation(result: Result):
                 del self.running[log_prefix]
+                self.non_solutions[name].result = result
                 if result.status == ResultStatus.SUCCESS:
                     self.printer.green(log_prefix + "SUCCESS\n")
-                    self.non_solutions[name] = SourceFileCompilationStatus.DONE
+                    self.non_solutions[
+                        name].status = SourceFileCompilationStatus.DONE
                 else:
                     self.printer.red(log_prefix +
                                      "FAIL: {}\n".format(result.status))
                     self.non_solutions[
-                        name] = SourceFileCompilationStatus.FAILURE
+                        name].status = SourceFileCompilationStatus.FAILURE
 
             def getStderr(stderr):
                 if stderr:
                     self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
-                self.non_solutions_stderr[name] = stderr
+                self.non_solutions[name].stderr = stderr
 
             source_file.compilation_stderr.getContentsAsString(getStderr)
             source_file.compilation.notifyStart(notifyStartCompiltion)
             source_file.compilation.getResult(getResultCompilation)
         else:
             self.printer.green(log_prefix + "SUCCESS\n")
-            self.non_solutions[name] = SourceFileCompilationStatus.DONE
+            self.non_solutions[name].status = SourceFileCompilationStatus.DONE
 
     def add_solution(self, source_file: SourceFile):
         name = source_file.name
         log_prefix = "Compilation of solution {} ".format(name).ljust(50)
-        self.solutions[name] = SourceFileCompilationStatus.WAITING
+        self.solutions[name] = SourceFileCompilationResult(
+            source_file.need_compilation)
         self.testing[name] = SolutionStatus(source_file, self.task,
                                             self.testcases)
         self.printer.text(log_prefix + "WAITING\n")
@@ -291,55 +310,57 @@ class IOIUIInterface:
 
             def notifyStartCompiltion():
                 self.printer.text(log_prefix + "START\n")
-                self.solutions[name] = SourceFileCompilationStatus.COMPILING
+                self.solutions[
+                    name].status = SourceFileCompilationStatus.COMPILING
                 self.running[log_prefix] = time.monotonic()
 
             def getResultCompilation(result: Result):
                 del self.running[log_prefix]
+                self.solutions[name].result = result
                 if result.status == ResultStatus.SUCCESS:
                     self.printer.green(log_prefix + "SUCCESS\n")
-                    self.solutions[name] = SourceFileCompilationStatus.DONE
+                    self.solutions[
+                        name].status = SourceFileCompilationStatus.DONE
                 else:
                     self.printer.red(log_prefix +
                                      "FAIL: {}\n".format(result.status))
-                    self.solutions[name] = SourceFileCompilationStatus.FAILURE
+                    self.solutions[
+                        name].status = SourceFileCompilationStatus.FAILURE
 
             def getStderr(stderr):
                 if stderr:
                     self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
-                self.solutions_stderr[name] = stderr
+                self.solutions[name].stderr = stderr
 
             source_file.compilation_stderr.getContentsAsString(getStderr)
             source_file.compilation.notifyStart(notifyStartCompiltion)
             source_file.compilation.getResult(getResultCompilation)
         else:
             self.printer.green(log_prefix + "SUCCESS\n")
-            self.solutions[name] = SourceFileCompilationStatus.DONE
+            self.solutions[name].status = SourceFileCompilationStatus.DONE
 
     def add_generation(self, subtask: int, testcase: int,
                        generation: Execution):
         log_prefix = "Generation of input {} of subtask {} ".format(
             testcase, subtask).ljust(50)
+        testcase_status = self.subtasks[subtask][testcase]
         self.printer.text(log_prefix + "WAITING\n")
 
         def notifyStartGeneration():
             self.printer.text(log_prefix + "START\n")
-            self.subtasks[subtask][
-                testcase] = TestcaseGenerationStatus.GENERATING
+            testcase_status.status = TestcaseGenerationStatus.GENERATING
             self.running[log_prefix] = time.monotonic()
 
         def getResultGeneration(result: Result):
             del self.running[log_prefix]
+            testcase_status.generation_result = result
             if result.status == ResultStatus.SUCCESS:
                 self.printer.green(log_prefix + "SUCCESS\n")
-                self.subtasks[subtask][
-                    testcase] = TestcaseGenerationStatus.GENERATED
+                testcase_status.status = TestcaseGenerationStatus.GENERATED
             else:
                 self.printer.red(log_prefix +
                                  "FAIL: {}\n".format(result.status))
-                # TODO: write somewhere why
-                self.subtasks[subtask][
-                    testcase] = TestcaseGenerationStatus.FAILURE
+                testcase_status.status = TestcaseGenerationStatus.FAILURE
 
         def skippedGeneration():
             self.printer.red(log_prefix + "SKIPPED\n")
@@ -347,6 +368,7 @@ class IOIUIInterface:
         def getStderr(stderr):
             if stderr:
                 self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+            testcase_status.generation_stderr = stderr
 
         generation.stderr(False).getContentsAsString(getStderr)
         generation.notifyStart(notifyStartGeneration)
@@ -356,26 +378,24 @@ class IOIUIInterface:
                        validation: Execution):
         log_prefix = "Validation of input {} of subtask {} ".format(
             testcase, subtask).ljust(50)
+        testcase_status = self.subtasks[subtask][testcase]
         self.printer.text(log_prefix + "WAITING\n")
 
         def notifyStartValidation():
             self.printer.text(log_prefix + "START\n")
-            self.subtasks[subtask][
-                testcase] = TestcaseGenerationStatus.VALIDATING
+            testcase_status.status = TestcaseGenerationStatus.VALIDATING
             self.running[log_prefix] = time.monotonic()
 
         def getResultValidation(result: Result):
             del self.running[log_prefix]
+            testcase_status.validation_result = result
             if result.status == ResultStatus.SUCCESS:
                 self.printer.green(log_prefix + "SUCCESS\n")
-                self.subtasks[subtask][
-                    testcase] = TestcaseGenerationStatus.VALIDATED
+                testcase_status.status = TestcaseGenerationStatus.VALIDATED
             else:
                 self.printer.red(log_prefix +
                                  "FAIL: {}\n".format(result.status))
-                # TODO: write somewhere why
-                self.subtasks[subtask][
-                    testcase] = TestcaseGenerationStatus.FAILURE
+                testcase_status.status = TestcaseGenerationStatus.FAILURE
 
         def skippedValidation():
             self.printer.red(log_prefix + "SKIPPED\n")
@@ -383,6 +403,7 @@ class IOIUIInterface:
         def getStderr(stderr):
             if stderr:
                 self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+            testcase_status.validation_stderr = stderr
 
         validation.stderr(False).getContentsAsString(getStderr)
         validation.notifyStart(notifyStartValidation)
@@ -391,25 +412,24 @@ class IOIUIInterface:
     def add_solving(self, subtask: int, testcase: int, solving: Execution):
         log_prefix = "Generation of output {} of subtask {} ".format(
             testcase, subtask).ljust(50)
+        testcase_status = self.subtasks[subtask][testcase]
         self.printer.text(log_prefix + "WAITING\n")
 
         def notifyStartSolving():
             self.printer.text(log_prefix + "START\n")
-            self.subtasks[subtask][testcase] = TestcaseGenerationStatus.SOLVING
+            testcase_status.status = TestcaseGenerationStatus.SOLVING
             self.running[log_prefix] = time.monotonic()
 
         def getResultSolving(result: Result):
             del self.running[log_prefix]
+            testcase_status.solution_result = result
             if result.status == ResultStatus.SUCCESS:
                 self.printer.green(log_prefix + "SUCCESS\n")
-                self.subtasks[subtask][
-                    testcase] = TestcaseGenerationStatus.DONE
+                testcase_status.status = TestcaseGenerationStatus.DONE
             else:
                 self.printer.red(log_prefix +
                                  "FAIL: {}\n".format(result.status))
-                # TODO: write somewhere why
-                self.subtasks[subtask][
-                    testcase] = TestcaseGenerationStatus.FAILURE
+                testcase_status.status = TestcaseGenerationStatus.FAILURE
 
         def skippedSolving():
             self.printer.red(log_prefix + "SKIPPED\n")
@@ -431,7 +451,7 @@ class IOIUIInterface:
         def notifyStartEvaluation():
             self.printer.text(log_prefix + "START\n")
             self.testing[solution].testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.SOLVING
+                testcase].status = TestcaseSolutionStatus.SOLVING
             self.running[log_prefix] = time.monotonic()
 
         def getResultEvaluation(result: Result):
@@ -447,7 +467,7 @@ class IOIUIInterface:
 
         def skippedEvaluation():
             self.testing[solution].testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.SKIPPED
+                testcase].status = TestcaseSolutionStatus.SKIPPED
             self.printer.yellow(log_prefix + "SKIPPED\n")
 
         evaluation.notifyStart(notifyStartEvaluation)
@@ -464,15 +484,15 @@ class IOIUIInterface:
         def notifyStartChecking():
             self.printer.text(log_prefix + "START\n")
             self.testing[solution].testcase_results[subtask][
-                testcase] = TestcaseSolutionResult.CHECKING
+                testcase].status = TestcaseSolutionStatus.CHECKING
             self.running[log_prefix] = time.monotonic()
 
         def getResultChecking(result: Result):
             del self.running[log_prefix]
             if has_custom_checker:
+                custom_checker_state.set_result(result)
                 if result.status == ResultStatus.SUCCESS:
                     self.printer.green(log_prefix + "SUCCESS\n")
-                    custom_checker_state.set_result(result)
                 else:
                     self.printer.red(log_prefix +
                                      "FAIL: {}\n".format(result.status))
