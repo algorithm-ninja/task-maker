@@ -136,6 +136,7 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
       .Finalize()
       .then(
           [this]() {
+            KJ_DBG("Ready", request_);
             KJ_LOG(INFO, "Execution " + description_, "Dependencies ready");
             frontend_context_.ready_tasks_++;
           },
@@ -181,6 +182,7 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
             KJ_LOG(INFO, "Execution " + description_, request_);
             auto process_result = [this, context](capnproto::Result::Reader
                                                       result) mutable {
+              KJ_DBG(request_, result);
               KJ_LOG(INFO, "Execution " + description_, "Execution done");
               KJ_LOG(INFO, "Execution " + description_, result);
               KJ_ASSERT(!result.getStatus().isInternalError(),
@@ -218,8 +220,7 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                            "Unexpected output!");
                 set_hash(outputs_[output.getName()], output.getHash());
               }
-              // Reject all the non-fulfilled promises. TODO: use
-              // reject and not rejectIfThrows
+              // Reject all the non-fulfilled promises.
               for (auto f : outputs_) {
                 auto& ff =
                     frontend_context_.file_info_[f.second].promise.fulfiller;
@@ -232,6 +233,8 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                   .then([this]() {
                     frontend_context_.ready_tasks_--;
                     frontend_context_.scheduled_tasks_--;
+                    KJ_DBG("Check", frontend_context_.ready_tasks_,
+                           frontend_context_.scheduled_tasks_);
                     if (!frontend_context_.ready_tasks_ &&
                         frontend_context_.scheduled_tasks_) {
                       KJ_LOG(WARNING, "Execution stalled",
@@ -250,8 +253,15 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
             if (cache_enabled_ &&
                 frontend_context_.cache_manager_.Has(request_)) {
               start_.fulfiller->fulfill();
-              return process_result(
-                  frontend_context_.cache_manager_.Get(request_));
+              // Workaround for a scheduling issue: if we run process_result
+              // here, the eventloop may not have finished marking as ready the
+              // executions that actually are ready before calling our stall
+              // check. TODO: fix this for real.
+              return kj::Promise<void>(kj::READY_NOW)
+                  .then([this, process_result]() mutable {
+                    return process_result(
+                        frontend_context_.cache_manager_.Get(request_));
+                  });
             }
 
             return frontend_context_.dispatcher_
@@ -300,7 +310,6 @@ kj::Promise<void> FrontendContext::provideFile(ProvideFileContext context) {
 kj::Promise<void> FrontendContext::addExecution(AddExecutionContext context) {
   KJ_LOG(INFO, "Adding execution " +
                    std::string(context.getParams().getDescription()));
-  // TODO: see Server::registerFrontend
   context.getResults().setExecution(
       kj::heap<Execution>(*this, context.getParams().getDescription()));
   return kj::READY_NOW;
@@ -372,10 +381,8 @@ kj::Promise<void> FrontendContext::stopEvaluation(
 }
 
 kj::Promise<void> Server::registerFrontend(RegisterFrontendContext context) {
-  // TODO: here, we assume that capnproto keeps the FrontendContext alive
-  // as long as the client still call its methods, which seems reasonable but
-  // could not be the case.
-  context.getResults().setContext(kj::heap<FrontendContext>(dispatcher_));
+  context.getResults().setContext(
+      kj::heap<FrontendContext>(dispatcher_, cache_manager_));
   return kj::READY_NOW;
 }
 
