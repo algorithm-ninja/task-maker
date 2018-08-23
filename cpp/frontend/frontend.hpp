@@ -59,10 +59,9 @@ class File {
   static std::unique_ptr<File> New(kj::Promise<T>&& p, Frontend& frontend);
   virtual ~File() = default;
 
-  void getContentsAsString(
-      std::function<void(const std::string&)> callback);
+  void getContentsAsString(std::function<void(const std::string&)> callback);
   void getContentsToFile(const std::string& path, bool overwrite,
-                             bool exist_ok);
+                         bool exist_ok);
 };
 
 template <typename T>
@@ -102,8 +101,7 @@ class Execution {
   Execution(std::string description, capnproto::Execution::Client execution,
             std::vector<std::unique_ptr<File>>& files,
             util::UnionPromiseBuilder& builder,
-            util::UnionPromiseBuilder& finish_builder,
-            Frontend& frontend)
+            util::UnionPromiseBuilder& finish_builder, Frontend& frontend)
       : description_(std::move(description)),
         execution_(execution),
         files_(files),

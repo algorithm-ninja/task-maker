@@ -42,7 +42,7 @@ void File::getContentsAsString(
 }
 
 void File::getContentsToFile(const std::string& path, bool overwrite,
-                                 bool exist_ok) {
+                             bool exist_ok) {
   frontend_.finish_builder_.AddPromise(
       forked_promise.addBranch().then([this, path, exist_ok,
                                        overwrite](auto file) {
@@ -52,7 +52,7 @@ void File::getContentsToFile(const std::string& path, bool overwrite,
           req.setReceiver(kj::heap<util::File::Receiver>(std::move(*receiver)));
         }
         else {
-          KJ_FAIL_REQUIRE("getFileContentsToFile", strerror(errno));
+          KJ_FAIL_REQUIRE("getContentsToFile", strerror(errno));
         }
         return req.send().ignoreResult();
       }),

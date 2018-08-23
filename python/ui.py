@@ -240,7 +240,7 @@ class IOILikeUIInterface:
 
             def getStderr(stderr):
                 self.printer.text(log_prefix + "STDERR\n")
-                self.printer.text(stderr)
+                self.printer.text(repr(stderr) + "\n")
                 self.solutions_stderr[name] = stderr
 
             source_file.compilation_stderr.getContentsAsString(getStderr)

@@ -340,14 +340,22 @@ kj::Promise<void> FrontendContext::getFileContents(
     GetFileContentsContext context) {
   uint32_t id = context.getParams().getFile().getId();
   KJ_LOG(INFO, "Requested file with id " + std::to_string(id));
-  return file_info_.at(id).forked_promise.addBranch().then(
-      [id, context, this]() mutable {
-        auto hash = file_info_.at(id).hash;
-        return util::File::HandleRequestFile(hash,
-                                             context.getParams().getReceiver())
-            .then([id]() {
-              KJ_LOG(INFO, "Sent file with id " + std::to_string(id));
-            });
+  auto send_file = [id, context, this]() mutable {
+    auto hash = file_info_[id].hash;
+    return util::File::HandleRequestFile(hash,
+                                         context.getParams().getReceiver())
+        .then([id]() {
+          KJ_LOG(INFO, "Sent file with id " + std::to_string(id));
+        });
+  };
+  return file_info_[id].forked_promise.addBranch().then(
+      [send_file]() mutable { return send_file(); },
+      [send_file, this, id](kj::Exception exc) mutable {
+        auto hash = file_info_[id].hash;
+        if (hash.isZero())
+          kj::throwRecoverableException(std::move(exc));
+        else
+          return send_file();
       });
 }
 kj::Promise<void> FrontendContext::stopEvaluation(
