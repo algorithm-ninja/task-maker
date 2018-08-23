@@ -139,17 +139,14 @@ CacheManager::CacheManager() {
 }
 
 bool CacheManager::Has(capnproto::Request::Reader req) {
-  KJ_DBG("Has", req);
   return data_.count(req);
 }
 capnproto::Result::Reader CacheManager::Get(capnproto::Request::Reader req) {
-  KJ_DBG("Get", req);
   return data_.at(req);
 }
 void CacheManager::Set(capnproto::Request::Reader req,
                        capnproto::Result::Reader res) {
   if (Has(req)) return;
-  KJ_DBG("Set", req);
   builders_.push_back(kj::heap<capnp::MallocMessageBuilder>());
   auto entry = builders_.back()->getRoot<capnproto::CacheEntry>();
   entry.setRequest(req);

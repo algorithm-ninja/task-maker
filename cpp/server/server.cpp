@@ -136,7 +136,6 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
       .Finalize()
       .then(
           [this]() {
-            KJ_DBG("Ready", request_);
             KJ_LOG(INFO, "Execution " + description_, "Dependencies ready");
             frontend_context_.ready_tasks_++;
           },
@@ -182,7 +181,6 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
             KJ_LOG(INFO, "Execution " + description_, request_);
             auto process_result = [this, context](capnproto::Result::Reader
                                                       result) mutable {
-              KJ_DBG(request_, result);
               KJ_LOG(INFO, "Execution " + description_, "Execution done");
               KJ_LOG(INFO, "Execution " + description_, result);
               KJ_ASSERT(!result.getStatus().isInternalError(),
@@ -233,8 +231,6 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                   .then([this]() {
                     frontend_context_.ready_tasks_--;
                     frontend_context_.scheduled_tasks_--;
-                    KJ_DBG("Check", frontend_context_.ready_tasks_,
-                           frontend_context_.scheduled_tasks_);
                     if (!frontend_context_.ready_tasks_ &&
                         frontend_context_.scheduled_tasks_) {
                       KJ_LOG(WARNING, "Execution stalled",
@@ -357,6 +353,7 @@ kj::Promise<void> FrontendContext::getFileContents(
   KJ_LOG(INFO, "Requested file with id " + std::to_string(id));
   auto send_file = [id, context, this]() mutable {
     auto hash = file_info_.at(id).hash;
+    KJ_LOG(INFO, "Sending file with id " + std::to_string(id), hash.Hex());
     return util::File::HandleRequestFile(hash,
                                          context.getParams().getReceiver())
         .then([id]() {
