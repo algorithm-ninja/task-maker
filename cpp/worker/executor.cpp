@@ -47,7 +47,8 @@ kj::Promise<sandbox::ExecutionInfo> RunSandbox(
     kj::Own<kj::AsyncInputStream> in = async_io_provider.wrapInputFd(pipefd[0]);
     auto promise = in->readAllBytes();
     return promise.attach(std::move(in))
-        .then([pid](const kj::Array<kj::byte>& data) {
+        .then([pid, fd = pipefd[0]](const kj::Array<kj::byte>& data) {
+          close(fd);
           size_t error_sz = *(size_t*)data.begin();
           const unsigned char* msg = data.begin() + sizeof(size_t);
           KJ_ASSERT(!error_sz, msg);
