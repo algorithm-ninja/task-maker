@@ -22,7 +22,6 @@ class Manager {
 
   template <typename T>
   kj::Promise<T> ScheduleTask(size_t size, std::function<kj::Promise<T>()> f) {
-    KJ_DBG("Schedule", size);
     kj::PromiseFulfillerPair<void> pf = kj::newPromiseAndFulfiller<void>();
     reserved_cores_ += size;
     pending_requests_--;
@@ -32,13 +31,11 @@ class Manager {
       kj::Promise<T> ret = f();
       return ret.then(
           [size, this](T r) {
-            KJ_DBG("Done", size);
             running_cores_ -= size;
             OnDone();
             return r;
           },
           [size, this](kj::Exception exc) {
-            KJ_DBG("Failed", size);
             running_cores_ -= size;
             OnDone();
             return exc;
