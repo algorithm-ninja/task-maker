@@ -12,6 +12,7 @@
 
 #include <capnp/ez-rpc.h>
 #include "capnp/server.capnp.h"
+#include "worker/executor.hpp"
 
 #define check_error(op)                                           \
   if ((op) == -1) {                                               \
@@ -19,92 +20,31 @@
   }
 
 namespace worker {
-namespace {
-int pipefd[2];
-
-void Worker() {
-  capnp::EzRpcClient client(Flags::server, Flags::port);
-  capnproto::MainServer::Client server =
-      client.getMain<capnproto::MainServer>();
-  auto req = server.registerEvaluatorRequest();
-  req.setName(Flags::name + " (pid: " + std::to_string(getpid()) + ")");
-  req.setEvaluator(kj::heap<Executor>(server));
-  auto finish = req.send();
-  // We wait until the server terminates the registerEvaluator call,
-  // which should happen when it has finished interacting with us,
-  // then we kill the worker.
-  finish.wait(client.getWaitScope());
+void Manager::Run() {
+  OnDone();
+  on_error_.promise.wait(client_.getWaitScope());
 }
 
-void ManagerFun() {
-  signal(SIGTERM, SIG_IGN);
-  signal(SIGINT, SIG_IGN);
-  signal(SIGQUIT, SIG_IGN);
-  signal(SIGHUP, SIG_IGN);
-  int parentfd = pipefd[0];
-  int flags = fcntl(parentfd, F_GETFL, 0);
-  fcntl(parentfd, F_SETFL, flags | O_NONBLOCK);
-  if (Flags::num_cores == 0) {
-    Flags::num_cores = std::thread::hardware_concurrency();
-  }
-  size_t num_boxes = Flags::num_cores;
-  ssize_t num_read = 0;
-  std::unordered_set<int> children;
-  while ((num_read = read(parentfd, &num_boxes, sizeof(size_t))) != 0) {
-    if (errno != EAGAIN && errno != EWOULDBLOCK) {
-      check_error(num_read);
+void Manager::OnDone() {
+  if (running_cores_ + reserved_cores_ < num_cores_) {
+    while (pending_requests_ < max_pending_requests_) {
+      pending_requests_++;
+      auto server = client_.getMain<capnproto::MainServer>();
+      auto req = server.registerEvaluatorRequest();
+      req.setName(name_ + " " + std::to_string(last_worker_id_++));
+      req.setEvaluator(kj::heap<Executor>(server, *this));
+      req.send().detach([this](kj::Exception exc) {
+        on_error_.fulfiller->reject(std::move(exc));
+      });
     }
-    if (children.size() < num_boxes) {
-      pid_t pid;
-      check_error(pid = fork());
-      if (pid == 0) {
-        Worker();
-        _Exit(0);
-      }
-      children.insert(pid);
-      continue;
-    }
-    pid_t pid;
-    int wstatus;
-    if ((pid = waitpid(-1, &wstatus, WNOHANG)) > 0) {
-      children.erase(pid);
-      continue;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
-  // FD closed, parent has terminated.
-  // TODO: wait for the sandboxes to exit gracefully?
-  for (int c : children) {
-    kill(SIGTERM, c);
+  while (!waiting_tasks_.empty()) {
+    int sz = waiting_tasks_.front().first;
+    if (running_cores_ + sz >= num_cores_) break;
+    reserved_cores_ -= sz;
+    running_cores_ += sz;
+    waiting_tasks_.front().second->fulfill();
+    waiting_tasks_.pop();
   }
-  for (int c : children) {
-    int wstatus;
-    waitpid(c, &wstatus, 0);
-  }
-}
-}  // namespace
-
-void Manager::Start() {
-  // Create pipe for communication with the sandbox manager
-  check_error(pipe(pipefd));
-
-  // Start the Manager process
-  pid_t pid;
-  check_error(pid = fork());
-  if (pid == 0) {
-    close(pipefd[1]);
-    ManagerFun();
-    _Exit(0);
-  } else {
-    close(pipefd[0]);
-    // Ignore SIGCHLD so that the manager can die later than us
-    signal(SIGCHLD, SIG_IGN);
-  }
-}
-
-void Manager::Stop() { close(pipefd[1]); }
-
-void Manager::ChangeNumWorker(size_t num) {
-  check_error(write(pipefd[1], &num, sizeof(num)));
 }
 }  // namespace worker

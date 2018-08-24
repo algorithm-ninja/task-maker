@@ -9,9 +9,57 @@
 #include <fstream>
 #include <thread>
 
+#include <kj/async-io.h>
 #include <kj/debug.h>
+#include <kj/io.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 namespace {
+kj::Promise<sandbox::ExecutionInfo> RunSandbox(
+    sandbox::ExecutionOptions exec_options,
+    kj::LowLevelAsyncIoProvider& async_io_provider) {
+  int pipefd[2];
+  int ret = pipe(pipefd);
+  KJ_ASSERT(ret != -1, strerror(errno));
+  int pid = fork();
+  KJ_ASSERT(pid != -1, strerror(errno));
+  if (pid == 0) {  // Child process
+    close(pipefd[0]);
+    sandbox::ExecutionInfo outcome;
+    std::string error_msg;
+    std::unique_ptr<sandbox::Sandbox> sb = sandbox::Sandbox::Create();
+    kj::FdOutputStream out(pipefd[1]);
+    if (!sb->Execute(exec_options, &outcome, &error_msg)) {
+      size_t sz = error_msg.size();
+      out.write(&sz, sizeof(sz));
+      out.write(error_msg.c_str(), sz + 1);
+    } else {
+      size_t sz = 0;
+      out.write(&sz, sizeof(sz));
+      out.write(&outcome, sizeof(outcome));
+      // TODO: think about outcome.message
+    }
+    _Exit(0);
+  } else {
+    close(pipefd[1]);  // Parent process
+    kj::Own<kj::AsyncInputStream> in = async_io_provider.wrapInputFd(pipefd[0]);
+    auto promise = in->readAllBytes();
+    return promise.attach(std::move(in))
+        .then([pid](const kj::Array<kj::byte>& data) {
+          size_t error_sz = *(size_t*)data.begin();
+          const unsigned char* msg = data.begin() + sizeof(size_t);
+          KJ_ASSERT(!error_sz, msg);
+          sandbox::ExecutionInfo outcome;
+          memcpy(&outcome, msg, sizeof(outcome));
+          int err = waitpid(pid, nullptr, 0);
+          KJ_ASSERT(err != -1, strerror(errno));
+          return outcome;
+        });
+  }
+}
+
 void PrepareFile(const std::string& path, const util::SHA256_t& hash,
                  bool executable) {
   if (hash.isZero()) return;
@@ -51,7 +99,6 @@ bool ValidateFileName(std::string name, capnproto::Result::Builder result) {
 
 namespace worker {
 
-// TODO: find a way to honor "exclusive"
 kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
                                     capnproto::Result::Builder result) {
   auto executable = request.getExecutable();
@@ -156,84 +203,91 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
   sandbox::ExecutionOptions::stringcpy(exec_options.stdout_file, stdout_path);
   sandbox::ExecutionOptions::stringcpy(exec_options.stderr_file, stderr_path);
 
-  last_load = last_load.then(
-      [executable, sandbox_dir, exec_options, request, result, stderr_path,
-       fail, stdout_path, tmp = std::move(tmp)]() mutable -> kj::Promise<void> {
-        KJ_LOG(INFO, "Files prepared, starting execution");
-        if (executable.isLocalFile()) {
-          auto local_file = executable.getLocalFile();
-          PrepareFile(util::File::JoinPath(sandbox_dir, local_file.getName()),
-                      local_file.getHash(), true);
-        }
-        if (!util::SHA256_t(request.getStdin()).isZero()) {
-          auto stdin_path = util::File::JoinPath(tmp.Path(), "stdin");
-          PrepareFile(stdin_path, request.getStdin(), true);
-          sandbox::ExecutionOptions::stringcpy(exec_options.stdin_file,
-                                               stdin_path);
-        }
-        for (const auto& input : request.getInputFiles()) {
-          PrepareFile(util::File::JoinPath(sandbox_dir, input.getName()),
-                      input.getHash(), input.getExecutable());
-        }
-        std::string error_msg;
-        sandbox::ExecutionInfo outcome;
+  last_load = last_load.then([executable, sandbox_dir, exec_options, request,
+                              result, stderr_path, fail, stdout_path,
+                              tmp = std::move(tmp),
+                              this]() mutable -> kj::Promise<void> {
+    KJ_LOG(INFO, "Files loaded, starting sandbox setup");
+    if (executable.isLocalFile()) {
+      auto local_file = executable.getLocalFile();
+      PrepareFile(util::File::JoinPath(sandbox_dir, local_file.getName()),
+                  local_file.getHash(), true);
+    }
+    if (!util::SHA256_t(request.getStdin()).isZero()) {
+      auto stdin_path = util::File::JoinPath(tmp.Path(), "stdin");
+      PrepareFile(stdin_path, request.getStdin(), true);
+      sandbox::ExecutionOptions::stringcpy(exec_options.stdin_file, stdin_path);
+    }
+    for (const auto& input : request.getInputFiles()) {
+      PrepareFile(util::File::JoinPath(sandbox_dir, input.getName()),
+                  input.getHash(), input.getExecutable());
+    }
 
-        // Actual execution.
-        {
-          std::unique_ptr<sandbox::Sandbox> sb = sandbox::Sandbox::Create();
-          if (!sb->Execute(exec_options, &outcome, &error_msg)) {
-            return fail(error_msg);
-          }
-        }
+    // Actual execution.
+    return manager_
+        .ScheduleTask(request.getExclusive() ? manager_.NumCores() : 1,
+                      std::function<kj::Promise<sandbox::ExecutionInfo>()>(
+                          [this, exec_options]() {
+                            return RunSandbox(
+                                exec_options,
+                                manager_.Client().getLowLevelIoProvider());
+                          }))
+        .then(
+            [result, exec_options, stdout_path, stderr_path, request,
+             sandbox_dir,
+             tmp = std::move(tmp)](sandbox::ExecutionInfo outcome) mutable {
+              // Resource usage.
+              auto resource_usage = result.initResourceUsage();
+              resource_usage.setCpuTime(outcome.cpu_time_millis / 1000.0);
+              resource_usage.setSysTime(outcome.sys_time_millis / 1000.0);
+              resource_usage.setWallTime(outcome.wall_time_millis / 1000.0);
+              resource_usage.setMemory(outcome.memory_usage_kb);
 
-        // Resource usage.
-        auto resource_usage = result.initResourceUsage();
-        resource_usage.setCpuTime(outcome.cpu_time_millis / 1000.0);
-        resource_usage.setSysTime(outcome.sys_time_millis / 1000.0);
-        resource_usage.setWallTime(outcome.wall_time_millis / 1000.0);
-        resource_usage.setMemory(outcome.memory_usage_kb);
-
-        if (exec_options.memory_limit_kb != 0 &&
-            outcome.memory_usage_kb >= exec_options.memory_limit_kb) {
-          result.getStatus().setMemoryLimit();
-        } else if (exec_options.cpu_limit_millis != 0 &&
-                   outcome.cpu_time_millis + outcome.sys_time_millis >=
-                       exec_options.cpu_limit_millis) {
-          result.getStatus().setTimeLimit();
-        } else if (exec_options.wall_limit_millis != 0 &&
-                   outcome.wall_time_millis >= exec_options.wall_limit_millis) {
-          result.getStatus().setWallLimit();
-        } else if (outcome.signal != 0) {
-          result.getStatus().setSignal(outcome.signal);
-        } else if (outcome.status_code != 0) {
-          result.getStatus().setReturnCode(outcome.status_code);
-        } else {
-          result.getStatus().setSuccess();
-        }
-
-        // Output files.
-        RetrieveFile(stdout_path, result.initStdout());
-        RetrieveFile(stderr_path, result.initStderr());
-        auto output_names = request.getOutputFiles();
-        auto outputs = result.initOutputFiles(output_names.size());
-        for (size_t i = 0; i < request.getOutputFiles().size(); i++) {
-          outputs[i].setName(output_names[i]);
-          try {
-            RetrieveFile(util::File::JoinPath(sandbox_dir, output_names[i]),
-                         outputs[i].initHash());
-          } catch (const std::system_error& exc) {
-            if (exc.code().value() !=
-                static_cast<int>(std::errc::no_such_file_or_directory)) {
-              result.getStatus().setInternalError(exc.what());
-            } else {
-              if (result.getStatus().isSuccess()) {
-                result.getStatus().setMissingFiles();
+              if (exec_options.memory_limit_kb != 0 &&
+                  outcome.memory_usage_kb >= exec_options.memory_limit_kb) {
+                result.getStatus().setMemoryLimit();
+              } else if (exec_options.cpu_limit_millis != 0 &&
+                         outcome.cpu_time_millis + outcome.sys_time_millis >=
+                             exec_options.cpu_limit_millis) {
+                result.getStatus().setTimeLimit();
+              } else if (exec_options.wall_limit_millis != 0 &&
+                         outcome.wall_time_millis >=
+                             exec_options.wall_limit_millis) {
+                result.getStatus().setWallLimit();
+              } else if (outcome.signal != 0) {
+                result.getStatus().setSignal(outcome.signal);
+              } else if (outcome.status_code != 0) {
+                result.getStatus().setReturnCode(outcome.status_code);
+              } else {
+                result.getStatus().setSuccess();
               }
-            }
-          }
-        }
-        return kj::READY_NOW;
-      });
+
+              // Output files.
+              RetrieveFile(stdout_path, result.initStdout());
+              RetrieveFile(stderr_path, result.initStderr());
+              auto output_names = request.getOutputFiles();
+              auto outputs = result.initOutputFiles(output_names.size());
+              for (size_t i = 0; i < request.getOutputFiles().size(); i++) {
+                outputs[i].setName(output_names[i]);
+                try {
+                  RetrieveFile(
+                      util::File::JoinPath(sandbox_dir, output_names[i]),
+                      outputs[i].initHash());
+                } catch (const std::system_error& exc) {
+                  if (exc.code().value() !=
+                      static_cast<int>(std::errc::no_such_file_or_directory)) {
+                    result.getStatus().setInternalError(exc.what());
+                  } else {
+                    if (result.getStatus().isSuccess()) {
+                      result.getStatus().setMissingFiles();
+                    }
+                  }
+                }
+              }
+            },
+            [fail](kj::Exception exc) { fail(exc.getDescription()); })
+        .eagerlyEvaluate(nullptr);
+  });
   return last_load;
 }  // namespace executor
 

@@ -1,10 +1,13 @@
 #include "worker/main.hpp"
+#include <capnp/ez-rpc.h>
 #include <thread>
 
+#include "capnp/server.capnp.h"
 #include "util/daemon.hpp"
 #include "util/flags.hpp"
 #include "util/misc.hpp"
 #include "util/version.hpp"
+#include "worker/executor.hpp"
 #include "worker/manager.hpp"
 
 namespace worker {
@@ -15,11 +18,9 @@ kj::MainBuilder::Validity Main::Run() {
   if (Flags::server == "") {
     return "You need to specify a server!";
   }
-  Manager::Start();
-  while (true) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
-  Manager::Stop();
+  Manager manager(Flags::server, Flags::port, Flags::num_cores,
+                  Flags::pending_requests, Flags::name);
+  manager.Run();
   return true;
 }
 
@@ -38,6 +39,9 @@ kj::MainFunc Main::getMain() {
                         "Name of this worker")
       .addOptionWithArg({'t', "temp"}, util::setString(Flags::temp_directory),
                         "<TEMP>", "Where to store the sandboxes")
+      .addOptionWithArg({'r', "pending-requests"},
+                        util::setInt(Flags::pending_requests), "<REQS>",
+                        "Maximum number of pending requests")
       .callAfterParsing(KJ_BIND_METHOD(*this, Run))
       .build();
 }

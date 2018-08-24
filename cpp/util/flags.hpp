@@ -16,6 +16,7 @@ struct Flags {
   static int32_t num_cores;
   static bool keep_sandboxes;
   static std::string temp_directory;
+  static int32_t pending_requests;
 
   // Server-only flags
   static std::string listen_address;
