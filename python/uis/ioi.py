@@ -113,7 +113,8 @@ class CustomCheckerState:
 
 class SolutionStatus:
     def __init__(self, source_file: SourceFile, task: Task,
-                 subtasks: Dict[int, List[int]]):
+                 interface: "IOIUIInterface", subtasks: Dict[int, List[int]]):
+        self.interface = interface
         self.source_file = source_file
         self.task = task
         self.score = 0.0
@@ -183,18 +184,25 @@ class SolutionStatus:
             testcase_status.message = "Failed to check: " + result_to_str(
                 state.result)
             return
+        stdout = state.stdout.strip()
         try:
-            score = float(state.stdout)
+            score = float(stdout)
         except ValueError:
             if state.result.status != ResultStatus.SUCCESS:
                 testcase_status.status = TestcaseSolutionStatus.INTERNAL_ERROR
                 testcase_status.message = \
-                    "Failed to check: invalid score: {}".format(state.stdout)
+                    "Failed to check: invalid score: {}".format(stdout)
+                self.interface.add_error(
+                    "Invalid output '{}' for checker at testcase #{} for solution {}".
+                    format(stdout, testcase, self.source_file.name))
             return
         if not 0.0 <= score <= 1.0:
             testcase_status.status = TestcaseSolutionStatus.INTERNAL_ERROR
             testcase_status.message = \
-                "Failed to check: invalid score: {}".format(state.stdout)
+                "Failed to check: invalid score: {}".format(stdout)
+            self.interface.add_error(
+                "Invalid score '{}' from checker at testcase #{} for solution {}".
+                format(stdout, testcase, self.source_file.name))
             return
         self.testcase_results[subtask][testcase].score = score
         if score == 1.0:
@@ -206,7 +214,7 @@ class SolutionStatus:
         else:
             testcase_status.status = TestcaseSolutionStatus.PARTIAL
             testcase_status.message = "Output is partially correct"
-        if state.stdout:
+        if stdout:
             testcase_status.message = state.stderr.strip()
 
         self.st_remaining_cases[subtask] -= 1
@@ -247,6 +255,8 @@ class IOIUIInterface:
         self.solutions = dict()  # type: Dict[str, SourceFileCompilationResult]
         self.testing = dict()  # type: Dict[str, SolutionStatus]
         self.running = dict()  # type: Dict[str, float]
+        self.warnings = list()  # type: List[str]
+        self.errors = list()  # type: List[str]
 
         if do_print:
             self.printer = StdoutPrinter()
@@ -280,6 +290,7 @@ class IOIUIInterface:
                     self.non_solutions[
                         name].status = SourceFileCompilationStatus.DONE
                 else:
+                    self.add_error("Failed to compile " + name)
                     self.printer.red(log_prefix +
                                      "FAIL: {}\n".format(result.status))
                     self.non_solutions[
@@ -302,7 +313,7 @@ class IOIUIInterface:
         log_prefix = "Compilation of solution {} ".format(name).ljust(50)
         self.solutions[name] = SourceFileCompilationResult(
             source_file.need_compilation)
-        self.testing[name] = SolutionStatus(source_file, self.task,
+        self.testing[name] = SolutionStatus(source_file, self.task, self,
                                             self.testcases)
         self.printer.text(log_prefix + "WAITING\n")
 
@@ -322,6 +333,7 @@ class IOIUIInterface:
                     self.solutions[
                         name].status = SourceFileCompilationStatus.DONE
                 else:
+                    self.add_warning("Failed to compile: " + name)
                     self.printer.red(log_prefix +
                                      "FAIL: {}\n".format(result.status))
                     self.solutions[
@@ -358,6 +370,7 @@ class IOIUIInterface:
                 self.printer.green(log_prefix + "SUCCESS\n")
                 testcase_status.status = TestcaseGenerationStatus.GENERATED
             else:
+                self.add_error("Failed to generate testcase #%d" % testcase)
                 self.printer.red(log_prefix +
                                  "FAIL: {}\n".format(result.status))
                 testcase_status.status = TestcaseGenerationStatus.FAILURE
@@ -393,6 +406,7 @@ class IOIUIInterface:
                 self.printer.green(log_prefix + "SUCCESS\n")
                 testcase_status.status = TestcaseGenerationStatus.VALIDATED
             else:
+                self.add_error("Failed to validate testcase #%d" % testcase)
                 self.printer.red(log_prefix +
                                  "FAIL: {}\n".format(result.status))
                 testcase_status.status = TestcaseGenerationStatus.FAILURE
@@ -427,6 +441,8 @@ class IOIUIInterface:
                 self.printer.green(log_prefix + "SUCCESS\n")
                 testcase_status.status = TestcaseGenerationStatus.DONE
             else:
+                self.add_error(
+                    "Failed to generate output of testcase #%d" % testcase)
                 self.printer.red(log_prefix +
                                  "FAIL: {}\n".format(result.status))
                 testcase_status.status = TestcaseGenerationStatus.FAILURE
@@ -494,6 +510,9 @@ class IOIUIInterface:
                 if result.status == ResultStatus.SUCCESS:
                     self.printer.green(log_prefix + "SUCCESS\n")
                 else:
+                    self.add_error(
+                        "Checker failed for testcase #%d for solution %s" %
+                        (testcase, solution))
                     self.printer.red(log_prefix +
                                      "FAIL: {}\n".format(result.status))
             else:
@@ -520,3 +539,9 @@ class IOIUIInterface:
             checking.stderr(False).getContentsAsString(getStderr)
         checking.notifyStart(notifyStartChecking)
         checking.getResult(getResultChecking, skippedChecking)
+
+    def add_warning(self, message: str):
+        self.warnings.append(message)
+
+    def add_error(self, message: str):
+        self.errors.append(message)

@@ -51,7 +51,18 @@ class IOIFinishUI:
         self.printer.blue("Summary:\n", bold=True)
         print_solutions_result(self.printer, self.task, self.interface.testing,
                                max_sol_len, "?")
-        self.printer.text("\n")
+
+        if self.interface.warnings:
+            self.printer.text("\n")
+            self.printer.yellow("Warnings:\n", bold=True)
+            for warning in self.interface.warnings:
+                self.printer.text("- " + warning + "\n")
+
+        if self.interface.errors:
+            self.printer.text("\n")
+            self.printer.red("Errors:\n", bold=True)
+            for error in self.interface.errors:
+                self.printer.text("- " + error + "\n")
 
     def _print_compilation(self, solution: str,
                            result: SourceFileCompilationResult,

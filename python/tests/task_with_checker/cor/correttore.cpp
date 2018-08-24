@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
   test >> N_test;
 
   if (N_cor == N_test) {
-    std::cout << 1.0 << std::endl;
+    std::cout << -1.0 << std::endl;
     std::cerr << "Ok!" << std::endl;
   } else {
     std::cout << 0.0 << std::endl;
