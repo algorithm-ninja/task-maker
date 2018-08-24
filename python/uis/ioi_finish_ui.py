@@ -65,28 +65,33 @@ class IOIFinishUI:
                 "{:<{len}}   FAIL ".format(solution, len=max_sol_len),
                 bold=True)
         if result.need_compilation:
-            if result.result.status != ResultStatus.INTERNAL_ERROR and \
-                    result.result.status != ResultStatus.MISSING_FILES and \
-                    result.result.status != ResultStatus.MISSING_EXECUTABLE:
-                if result.result:
+            if not result.result:
+                self.printer.text("  UNKNOWN")
+            else:
+                if result.result.status != ResultStatus.INTERNAL_ERROR and \
+                        result.result.status != ResultStatus.MISSING_FILES and \
+                        result.result.status != ResultStatus.MISSING_EXECUTABLE:
                     self.printer.text(" {:>6.3f}s | {:>5.1f}MiB".format(
                         result.result.resources.cpu_time +
                         result.result.resources.sys_time,
                         result.result.resources.memory / 1024))
-            if result.result.status == ResultStatus.RETURN_CODE:
-                self.printer.text(
-                    " | Exited with %d" % result.result.return_code)
-            elif result.result.status == ResultStatus.SIGNAL:
-                self.printer.text(
-                    " | Killed with signal %d" % result.result.signal)
-            elif result.result.status == ResultStatus.INTERNAL_ERROR:
-                self.printer.text("  Internal error %s" % result.result.error)
-            elif result.result.status == ResultStatus.MISSING_FILES:
-                self.printer.text("  Missing files")
-            elif result.result.status == ResultStatus.MISSING_EXECUTABLE:
-                self.printer.text("  " + result.result.error)
-            else:
-                self.printer.text(result.result.status)
+                if result.result.status == ResultStatus.RETURN_CODE:
+                    self.printer.text(
+                        " | Exited with %d" % result.result.return_code)
+                elif result.result.status == ResultStatus.SIGNAL:
+                    self.printer.text(
+                        " | Killed with signal %d" % result.result.signal)
+                elif result.result.status == ResultStatus.INTERNAL_ERROR:
+                    self.printer.text(
+                        "  Internal error %s" % result.result.error)
+                elif result.result.status == ResultStatus.MISSING_FILES:
+                    self.printer.text("  Missing files")
+                elif result.result.status == ResultStatus.MISSING_EXECUTABLE:
+                    self.printer.text("  " + result.result.error)
+                elif result.result.status == ResultStatus.SUCCESS:
+                    pass
+                else:
+                    self.printer.text("  " + result.result.status)
         self.printer.text("\n")
         if result.stderr:
             self.printer.text(result.stderr)

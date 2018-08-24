@@ -321,7 +321,6 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface,
                         testcase.validator_args)
                     if config.cache == CacheMode.NOTHING:
                         val.disableCache()
-                    # TODO set limits?
                     val.addInput(VALIDATION_INPUT_NAME, inputs[(st_num,
                                                                 tc_num)])
                     validations[(st_num, tc_num)] = val.stdout(False)
@@ -342,7 +341,6 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface,
                         frontend.provideFile(dep.path, dep.path, False))
                 if config.cache == CacheMode.NOTHING:
                     gen.disableCache()
-                # TODO set limits?
                 inputs[(st_num, tc_num)] = gen.stdout(False)
 
                 ui_interface.add_generation(st_num, tc_num, gen)
@@ -352,7 +350,6 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface,
                     testcase.validator_args)
                 if config.cache == CacheMode.NOTHING:
                     val.disableCache()
-                # TODO set limits?
                 val.addInput(VALIDATION_INPUT_NAME, inputs[(st_num, tc_num)])
                 validations[(st_num, tc_num)] = val.stdout(False)
 
@@ -376,7 +373,6 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface,
                     frontend, "Generation of output %d" % tc_num, [])
                 if config.cache == CacheMode.NOTHING:
                     sol.disableCache()
-                # TODO set limits?
 
                 if (st_num, tc_num) in validations:
                     sol.addInput("wait_for_validation", validations[(st_num,
@@ -455,7 +451,11 @@ def evaluate_solutions(
             check.addInput("contestant_output", output)
             if config.cache != CacheMode.ALL:
                 check.disableCache()
-            # TODO set limits
+            limits = Resources()
+            limits.cpu_time = task.time_limit * 2
+            limits.wall_time = task.time_limit * 1.5 * 2
+            limits.memory = task.memory_limit_kb * 2
+            check.setLimits(limits)
             ui_interface.add_evaluate_checking(st_num, tc_num, solution.name,
                                                check)
 
