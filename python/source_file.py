@@ -111,8 +111,6 @@ class SourceFile:
         if not compiler:
             # TODO fix the error when the compiler is missing
             compiler = "/usr/bin/false"
-            # raise FileNotFoundError(
-            #     "Cannot compile %s: missing compiler" % self.path)
 
         self.compilation = frontend.addExecution(
             "Compilation of %s" % self.name)
@@ -132,11 +130,12 @@ class SourceFile:
         self.executable = self.compilation.output(self.exe_name, True)
         if self.write_bin_to:
             self.executable.getContentsToFile(self.write_bin_to, True, True)
-        # TODO set time/memory limits?
 
     def _not_compile(self, frontend):
         self.executable = frontend.provideFile(
             self.path, "Source file for " + self.name, True)
+        if self.write_bin_to:
+            self.executable.getContentsToFile(self.write_bin_to, True, True)
 
     def execute(self, frontend, description: str, args: List[str]):
         execution = frontend.addExecution(description)
