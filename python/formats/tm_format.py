@@ -1,175 +1,19 @@
 #!/usr/bin/env python3
 import argparse
 import os.path
+from task_maker.config import Config
 from typing import List, IO, Dict, Union
 from typing import Optional
 import shlex
 
-from manager_pb2 import EvaluateTaskRequest
-from task_maker.absolutize import absolutize_request
 from task_maker.dependency_finder import find_dependency
-from task_maker.formats import ioi_format
+from task_maker.formats import ioi_format, Task, GraderInfo, Dependency
 from task_maker.formats.ioi_format import list_files, parse_task_yaml, \
     create_task_from_yaml, get_solutions, get_checker, get_generator, \
-    get_validator, get_official_solution, VALIDATION_INPUT_NAME
+    get_validator, get_official_solution, VALIDATION_INPUT_NAME, gen_grader_map
 from task_maker.language import grader_from_file
 from task_maker.sanitize import sanitize_command
-from task_maker.source_file import from_file
-from task_pb2 import Subtask, MIN, TestCase, GraderInfo, Dependency
-
-
-class TMConstraint:
-    def __init__(self, name: str, lower_bound: Optional[float],
-                 upper_bound: Optional[float], more_or_equal: bool,
-                 less_or_equal: bool):
-        self.name = name
-        self.lower_bound = lower_bound
-        self.upper_bound = upper_bound
-        self.more_or_equal = more_or_equal
-        self.less_or_equal = less_or_equal
-
-    def accept(self, x: float):
-        if self.lower_bound is not None:
-            if self.more_or_equal and x < self.lower_bound:
-                return False
-            if not self.more_or_equal and x <= self.lower_bound:
-                return False
-        if self.upper_bound is not None:
-            if self.less_or_equal and x > self.upper_bound:
-                return False
-            if not self.less_or_equal and x >= self.upper_bound:
-                return False
-        return True
-
-    def __repr__(self):
-        res = "<Constraint "
-        if self.lower_bound is not None:
-            res += str(self.lower_bound)
-            res += " <= " if self.more_or_equal else " < "
-        res += self.name
-        if self.upper_bound is not None:
-            res += " <= " if self.less_or_equal else " < "
-            res += str(self.upper_bound)
-        res += ">"
-        return res
-
-
-class TMGenerator:
-    def __init__(self, name: str, path: str, args: Optional[List[str]]):
-        self.name = name
-        self.path = path
-        self.args = args
-
-    def __repr__(self):
-        return "<Generator %s (%s [%s])>" % \
-               (self.name, self.path, " ".join(self.args))
-
-
-class TMCopyGenerator(TMGenerator):
-    def __init__(self):
-        super().__init__("COPY", "", None)
-
-    def __repr__(self):
-        return "<CopyGenerator>"
-
-
-class TMValidator:
-    def __init__(self, name: str, path: str, args: Optional[List[str]]):
-        self.name = name
-        self.path = path
-        self.args = args
-
-    def get_args(self, testcase: "TMTestcase", subtask: "TMSubtask",
-                 tc_num: int, st_num: int) -> List[str]:
-        if not self.args:
-            return [VALIDATION_INPUT_NAME, str(st_num)]
-        args = []  # type: List[str]
-        for arg in self.args:
-            if not arg.startswith("$"):
-                args.append(arg)
-            else:
-                args.append(
-                    parse_variable(arg, testcase, subtask, tc_num, st_num))
-        return args
-
-    def __repr__(self):
-        return "<Validator %s (%s [%s])>" % \
-               (self.name, self.path, " ".join(self.args))
-
-
-class TMTestcase:
-    def __init__(self, gen_args: List[str], generator: TMGenerator,
-                 validator: TMValidator):
-        self.gen_args = gen_args
-        self.val_args = []  # type: List[str]
-        self.generator = generator
-        self.validator = validator
-        self.matched_params = {}  # type: Dict[str, str]
-
-    def __repr__(self):
-        return "<Testcase %s %s | val=%s>" % \
-               (self.generator.name, " ".join(self.gen_args),
-                self.validator.name)
-
-
-class TMSubtask:
-    def __init__(self, max_score: float, name: str):
-        self.max_score = max_score
-        self.name = name
-        self.description = None  # type: Optional[str]
-        self.constraints = []  # type: List[TMConstraint]
-        self.testcases = []  # type: List[TMTestcase]
-
-    def __repr__(self):
-        return "<Subtask score=%f name=%s desc='%s' %d testcases " \
-               "%d constraints>" % \
-               (self.max_score, self.name, str(self.description),
-                len(self.testcases), len(self.constraints))
-
-
-def parse_variable(arg: str, testcase: "TMTestcase", subtask: "TMSubtask",
-                   tc_num: int, st_num: int) -> str:
-    def format_number(num: Union[int, float]):
-        if int(num) == num:
-            return str(int(num))
-        return str(num)
-
-    cmd = arg[1:]
-    if cmd == "ST_NUM":
-        return format_number(st_num)
-    elif cmd == "ST_NAME":
-        return subtask.name
-    elif cmd == "TC_NUM":
-        return format_number(tc_num)
-    elif cmd == "INPUT":
-        return VALIDATION_INPUT_NAME
-    elif cmd.startswith("MIN_"):
-        var = cmd[4:]
-        value = None
-        for constraint in subtask.constraints:
-            if constraint.name == var and \
-                    constraint.lower_bound is not None:
-                value = max(value or -10**18, constraint.lower_bound)
-        if value is None:
-            raise ValueError("There are no constraints for the "
-                             "minimum of '%s'" % var)
-        return format_number(value)
-    elif cmd.startswith("MAX_"):
-        var = cmd[4:]
-        value = None
-        for constraint in subtask.constraints:
-            if constraint.name == var and \
-                    constraint.upper_bound is not None:
-                value = min(value or 10**18, constraint.upper_bound)
-        if value is None:
-            raise ValueError("There are no constraints for the "
-                             "maximum of '%s'" % var)
-        return format_number(value)
-    elif cmd in testcase.matched_params:
-        return testcase.matched_params[cmd]
-    else:
-        raise ValueError(
-            "Cannot match variable '%s' in testcase %s" % (arg, testcase))
+from task_maker.source_file import SourceFile
 
 
 def parse_cases(gen: IO) -> List[TMSubtask]:
@@ -470,25 +314,31 @@ def generate_gen_GEN(subtasks: List[TMSubtask]):
     return GEN
 
 
-def get_request(args: argparse.Namespace) -> EvaluateTaskRequest:
-    copy_compiled = args.copy_exe
+def get_request(config: Config) -> (Task, List[SourceFile]):
+    copy_compiled = config.copy_exe
     data = parse_task_yaml()
     if not data:
         raise RuntimeError("The task.yaml is not valid")
 
     task = create_task_from_yaml(data)
+
     graders = list_files(["sol/grader.*"])
-    solutions = get_solutions(args.solutions, graders)
+    solutions = get_solutions(config.solutions, graders)
     checker = get_checker()
     if checker is not None:
-        task.checker.CopyFrom(
-            from_file(checker, copy_compiled and "bin/checker"))
+        task.checker = SourceFile.from_file(checker, copy_compiled
+                                            and "bin/checker")
+
+    grader_map = gen_grader_map(graders, task)
+
     official_solution = get_official_solution()
     if official_solution is None:
         raise RuntimeError("No official solution found")
-    task.official_solution.CopyFrom(
-        from_file(official_solution, copy_compiled
-                  and "bin/official_solution"))
+    task.official_solution = SourceFile.from_file(
+        official_solution,
+        copy_compiled and "bin/official_solution",
+        grader_map=grader_map)
+
     with open("gen/cases.gen", "r") as gen:
         subtasks = parse_cases(gen)
 

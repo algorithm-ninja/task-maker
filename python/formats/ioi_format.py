@@ -2,7 +2,7 @@
 
 import glob
 import os
-import shutil
+import shlex
 import yaml
 from typing import Dict, List, Any, Tuple
 from typing import Optional
@@ -13,28 +13,16 @@ from task_maker.uis.ioi_finish_ui import IOIFinishUI
 from task_maker.uis.ioi_curses_ui import IOICursesUI
 from task_maker.uis.ioi import IOIUIInterface
 from task_maker.dependency_finder import find_dependency
-from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, GraderInfo
-from task_maker.language import grader_from_file, valid_extensions
+from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, \
+    GraderInfo, list_files, Validator, Generator, get_options, \
+    VALIDATION_INPUT_NAME
+from task_maker.language import grader_from_file
 from task_maker.sanitize import sanitize_command
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import File, Frontend, Resources
 
-VALIDATION_INPUT_NAME = "tm_input_file"
 
-
-def list_files(patterns: List[str],
-               exclude: Optional[List[str]] = None) -> List[str]:
-    if exclude is None:
-        exclude = []
-    files = [_file for pattern in patterns
-             for _file in glob.glob(pattern)]  # type: List[str]
-    return [
-        res for res in files if res not in exclude
-        and os.path.splitext(res)[1] in valid_extensions()
-    ]
-
-
-def load_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
+def load_static_testcases() -> Subtask:
     nums = [
         int(input_file[11:-4])
         for input_file in glob.glob(os.path.join("input", "input*.txt"))
@@ -42,16 +30,18 @@ def load_testcases() -> Tuple[Optional[str], Dict[int, Subtask]]:
     if not nums:
         raise RuntimeError("No generator and no input files found!")
 
-    subtask = Subtask(ScoreMode.SUM, 100, {})
+    subtask = Subtask("Static testcases",
+                      "Testcases imported without a generator", ScoreMode.SUM,
+                      100, {}, [])
 
     for num in sorted(nums):
-        testcase = TestCase(None, [], [], None, [],
+        testcase = TestCase(None, None, [], [],
                             os.path.join("input", "input%d.txt" % num),
                             os.path.join("output", "output%d.txt" % num),
                             get_write_input_file(num),
                             get_write_output_file(num))
         subtask.testcases[num] = testcase
-    return None, {0: subtask}
+    return subtask
 
 
 def get_generator() -> Optional[str]:
@@ -87,22 +77,26 @@ def gen_testcases(
     def create_subtask(subtask_num: int, testcases: Dict[int, TestCase],
                        score: float) -> None:
         if testcases:
-            subtask = Subtask(ScoreMode.MIN, score, {})
-            for testcase_num, testcase in testcases.items():
-                subtask.testcases[testcase_num] = testcase
+            subtask = Subtask("Subtask {}".format(subtask_num), "",
+                              ScoreMode.MIN, score, testcases, [])
             subtasks[subtask_num] = subtask
 
     generator = get_generator()
     if not generator:
-        return load_testcases()
+        return None, {0: load_static_testcases()}
     else:
-        generator = SourceFile.from_file(generator, copy_compiled
-                                         and "bin/generator")
+        generator = Generator(
+            "default",
+            SourceFile.from_file(generator, copy_compiled and "bin/generator"),
+            None)
     validator = get_validator()
     if not validator:
         raise RuntimeError("No validator found")
-    validator = SourceFile.from_file(validator, copy_compiled
-                                     and "bin/validator")
+    validator = Validator(
+        "default",
+        SourceFile.from_file(validator, copy_compiled and "bin/validator"),
+        None)
+
     official_solution = get_official_solution()
     if official_solution is None:
         raise RuntimeError("No official solution found")
@@ -112,22 +106,16 @@ def gen_testcases(
     testcase_num = 0
     current_score = 0.0
     for line in open("gen/GEN"):
-        testcase = TestCase(None, [], [], None, [], None, None,
-                            get_write_input_file(testcase_num),
-                            get_write_output_file(testcase_num))
         if line.startswith("#ST: "):
             create_subtask(subtask_num, current_testcases, current_score)
             subtask_num += 1
             current_testcases = {}
             current_score = float(line.strip()[5:])
             continue
-        elif line.startswith("#COPY: "):
-            testcase.input_file = line[7:].strip()
-            testcase.validator = validator
-            # in the old format the subtask number is 1-based
-            testcase.validator_args.extend(
-                [VALIDATION_INPUT_NAME,
-                 str(subtask_num + 1)])
+        if line.startswith("#COPY: "):
+            testcase = TestCase(None, validator, [], [], line[7:].strip(),
+                                None, get_write_input_file(testcase_num),
+                                get_write_output_file(testcase_num))
         else:
             line = line.split("#")[0].strip()
             if not line:
@@ -135,16 +123,11 @@ def gen_testcases(
             # a new testcase without subtask
             if subtask_num < 0:
                 subtask_num = 0
-            args = line.split()
+            args = shlex.split(line)
             arg_deps = sanitize_command(args)
-            testcase.generator = generator
-            testcase.generator_args.extend(args)
-            testcase.extra_deps.extend(arg_deps)
-            testcase.validator = validator
-            # in the old format the subtask number is 1-based
-            testcase.validator_args.extend(
-                [VALIDATION_INPUT_NAME,
-                 str(subtask_num + 1)])
+            testcase = TestCase(generator, validator, args, arg_deps, None,
+                                None, get_write_input_file(testcase_num),
+                                get_write_output_file(testcase_num))
         current_testcases[testcase_num] = testcase
         testcase_num += 1
 
@@ -173,18 +156,6 @@ def parse_task_yaml() -> Dict[str, Any]:
     path = detect_yaml()
     with open(path) as yaml_file:
         return yaml.load(yaml_file)
-
-
-def get_options(data: Dict[str, Any],
-                names: List[str],
-                default: Optional[Any] = None) -> Any:
-    for name in names:
-        if name in data:
-            return data[name]
-    if not default:
-        raise ValueError(
-            "Non optional field %s missing from task.yaml" % "|".join(names))
-    return default
 
 
 def create_task_from_yaml(data: Dict[str, Any]) -> Task:
@@ -229,6 +200,19 @@ def get_checker() -> Optional[str]:
     return checker
 
 
+def gen_grader_map(graders: List[str], task: Task):
+    grader_map = dict()
+
+    for grader in graders:
+        name = os.path.basename(grader)
+        info = GraderInfo(
+            grader_from_file(grader),
+            [Dependency(name, grader)] + find_dependency(grader))
+        grader_map[info.for_language] = info
+        task.grader_info.extend([info])
+    return grader_map
+
+
 def get_request(config: Config) -> (Task, List[SourceFile]):
     copy_compiled = config.copy_exe
     data = parse_task_yaml()
@@ -241,15 +225,7 @@ def get_request(config: Config) -> (Task, List[SourceFile]):
     solutions = get_solutions(config.solutions, graders)
     checker = get_checker()
 
-    grader_map = dict()
-
-    for grader in graders:
-        name = os.path.basename(grader)
-        info = GraderInfo(
-            grader_from_file(grader),
-            [Dependency(name, grader)] + find_dependency(grader))
-        grader_map[info.for_language] = info
-        task.grader_info.extend([info])
+    grader_map = gen_grader_map(graders, task)
 
     official_solution, subtasks = gen_testcases(copy_compiled)
     if official_solution:
@@ -297,42 +273,44 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile],
         finish_ui.print()
 
 
-def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface,
+def generate_inputs(frontend, task: Task, interface: IOIUIInterface,
                     config: Config) -> (Dict[Tuple[int, int], File], Dict[
                         Tuple[int, int], File], Dict[Tuple[int, int], File]):
+    def add_non_solution(source: SourceFile):
+        if not source.prepared:
+            source.prepare(frontend, config)
+            interface.add_non_solution(source)
+
     inputs = dict()  # type: Dict[Tuple[int, int], File]
     outputs = dict()  # type: Dict[Tuple[int, int], File]
     validations = dict()  # type: Dict[Tuple[int, int], File]
     for st_num, subtask in task.subtasks.items():
         for tc_num, testcase in subtask.testcases.items():
-            if testcase.validator:
-                is_val_prepared = testcase.validator.prepared
-                testcase.validator.prepare(frontend, config)
-                if not is_val_prepared:
-                    ui_interface.add_non_solution(testcase.validator)
+            testcase_id = (st_num, tc_num)
 
-            # input file
+            if testcase.validator:
+                add_non_solution(testcase.validator.source_file)
+
+            # static input file
             if testcase.input_file:
-                inputs[(st_num, tc_num)] = frontend.provideFile(
+                inputs[testcase_id] = frontend.provideFile(
                     testcase.input_file, "Static input %d" % tc_num, False)
                 if testcase.validator:
-                    val = testcase.validator.execute(
+                    val = testcase.validator.source_file.execute(
                         frontend, "Validation of input %d" % tc_num,
-                        testcase.validator_args)
+                        testcase.validator.get_args(testcase, subtask, tc_num,
+                                                    st_num+1))
                     if config.cache == CacheMode.NOTHING:
                         val.disableCache()
-                    val.addInput(VALIDATION_INPUT_NAME, inputs[(st_num,
-                                                                tc_num)])
-                    validations[(st_num, tc_num)] = val.stdout(False)
+                    val.addInput(VALIDATION_INPUT_NAME, inputs[testcase_id])
+                    validations[testcase_id] = val.stdout(False)
 
-                    ui_interface.add_validation(st_num, tc_num, val)
+                    interface.add_validation(st_num, tc_num, val)
+            # generate input file
             else:
-                is_gen_prepared = testcase.generator.prepared
-                testcase.generator.prepare(frontend, config)
-                if not is_gen_prepared:
-                    ui_interface.add_non_solution(testcase.generator)
+                add_non_solution(testcase.generator.source_file)
 
-                gen = testcase.generator.execute(
+                gen = testcase.generator.source_file.execute(
                     frontend, "Generation of input %d" % tc_num,
                     testcase.generator_args)
                 for dep in testcase.extra_deps:
@@ -341,56 +319,52 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface,
                         frontend.provideFile(dep.path, dep.path, False))
                 if config.cache == CacheMode.NOTHING:
                     gen.disableCache()
-                inputs[(st_num, tc_num)] = gen.stdout(False)
+                inputs[testcase_id] = gen.stdout(False)
 
-                ui_interface.add_generation(st_num, tc_num, gen)
+                interface.add_generation(st_num, tc_num, gen)
 
-                val = testcase.validator.execute(
+                val = testcase.validator.source_file.execute(
                     frontend, "Validation of input %d" % tc_num,
-                    testcase.validator_args)
+                    testcase.validator.get_args(testcase, subtask, tc_num,
+                                                st_num+1))
                 if config.cache == CacheMode.NOTHING:
                     val.disableCache()
-                val.addInput(VALIDATION_INPUT_NAME, inputs[(st_num, tc_num)])
-                validations[(st_num, tc_num)] = val.stdout(False)
+                val.addInput(VALIDATION_INPUT_NAME, inputs[testcase_id])
+                validations[testcase_id] = val.stdout(False)
 
-                ui_interface.add_validation(st_num, tc_num, val)
+                interface.add_validation(st_num, tc_num, val)
 
             if testcase.write_input_to:
-                inputs[(st_num, tc_num)].getContentsToFile(
-                    testcase.write_input_to, True, True)
+                inputs[testcase_id].getContentsToFile(testcase.write_input_to,
+                                                      True, True)
 
-            # output file
+            # static output file
             if testcase.output_file:
-                outputs[(st_num, tc_num)] = frontend.provideFile(
+                outputs[testcase_id] = frontend.provideFile(
                     testcase.output_file, "Static output %d" % tc_num, False)
             else:
-                is_sol_prepared = task.official_solution.prepared
-                task.official_solution.prepare(frontend, config)
-                if not is_sol_prepared:
-                    ui_interface.add_non_solution(task.official_solution)
+                add_non_solution(task.official_solution)
 
                 sol = task.official_solution.execute(
                     frontend, "Generation of output %d" % tc_num, [])
                 if config.cache == CacheMode.NOTHING:
                     sol.disableCache()
-
-                if (st_num, tc_num) in validations:
-                    sol.addInput("wait_for_validation", validations[(st_num,
-                                                                     tc_num)])
+                if testcase_id in validations:
+                    sol.addInput("wait_for_validation",
+                                 validations[testcase_id])
                 if task.input_file:
-                    sol.addInput(task.input_file, inputs[(st_num, tc_num)])
+                    sol.addInput(task.input_file, inputs[testcase_id])
                 else:
-                    sol.setStdin(inputs[(st_num, tc_num)])
+                    sol.setStdin(inputs[testcase_id])
                 if task.output_file:
-                    outputs[(st_num, tc_num)] = sol.output(
-                        task.output_file, False)
+                    outputs[testcase_id] = sol.output(task.output_file, False)
                 else:
-                    outputs[(st_num, tc_num)] = sol.stdout(False)
+                    outputs[testcase_id] = sol.stdout(False)
 
-                ui_interface.add_solving(st_num, tc_num, sol)
+                interface.add_solving(st_num, tc_num, sol)
 
             if testcase.write_output_to:
-                outputs[(st_num, tc_num)].getContentsToFile(
+                outputs[testcase_id].getContentsToFile(
                     testcase.write_output_to, True, True)
     return inputs, outputs, validations
 
@@ -399,11 +373,17 @@ def evaluate_solutions(
         frontend, task: Task, inputs: Dict[Tuple[int, int], File],
         outputs: Dict[Tuple[int, int], File],
         validations: Dict[Tuple[int, int], File], solutions: List[SourceFile],
-        ui_interface: IOIUIInterface, config: Config):
+        interface: IOIUIInterface, config: Config):
+    def add_non_solution(source: SourceFile):
+        if not source.prepared:
+            source.prepare(frontend, config)
+            interface.add_non_solution(source)
+
     for solution in solutions:
         solution.prepare(frontend, config)
-        ui_interface.add_solution(solution)
-        for (st_num, tc_num), input in inputs.items():
+        interface.add_solution(solution)
+        for testcase_id, input in inputs.items():
+            st_num, tc_num = testcase_id
             eval = solution.execute(
                 frontend,
                 "Evaluation of %s on testcase %d" % (solution.name, tc_num),
@@ -415,39 +395,34 @@ def evaluate_solutions(
             limits.wall_time = task.time_limit * 1.5
             limits.memory = task.memory_limit_kb
             eval.setLimits(limits)
-            if (st_num, tc_num) in validations:
-                eval.addInput("tm_wait_validation", validations[(st_num,
-                                                                 tc_num)])
+            if testcase_id in validations:
+                eval.addInput("tm_wait_validation", validations[testcase_id])
             if task.input_file:
-                eval.addInput(task.input_file, inputs[(st_num, tc_num)])
+                eval.addInput(task.input_file, inputs[testcase_id])
             else:
-                eval.setStdin(inputs[(st_num, tc_num)])
+                eval.setStdin(inputs[testcase_id])
             if task.output_file:
                 output = eval.output(task.output_file, False)
             else:
                 output = eval.stdout(False)
 
-            ui_interface.add_evaluate_solution(st_num, tc_num, solution.name,
-                                               eval)
+            interface.add_evaluate_solution(st_num, tc_num, solution.name,
+                                            eval)
 
             if task.checker:
-                is_check_prepared = task.checker.prepared
-                task.checker.prepare(frontend, config)
-                if not is_check_prepared:
-                    ui_interface.add_non_solution(task.checker)
-
+                add_non_solution(task.checker)
                 check = task.checker.execute(
                     frontend, "Checking solution %s for testcase %d" %
-                    (solution.name, tc_num),
+                    testcase_id,
                     ["input", "output", "contestant_output"])
-                check.addInput("input", inputs[(st_num, tc_num)])
+                check.addInput("input", inputs[testcase_id])
             else:
                 check = frontend.addExecution(
                     "Checking solution %s for testcase %d" % (solution.name,
                                                               tc_num))
                 check.setExecutablePath("diff")
                 check.setArgs(["-w", "output", "contestant_output"])
-            check.addInput("output", outputs[(st_num, tc_num)])
+            check.addInput("output", outputs[testcase_id])
             check.addInput("contestant_output", output)
             if config.cache != CacheMode.ALL:
                 check.disableCache()
@@ -456,8 +431,8 @@ def evaluate_solutions(
             limits.wall_time = task.time_limit * 1.5 * 2
             limits.memory = task.memory_limit_kb * 2
             check.setLimits(limits)
-            ui_interface.add_evaluate_checking(st_num, tc_num, solution.name,
-                                               check)
+            interface.add_evaluate_checking(st_num, tc_num, solution.name,
+                                            check)
 
 
 def clean():

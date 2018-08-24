@@ -56,14 +56,14 @@ def main() -> None:
     #     became_server(args)
     # if args.run_worker is not None:
     #     became_worker(args)
-    #
+
     # if args.kill_manager:
     #     quit_manager(args, True)
     # if args.quit_manager:
     #     quit_manager(args, False)
     # if args.kill_manager or args.quit_manager:
     #     return
-    #
+
     task_dir, format = find_task_dir(config.task_dir, config.max_depth,
                                      config.format)
     if not format:

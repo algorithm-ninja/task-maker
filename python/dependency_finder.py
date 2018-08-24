@@ -4,11 +4,19 @@ import os.path
 import re
 from typing import List
 
-from task_maker import language
-from task_maker.formats import Dependency, Language
+from task_maker.language import Language, from_file
 
 CXX_INCLUDE = re.compile('#include *["<](.+)[">]')
 PY_IMPORT = re.compile('import +(.+)|from +(.+) +import')
+
+
+class Dependency:
+    def __init__(self, name: str, path: str):
+        self.name = name
+        self.path = path
+
+    def __repr__(self):
+        return "<Dependency name=%s path=%s>" % (self.name, self.path)
 
 
 def find_python_dependency(content: str, scope: str) -> List[Dependency]:
@@ -46,7 +54,7 @@ def find_dependency(filename: str) -> List[Dependency]:
     scope = os.path.dirname(filename)
     try:
         with open(filename) as file:
-            lang = language.from_file(filename)
+            lang = from_file(filename)
             if lang == Language.PYTHON:
                 return make_unique(find_python_dependency(file.read(), scope))
             elif lang in [Language.C, Language.CPP]:

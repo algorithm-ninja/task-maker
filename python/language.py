@@ -6,6 +6,15 @@ from enum import Enum
 from typing import List
 
 
+class GraderInfo:
+    def __init__(self, for_language: "Language", files: List["Dependency"]):
+        self.for_language = for_language
+        self.files = files
+
+    def __repr__(self):
+        return "<GraderInfo language=%s>" % self.for_language.name
+
+
 class Language(Enum):
     INVALID_LANGUAGE = 0
     CPP = 1

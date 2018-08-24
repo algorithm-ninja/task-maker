@@ -4,7 +4,6 @@ import argparse
 import os.path
 from enum import Enum
 
-from task_maker.formats import Arch
 from task_maker.version import TASK_MAKER_VERSION
 
 
@@ -24,6 +23,13 @@ class TaskFormat(Enum):
     IOI = 0
     TERRY = 1
     TM = 2
+
+
+class Arch(Enum):
+    DEFAULT = 0
+    X86_64 = 1
+    I686 = 2
+
 
 
 for cls in [UIS, CacheMode, TaskFormat, Arch]:

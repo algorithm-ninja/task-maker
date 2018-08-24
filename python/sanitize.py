@@ -5,6 +5,9 @@ from typing import List
 
 from task_maker.dependency_finder import Dependency
 
+# TODO the new sandbox supports subfolders, so it's not needed to flatten the
+# tree
+
 
 def sanitize_command(args: List[str]) -> List[Dependency]:
     dependencies = []  # type: List[Dependency]

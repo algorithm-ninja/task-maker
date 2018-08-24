@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 import os.path
-import shutil
 from distutils.spawn import find_executable
-from task_maker.args import CacheMode
+from task_maker.args import CacheMode, Arch
 from task_maker.config import Config
 from typing import Optional, Dict, List
 
-from task_maker.dependency_finder import find_dependency
+from task_maker.dependency_finder import find_dependency, Dependency
 from task_maker.detect_exe import get_exeflags, EXEFLAG_NONE
-from task_maker.formats import Arch, GraderInfo, Dependency
 from task_maker.language import Language, from_file as language_from_file, need_compilation
 
 
@@ -18,7 +16,7 @@ class SourceFile:
             path: str,
             write_to: Optional[str] = None,
             target_arch=Arch.DEFAULT,
-            grader_map: Dict[Language, GraderInfo] = dict()) -> "SourceFile":
+            grader_map: Dict[Language, "GraderInfo"] = dict()) -> "SourceFile":
         old_path = path
         if not os.path.exists(path):
             path = find_executable(path)

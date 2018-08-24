@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-
+import glob
+import os.path
 from enum import Enum
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union, Any
 
-from task_maker.language import Language
+from task_maker.dependency_finder import Dependency
+from task_maker.source_file import SourceFile
+from task_maker.language import valid_extensions, GraderInfo
+
+VALIDATION_INPUT_NAME = "tm_input_file"
 
 
 class ScoreMode(Enum):
@@ -12,37 +17,95 @@ class ScoreMode(Enum):
     SUM = 2
 
 
-class Arch(Enum):
-    DEFAULT = 0
-    X86_64 = 1
-    I686 = 2
-
-
-class Dependency:
-    def __init__(self, name: str, path: str):
+class Constraint:
+    def __init__(self, name: str, lower_bound: Optional[float],
+                 upper_bound: Optional[float], more_or_equal: bool,
+                 less_or_equal: bool):
         self.name = name
-        self.path = path
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
+        self.more_or_equal = more_or_equal
+        self.less_or_equal = less_or_equal
+
+    def accept(self, x: float):
+        if self.lower_bound is not None:
+            if self.more_or_equal and x < self.lower_bound:
+                return False
+            if not self.more_or_equal and x <= self.lower_bound:
+                return False
+        if self.upper_bound is not None:
+            if self.less_or_equal and x > self.upper_bound:
+                return False
+            if not self.less_or_equal and x >= self.upper_bound:
+                return False
+        return True
 
     def __repr__(self):
-        return "<Dependency name=%s path=%s>" % (self.name, self.path)
+        res = "<Constraint "
+        if self.lower_bound is not None:
+            res += str(self.lower_bound)
+            res += " <= " if self.more_or_equal else " < "
+        res += self.name
+        if self.upper_bound is not None:
+            res += " <= " if self.less_or_equal else " < "
+            res += str(self.upper_bound)
+        res += ">"
+        return res
+
+
+class Generator:
+    def __init__(self, name: str, source_file: Optional[SourceFile],
+                 args_spec: Optional[List[str]]):
+        self.name = name
+        self.args_spec = args_spec
+        self.source_file = source_file
+
+    def __repr__(self):
+        return "<Generator %s [%s]>" % (self.name, " ".join(self.args_spec))
+
+
+class Validator:
+    def __init__(self, name: str, source_file: SourceFile,
+                 args_spec: Optional[List[str]]):
+        self.name = name
+        self.source_file = source_file
+        self.args_spec = args_spec
+
+    def get_args(self, testcase: "TestCase", subtask: "Subtask", tc_num: int,
+                 st_num: int) -> List[str]:
+        if not self.args_spec:
+            return [VALIDATION_INPUT_NAME, str(st_num)]
+        args = []  # type: List[str]
+        for arg in self.args_spec:
+            if not arg.startswith("$"):
+                args.append(arg)
+            else:
+                args.append(
+                    parse_variable(arg, testcase, subtask, tc_num, st_num))
+        return args
+
+    def __repr__(self):
+        return "<Validator %s [%s]>" % (self.name, " ".join(self.args_spec))
 
 
 class TestCase:
-    def __init__(self, generator: Optional["SourceFile"],
-                 generator_args: List[str], extra_deps: List[Dependency],
-                 validator: Optional["SourceFile"], validator_args: List[str],
-                 input_file: Optional[str], output_file: Optional[str],
-                 write_input_to: Optional[str],
+    def __init__(self, generator: Optional[Generator],
+                 validator: Optional[Validator], generator_args: List[str],
+                 extra_deps: List[Dependency], input_file: Optional[str],
+                 output_file: Optional[str], write_input_to: Optional[str],
                  write_output_to: Optional[str]):
         self.generator = generator
+        self.validator = validator
         self.generator_args = generator_args
         self.extra_deps = extra_deps
-        self.validator = validator
-        self.validator_args = validator_args
         self.input_file = input_file
         self.output_file = output_file
         self.write_input_to = write_input_to
         self.write_output_to = write_output_to
+        self.matched_params = {}  # type: Dict[str, str]
+
+        if bool(generator) == bool(input_file):
+            raise ValueError("Cannot have both generator and static input")
 
     def __repr__(self):
         return "<TestCase generator=%s args=%s>" % (self.generator,
@@ -50,24 +113,18 @@ class TestCase:
 
 
 class Subtask:
-    def __init__(self, score_mode: ScoreMode, max_score: float,
-                 testcases: Dict[int, TestCase]):
+    def __init__(self, name: str, description: str, score_mode: ScoreMode,
+                 max_score: float, testcases: Dict[int, TestCase],
+                 constraints: List[Constraint]):
+        self.name = name
+        self.description = description
+        self.constraints = constraints
         self.score_mode = score_mode
         self.max_score = max_score
         self.testcases = testcases
 
     def __repr__(self):
-        return "<Subtask score_mode=%s max_score=%f>" % (self.score_mode.name,
-                                                         self.max_score)
-
-
-class GraderInfo:
-    def __init__(self, for_language: Language, files: List[Dependency]):
-        self.for_language = for_language
-        self.files = files
-
-    def __repr__(self):
-        return "<GraderInfo language=%s>" % self.for_language.name
+        return "<Subtask name=%s max_score=%f>" % (self.name, self.max_score)
 
 
 class Task:
@@ -91,17 +148,70 @@ class Task:
         return "<Task name=%s title=%s>" % (self.name, self.title)
 
 
-class TerryTask:
-    def __init__(self, name: str, title: str, max_score: float,
-                 generator: "SourceFile", validator: "SourceFile",
-                 checker: "SourceFile", solution: "SourceFile"):
-        self.name = name
-        self.title = title
-        self.max_score = max_score
-        self.generator = generator
-        self.validator = validator
-        self.checker = checker
-        self.solution = solution
+def get_options(data: Dict[str, Any],
+                names: List[str],
+                default: Optional[Any] = None) -> Any:
+    for name in names:
+        if name in data:
+            return data[name]
+    if not default:
+        raise ValueError(
+            "Non optional field %s missing from task.yaml" % "|".join(names))
+    return default
 
-    def __repr__(self):
-        return "<TerryTask name=%s title=%s>" % (self.name, self.title)
+
+def list_files(patterns: List[str],
+               exclude: Optional[List[str]] = None) -> List[str]:
+    if exclude is None:
+        exclude = []
+    files = [_file for pattern in patterns
+             for _file in glob.glob(pattern)]  # type: List[str]
+    return [
+        res for res in files if res not in exclude
+        and os.path.splitext(res)[1] in valid_extensions()
+    ]
+
+
+def parse_variable(arg: str, testcase: TestCase, subtask: Subtask, tc_num: int,
+                   st_num: int) -> str:
+    def format_number(num: Union[int, float]):
+        if int(num) == num:
+            return str(int(num))
+        return str(num)
+
+    cmd = arg[1:]
+    if cmd == "ST_NUM":
+        return format_number(st_num)
+    elif cmd == "ST_NAME":
+        return subtask.name
+    elif cmd == "TC_NUM":
+        return format_number(tc_num)
+    elif cmd == "INPUT":
+        return VALIDATION_INPUT_NAME
+    elif cmd.startswith("MIN_"):
+        var = cmd[4:]
+        value = None
+        for constraint in subtask.constraints:
+            if constraint.name == var and \
+                    constraint.lower_bound is not None:
+                value = max(value or -10**19, constraint.lower_bound)
+        if value is None:
+            raise ValueError("There are no constraints for the "
+                             "minimum of '%s'" % var)
+        return format_number(value)
+    elif cmd.startswith("MAX_"):
+        var = cmd[4:]
+        value = None
+        for constraint in subtask.constraints:
+            if constraint.name == var and \
+                    constraint.upper_bound is not None:
+                value = min(value or 10**19, constraint.upper_bound)
+        if value is None:
+            raise ValueError("There are no constraints for the "
+                             "maximum of '%s'" % var)
+        return format_number(value)
+    elif cmd in testcase.matched_params:
+        return testcase.matched_params[cmd]
+    else:
+        raise ValueError(
+            "Cannot match variable '%s' in testcase %s" % (arg, testcase))

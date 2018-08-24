@@ -52,13 +52,13 @@ class IOIFinishUI:
         print_solutions_result(self.printer, self.task, self.interface.testing,
                                max_sol_len, "?")
 
-        if self.interface.warnings:
+        if sorted(self.interface.warnings):
             self.printer.text("\n")
             self.printer.yellow("Warnings:\n", bold=True)
             for warning in self.interface.warnings:
                 self.printer.text("- " + warning + "\n")
 
-        if self.interface.errors:
+        if sorted(self.interface.errors):
             self.printer.text("\n")
             self.printer.red("Errors:\n", bold=True)
             for error in self.interface.errors:
