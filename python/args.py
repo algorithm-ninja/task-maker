@@ -23,6 +23,7 @@ class UIS(Enum):
 class TaskFormat(Enum):
     IOI = 0
     TERRY = 1
+    TM = 2
 
 
 for cls in [UIS, CacheMode, TaskFormat, Arch]:

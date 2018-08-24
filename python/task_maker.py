@@ -11,7 +11,7 @@ from task_maker.task_maker_frontend import Frontend
 
 # from task_maker.formats import ioi_format, terry_format, tm_format
 from task_maker.formats import ioi_format
-from task_maker.args import get_parser
+from task_maker.args import get_parser, TaskFormat
 from task_maker.detect_format import find_task_dir
 
 # from task_maker.manager import get_manager, became_manager, became_server, \
@@ -64,19 +64,16 @@ def main() -> None:
     # if args.kill_manager or args.quit_manager:
     #     return
     #
-    task_dir, format = find_task_dir(config.task_dir, config.max_depth)
+    task_dir, format = find_task_dir(config.task_dir, config.max_depth,
+                                     config.format)
     if not format:
         raise ValueError(
             "Cannot detect format! It's probable that the task is ill-formed")
-    # TODO move this check in find_task_dir in order to have compatible formats
-    if config.format is not None and format != config.format:
-        raise ValueError(
-            "Detected format mismatch the required one: %s" % format)
 
     os.chdir(task_dir)
 
     if config.clean:
-        if format == "ioi":
+        if format == TaskFormat.IOI:
             ioi_format_clean()
         # elif format == "tm":
         #     tm_format_clean(args)
@@ -88,7 +85,7 @@ def main() -> None:
 
     frontend = Frontend(config.host, config.port)
 
-    if format == "ioi":
+    if format == TaskFormat.IOI:
         task, solutions = ioi_format.get_request(config)
         ioi_format.evaluate_task(frontend, task, solutions, config)
     # elif format == "tm":
@@ -99,8 +96,8 @@ def main() -> None:
     #     solutions = [
     #         os.path.basename(sol.solution.path) for sol in request.solutions
     #     ]
-    # else:
-    #     raise ValueError("Format %s not supported" % format)
+    else:
+        raise ValueError("Format %s not supported" % format)
 
     # import jsonpickle
     # import json
