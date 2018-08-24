@@ -7,7 +7,7 @@ import yaml
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
-from task_maker.args import UIS
+from task_maker.args import UIS, CacheMode
 from task_maker.config import Config
 from task_maker.uis.ioi_finish_ui import IOIFinishUI
 from task_maker.uis.ioi_curses_ui import IOICursesUI
@@ -275,30 +275,31 @@ def get_request(config: Config) -> (Task, List[SourceFile]):
 
 
 def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile],
-                  ui: UIS):
+                  config: Config):
     ui_interface = IOIUIInterface(
         task,
         dict((st_num, [tc for tc in st.testcases.keys()])
-             for st_num, st in task.subtasks.items()), ui == UIS.PRINT)
-    if ui == UIS.CURSES:
+             for st_num, st in task.subtasks.items()), config.ui == UIS.PRINT)
+    if config.ui == UIS.CURSES:
         curses_ui = IOICursesUI(ui_interface)
         curses_ui.start()
-    ins, outs, vals = generate_inputs(frontend, task, ui_interface)
+
+    ins, outs, vals = generate_inputs(frontend, task, ui_interface, config)
     evaluate_solutions(frontend, task, ins, outs, vals, solutions,
-                       ui_interface)
+                       ui_interface, config)
 
     frontend.evaluate()
-    if ui == UIS.CURSES:
+    if config.ui == UIS.CURSES:
         curses_ui.stop()
 
-    if ui != UIS.SILENT:
+    if config.ui != UIS.SILENT:
         finish_ui = IOIFinishUI(task, ui_interface)
         finish_ui.print()
 
 
-def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface
-                    ) -> (Dict[Tuple[int, int], File], Dict[Tuple[
-                        int, int], File], Dict[Tuple[int, int], File]):
+def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface,
+                    config: Config) -> (Dict[Tuple[int, int], File], Dict[
+                        Tuple[int, int], File], Dict[Tuple[int, int], File]):
     inputs = dict()  # type: Dict[Tuple[int, int], File]
     outputs = dict()  # type: Dict[Tuple[int, int], File]
     validations = dict()  # type: Dict[Tuple[int, int], File]
@@ -306,7 +307,7 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface
         for tc_num, testcase in subtask.testcases.items():
             if testcase.validator:
                 is_val_prepared = testcase.validator.prepared
-                testcase.validator.prepare(frontend)
+                testcase.validator.prepare(frontend, config)
                 if not is_val_prepared:
                     ui_interface.add_non_solution(testcase.validator)
 
@@ -318,7 +319,8 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface
                     val = testcase.validator.execute(
                         frontend, "Validation of input %d" % tc_num,
                         testcase.validator_args)
-                    # TODO set cache mode
+                    if config.cache == CacheMode.NOTHING:
+                        val.disableCache()
                     # TODO set limits?
                     val.addInput(VALIDATION_INPUT_NAME, inputs[(st_num,
                                                                 tc_num)])
@@ -327,7 +329,7 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface
                     ui_interface.add_validation(st_num, tc_num, val)
             else:
                 is_gen_prepared = testcase.generator.prepared
-                testcase.generator.prepare(frontend)
+                testcase.generator.prepare(frontend, config)
                 if not is_gen_prepared:
                     ui_interface.add_non_solution(testcase.generator)
 
@@ -338,7 +340,8 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface
                     gen.addInput(
                         dep.name,
                         frontend.provideFile(dep.path, dep.path, False))
-                # TODO set cache mode
+                if config.cache == CacheMode.NOTHING:
+                    gen.disableCache()
                 # TODO set limits?
                 inputs[(st_num, tc_num)] = gen.stdout(False)
 
@@ -347,7 +350,8 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface
                 val = testcase.validator.execute(
                     frontend, "Validation of input %d" % tc_num,
                     testcase.validator_args)
-                # TODO set cache mode
+                if config.cache == CacheMode.NOTHING:
+                    val.disableCache()
                 # TODO set limits?
                 val.addInput(VALIDATION_INPUT_NAME, inputs[(st_num, tc_num)])
                 validations[(st_num, tc_num)] = val.stdout(False)
@@ -364,13 +368,14 @@ def generate_inputs(frontend, task: Task, ui_interface: IOIUIInterface
                     testcase.output_file, "Static output %d" % tc_num, False)
             else:
                 is_sol_prepared = task.official_solution.prepared
-                task.official_solution.prepare(frontend)
+                task.official_solution.prepare(frontend, config)
                 if not is_sol_prepared:
                     ui_interface.add_non_solution(task.official_solution)
 
                 sol = task.official_solution.execute(
                     frontend, "Generation of output %d" % tc_num, [])
-                # TODO set cache mode
+                if config.cache == CacheMode.NOTHING:
+                    sol.disableCache()
                 # TODO set limits?
 
                 if (st_num, tc_num) in validations:
@@ -398,16 +403,17 @@ def evaluate_solutions(
         frontend, task: Task, inputs: Dict[Tuple[int, int], File],
         outputs: Dict[Tuple[int, int], File],
         validations: Dict[Tuple[int, int], File], solutions: List[SourceFile],
-        ui_interface: IOIUIInterface):
+        ui_interface: IOIUIInterface, config: Config):
     for solution in solutions:
-        solution.prepare(frontend)
+        solution.prepare(frontend, config)
         ui_interface.add_solution(solution)
         for (st_num, tc_num), input in inputs.items():
             eval = solution.execute(
                 frontend,
                 "Evaluation of %s on testcase %d" % (solution.name, tc_num),
                 [])
-            # TODO set cache mode
+            if config.cache != CacheMode.ALL:
+                eval.disableCache()
             limits = Resources()
             limits.cpu_time = task.time_limit
             limits.wall_time = task.time_limit * 1.5
@@ -430,7 +436,7 @@ def evaluate_solutions(
 
             if task.checker:
                 is_check_prepared = task.checker.prepared
-                task.checker.prepare(frontend)
+                task.checker.prepare(frontend, config)
                 if not is_check_prepared:
                     ui_interface.add_non_solution(task.checker)
 
@@ -448,7 +454,9 @@ def evaluate_solutions(
                 check.setArgs(["-w", "output", "contestant_output"])
             check.addInput("output", outputs[(st_num, tc_num)])
             check.addInput("contestant_output", output)
-            # TODO set cache mode
+            if config.cache != CacheMode.ALL:
+                check.disableCache()
+            # TODO set limits
             ui_interface.add_evaluate_checking(st_num, tc_num, solution.name,
                                                check)
 

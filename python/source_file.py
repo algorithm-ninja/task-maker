@@ -2,6 +2,8 @@
 import os.path
 import shutil
 from distutils.spawn import find_executable
+from task_maker.args import CacheMode
+from task_maker.config import Config
 from typing import Optional, Dict, List
 
 from task_maker.dependency_finder import find_dependency
@@ -51,16 +53,16 @@ class SourceFile:
         self.prepared = False
 
     # prepare the source file for execution, compile the source if needed
-    def prepare(self, frontend):
+    def prepare(self, frontend, config: Config):
         if self.prepared:
             return
         if self.need_compilation:
-            self._compile(frontend)
+            self._compile(frontend, config)
         else:
             self._not_compile(frontend)
         self.prepared = True
 
-    def _compile(self, frontend):
+    def _compile(self, frontend, config: Config):
         source = frontend.provideFile(self.path,
                                       "Source file for " + self.name, False)
         if self.language == Language.CPP:
@@ -114,6 +116,8 @@ class SourceFile:
 
         self.compilation = frontend.addExecution(
             "Compilation of %s" % self.name)
+        if config.cache == CacheMode.NOTHING:
+            self.compilation.disableCache()
         self.compilation.setExecutablePath(compiler)
         self.compilation.setArgs(args)
         self.compilation.addInput(self.name, source)
@@ -126,7 +130,8 @@ class SourceFile:
                     dep.name, frontend.provideFile(dep.path, dep.path, False))
         self.compilation_stderr = self.compilation.stderr(False)
         self.executable = self.compilation.output(self.exe_name, True)
-        # TODO set cache
+        if self.write_bin_to:
+            self.executable.getContentsToFile(self.write_bin_to, True, True)
         # TODO set time/memory limits?
 
     def _not_compile(self, frontend):
