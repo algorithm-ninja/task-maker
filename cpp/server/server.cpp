@@ -25,7 +25,7 @@ kj::Promise<void> Execution::setExecutablePath(
   KJ_LOG(INFO, "Execution " + description_,
          "Setting exacutable path to " +
              std::string(context.getParams().getPath()));
-  request_.getExecutable().setAbsolutePath(context.getParams().getPath());
+  request_.getExecutable().setSystem(context.getParams().getPath());
   executable_ = 0;
   return kj::READY_NOW;
 }

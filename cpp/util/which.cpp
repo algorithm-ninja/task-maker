@@ -24,7 +24,7 @@ std::string which(const std::string& cmd, bool use_cache) {
     if (File::Exists(fullpath)) return cmd_cache[cmd] = fullpath;
   }
 
-  return cmd_cache[cmd] = "";
+  return "";
 }
 
 }  // namespace util

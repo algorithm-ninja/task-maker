@@ -449,8 +449,7 @@ def evaluate_solutions(
                 check = frontend.addExecution(
                     "Checking solution %s for testcase %d" % (solution.name,
                                                               tc_num))
-                diff = shutil.which("diff")
-                check.setExecutablePath(diff)
+                check.setExecutablePath("diff")
                 check.setArgs(["-w", "output", "contestant_output"])
             check.addInput("output", outputs[(st_num, tc_num)])
             check.addInput("contestant_output", output)

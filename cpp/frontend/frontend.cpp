@@ -234,6 +234,9 @@ void Execution::getResult(std::function<void(Result)> callback,
                           if (r.getStatus().isInternalError()) {
                             result.error = r.getStatus().getInternalError();
                           }
+                          if (r.getStatus().isMissingExecutable()) {
+                            result.error = r.getStatus().getMissingExecutable();
+                          }
                           result.resources.cpu_time =
                               r.getResourceUsage().getCpuTime();
                           result.resources.sys_time =

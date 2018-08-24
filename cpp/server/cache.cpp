@@ -21,8 +21,8 @@ uint64_t RequestHasher::operator()(capnproto::Request::Reader reader) const {
   size_t hash = 0;
   hash_combine(hash, reader.getExecutable().which());
   switch (reader.getExecutable().which()) {
-    case capnproto::Request::Executable::ABSOLUTE_PATH:
-      hash_combine(hash, std::string(reader.getExecutable().getAbsolutePath()));
+    case capnproto::Request::Executable::SYSTEM:
+      hash_combine(hash, std::string(reader.getExecutable().getSystem()));
       break;
     case capnproto::Request::Executable::LOCAL_FILE:
       hash_combine(
@@ -60,9 +60,9 @@ bool RequestComparator::operator()(capnproto::Request::Reader a,
                                    capnproto::Request::Reader b) const {
   if (a.getExecutable().which() != b.getExecutable().which()) return false;
   switch (a.getExecutable().which()) {
-    case capnproto::Request::Executable::ABSOLUTE_PATH:
-      if (a.getExecutable().getAbsolutePath() !=
-          b.getExecutable().getAbsolutePath())
+    case capnproto::Request::Executable::SYSTEM:
+      if (a.getExecutable().getSystem() !=
+          b.getExecutable().getSystem())
         return false;
       break;
     case capnproto::Request::Executable::LOCAL_FILE:

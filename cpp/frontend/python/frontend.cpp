@@ -50,8 +50,9 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .value("WALL_LIMIT", capnproto::Result::Status::Which::WALL_LIMIT)
       .value("MEMORY_LIMIT", capnproto::Result::Status::Which::MEMORY_LIMIT)
       .value("MISSING_FILES", capnproto::Result::Status::Which::MISSING_FILES)
-      .value("INTERNAL_ERROR",
-             capnproto::Result::Status::Which::INTERNAL_ERROR);
+      .value("INTERNAL_ERROR", capnproto::Result::Status::Which::INTERNAL_ERROR)
+      .value("MISSING_EXECUTABLE",
+             capnproto::Result::Status::Which::MISSING_EXECUTABLE);
 
   pybind11::class_<frontend::Result>(m, "Result")
       .def_readonly("status", &frontend::Result::status)

@@ -106,12 +106,6 @@ class SourceFile:
             raise NotImplementedError(
                 "Cannot compile %s: unknown language" % self.path)
 
-        # TODO this should be done by the worker
-        compiler = shutil.which(compiler)
-        if not compiler:
-            # TODO fix the error when the compiler is missing
-            compiler = "/usr/bin/false"
-
         self.compilation = frontend.addExecution(
             "Compilation of %s" % self.name)
         if config.cache == CacheMode.NOTHING:

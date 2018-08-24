@@ -2,6 +2,7 @@
 #include "util/file.hpp"
 #include "util/flags.hpp"
 #include "util/misc.hpp"
+#include "util/which.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -64,6 +65,34 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
     if (!ValidateFileName(executable.getLocalFile().getName(), result))
       return kj::READY_NOW;
   }
+
+  auto fail = [&result](const std::string& error) {
+    result.getStatus().setInternalError(error);
+    return kj::READY_NOW;
+  };
+
+  std::string cmdline;
+  switch (executable.which()) {
+    case capnproto::Request::Executable::SYSTEM:
+      cmdline = executable.getSystem();
+      if (cmdline.empty()) return fail("Empty command name");
+      if (cmdline[0] != '/') {
+        if (cmdline.find('/') != cmdline.npos)
+          return fail("Relative path cannot have /");
+        cmdline = util::which(cmdline);
+        if (cmdline.empty()) {
+          result.getStatus().setMissingExecutable(
+              "Cannot find system program: " +
+              std::string(executable.getSystem()));
+          return kj::READY_NOW;
+        }
+      }
+      break;
+    case capnproto::Request::Executable::LOCAL_FILE:
+      cmdline = executable.getLocalFile().getName();
+      break;
+  }
+
   // TODO: move inside PrepareFile?
   kj::Promise<void> last_load = kj::READY_NOW;
   {
@@ -80,16 +109,6 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
   }
 
   util::TempDir tmp(Flags::temp_directory);
-
-  std::string cmdline;
-  switch (executable.which()) {
-    case capnproto::Request::Executable::ABSOLUTE_PATH:
-      cmdline = executable.getAbsolutePath();
-      break;
-    case capnproto::Request::Executable::LOCAL_FILE:
-      cmdline = executable.getLocalFile().getName();
-      break;
-  }
 
   std::string exe = cmdline;
 
@@ -139,7 +158,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
 
   last_load = last_load.then(
       [executable, sandbox_dir, exec_options, request, result, stderr_path,
-       stdout_path, tmp = std::move(tmp)]() mutable -> kj::Promise<void> {
+       fail, stdout_path, tmp = std::move(tmp)]() mutable -> kj::Promise<void> {
         KJ_LOG(INFO, "Files prepared, starting execution");
         if (executable.isLocalFile()) {
           auto local_file = executable.getLocalFile();
@@ -163,8 +182,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
         {
           std::unique_ptr<sandbox::Sandbox> sb = sandbox::Sandbox::Create();
           if (!sb->Execute(exec_options, &outcome, &error_msg)) {
-            result.getStatus().setInternalError(error_msg);
-            return kj::READY_NOW;
+            return fail(error_msg);
           }
         }
 

@@ -28,7 +28,7 @@ struct Resources {
 
 struct Request {
   executable :union {
-    absolutePath @0 :Text;
+    system@0 :Text;
     localFile @1 :FileInfo;
   }
   args @2 :List(Text);
@@ -52,6 +52,7 @@ struct Result {
     memoryLimit @5 :Void;
     missingFiles @6 :Void;
     internalError @7 :Text;
+    missingExecutable @12 :Text;
   }
   resourceUsage @8 :Resources;
   stdout @9 :SHA256; # Hash of standard output
