@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from typing import List
+
 from task_maker.formats import Task
 from task_maker.printer import StdoutPrinter
 from task_maker.task_maker_frontend import ResultStatus
@@ -132,7 +134,8 @@ class IOIFinishUI:
         self.printer.text(": ")
         status = self.interface.testing[solution]
         max_score = sum(st.max_score for st in self.task.subtasks.values())
-        self._print_score(status.score, max_score)
+        self._print_score(status.score, max_score,
+                          status.subtask_scores.values())
         self.printer.text("\n")
         if self.interface.solutions[
                 solution].status == SourceFileCompilationStatus.FAILURE:
@@ -144,7 +147,8 @@ class IOIFinishUI:
                 status.testcase_results.items(),
                 status.subtask_scores.values(), self.task.subtasks.values()):
             self.printer.bold("Subtask #{}: ".format(st_num))
-            self._print_score(st_score, subtask_info.max_score)
+            self._print_score(st_score, subtask_info.max_score,
+                              [tc.score for tc in subtask.values()])
             self.printer.text("\n")
             for tc_num, testcase in subtask.items():
                 self.printer.text("{:>3}) ".format(tc_num))
@@ -169,7 +173,8 @@ class IOIFinishUI:
                     self.printer.text("{:.3f}s".format(used_time))
                 self.printer.text(" |")
                 if memory >= LIMITS_MARGIN * self.task.memory_limit_kb / 1024:
-                    self.printer.yellow("{:5.1f}MiB".format(memory), bold=False)
+                    self.printer.yellow(
+                        "{:5.1f}MiB".format(memory), bold=False)
                 else:
                     self.printer.text("{:5.1f}MiB".format(memory))
                 self.printer.text("] ")
@@ -177,10 +182,11 @@ class IOIFinishUI:
                 self.printer.text(testcase.message)
                 self.printer.right("[{}]".format(solution))
 
-    def _print_score(self, score: float, max_score: float):
-        if score == 0.0:
+    def _print_score(self, score: float, max_score: float,
+                     individual: List[float]):
+        if score == 0.0 and not all(individual):
             self.printer.red("{:.2f} / {:.2f}".format(score, max_score))
-        elif score == max_score:
+        elif score == max_score and all(individual):
             self.printer.green("{:.2f} / {:.2f}".format(score, max_score))
         else:
             self.printer.yellow("{:.2f} / {:.2f}".format(score, max_score))
