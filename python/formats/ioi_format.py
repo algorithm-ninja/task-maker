@@ -12,11 +12,9 @@ from task_maker.config import Config
 from task_maker.uis.ioi_finish_ui import IOIFinishUI
 from task_maker.uis.ioi_curses_ui import IOICursesUI
 from task_maker.uis.ioi import IOIUIInterface
-from task_maker.dependency_finder import find_dependency
-from task_maker.formats import ScoreMode, Subtask, TestCase, Task, Dependency, \
-    GraderInfo, list_files, Validator, Generator, get_options, \
-    VALIDATION_INPUT_NAME
-from task_maker.language import grader_from_file
+from task_maker.formats import ScoreMode, Subtask, TestCase, Task, \
+    list_files, Validator, Generator, get_options, VALIDATION_INPUT_NAME, \
+    gen_grader_map, get_write_input_file, get_write_output_file
 from task_maker.sanitize import sanitize_command
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import File, Frontend, Resources
@@ -60,14 +58,6 @@ def get_official_solution() -> Optional[str]:
     for sol in list_files(["sol/solution.*", "sol/soluzione.*"]):
         return sol
     return None
-
-
-def get_write_input_file(tc_num: int) -> str:
-    return "input/input%d.txt" % tc_num
-
-
-def get_write_output_file(tc_num: int) -> str:
-    return "output/output%d.txt" % tc_num
 
 
 def gen_testcases(
@@ -200,19 +190,6 @@ def get_checker() -> Optional[str]:
     return checker
 
 
-def gen_grader_map(graders: List[str], task: Task):
-    grader_map = dict()
-
-    for grader in graders:
-        name = os.path.basename(grader)
-        info = GraderInfo(
-            grader_from_file(grader),
-            [Dependency(name, grader)] + find_dependency(grader))
-        grader_map[info.for_language] = info
-        task.grader_info.extend([info])
-    return grader_map
-
-
 def get_request(config: Config) -> (Task, List[SourceFile]):
     copy_compiled = config.copy_exe
     data = parse_task_yaml()
@@ -299,7 +276,7 @@ def generate_inputs(frontend, task: Task, interface: IOIUIInterface,
                     val = testcase.validator.source_file.execute(
                         frontend, "Validation of input %d" % tc_num,
                         testcase.validator.get_args(testcase, subtask, tc_num,
-                                                    st_num+1))
+                                                    st_num + 1))
                     if config.cache == CacheMode.NOTHING:
                         val.disableCache()
                     val.addInput(VALIDATION_INPUT_NAME, inputs[testcase_id])
@@ -326,7 +303,7 @@ def generate_inputs(frontend, task: Task, interface: IOIUIInterface,
                 val = testcase.validator.source_file.execute(
                     frontend, "Validation of input %d" % tc_num,
                     testcase.validator.get_args(testcase, subtask, tc_num,
-                                                st_num+1))
+                                                st_num + 1))
                 if config.cache == CacheMode.NOTHING:
                     val.disableCache()
                 val.addInput(VALIDATION_INPUT_NAME, inputs[testcase_id])
@@ -412,8 +389,8 @@ def evaluate_solutions(
             if task.checker:
                 add_non_solution(task.checker)
                 check = task.checker.execute(
-                    frontend, "Checking solution %s for testcase %d" %
-                    testcase_id,
+                    frontend,
+                    "Checking solution %s for testcase %d" % testcase_id,
                     ["input", "output", "contestant_output"])
                 check.addInput("input", inputs[testcase_id])
             else:

@@ -1,40 +1,45 @@
 #!/usr/bin/env python3
-import argparse
 import os.path
-from task_maker.config import Config
-from typing import List, IO, Dict, Union
-from typing import Optional
 import shlex
+from typing import List, IO, Dict
+from typing import Optional
 
-from task_maker.dependency_finder import find_dependency
-from task_maker.formats import ioi_format, Task, GraderInfo, Dependency
-from task_maker.formats.ioi_format import list_files, parse_task_yaml, \
+from task_maker.config import Config
+from task_maker.formats import ioi_format, Task, \
+    Subtask, Generator, Validator, Constraint, ScoreMode, TestCase, \
+    parse_variable, list_files, gen_grader_map, get_write_input_file, \
+    get_write_output_file
+from task_maker.formats.ioi_format import parse_task_yaml, \
     create_task_from_yaml, get_solutions, get_checker, get_generator, \
-    get_validator, get_official_solution, VALIDATION_INPUT_NAME, gen_grader_map
-from task_maker.language import grader_from_file
-from task_maker.sanitize import sanitize_command
+    get_validator, get_official_solution
 from task_maker.source_file import SourceFile
 
 
-def parse_cases(gen: IO) -> List[TMSubtask]:
+def parse_cases(gen: IO, copy_compiled) -> List[Subtask]:
     lines = [l.strip() for l in gen.readlines()]
 
-    subtasks = []  # type: List[TMSubtask]
-    generators = dict()  # type: Dict[str, TMGenerator]
-    validators = dict()  # type: Dict[str, TMValidator]
-    constraints = []  # type: List[TMConstraint]
-    current_gen = None  # type: Optional[TMGenerator]
-    current_val = None  # type: Optional[TMValidator]
-    default_gen = None  # type: Optional[TMGenerator]
-    default_val = None  # type: Optional[TMValidator]
+    subtasks = []  # type: List[Subtask]
+    generators = dict()  # type: Dict[str, Generator]
+    validators = dict()  # type: Dict[str, Validator]
+    constraints = []  # type: List[Constraint]
+    current_gen = None  # type: Optional[Generator]
+    current_val = None  # type: Optional[Validator]
+    default_gen = None  # type: Optional[Generator]
+    default_val = None  # type: Optional[Validator]
     tc_num = 0
     st_num = -1  # will be incremented at the first : SUBTASK
     guessed_gen = get_generator()
     if guessed_gen:
-        default_gen = TMGenerator("default", guessed_gen, [])
+        default_gen = Generator(
+            "default",
+            SourceFile.from_file(guessed_gen, copy_compiled
+                                 and "bin/gen_default"), [])
     guessed_val = get_validator()
     if guessed_val:
-        default_val = TMValidator("default", guessed_val, [])
+        default_val = Validator(
+            "default",
+            SourceFile.from_file(guessed_val, copy_compiled
+                                 and "bin/val_default"), [])
 
     def is_float(s):
         try:
@@ -46,19 +51,22 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
     def parse_command(line: str):
         return shlex.split(line[1:])
 
-    def process_GEN(args):
+    def process_GEN(args: List[str]):
         nonlocal default_gen, current_gen
         # global GEN definitions
         if not subtasks:
             if len(args) < 2:
                 raise ValueError(
                     "The GEN command needs al least 2 arguments: "
-                    "name path [args [args ...]] (line %d)" % (lineno))
+                    "name path [args [args ...]] (line %d)" % lineno)
             name = args[0]
             if name in generators:
                 raise ValueError(
                     "Duplicate GEN definition at line %d" % lineno)
-            generator = TMGenerator(name, args[1], args[2:])
+            generator = Generator(
+                name,
+                SourceFile.from_file(args[1], copy_compiled
+                                     and "bin/gen_" + name), args[2:])
             generators[name] = generator
             if name == "default":
                 default_gen = generator
@@ -74,19 +82,22 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
                     "Generator '%s' not declared (line %d)" % lineno)
             current_gen = generators[name]
 
-    def process_VAL(args):
+    def process_VAL(args: List[str]):
         nonlocal default_val, current_val
         # global VAL definitions
         if not subtasks:
             if len(args) < 2:
                 raise ValueError(
                     "The VAL command needs al least 2 arguments: "
-                    "name path [args [args ...]] (line %d)" % (lineno))
+                    "name path [args [args ...]] (line %d)" % lineno)
             name = args[0]
             if name in validators:
                 raise ValueError(
                     "Duplicate VAL definition at line %d" % lineno)
-            validator = TMValidator(name, args[1], args[2:])
+            validator = Validator(
+                name,
+                SourceFile.from_file(args[1], copy_compiled
+                                     and "bin/val_" + name), args[2:])
             validators[name] = validator
             if name == "default":
                 default_val = validator
@@ -102,7 +113,7 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
                     "Validator '%s' not declared (line %d)" % lineno)
             current_val = validators[name]
 
-    def process_CONSTRAINT(args):
+    def process_CONSTRAINT(args: List[str]):
         # there are 4 cases:
         # a) 42   < $XXX
         # b) $XXX < 123
@@ -128,16 +139,16 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
                 raise ValueError("Expecting variable name in CONSTRAINT "
                                  "(line %d)" % lineno)
             var = args[2][1:]
-            constraint = TMConstraint(var, float(args[0]), None, more_or_equal,
-                                      False)
+            constraint = Constraint(var, float(args[0]), None, more_or_equal,
+                                    False)
         # case b
         elif len(args) == 3 and is_float(args[2]) and args[1][0] == "<":
             if args[0][0] != "$":
                 raise ValueError("Expecting variable name in CONSTRAINT "
                                  "(line %d)" % lineno)
             var = args[0][1:]
-            constraint = TMConstraint(var, None, float(args[2]), False,
-                                      more_or_equal)
+            constraint = Constraint(var, None, float(args[2]), False,
+                                    more_or_equal)
         # case c
         elif len(args) == 5 and is_float(args[0]) and is_float(args[4]):
             if args[2][0] != "$":
@@ -149,16 +160,16 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
             if lowest_ok > hiest_ok:
                 raise ValueError(
                     "CONSTRAINT is always false (line %d)" % lineno)
-            constraint = TMConstraint(var, float(args[0]), float(args[4]),
-                                      more_or_equal, less_or_equal)
+            constraint = Constraint(var, float(args[0]), float(args[4]),
+                                    more_or_equal, less_or_equal)
         # case d
         elif len(args) == 3 and is_float(args[2]) and args[1][0] == ">":
             if args[0][0] != "$":
                 raise ValueError("Expecting variable name in CONSTRAINT "
                                  "(line %d)" % lineno)
             var = args[0][1:]
-            constraint = TMConstraint(var, float(args[2]), None, more_or_equal,
-                                      False)
+            constraint = Constraint(var, float(args[2]), None, more_or_equal,
+                                    False)
         else:
             raise ValueError(
                 "Invalid format for CONSTRAINT (line %d)" % lineno)
@@ -170,7 +181,7 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
         else:
             subtasks[-1].constraints.append(constraint)
 
-    def process_SUBTASK(args):
+    def process_SUBTASK(args: List[str]):
         nonlocal current_gen, current_val, st_num
         if len(args) < 1 or len(args) > 2:
             raise ValueError("Invalid arguments to SUBTASK: max_score [name] "
@@ -180,14 +191,13 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
                 "Invalid SUBTASK score '%s' (line %d)" % (args[0], lineno))
         st_num += 1
         name = " ".join(args[1:])
-        subtask = TMSubtask(float(args[0]), name)
-        for constraint in constraints:
-            subtask.constraints.append(constraint)
+        subtask = Subtask(name, "", ScoreMode.MIN, float(args[0]), {},
+                          constraints.copy())
         subtasks.append(subtask)
         current_gen = default_gen
         current_val = default_val
 
-    def process_DESCRIPTION(args):
+    def process_DESCRIPTION(args: List[str]):
         if not subtasks:
             raise ValueError(
                 "Cannot DESCRIPTION without subtasks (line %d)" % lineno)
@@ -196,7 +206,8 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
         desc = " ".join(args)
         subtasks[-1].description = desc
 
-    def process_COPY(args):
+    def process_COPY(args: List[str]):
+        nonlocal tc_num
         if not subtasks:
             raise ValueError("Cannot COPY without subtasks (line %d)" % lineno)
         if len(args) != 1:
@@ -204,24 +215,28 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
                 "Invalid number of arguments to COPY (line %d)" % lineno)
         if not current_val:
             raise ValueError("No VAL available (line %d)" % lineno)
-        testcase = TMTestcase([args[0]], TMCopyGenerator(), current_val)
-        testcase.val_args = testcase.validator.get_args(
-            testcase, subtasks[-1], tc_num, st_num)
-        subtasks[-1].testcases.append(testcase)
+        testcase = TestCase(None, current_val, [], [], args[0], None,
+                            get_write_input_file(tc_num),
+                            get_write_output_file(tc_num))
+        subtasks[-1].testcases[tc_num] = testcase
+        tc_num += 1
 
-    def add_testcase(args: List[str], generator: TMGenerator,
-                     validator: TMValidator):
+    def add_testcase(args: List[str], generator: Generator,
+                     validator: Validator):
         nonlocal tc_num
-        testcase = TMTestcase(args, generator, validator)
-        if generator.args:
-            if len(generator.args) != len(args):
+        testcase = TestCase(generator, validator, args, [], None, None,
+                            get_write_input_file(tc_num),
+                            get_write_output_file(tc_num))
+        if generator.args_spec:
+            if len(generator.args_spec) != len(args):
                 raise ValueError("Number of params mismatch the definition "
                                  "(line %d)" % lineno)
-            for index, (name, value) in enumerate(zip(generator.args, args)):
+            for index, (name, value) in enumerate(
+                    zip(generator.args_spec, args)):
                 if value.startswith("$"):
                     value = parse_variable(value, testcase, subtasks[-1],
                                            tc_num, st_num)
-                    testcase.gen_args[index] = value
+                    testcase.generator_args[index] = value
                 testcase.matched_params[name] = value
                 for constraint in subtasks[-1].constraints:
                     if name != constraint.name or not is_float(value):
@@ -230,12 +245,10 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
                         raise ValueError("Constraint not met: %s when %s=%f "
                                          "(line %d)" % (constraint, name,
                                                         float(value), lineno))
-        testcase.val_args = validator.get_args(testcase, subtasks[-1], tc_num,
-                                               st_num)
-        subtasks[-1].testcases.append(testcase)
+        subtasks[-1].testcases[tc_num] = testcase
         tc_num += 1
 
-    def process_RUN(args):
+    def process_RUN(args: List[str]):
         if not subtasks:
             raise ValueError("Cannot RUN without subtasks (line %d)" % lineno)
         if len(args) < 1:
@@ -289,7 +302,7 @@ def parse_cases(gen: IO) -> List[TMSubtask]:
     return subtasks
 
 
-def generate_gen_GEN(subtasks: List[TMSubtask]):
+def generate_gen_GEN(subtasks: List[Subtask]):
     GEN = "# Generated by task-maker. Do not edit!\n"
     GEN += "# tm-allow-delete\n"
 
@@ -304,13 +317,13 @@ def generate_gen_GEN(subtasks: List[TMSubtask]):
             GEN += "#%s\n" % name
         for constraint in subtask.constraints:
             GEN += "# %s\n" % str(constraint)
-        for testcase in subtask.testcases:
-            if isinstance(testcase.generator, TMCopyGenerator):
-                GEN += "#COPY: %s\n" % testcase.gen_args[0]
-            else:
+        for testcase in subtask.testcases.values():
+            if testcase.generator:
                 # TODO add a custom wrapper to make this works with cmsMake
-                GEN += "%s %s\n" % (testcase.generator.path, " ".join(
-                    testcase.gen_args))
+                GEN += "%s %s\n" % (testcase.generator.name, " ".join(
+                    [shlex.quote(a) for a in testcase.generator_args]))
+            else:
+                GEN += "#COPY: %s\n" % testcase.input_file
     return GEN
 
 
@@ -340,72 +353,26 @@ def get_request(config: Config) -> (Task, List[SourceFile]):
         grader_map=grader_map)
 
     with open("gen/cases.gen", "r") as gen:
-        subtasks = parse_cases(gen)
+        subtasks = parse_cases(gen, config.copy_exe)
 
-    testcase_num = 0
     for st_num, subtask in enumerate(subtasks):
-        st = Subtask()
-        st.score_mode = MIN
-        st.max_score = subtask.max_score
-        for testcase in subtask.testcases:
-            tc = TestCase()
-            if isinstance(testcase.generator, TMCopyGenerator):
-                tc.input_file = testcase.gen_args[0]
-            else:
-                generator = testcase.generator
-                validator = testcase.validator
-                arg_deps = sanitize_command(testcase.gen_args)
+        task.subtasks[st_num] = subtask
 
-                tc.generator.CopyFrom(
-                    from_file(generator.path, copy_compiled
-                              and "bin/generator"))
-                tc.generator_args.extend(testcase.gen_args)
-                tc.extra_deps.extend(arg_deps)
-                tc.validator.CopyFrom(
-                    from_file(validator.path, copy_compiled
-                              and "bin/validator"))
-                tc.validator_args.extend(testcase.val_args)
-            st.testcases[testcase_num].CopyFrom(tc)
-            testcase_num += 1
-        task.subtasks[st_num].CopyFrom(st)
-
-    for grader in graders:
-        info = GraderInfo()
-        info.for_language = grader_from_file(grader)
-        name = os.path.basename(grader)
-        info.files.extend([Dependency(name=name, path=grader)] +
-                          find_dependency(grader))
-        task.grader_info.extend([info])
-
-    request = EvaluateTaskRequest()
-    request.task.CopyFrom(task)
+    sols = []  # type: List[SourceFile]
     for solution in solutions:
         path, ext = os.path.splitext(os.path.basename(solution))
         bin_file = copy_compiled and "bin/" + path + "_" + ext[1:]
-        request.solutions.extend([from_file(solution, bin_file)])
-    request.store_dir = args.store_dir
-    request.temp_dir = args.temp_dir
-    request.exclusive = args.exclusive
-    request.extra_time = args.extra_time
-    request.keep_sandbox = args.keep_sandbox
-    for testcase in range(testcase_num):
-        request.write_inputs_to[testcase] = "input/input%d.txt" % testcase
-        request.write_outputs_to[testcase] = "output/output%d.txt" % testcase
-    request.write_checker_to = "cor/checker"
-    request.cache_mode = args.cache.value
-    if args.num_cores:
-        request.num_cores = args.num_cores
-    request.dry_run = args.dry_run
-    if args.evaluate_on:
-        request.evaluate_on = args.evaluate_on
-    absolutize_request(request)
+        sols.extend(
+            [SourceFile.from_file(solution, bin_file, grader_map=grader_map)])
+
     if os.path.exists("gen/GEN"):
         with open("gen/GEN") as f:
-            if "tm-allow-delete" not in f.read():
-                return request
+            if "tm-allow-delete" not in f.read(1024):
+                return task, sols
+
     with open("gen/GEN", "w") as f:
         f.write(generate_gen_GEN(subtasks))
-    return request
+    return task, sols
 
 
 def clean():
@@ -414,4 +381,5 @@ def clean():
         with open("gen/GEN") as f:
             if "tm-allow-delete" not in f.read():
                 print("Kept non task-maker gen/GEN")
-        os.remove("gen/GEN")
+            else:
+                os.remove("gen/GEN")

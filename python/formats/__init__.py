@@ -4,9 +4,10 @@ import os.path
 from enum import Enum
 from typing import List, Dict, Optional, Union, Any
 
-from task_maker.dependency_finder import Dependency
+from task_maker.dependency_finder import Dependency, find_dependency
 from task_maker.source_file import SourceFile
 from task_maker.language import valid_extensions, GraderInfo
+from task_maker.language import grader_from_file
 
 VALIDATION_INPUT_NAME = "tm_input_file"
 
@@ -148,6 +149,14 @@ class Task:
         return "<Task name=%s title=%s>" % (self.name, self.title)
 
 
+def get_write_input_file(tc_num: int) -> str:
+    return "input/input%d.txt" % tc_num
+
+
+def get_write_output_file(tc_num: int) -> str:
+    return "output/output%d.txt" % tc_num
+
+
 def get_options(data: Dict[str, Any],
                 names: List[str],
                 default: Optional[Any] = None) -> Any:
@@ -215,3 +224,16 @@ def parse_variable(arg: str, testcase: TestCase, subtask: Subtask, tc_num: int,
     else:
         raise ValueError(
             "Cannot match variable '%s' in testcase %s" % (arg, testcase))
+
+
+def gen_grader_map(graders: List[str], task: Task):
+    grader_map = dict()
+
+    for grader in graders:
+        name = os.path.basename(grader)
+        info = GraderInfo(
+            grader_from_file(grader),
+            [Dependency(name, grader)] + find_dependency(grader))
+        grader_map[info.for_language] = info
+        task.grader_info.extend([info])
+    return grader_map

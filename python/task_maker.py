@@ -3,48 +3,24 @@
 # enable discovery of capnp folder and installed venv
 from task_maker.config import Config
 from task_maker.syspath_patch import patch_sys_path
+
 patch_sys_path()
 
 import os.path
 
 from task_maker.task_maker_frontend import Frontend
 
-# from task_maker.formats import ioi_format, terry_format, tm_format
-from task_maker.formats import ioi_format
+from task_maker.formats import ioi_format, tm_format
 from task_maker.args import get_parser, TaskFormat
 from task_maker.detect_format import find_task_dir
 
-# from task_maker.manager import get_manager, became_manager, became_server, \
-#     became_worker
 
-
-# def manager_clean(args):
-#     request = CleanTaskRequest()
-#     request.store_dir = os.path.abspath(args.store_dir)
-#     request.temp_dir = os.path.abspath(args.temp_dir)
-#     manager = get_manager(args)
-#     manager.CleanTask(request)
-#
-#
 def ioi_format_clean():
     ioi_format.clean()
 
 
-# def tm_format_clean(args):
-#     tm_format.clean()
-#     manager_clean(args)
-#
-#
-# def terry_format_clean(args):
-#     terry_format.clean()
-#     manager_clean(args)
-
-#
-# def quit_manager(args, force):
-#     request = ShutdownRequest()
-#     request.force = force
-#     manager = get_manager(args)
-#     manager.Shutdown(request)
+def tm_format_clean():
+    tm_format.clean()
 
 
 def main() -> None:
@@ -75,8 +51,8 @@ def main() -> None:
     if config.clean:
         if format == TaskFormat.IOI:
             ioi_format_clean()
-        # elif format == "tm":
-        #     tm_format_clean(args)
+        elif format == TaskFormat.TM:
+            tm_format_clean()
         # elif format == "terry":
         #     terry_format_clean(args)
         else:
@@ -88,9 +64,9 @@ def main() -> None:
     if format == TaskFormat.IOI:
         task, solutions = ioi_format.get_request(config)
         ioi_format.evaluate_task(frontend, task, solutions, config)
-    # elif format == "tm":
-    #     request = tm_format.get_request(args)
-    #     solutions = [os.path.basename(sol.path) for sol in request.solutions]
+    elif format == TaskFormat.TM:
+        task, solutions = tm_format.get_request(config)
+        ioi_format.evaluate_task(frontend, task, solutions, config)
     # elif format == "terry":
     #     request = terry_format.get_request(args)
     #     solutions = [

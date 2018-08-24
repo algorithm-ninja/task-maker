@@ -125,6 +125,7 @@ class IOIFinishUI:
                         self.printer.red(
                             result_to_str(result.generation_result),
                             bold=False)
+                        self.printer.text("\n" + result.generation_stderr)
                         success = False
                 else:
                     self.printer.green("Copied")
@@ -139,6 +140,7 @@ class IOIFinishUI:
                         self.printer.red(
                             result_to_str(result.validation_result),
                             bold=False)
+                        self.printer.text("\n" + result.validation_stderr)
                         success = False
 
                 if result.solution_result:
