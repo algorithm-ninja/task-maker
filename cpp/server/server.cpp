@@ -356,6 +356,7 @@ kj::Promise<void> FrontendContext::getFileContents(
   uint32_t id = context.getParams().getFile().getId();
   KJ_LOG(INFO, "Requested file with id " + std::to_string(id));
   kj::PromiseFulfillerPair<void> pf = kj::newPromiseAndFulfiller<void>();
+  builder_.AddPromise(std::move(pf.promise));
   auto send_file = kj::heap<kj::Function<kj::Promise<void>()>>(
       [id, context, this, fulfiller = std::move(pf.fulfiller)]() mutable {
         auto hash = file_info_.at(id).hash;
