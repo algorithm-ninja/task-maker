@@ -355,23 +355,27 @@ kj::Promise<void> FrontendContext::getFileContents(
     GetFileContentsContext context) {
   uint32_t id = context.getParams().getFile().getId();
   KJ_LOG(INFO, "Requested file with id " + std::to_string(id));
-  auto send_file = [id, context, this]() mutable {
-    auto hash = file_info_.at(id).hash;
-    KJ_LOG(INFO, "Sending file with id " + std::to_string(id), hash.Hex());
-    return util::File::HandleRequestFile(hash,
-                                         context.getParams().getReceiver())
-        .then([id]() {
-          KJ_LOG(INFO, "Sent file with id " + std::to_string(id));
-        });
-  };
+  kj::PromiseFulfillerPair<void> pf = kj::newPromiseAndFulfiller<void>();
+  auto send_file = kj::heap<kj::Function<kj::Promise<void>()>>(
+      [id, context, this, fulfiller = std::move(pf.fulfiller)]() mutable {
+        auto hash = file_info_.at(id).hash;
+        KJ_LOG(INFO, "Sending file with id " + std::to_string(id), hash.Hex());
+        return util::File::HandleRequestFile(hash,
+                                             context.getParams().getReceiver())
+            .then([id, fulfiller = std::move(fulfiller)]() mutable {
+              fulfiller->fulfill();
+              KJ_LOG(INFO, "Sent file with id " + std::to_string(id));
+            });
+      });
+  auto send_file_ptr = send_file.get();
   return file_info_[id].forked_promise.addBranch().then(
-      [send_file]() mutable { return send_file(); },
-      [send_file, this, id](kj::Exception exc) mutable {
+      [send_file = std::move(send_file)]() mutable { return (*send_file)(); },
+      [send_file = send_file_ptr, this, id](kj::Exception exc) mutable {
         auto hash = file_info_[id].hash;
         if (hash.isZero()) {
           kj::throwRecoverableException(std::move(exc));
         }
-        return send_file();
+        return (*send_file)();
       });
 }
 kj::Promise<void> FrontendContext::stopEvaluation(
