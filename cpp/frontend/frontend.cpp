@@ -44,18 +44,16 @@ void File::getContentsAsString(
 void File::getContentsToFile(const std::string& path, bool overwrite,
                              bool exist_ok) {
   frontend_.finish_builder_.AddPromise(
-      forked_promise.addBranch().then([this, path, exist_ok,
-                                       overwrite](auto file) {
-        auto req = frontend_.frontend_context_.getFileContentsRequest();
-        req.setFile(file);
-        KJ_IF_MAYBE(receiver, util::File::Write(path, overwrite, exist_ok)) {
-          req.setReceiver(kj::heap<util::File::Receiver>(std::move(*receiver)));
-        }
-        else {
-          KJ_FAIL_REQUIRE("getContentsToFile", strerror(errno));
-        }
-        return req.send().ignoreResult();
-      }),
+      forked_promise.addBranch().then(
+          [this, path, exist_ok, overwrite](auto file) {
+            auto req = frontend_.frontend_context_.getFileContentsRequest();
+            req.setFile(file);
+            req.setReceiver(kj::heap<util::File::Receiver>(
+                util::File::LazyChunkReceiver([path, overwrite, exist_ok]() {
+                  return util::File::Write(path, overwrite, exist_ok);
+                })));
+            return req.send().ignoreResult();
+          }),
       "Get file");
 }
 

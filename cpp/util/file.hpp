@@ -23,9 +23,8 @@ class File {
 
   // Returns a receiver that writes to the given file and finalizes
   // the write when destroyed.
-  static kj::Maybe<ChunkReceiver> Write(const std::string& path,
-                                        bool overwrite = false,
-                                        bool exist_ok = true);
+  static ChunkReceiver Write(const std::string& path, bool overwrite = false,
+                             bool exist_ok = true);
 
   // Computes the hash of the file specified by path.
   static SHA256_t Hash(const std::string& path);
@@ -100,12 +99,7 @@ class File {
    public:
     Receiver(ChunkReceiver receiver) : receiver_(std::move(receiver)) {}
     Receiver(util::SHA256_t hash) {
-      KJ_IF_MAYBE(tmp, Write(PathForHash(hash), /*overwrite=*/true)) {
-        receiver_ = std::move(*tmp);
-      }
-      else {
-        KJ_FAIL_ASSERT("Write(PathForHash))");
-      }
+      receiver_ = Write(PathForHash(hash), /*overwrite=*/true);
     }
     kj::Promise<void> sendChunk(SendChunkContext context);
 
@@ -134,6 +128,9 @@ class File {
       return kj::READY_NOW;
     }
   }
+
+  // Creates a ChunkReceiver that lazily calls f to do get the actual receiver.
+  static ChunkReceiver LazyChunkReceiver(kj::Function<ChunkReceiver()> f);
 };  // namespace util
 
 class TempDir {

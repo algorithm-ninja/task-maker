@@ -193,12 +193,11 @@ void File::Read(const std::string& path, File::ChunkReceiver chunk_receiver) {
   if (err != 0)
     throw std::system_error(err, std::system_category(), "Read " + path);
 }
-
-kj::Maybe<File::ChunkReceiver> File::Write(const std::string& path,
-                                           bool overwrite, bool exist_ok) {
+File::ChunkReceiver File::Write(const std::string& path, bool overwrite,
+                                bool exist_ok) {
   MakeDirs(BaseDir(path));
   if (!overwrite && Size(path) >= 0) {
-    if (exist_ok) return nullptr;
+    if (exist_ok) return [](Chunk chunk) {};
     throw std::system_error(EEXIST, std::system_category(), "Write " + path);
   }
   return OsWrite(path, overwrite, exist_ok);
@@ -225,18 +224,14 @@ void File::MakeDirs(const std::string& path) {
 void File::HardCopy(const std::string& from, const std::string& to,
                     bool overwrite, bool exist_ok) {
   MakeDirs(BaseDir(to));
-  KJ_IF_MAYBE(receiver, Write(to, overwrite, exist_ok)) {
-    Read(from, std::move(*receiver));
-  }
+  Read(from, Write(to, overwrite, exist_ok));
 }
 
 void File::Copy(const std::string& from, const std::string& to, bool overwrite,
                 bool exist_ok) {
   MakeDirs(BaseDir(to));
   if (OsIsLink(from) || OsAtomicCopy(from, to, overwrite, exist_ok)) {
-    KJ_IF_MAYBE(receiver, Write(to, overwrite, exist_ok)) {
-      Read(from, std::move(*receiver));
-    }
+    Read(from, Write(to, overwrite, exist_ok));
   }
 }
 
@@ -289,6 +284,14 @@ int64_t File::Size(const std::string& path) {
   std::ifstream fin(path, std::ios::ate | std::ios::binary);
   if (!fin) return -1;
   return fin.tellg();
+}
+
+File::ChunkReceiver File::LazyChunkReceiver(kj::Function<ChunkReceiver()> f) {
+  std::unique_ptr<File::ChunkReceiver> rec(nullptr);
+  return [f = std::move(f), rec = std::move(rec)](Chunk chunk) mutable {
+    if (!rec) rec = std::make_unique<File::ChunkReceiver>(f());
+    (*rec)(chunk);
+  };
 }
 
 TempDir::TempDir(const std::string& base) {
