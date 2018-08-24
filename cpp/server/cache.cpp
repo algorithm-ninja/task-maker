@@ -61,8 +61,7 @@ bool RequestComparator::operator()(capnproto::Request::Reader a,
   if (a.getExecutable().which() != b.getExecutable().which()) return false;
   switch (a.getExecutable().which()) {
     case capnproto::Request::Executable::SYSTEM:
-      if (a.getExecutable().getSystem() !=
-          b.getExecutable().getSystem())
+      if (a.getExecutable().getSystem() != b.getExecutable().getSystem())
         return false;
       break;
     case capnproto::Request::Executable::LOCAL_FILE:

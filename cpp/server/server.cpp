@@ -117,9 +117,10 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
   KJ_LOG(INFO, "Execution " + description_, "Creating dependency edges");
   util::UnionPromiseBuilder dependencies;
   auto add_dep = [&dependencies, this](uint32_t id) {
-    dependencies.AddPromise(
-        frontend_context_.file_info_[id].forked_promise.addBranch(),
-        description_ + " dep to " + std::to_string(id));
+    frontend_context_.file_info_[id].dependencies_propagated_.AddPromise(
+        dependencies.AddPromise(
+            frontend_context_.file_info_[id].forked_promise.addBranch(),
+            description_ + " dep to " + std::to_string(id)));
   };
   if (executable_) add_dep(executable_);
   if (stdin_) add_dep(stdin_);
@@ -129,23 +130,20 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
   dependencies.AddPromise(
       frontend_context_.forked_evaluation_start_.addBranch(),
       description_ + " evaluation start");
+  dependencies.OnReady([this]() {
+    KJ_LOG(INFO, "Execution " + description_, "Dependencies ready");
+    frontend_context_.ready_tasks_++;
+  });
+  dependencies.OnFailure([this](kj::Exception exc) {
+    // Dependencies setup failed. Remove the scheduled task
+    KJ_LOG(INFO, "Execution " + description_, "Dependencies failed");
+    frontend_context_.scheduled_tasks_--;
+  });
   frontend_context_.builder_.AddPromise(std::move(finish_promise_.promise),
                                         description_ + " finish_promise_");
   frontend_context_.scheduled_tasks_++;
   return std::move(dependencies)
       .Finalize()
-      .then(
-          [this]() {
-            KJ_LOG(INFO, "Execution " + description_, "Dependencies ready");
-            frontend_context_.ready_tasks_++;
-          },
-          [this](kj::Exception exc) {
-            // Dependencies setup failed. Remove the scheduled task
-            KJ_LOG(INFO, "Execution " + description_, "Dependencies failed");
-            frontend_context_.scheduled_tasks_--;
-            return exc;
-          })
-      .eagerlyEvaluate(nullptr)
       .then(
           [this, context]() mutable {
             auto get_hash = [this](uint32_t id,
@@ -189,9 +187,8 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                 frontend_context_.cache_manager_.Set(request_, result);
               }
               context.getResults().setResult(result);
-              util::UnionPromiseBuilder builder;
-              auto set_hash = [this, &builder, &result](
-                                  uint32_t id, const util::SHA256_t& hash) {
+              auto set_hash = [this, &result](uint32_t id,
+                                              const util::SHA256_t& hash) {
                 frontend_context_.file_info_[id].hash = hash;
                 if (!result.getStatus().isSuccess()) {
                   KJ_LOG(INFO, "Marking file as failed", id, description_);
@@ -200,10 +197,6 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                                                description_));
                 } else {
                   frontend_context_.file_info_[id].promise.fulfiller->fulfill();
-                  builder.AddPromise(
-                      frontend_context_.file_info_[id]
-                          .forked_promise.addBranch(),
-                      description_ + " output " + std::to_string(id));
                 }
               };
               if (stdout_) {
@@ -219,12 +212,17 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
                 set_hash(outputs_[output.getName()], output.getHash());
               }
               // Reject all the non-fulfilled promises.
+              util::UnionPromiseBuilder builder;
               for (auto f : outputs_) {
                 auto& ff =
                     frontend_context_.file_info_[f.second].promise.fulfiller;
                 if (ff) ff->reject(KJ_EXCEPTION(FAILED, "Missing file"));
+                builder.AddPromise(
+                    std::move(frontend_context_.file_info_[f.second]
+                                  .dependencies_propagated_)
+                        .Finalize());
               }
-              // Wait for all the outputs to be processed, then run a
+              // Wait for all the dependencies to be propagated, then run a
               // "number of ready tasks" check.
               return std::move(builder)
                   .Finalize()
@@ -249,15 +247,8 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
             if (cache_enabled_ &&
                 frontend_context_.cache_manager_.Has(request_)) {
               start_.fulfiller->fulfill();
-              // Workaround for a scheduling issue: if we run process_result
-              // here, the eventloop may not have finished marking as ready the
-              // executions that actually are ready before calling our stall
-              // check. TODO: fix this for real.
-              return kj::Promise<void>(kj::READY_NOW)
-                  .then([this, process_result]() mutable {
-                    return process_result(
-                        frontend_context_.cache_manager_.Get(request_));
-                  });
+              return process_result(
+                  frontend_context_.cache_manager_.Get(request_));
             }
 
             return frontend_context_.dispatcher_
@@ -317,7 +308,7 @@ kj::Promise<void> FrontendContext::addExecution(AddExecutionContext context) {
 kj::Promise<void> FrontendContext::startEvaluation(
     StartEvaluationContext context) {
   KJ_LOG(INFO, "Starting evaluation");
-  evaluation_start_.fulfiller->fulfill();  // Starts the evaluation
+  util::UnionPromiseBuilder provided_files_ready_;
   for (auto& file : file_info_) {
     if (file.second.provided) {
       auto ff = file.second.promise.fulfiller.get();
@@ -338,12 +329,24 @@ kj::Promise<void> FrontendContext::startEvaluation(
               .eagerlyEvaluate(nullptr),
           "MaybeGet file " + std::to_string(file.first) + " " +
               file.second.description);
+      // Only mark a file as ready when all of its dependencies have been
+      // propagated.
+      provided_files_ready_.AddPromise(
+          std::move(file.second.dependencies_propagated_).Finalize());
     }
     // Wait for all files to be ready
     builder_.AddPromise(file.second.forked_promise.addBranch(),
                         "Input file " + std::to_string(file.first) + " " +
                             file.second.description);
   }
+  // When the input files are done, start the evaluation.
+  builder_.AddPromise(
+      std::move(provided_files_ready_)
+          .Finalize()
+          .then([this]() { evaluation_start_.fulfiller->fulfill(); },
+                [this](kj::Exception exc) {
+                  evaluation_start_.fulfiller->reject(kj::cp(exc));
+                }));
   return std::move(builder_)
       .Finalize()
       .then([]() { KJ_LOG(INFO, "Evaluation success"); },

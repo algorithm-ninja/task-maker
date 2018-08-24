@@ -52,7 +52,10 @@ class UnionPromiseBuilder {
     bool fatalFailure;
     size_t resolved = 0;
     std::vector<kj::Promise<void>> promises;
+    std::vector<kj::PromiseFulfiller<void>*> fulfillers;
     bool finalized = false;
+    std::function<void()> on_ready;
+    std::function<void(kj::Exception)> on_failure;
 #ifdef DEBUG_UPB
     std::multiset<std::string> pending;
 #endif
@@ -68,8 +71,17 @@ class UnionPromiseBuilder {
     p_.promise = p_.promise.attach(std::move(info), std::move(p_.fulfiller));
   }
 
-  void AddPromise(kj::Promise<void> p, std::string what = "unanamed") {
+  void OnReady(std::function<void()> on_ready) { info_->on_ready = on_ready; }
+  void OnFailure(std::function<void(kj::Exception)> on_failure) {
+    info_->on_failure = on_failure;
+  }
+
+  kj::Promise<void> AddPromise(kj::Promise<void> p,
+                               std::string what = "unanamed") {
     KJ_LOG(INFO, "Adding promise " + what);
+    kj::PromiseFulfillerPair<void> pf = kj::newPromiseAndFulfiller<void>();
+    auto ff = pf.fulfiller.get();
+    info_->fulfillers.push_back(ff);
 #ifdef DEBUG_UPB
     info_->pending.insert(what);
 #endif
@@ -80,7 +92,9 @@ class UnionPromiseBuilder {
 #ifdef DEBUG_UPB
                     this,
 #endif
-                    info = info_, fulfiller = fulfiller_, what]() {
+                    info = info_, fulfiller = fulfiller_, what,
+                    index = info_->promises.size(),
+                    propagate_fulfiller = std::move(pf.fulfiller)]() mutable {
                   info->resolved++;
 #ifdef DEBUG_UPB
                   info->pending.erase(info->pending.find(what));
@@ -93,19 +107,27 @@ class UnionPromiseBuilder {
                   if (info->finalized &&
                       info->resolved == info->promises.size()) {
                     fulfiller->fulfill();
+                    if (info->on_ready) info->on_ready();
                   }
+                  propagate_fulfiller->fulfill();
+                  info->fulfillers[index] = nullptr;
                 },
                 [
 #ifdef DEBUG_UPB
                     this,
 #endif
-                    fulfiller = fulfiller_, info = info_,
-                    idx = info_->promises.size(), what](kj::Exception exc) {
+                    fulfiller = fulfiller_, info = info_, ff,
+                    index = info_->promises.size(),
+                    idx = info_->promises.size(),
+                    what](kj::Exception exc) mutable {
 #ifdef DEBUG_UPB
                   info->pending.erase(info->pending.find(what));
 #endif
                   if (info->fatalFailure) {
                     fulfiller->reject(kj::cp(exc));
+                    if (info->on_failure) info->on_failure(kj::cp(exc));
+                    for (auto off : info->fulfillers)
+                      if (off) off->fulfill();
                   } else {
                     info->resolved++;
 #ifdef DEBUG_UPB
@@ -116,19 +138,22 @@ class UnionPromiseBuilder {
                     if (info->finalized &&
                         info->resolved == info->promises.size()) {
                       fulfiller->fulfill();
+                      if (info->on_ready) info->on_ready();
                     }
                   }
+                  ff->fulfill();
+                  info->fulfillers[index] = nullptr;
                   return exc;
                 })
             .eagerlyEvaluate(nullptr));
+    return std::move(pf.promise);
   }
 
   kj::Promise<void> Finalize() && KJ_WARN_UNUSED_RESULT {
     info_->finalized = true;
-    if (!info_->fatalFailure) {
-    }
     if (info_->resolved == info_->promises.size()) {
       fulfiller_->fulfill();
+      if (info_->on_ready) info_->on_ready();
     }
     return std::move(p_.promise);
   }

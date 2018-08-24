@@ -21,6 +21,7 @@ struct FileInfo {
   kj::PromiseFulfillerPair<void> promise = kj::newPromiseAndFulfiller<void>();
   kj::ForkedPromise<void> forked_promise = promise.promise.fork();
   util::SHA256_t hash = util::SHA256_t::ZERO;
+  util::UnionPromiseBuilder dependencies_propagated_;
 };
 };  // namespace detail
 
