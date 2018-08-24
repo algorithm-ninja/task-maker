@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
+# enable discovery of capnp folder and installed venv
+from task_maker.config import Config
 from task_maker.syspath_patch import patch_sys_path
-
 patch_sys_path()
 
 import os.path
@@ -25,9 +26,8 @@ from task_maker.detect_format import find_task_dir
 #     manager.CleanTask(request)
 #
 #
-def ioi_format_clean(args):
+def ioi_format_clean():
     ioi_format.clean()
-    # manager_clean(args)
 
 
 # def tm_format_clean(args):
@@ -48,8 +48,7 @@ def ioi_format_clean(args):
 
 
 def main() -> None:
-    parser = get_parser()
-    args = parser.parse_args()
+    config = Config(get_parser().parse_args())
 
     # if args.run_manager is not None:
     #     became_manager(args)
@@ -65,19 +64,20 @@ def main() -> None:
     # if args.kill_manager or args.quit_manager:
     #     return
     #
-    task_dir, format = find_task_dir(args.task_dir, args.max_depth)
+    task_dir, format = find_task_dir(config.task_dir, config.max_depth)
     if not format:
         raise ValueError(
             "Cannot detect format! It's probable that the task is ill-formed")
-    if args.format is not None and format != args.format:
+    # TODO move this check in find_task_dir in order to have compatible formats
+    if config.format is not None and format != config.format:
         raise ValueError(
             "Detected format mismatch the required one: %s" % format)
 
     os.chdir(task_dir)
 
-    if args.clean:
+    if config.clean:
         if format == "ioi":
-            ioi_format_clean(args)
+            ioi_format_clean()
         # elif format == "tm":
         #     tm_format_clean(args)
         # elif format == "terry":
@@ -86,11 +86,11 @@ def main() -> None:
             raise ValueError("Format %s not supported" % format)
         return
 
-    frontend = Frontend("localhost", args.manager_port)
+    frontend = Frontend(config.host, config.port)
 
     if format == "ioi":
-        task, solutions = ioi_format.get_request(args)
-        ioi_format.evaluate_task(frontend, task, solutions, args.ui)
+        task, solutions = ioi_format.get_request(config)
+        ioi_format.evaluate_task(frontend, task, solutions, config.ui)
     # elif format == "tm":
     #     request = tm_format.get_request(args)
     #     solutions = [os.path.basename(sol.path) for sol in request.solutions]
@@ -106,28 +106,6 @@ def main() -> None:
     # import json
     # print(json.dumps(json.loads(jsonpickle.dumps(task)), indent=4))
 
-    # ui = args.ui.value(solutions, format)
-    #
-    # if format == "ioi" or format == "tm":
-    #     ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))
-    #     ui.set_time_limit(request.task.time_limit)
-    #     ui.set_memory_limit(request.task.memory_limit_kb)
-    #
-    #     last_testcase = 0
-    #     for subtask_num, subtask in request.task.subtasks.items():
-    #         last_testcase += len(subtask.testcases)
-    #         ui.set_subtask_info(subtask_num, subtask.max_score,
-    #                             sorted(subtask.testcases.keys()))
-    #     ui.set_max_score(
-    #         sum(subtask.max_score
-    #             for subtask in request.task.subtasks.values()))
-    # elif format == "terry":
-    #     ui.set_task_name("%s (%s)" % (request.task.title, request.task.name))
-    #     ui.set_max_score(request.task.max_score)
-    # else:
-    #     raise ValueError("Format %s not supported" % format)
-    #
-    # eval_id = None
     #
     # def stop_server(signum: int, _: Any) -> None:
     #     if eval_id:
@@ -137,22 +115,6 @@ def main() -> None:
     #
     # signal.signal(signal.SIGINT, stop_server)
     # signal.signal(signal.SIGTERM, stop_server)
-    #
-    # if format == "ioi" or format == "tm":
-    #     events = manager.EvaluateTask(request)
-    # elif format == "terry":
-    #     events = manager.EvaluateTerryTask(request)
-    # else:
-    #     raise NotImplementedError("Format %s not supported" % format)
-    #
-    # for event in events:
-    #     event_type = event.WhichOneof("event_oneof")
-    #     if event_type == "evaluation_started":
-    #         eval_id = event.evaluation_started.id
-    #     elif event_type == "evaluation_ended":
-    #         eval_id = None
-    #     ui.from_event(event)
-    # ui.print_final_status()
 
 
 if __name__ == '__main__':

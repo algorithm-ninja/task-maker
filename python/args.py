@@ -4,12 +4,14 @@ import argparse
 import os.path
 from enum import Enum
 
-# from task_maker.uis.curses_ui import CursesUI
-# from task_maker.uis.print_ui import PrintUI
-# from task_maker.uis.silent_ui import SilentUI
 from task_maker.formats import Arch
 from task_maker.version import TASK_MAKER_VERSION
-from task_maker import CacheMode
+
+
+class CacheMode(Enum):
+    ALL = 0
+    REEVALUATE = 1
+    NOTHING = 2
 
 
 class UIS(Enum):
@@ -18,7 +20,12 @@ class UIS(Enum):
     SILENT = 2
 
 
-for cls in [UIS, CacheMode, Arch]:
+class TaskFormat(Enum):
+    IOI = 0
+    TERRY = 1
+
+
+for cls in [UIS, CacheMode, TaskFormat, Arch]:
 
     def from_string(cls, name: str):
         try:
@@ -77,31 +84,20 @@ def add_generic_group(parser: argparse.ArgumentParser):
         default=False)
     group.add_argument(
         "--format",
-        help="Format of the task (ioi|terry)",
-        choices=["ioi", "terry"],
+        help="Format of the task",
         action="store",
+        choices=list(TaskFormat),
+        type=TaskFormat,
         default=None)
 
 
 def add_remote_group(parser: argparse.ArgumentParser):
     group = parser.add_argument_group("Remote options")
     group.add_argument(
-        "--evaluate-on",
+        "--server",
         action="store",
-        help="Where evaluations should be run",
-        default=None)
-    group.add_argument(
-        "--manager-port",
-        action="store",
-        help="Port of the manager",
-        default=7071,
-        type=int)
-    group.add_argument(
-        "--run-manager",
-        action="store",
-        nargs=argparse.REMAINDER,
-        help="Run the manager in foreground instead of running a task",
-        default=None)
+        help="address[:port] of the server to connect to",
+        default="localhost:7071")
     group.add_argument(
         "--run-server",
         action="store",
@@ -119,12 +115,6 @@ def add_remote_group(parser: argparse.ArgumentParser):
 def add_execution_group(parser: argparse.ArgumentParser):
     group = parser.add_argument_group("Execution options")
     group.add_argument(
-        "--num-cores",
-        help="Number of cores to use",
-        action="store",
-        type=_validate_num_cores,
-        default=None)
-    group.add_argument(
         "--exclusive",
         help="Evaluate the solutions one test at the time",
         action="store_true",
@@ -136,33 +126,8 @@ def add_execution_group(parser: argparse.ArgumentParser):
         type=float,
         default=0)
     group.add_argument(
-        "--temp-dir",
-        help="Where the sandboxes should be created",
-        action="store",
-        default="temp")
-    group.add_argument(
-        "--store-dir",
-        help="Where files should be stored",
-        action="store",
-        default="files")
-    group.add_argument(
         "--copy-exe",
         help="Copy executable files in bin/ folder",
-        action="store_true",
-        default=False)
-    group.add_argument(
-        "--keep-sandbox",
-        help="Do not drop the sandbox folder",
-        action="store_true",
-        default=False)
-    group.add_argument(
-        "--quit-manager",
-        help="Tell the manager to quit after processing the last request",
-        action="store_true",
-        default=False)
-    group.add_argument(
-        "--kill-manager",
-        help="Tell the manager to quit ASAP",
         action="store_true",
         default=False)
 

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
-import argparse
 import glob
 import os
 import shutil
 import yaml
-from task_maker import args
-from task_maker.uis.ioi_finish_ui import IOIFinishUI
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
+from task_maker.args import UIS
+from task_maker.config import Config
+from task_maker.uis.ioi_finish_ui import IOIFinishUI
 from task_maker.uis.ioi_curses_ui import IOICursesUI
 from task_maker.uis.ioi import IOIUIInterface
 from task_maker.dependency_finder import find_dependency
@@ -229,8 +229,8 @@ def get_checker() -> Optional[str]:
     return checker
 
 
-def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
-    copy_compiled = args.copy_exe
+def get_request(config: Config) -> (Task, List[SourceFile]):
+    copy_compiled = config.copy_exe
     data = parse_task_yaml()
     if not data:
         raise RuntimeError("The task.yaml is not valid")
@@ -238,7 +238,7 @@ def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
     task = create_task_from_yaml(data)
 
     graders = list_files(["sol/grader.*"])
-    solutions = get_solutions(args.solutions, graders)
+    solutions = get_solutions(config.solutions, graders)
     checker = get_checker()
 
     grader_map = dict()
@@ -275,12 +275,12 @@ def get_request(args: argparse.Namespace) -> (Task, List[SourceFile]):
 
 
 def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile],
-                  ui: args.UIS):
+                  ui: UIS):
     ui_interface = IOIUIInterface(
         task,
         dict((st_num, [tc for tc in st.testcases.keys()])
-             for st_num, st in task.subtasks.items()), ui == args.UIS.PRINT)
-    if ui == args.UIS.CURSES:
+             for st_num, st in task.subtasks.items()), ui == UIS.PRINT)
+    if ui == UIS.CURSES:
         curses_ui = IOICursesUI(ui_interface)
         curses_ui.start()
     ins, outs, vals = generate_inputs(frontend, task, ui_interface)
@@ -288,10 +288,10 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile],
                        ui_interface)
 
     frontend.evaluate()
-    if ui == args.UIS.CURSES:
+    if ui == UIS.CURSES:
         curses_ui.stop()
 
-    if ui != args.UIS.SILENT:
+    if ui != UIS.SILENT:
         finish_ui = IOIFinishUI(task, ui_interface)
         finish_ui.print()
 
