@@ -360,12 +360,18 @@ kj::Promise<void> FrontendContext::getFileContents(
       [id, context, this, fulfiller = std::move(pf.fulfiller)]() mutable {
         auto hash = file_info_.at(id).hash;
         KJ_LOG(INFO, "Sending file with id " + std::to_string(id), hash.Hex());
+        auto ff = fulfiller.get();
         return util::File::HandleRequestFile(hash,
                                              context.getParams().getReceiver())
-            .then([id, fulfiller = std::move(fulfiller)]() mutable {
-              fulfiller->fulfill();
-              KJ_LOG(INFO, "Sent file with id " + std::to_string(id));
-            });
+            .then(
+                [id, fulfiller = std::move(fulfiller)]() mutable {
+                  fulfiller->fulfill();
+                  KJ_LOG(INFO, "Sent file with id " + std::to_string(id));
+                },
+                [ff](kj::Exception exc) {
+                  ff->reject(kj::cp(exc));
+                  return exc;
+                });
       });
   auto send_file_ptr = send_file.get();
   return file_info_[id].forked_promise.addBranch().then(
