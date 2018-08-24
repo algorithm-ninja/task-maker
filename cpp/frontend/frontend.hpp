@@ -41,6 +41,7 @@ class File {
   friend class Execution;
   kj::Promise<capnproto::File::Reader> promise;
   kj::ForkedPromise<capnproto::File::Reader> forked_promise;
+  bool is_executable_;
 
  protected:
   Frontend& frontend_;
@@ -49,14 +50,16 @@ class File {
     promise = std::move(prom);
     forked_promise = promise.fork();
   }
-  File(Frontend& frontend)
+  File(Frontend& frontend, bool is_executable)
       : promise(capnproto::File::Reader()),
         forked_promise(promise.fork()),
+        is_executable_(is_executable),
         frontend_(frontend) {}
 
  public:
   template <typename T>
-  static std::unique_ptr<File> New(kj::Promise<T>&& p, Frontend& frontend);
+  static std::unique_ptr<File> New(kj::Promise<T>&& p, Frontend& frontend,
+                                   bool is_executable);
   virtual ~File() = default;
 
   void getContentsAsString(std::function<void(const std::string&)> callback);
@@ -67,8 +70,8 @@ class File {
 template <typename T>
 class FileInst : public File {
  public:
-  FileInst(T&& p, Frontend& frontend)
-      : File(frontend),
+  FileInst(T&& p, Frontend& frontend, bool is_executable)
+      : File(frontend, is_executable),
         pf(kj::newPromiseAndFulfiller<capnproto::File::Reader>()),
         promise(std::move(p)) {
     SetPromise(std::move(pf.promise));
@@ -92,8 +95,10 @@ class FileInst : public File {
 };
 
 template <typename T>
-std::unique_ptr<File> File::New(kj::Promise<T>&& p, Frontend& frontend) {
-  return std::make_unique<FileInst<kj::Promise<T>>>(std::move(p), frontend);
+std::unique_ptr<File> File::New(kj::Promise<T>&& p, Frontend& frontend,
+                                bool is_executable) {
+  return std::make_unique<FileInst<kj::Promise<T>>>(std::move(p), frontend,
+                                                    is_executable);
 }
 
 class Execution {

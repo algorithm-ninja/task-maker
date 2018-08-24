@@ -52,7 +52,11 @@ void File::getContentsToFile(const std::string& path, bool overwrite,
                 util::File::LazyChunkReceiver([path, overwrite, exist_ok]() {
                   return util::File::Write(path, overwrite, exist_ok);
                 })));
-            return req.send().ignoreResult();
+            return req.send().ignoreResult().then([this, path]() {
+              if (is_executable_) {
+                util::File::MakeExecutable(path);
+              }
+            });
           }),
       "Get file");
 }
@@ -75,7 +79,7 @@ File* Frontend::provideFile(const std::string& path,
   hash.ToCapnp(req.initHash());
   req.setDescription(description);
   req.setIsExecutable(is_executable);
-  files_.push_back(File::New(req.send(), *this));
+  files_.push_back(File::New(req.send(), *this, is_executable));
   return files_.back().get();
 }
 
@@ -174,21 +178,21 @@ void Execution::setLimits(const Resources& limits) {
 File* Execution::stdout(bool is_executable) {
   auto req = execution_.stdoutRequest();
   req.setIsExecutable(is_executable);
-  files_.push_back(File::New(req.send(), frontend_));
+  files_.push_back(File::New(req.send(), frontend_, is_executable));
   return files_.back().get();
 }
 
 File* Execution::stderr(bool is_executable) {
   auto req = execution_.stderrRequest();
   req.setIsExecutable(is_executable);
-  files_.push_back(File::New(req.send(), frontend_));
+  files_.push_back(File::New(req.send(), frontend_, is_executable));
   return files_.back().get();
 }
 File* Execution::output(const std::string& name, bool is_executable) {
   auto req = execution_.outputRequest();
   req.setIsExecutable(is_executable);
   req.setName(name);
-  files_.push_back(File::New(req.send(), frontend_));
+  files_.push_back(File::New(req.send(), frontend_, is_executable));
   return files_.back().get();
 }
 
