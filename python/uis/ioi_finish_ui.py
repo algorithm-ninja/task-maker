@@ -68,10 +68,11 @@ class IOIFinishUI:
             if result.result.status != ResultStatus.INTERNAL_ERROR and \
                     result.result.status != ResultStatus.MISSING_FILES and \
                     result.result.status != ResultStatus.MISSING_EXECUTABLE:
-                self.printer.text(" {:>6.3f}s | {:>5.1f}MiB".format(
-                    result.result.resources.cpu_time +
-                    result.result.resources.sys_time,
-                    result.result.resources.memory / 1024))
+                if result.result:
+                    self.printer.text(" {:>6.3f}s | {:>5.1f}MiB".format(
+                        result.result.resources.cpu_time +
+                        result.result.resources.sys_time,
+                        result.result.resources.memory / 1024))
             if result.result.status == ResultStatus.RETURN_CODE:
                 self.printer.text(
                     " | Exited with %d" % result.result.return_code)
@@ -84,6 +85,8 @@ class IOIFinishUI:
                 self.printer.text("  Missing files")
             elif result.result.status == ResultStatus.MISSING_EXECUTABLE:
                 self.printer.text("  " + result.result.error)
+            else:
+                self.printer.text(result.result.status)
         self.printer.text("\n")
         if result.stderr:
             self.printer.text(result.stderr)
@@ -167,9 +170,13 @@ class IOIFinishUI:
                     self.printer.yellow(
                         "[{:.2}]".format(testcase.score), bold=False)
 
-                used_time = testcase.result.resources.cpu_time + \
-                            testcase.result.resources.sys_time
-                memory = testcase.result.resources.memory / 1024
+                if testcase.result:
+                    used_time = testcase.result.resources.cpu_time + \
+                                testcase.result.resources.sys_time
+                    memory = testcase.result.resources.memory / 1024
+                else:
+                    used_time = 0
+                    memory = 0
                 self.printer.text(" [")
                 if used_time >= LIMITS_MARGIN * self.task.time_limit:
                     self.printer.yellow(
