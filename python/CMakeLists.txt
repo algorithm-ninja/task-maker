@@ -11,18 +11,19 @@ find_program(RM_EXE NAMES rm)
 
 # Sources
 file(GLOB SOURCES_PY "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
-file(GLOB UIS_PY "${CMAKE_CURRENT_SOURCE_DIR}/uis/*.py")
-file(GLOB FORMATS_PY "${CMAKE_CURRENT_SOURCE_DIR}/formats/*.py")
-file(GLOB TESTS_PY "${CMAKE_CURRENT_SOURCE_DIR}/tests/test.py" "${CMAKE_CURRENT_SOURCE_DIR}/tests/utils.py")
+set(PY_MODULES formats tests uis)
+foreach(module_name ${PY_MODULES})
+  file(GLOB SOURCES_PY_${module_name} "${CMAKE_CURRENT_SOURCE_DIR}/${module_name}/*.py")
+endforeach()
 file(GLOB TESTS_TASKS "${CMAKE_CURRENT_SOURCE_DIR}/tests/task_*")
 file(GLOB CAPNP_FILES "${CMAKE_CURRENT_SOURCE_DIR}/../capnp/*.capnp")
 set(REQUIREMENTS_TXT "${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt")
 
 # Install directories
 set(SOURCES_MODULE "${CMAKE_CURRENT_BINARY_DIR}/task_maker")
-set(UIS_MODULE "${SOURCES_MODULE}/uis")
-set(FORMATS_MODULE "${SOURCES_MODULE}/formats")
-set(TESTS_MODULE "${SOURCES_MODULE}/tests")
+foreach(module_name ${PY_MODULES})
+  set(SOURCES_${module_name}_MODULE "${SOURCES_MODULE}/${module_name}")
+endforeach()
 set(CAPNP_MODULE "${SOURCES_MODULE}/capnp")
 set(BIN_DIRECTORY "${SOURCES_MODULE}/bin")
 set(VENV_DIRECTORY "${SOURCES_MODULE}/venv")
@@ -30,23 +31,24 @@ set(TEMP_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/temp")
 
 # Create the install directories
 file(MAKE_DIRECTORY ${SOURCES_MODULE})
-file(MAKE_DIRECTORY ${UIS_MODULE})
-file(MAKE_DIRECTORY ${FORMATS_MODULE})
-file(MAKE_DIRECTORY ${TESTS_MODULE})
+foreach(module_name ${PY_MODULES})
+  file(MAKE_DIRECTORY ${SOURCES_${module_name}_MODULE})
+endforeach()
 file(MAKE_DIRECTORY ${CAPNP_MODULE})
 file(MAKE_DIRECTORY ${BIN_DIRECTORY})
 file(MAKE_DIRECTORY ${VENV_DIRECTORY})
 file(WRITE "${CAPNP_MODULE}/__init__.py" "")
-file(WRITE "${TESTS_MODULE}/__init__.py" "")
 file(WRITE "${BIN_DIRECTORY}/__init__.py" "")
 
 # Compute the target file paths
 string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/../capnp" "${CAPNP_MODULE}" CAPNP_TGT "${CAPNP_FILES}")
 string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "${SOURCES_MODULE}" SOURCES_PY_TGT "${SOURCES_PY}")
-string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/uis" "${UIS_MODULE}" UIS_PY_TGT "${UIS_PY}")
-string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/formats" "${FORMATS_MODULE}" FORMATS_PY_TGT "${FORMATS_PY}")
-string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/tests" "${TESTS_MODULE}" TESTS_PY_TGT "${TESTS_PY}")
-string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/tests" "${TESTS_MODULE}" TESTS_TASKS_TGT "${TESTS_TASKS}")
+foreach(module_name ${PY_MODULES})
+  string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/${module_name}" "${SOURCES_${module_name}_MODULE}" SOURCES_PY_${module_name}_TGT "SOURCES_PY_${module_name}")
+  file(MAKE_DIRECTORY ${SOURCES_${module_name}_MODULE})
+  list(APPEND MODULES_TGT ${SOURCES_PY_${module_name}_TGT})
+endforeach()
+string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/tests" "${SOURCES_tests_MODULE}" TESTS_TASKS_TGT "${TESTS_TASKS}")
 set(SETUP_PY ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 set(VERSION_PY ${SOURCES_MODULE}/version.py)
 set(REQUIREMENTS_TXT_TGT "${CMAKE_CURRENT_BINARY_DIR}/requirements.txt")
@@ -66,20 +68,12 @@ add_custom_command(OUTPUT ${SOURCES_PY_TGT}
   DEPENDS "${SOURCES_PY}"
 )
 
-add_custom_command(OUTPUT ${UIS_PY_TGT}
-  COMMAND ${CMAKE_COMMAND} -E copy ${UIS_PY} ${UIS_MODULE}
-  DEPENDS "${UIS_PY}"
-)
-
-add_custom_command(OUTPUT ${FORMATS_PY_TGT}
-  COMMAND ${CMAKE_COMMAND} -E copy ${FORMATS_PY} ${FORMATS_MODULE}
-  DEPENDS "${FORMATS_PY}"
-)
-
-add_custom_command(OUTPUT ${TESTS_PY_TGT}
-  COMMAND ${CMAKE_COMMAND} -E copy ${TESTS_PY} ${TESTS_MODULE}
-  DEPENDS "${TESTS_PY}"
-)
+foreach(module_name ${PY_MODULES})
+  add_custom_command(OUTPUT ${SOURCES_PY_${module_name}_TGT}
+    COMMAND ${CMAKE_COMMAND} -E copy ${SOURCES_PY_${module_name}} ${SOURCES_${module_name}_MODULE}
+    DEPENDS "${SOURCES_PY_${module_name}}"
+  )
+endforeach()
 
 add_custom_command(OUTPUT ${REQUIREMENTS_TXT_TGT}
   COMMAND ${CMAKE_COMMAND} -E copy ${REQUIREMENTS_TXT} ${REQUIREMENTS_TXT_TGT}
@@ -94,7 +88,7 @@ add_custom_command(OUTPUT "${FRONTEND_LIB}"
 foreach(task ${TESTS_TASKS})
   string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/tests/task_" "" task_name "${task}")
   set(TEST_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tests")
-  set(TEST_DST_DIR "${TESTS_MODULE}")
+  set(TEST_DST_DIR "${SOURCES_tests_MODULE}")
 
   add_custom_command(OUTPUT ${TEST_DST_DIR}/task_${task_name}
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${TEST_SRC_DIR}/task_${task_name} ${TEST_DST_DIR}/task_${task_name}
@@ -165,9 +159,8 @@ else ()
 endif()
 
 add_custom_target(module_files ALL
-  DEPENDS ${CAPNP_TGT} ${UIS_PY_TGT} ${FORMATS_PY_TGT}
-    ${REQUIREMENTS_TXT_TGT} ${TESTS_PY_TGT} "${TESTS_TASKS_TGT}"
-    ${SOURCES_PY_TGT} ${CPP_EXECUTABLES} ${FRONTEND_LIB}
+  DEPENDS ${CAPNP_TGT} ${MODULES_TGT} ${REQUIREMENTS_TXT_TGT}
+    "${TESTS_TASKS_TGT}" ${SOURCES_PY_TGT} ${CPP_EXECUTABLES} ${FRONTEND_LIB}
   ${TEMP_DIRECTORY}/stripped
 )
 
