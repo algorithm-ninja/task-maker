@@ -4,6 +4,9 @@
 
 #include <cstdlib>
 
+#include <kj/async.h>
+#include <kj/debug.h>
+#include <kj/exception.h>
 #include <fstream>
 #include <system_error>
 
@@ -20,9 +23,6 @@
 #else
 #define NFTW_EXTRA_FLAGS FTW_MOUNT
 #endif
-
-#include <kj/debug.h>
-#include <kj/exception.h>
 
 namespace {
 
@@ -120,28 +120,38 @@ int OsAtomicCopy(const std::string& src, const std::string& dst,
   return 0;
 }
 
-int OsRead(const std::string& path, util::File::ChunkReceiver& chunk_receiver) {
+util::File::ChunkProducer OsRead(const std::string& path) {
   int fd = open(path.c_str(), O_CLOEXEC | O_RDONLY);  // NOLINT
-  if (fd == -1) return errno;
-  ssize_t amount;
-  try {
-    kj::byte buf[util::kChunkSize] = {};
-    while ((amount = read(fd, buf, util::kChunkSize))) {  // NOLINT
-      if (amount == -1 && errno == EINTR) continue;
-      if (amount == -1) break;
-      chunk_receiver(util::File::Chunk(buf, amount));
+  if (fd == -1) {
+    throw std::system_error(errno, std::system_category(), "Read " + path);
+  }
+  return [fd, path, buf = std::array<kj::byte, util::kChunkSize>()]() mutable {
+    if (fd == -1) return util::File::Chunk();
+    ssize_t amount;
+    try {
+      while ((amount = read(fd, buf.data(), util::kChunkSize))) {  // NOLINT
+        if (amount == -1 && errno == EINTR) continue;
+        if (amount == -1) break;
+        return util::File::Chunk(buf.data(), amount);
+      }
+    } catch (...) {
+      fd = -1;
+      close(fd);
+      throw;
     }
-  } catch (...) {
-    close(fd);
-    throw;
-  }
-  if (amount == -1) {
-    int error = errno;
-    close(fd);
-    return error;
-  }
-  chunk_receiver(util::File::Chunk());
-  return close(fd) == -1 ? errno : 0;
+    if (amount == -1) {
+      fd = -1;
+      int error = errno;
+      close(fd);
+      throw std::system_error(error, std::system_category(), "Read " + path);
+    }
+    if (close(fd) == -1) {
+      fd = -1;
+      throw std::system_error(errno, std::system_category(), "Read " + path);
+    }
+    fd = -1;
+    return util::File::Chunk();
+  };
 }
 
 util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
@@ -188,11 +198,7 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
 
 namespace util {
 
-void File::Read(const std::string& path, File::ChunkReceiver chunk_receiver) {
-  int err = OsRead(path, chunk_receiver);
-  if (err != 0)
-    throw std::system_error(err, std::system_category(), "Read " + path);
-}
+File::ChunkProducer File::Read(const std::string& path) { return OsRead(path); }
 File::ChunkReceiver File::Write(const std::string& path, bool overwrite,
                                 bool exist_ok) {
   MakeDirs(BaseDir(path));
@@ -205,9 +211,11 @@ File::ChunkReceiver File::Write(const std::string& path, bool overwrite,
 
 SHA256_t File::Hash(const std::string& path) {
   SHA256 hasher;
-  Read(path, [&hasher](util::File::Chunk chunk) {
+  auto producer = Read(path);
+  Chunk chunk;
+  while ((chunk = producer()).size()) {
     hasher.update(chunk.begin(), chunk.size());
-  });
+  }
   return hasher.finalize();
 }
 
@@ -222,16 +230,22 @@ void File::MakeDirs(const std::string& path) {
 }
 
 void File::HardCopy(const std::string& from, const std::string& to,
-                    bool overwrite, bool exist_ok) {
-  MakeDirs(BaseDir(to));
-  Read(from, Write(to, overwrite, exist_ok));
+                    bool overwrite, bool exist_ok, bool make_dirs) {
+  if (make_dirs) MakeDirs(BaseDir(to));
+  auto producer = Read(from);
+  auto receiver = Write(to, overwrite, exist_ok);
+  Chunk chunk;
+  while ((chunk = producer()).size()) {
+    receiver(chunk);
+  }
+  receiver(chunk);
 }
 
 void File::Copy(const std::string& from, const std::string& to, bool overwrite,
                 bool exist_ok) {
   MakeDirs(BaseDir(to));
   if (OsIsLink(from) || OsAtomicCopy(from, to, overwrite, exist_ok)) {
-    Read(from, Write(to, overwrite, exist_ok));
+    HardCopy(from, to, overwrite, exist_ok, false);
   }
 }
 
@@ -316,23 +330,30 @@ kj::Promise<void> File::Receiver::sendChunk(SendChunkContext context) {
   return kj::READY_NOW;
 }
 
+namespace {
+kj::Promise<void> next_chunk(File::ChunkProducer producer,
+                             capnproto::FileReceiver::Client receiver) {
+  File::Chunk chunk = producer();
+  auto req = receiver.sendChunkRequest();
+  req.setChunk(chunk);
+  return req.send().ignoreResult().then(
+      [sz = chunk.size(), producer = std::move(producer),
+       receiver = std::move(receiver)]() mutable -> kj::Promise<void> {
+        if (sz)
+          return next_chunk(std::move(producer), receiver);
+        else
+          return kj::READY_NOW;
+      });
+}
+}  // namespace
+
 kj::Promise<void> File::HandleRequestFile(
     const std::string& path, capnproto::FileReceiver::Client receiver) {
-  kj::Promise<void> prev_chunk = kj::READY_NOW;
   // TODO: see if we can easily avoid the extra round-trips while
   // still guaranteeing in-order processing (when capnp implements streams?)
   // Possibly by using UnionPromiseBuilder?
-  Read(path, [receiver, &prev_chunk](Chunk chunk) mutable {
-    prev_chunk = prev_chunk.then(
-        [receiver,
-         chunk = std::string(chunk.asChars().begin(), chunk.size())]() mutable {
-          auto req = receiver.sendChunkRequest();
-          req.setChunk(
-              kj::ArrayPtr<const char>(chunk.c_str(), chunk.size()).asBytes());
-          return req.send().ignoreResult();
-        });
-  });
-  return prev_chunk;
+  auto producer = Read(path);
+  return next_chunk(std::move(producer), receiver);
 }
 
 }  // namespace util

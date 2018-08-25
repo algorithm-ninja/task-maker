@@ -15,11 +15,12 @@ static const constexpr uint32_t kChunkSize = 1024 * 1024;
 class File {
  public:
   using Chunk = kj::ArrayPtr<const kj::byte>;
-  using ChunkReceiver =
-      kj::Function<void(Chunk)>;  // Empty chunk = end of file.
+  // Empty chunk = end of file.
+  using ChunkReceiver = kj::Function<void(Chunk)>;
+  using ChunkProducer = kj::Function<Chunk()>;
 
   // Reads the file specified by path in chunks.
-  static void Read(const std::string& path, ChunkReceiver chunk_receiver);
+  static ChunkProducer Read(const std::string& path);
 
   // Returns a receiver that writes to the given file and finalizes
   // the write when destroyed.
@@ -39,7 +40,8 @@ class File {
 
   // Copies from -> to without using hard links.
   static void HardCopy(const std::string& from, const std::string& to,
-                       bool overwrite = false, bool exist_ok = true);
+                       bool overwrite = false, bool exist_ok = true,
+                       bool make_dirs = true);
 
   // Moves a file to a new position. If overwrite is false and exist_ok
   // is true, the original file is deleted anyway.
