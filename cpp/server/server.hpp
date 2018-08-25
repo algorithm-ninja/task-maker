@@ -26,12 +26,13 @@ struct FileInfo {
 };  // namespace detail
 
 class FrontendContext;
+class ExecutionGroup;
 
 class Execution : public capnproto::Execution::Server {
  public:
   KJ_DISALLOW_COPY(Execution);
-  Execution(FrontendContext& frontend_context, std::string description)
-      : frontend_context_(frontend_context), description_(description) {}
+  Execution(FrontendContext& frontend_context, std::string description,
+            ExecutionGroup& group);
 
   kj::Promise<void> setExecutablePath(SetExecutablePathContext context);
   kj::Promise<void> setExecutable(SetExecutableContext context);
@@ -48,6 +49,13 @@ class Execution : public capnproto::Execution::Server {
   kj::Promise<void> getResult(GetResultContext context);
 
  private:
+  void addDependencies(util::UnionPromiseBuilder& dependencies);
+  void prepareRequest();
+  void processResult(capnproto::Result::Reader result,
+                     util::UnionPromiseBuilder& dependencies_propagated_);
+  void onDependenciesFailure(kj::Exception exc);
+  void onDependenciesPropagated();
+
   FrontendContext& frontend_context_;
   std::string description_;
   capnp::MallocMessageBuilder builder_;
@@ -64,6 +72,20 @@ class Execution : public capnproto::Execution::Server {
   kj::ForkedPromise<void> forked_start_ = start_.promise.fork();
   kj::PromiseFulfillerPair<void> finish_promise_ =
       kj::newPromiseAndFulfiller<void>();
+  friend class ExecutionGroup;
+  ExecutionGroup& group_;
+};
+
+class ExecutionGroup {
+ public:
+  void Register(Execution* ex);
+  ExecutionGroup(FrontendContext& frontend_context, std::string description)
+      : frontend_context_(frontend_context), description_(description) {}
+
+ private:
+  std::vector<Execution*> executions_;
+  FrontendContext& frontend_context_;
+  std::string description_;
 };
 
 class FrontendContext : public capnproto::FrontendContext::Server {
@@ -81,6 +103,7 @@ class FrontendContext : public capnproto::FrontendContext::Server {
 
  private:
   friend class Execution;
+  friend class ExecutionGroup;
   server::Dispatcher& dispatcher_;
   uint32_t last_file_id_ = 1;
   std::unordered_map<uint32_t, detail::FileInfo> file_info_;
@@ -94,6 +117,7 @@ class FrontendContext : public capnproto::FrontendContext::Server {
   uint32_t ready_tasks_ = 0;
   uint32_t scheduled_tasks_ = 0;
   CacheManager& cache_manager_;
+  std::vector<kj::Own<ExecutionGroup>> groups_;
 };
 
 class Server : public capnproto::MainServer::Server {
