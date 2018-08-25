@@ -47,6 +47,13 @@ inline std::function<bool(kj::StringPtr)> setInt(int& var) {
   };
 };
 
+inline std::function<bool(kj::StringPtr)> setUint(uint32_t& var) {
+  return [&var](kj::StringPtr p) {
+    var = std::stoi(std::string(p));
+    return true;
+  };
+};
+
 class UnionPromiseBuilder {
   struct Info {
     bool fatalFailure;

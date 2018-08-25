@@ -20,6 +20,7 @@ struct Flags {
 
   // Server-only flags
   static std::string listen_address;
+  static uint32_t cache_size;
 };
 
 #endif

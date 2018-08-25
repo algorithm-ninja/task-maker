@@ -13,3 +13,4 @@ bool Flags::keep_sandboxes = false;
 int32_t Flags::pending_requests = 2;
 
 std::string Flags::listen_address = "0.0.0.0";
+uint32_t Flags::cache_size = 0;

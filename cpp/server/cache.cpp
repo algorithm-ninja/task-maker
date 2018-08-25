@@ -7,7 +7,6 @@
 #include "capnp/cache.capnp.h"
 #include "util/file.hpp"
 #include "util/flags.hpp"
-#include "util/sha256.hpp"
 
 namespace server {
 namespace detail {
@@ -116,6 +115,23 @@ bool RequestComparator::operator()(capnproto::Request::Reader a,
   if (a.getExtraTime() != b.getExtraTime()) return false;
   return true;
 }
+
+std::vector<util::SHA256_t> Hashes(capnproto::Request::Reader req,
+                                   capnproto::Result::Reader res) {
+  std::vector<util::SHA256_t> ans;
+  auto add = [&ans](util::SHA256_t hash) {
+    if (!hash.isZero()) ans.push_back(hash);
+  };
+  add(req.getStdin());
+  if (req.getExecutable().isLocalFile())
+    add(req.getExecutable().getLocalFile().getHash());
+  for (auto f : req.getInputFiles()) add(f.getHash());
+  add(res.getStdout());
+  add(res.getStderr());
+  for (auto f : res.getOutputFiles()) add(f.getHash());
+  return ans;
+};
+
 }  // namespace detail
 
 CacheManager::CacheManager() {
@@ -127,6 +143,28 @@ CacheManager::CacheManager() {
         builders_.push_back(kj::heap<capnp::MallocMessageBuilder>());
         capnp::readMessageCopy(is, *builders_.back());
         auto entry = builders_.back()->getRoot<capnproto::CacheEntry>();
+        bool missing_files = false;
+        for (auto hash :
+             detail::Hashes(entry.getRequest(), entry.getResult())) {
+          int64_t fsz;
+          if ((fsz = util::File::Size(util::File::PathForHash(hash))) < 0) {
+            missing_files = true;
+            break;
+          }
+        }
+        if (missing_files) continue;
+        for (auto hash :
+             detail::Hashes(entry.getRequest(), entry.getResult())) {
+          size_t fsz = util::File::Size(util::File::PathForHash(hash));
+          if (!file_sizes_.count(hash)) {
+            file_sizes_.emplace(hash, fsz);
+            total_size_ += fsz;
+          }
+          file_access_times_[hash] = last_access_time_++;
+        }
+        for (auto kv : file_access_times_) {
+          sorted_files_.emplace(kv.second, kv.first);
+        }
         data_.emplace(entry.getRequest(), entry.getResult());
       } catch (kj::Exception& exc) {
         break;
@@ -138,14 +176,54 @@ CacheManager::CacheManager() {
 }
 
 bool CacheManager::Has(capnproto::Request::Reader req) {
-  return data_.count(req);
+  if (!data_.count(req)) return false;
+  for (auto hash : detail::Hashes(req, data_.at(req))) {
+    if (!file_sizes_.count(hash)) return false;
+  }
+  return true;
 }
+
 capnproto::Result::Reader CacheManager::Get(capnproto::Request::Reader req) {
+  for (auto hash : detail::Hashes(req, data_.at(req))) {
+    sorted_files_.erase(file_access_times_.at(hash));
+    file_access_times_[hash] = last_access_time_++;
+    sorted_files_.emplace(file_access_times_[hash], hash);
+  }
   return data_.at(req);
 }
+
 void CacheManager::Set(capnproto::Request::Reader req,
                        capnproto::Result::Reader res) {
   if (Has(req)) return;
+  for (auto hash : detail::Hashes(req, res)) {
+    if (!file_sizes_.count(hash)) {
+      size_t sz = util::File::Size(util::File::PathForHash(hash));
+      total_size_ += sz;
+      file_sizes_.emplace(hash, sz);
+    } else {
+      sorted_files_.erase(file_access_times_.at(hash));
+    }
+    file_access_times_[hash] = last_access_time_++;
+    sorted_files_.emplace(file_access_times_[hash], hash);
+  }
+  while (Flags::cache_size != 0 &&
+         total_size_ > 1024ULL * 1024 * Flags::cache_size) {
+    KJ_ASSERT(!sorted_files_.empty());
+    auto to_del = sorted_files_.begin()->second;
+    try {
+      util::File::Remove(util::File::PathForHash(to_del));
+    } catch (...) {
+      // If we could not remove the file, skip shrinking the cache.
+      break;
+    }
+    sorted_files_.erase(sorted_files_.begin());
+    total_size_ -= file_sizes_.at(to_del);
+    file_sizes_.erase(to_del);
+    file_access_times_.erase(to_del);
+  }
+  for (auto hash : detail::Hashes(req, res)) {
+    KJ_ASSERT(file_sizes_.count(hash), "Cache size is too small!");
+  }
   builders_.push_back(kj::heap<capnp::MallocMessageBuilder>());
   auto entry = builders_.back()->getRoot<capnproto::CacheEntry>();
   entry.setRequest(req);

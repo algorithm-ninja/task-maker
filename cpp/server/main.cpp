@@ -27,6 +27,9 @@ kj::MainFunc Main::getMain() {
                         "Address to connect to")
       .addOptionWithArg({'p', "port"}, util::setInt(Flags::port), "<PORT>",
                         "Port to listen on")
+      .addOptionWithArg(
+          {'c', "cache-size"}, util::setUint(Flags::cache_size), "<SZ>",
+          "Maximum size of the cache, in megabytes. 0 means unlimited")
       .callAfterParsing(KJ_BIND_METHOD(*this, Run))
       .build();
 }
