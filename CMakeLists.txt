@@ -67,5 +67,6 @@ find_package(GMock CONFIG REQUIRED)
 find_package(pybind11 CONFIG REQUIRED)
 
 add_subdirectory(capnp)
+add_subdirectory(third_party)
 add_subdirectory(cpp)
 add_subdirectory(python)

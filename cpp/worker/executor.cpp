@@ -3,6 +3,7 @@
 #include "util/flags.hpp"
 #include "util/misc.hpp"
 #include "util/which.hpp"
+#include "whereami++.h"
 
 #include <algorithm>
 #include <cctype>
@@ -16,49 +17,69 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <spawn.h>
+
+extern char** environ;
+
 namespace {
+
 kj::Promise<sandbox::ExecutionInfo> RunSandbox(
     sandbox::ExecutionOptions exec_options,
     kj::LowLevelAsyncIoProvider& async_io_provider) {
-  int pipefd[2];
-  int ret = pipe(pipefd);
-  KJ_ASSERT(ret != -1, strerror(errno));
-  int pid = fork();
+  int options_pipe[2];
+  int ret = pipe(options_pipe);
+  KJ_ASSERT(ret != -1, "pipe", strerror(errno));
+  int outcome_pipe[2];
+  ret = pipe(outcome_pipe);
+  KJ_ASSERT(ret != -1, "pipe", strerror(errno));
+
+  posix_spawn_file_actions_t actions;
+  posix_spawn_file_actions_init(&actions);
+  posix_spawn_file_actions_addclose(&actions, options_pipe[1]);
+  posix_spawn_file_actions_addclose(&actions, outcome_pipe[0]);
+  posix_spawn_file_actions_adddup2(&actions, options_pipe[0], fileno(stdin));
+  posix_spawn_file_actions_adddup2(&actions, outcome_pipe[1], fileno(stdout));
+  posix_spawn_file_actions_addclose(&actions, options_pipe[0]);
+  posix_spawn_file_actions_addclose(&actions, outcome_pipe[1]);
+
+  std::string self = whereami::getExecutablePath();
+#define VPARAM(s) s, s + strlen(s) + 1
+  std::vector<char> self_mut(VPARAM(self.c_str()));
+  std::vector<char> sandbox_mut(VPARAM("sandbox"));
+  std::vector<char> bin_mut(VPARAM("--bin"));
+#undef VPARAM
+  char* args[] = {self_mut.data(), sandbox_mut.data(), bin_mut.data(), nullptr};
+  int pid;
+  KJ_ASSERT(posix_spawn(&pid, args[0], &actions, nullptr, args, environ) == 0,
+            strerror(errno));
+  close(options_pipe[0]);
+  close(outcome_pipe[1]);
   KJ_ASSERT(pid != -1, strerror(errno));
-  if (pid == 0) {  // Child process
-    close(pipefd[0]);
-    sandbox::ExecutionInfo outcome;
-    std::string error_msg;
-    std::unique_ptr<sandbox::Sandbox> sb = sandbox::Sandbox::Create();
-    kj::FdOutputStream out(pipefd[1]);
-    if (!sb->Execute(exec_options, &outcome, &error_msg)) {
-      size_t sz = error_msg.size();
-      out.write(&sz, sizeof(sz));
-      out.write(error_msg.c_str(), sz + 1);
-    } else {
-      size_t sz = 0;
-      out.write(&sz, sizeof(sz));
-      out.write(&outcome, sizeof(outcome));
-      // TODO: think about outcome.message
-    }
-    _Exit(0);
-  } else {
-    close(pipefd[1]);  // Parent process
-    kj::Own<kj::AsyncInputStream> in = async_io_provider.wrapInputFd(pipefd[0]);
-    auto promise = in->readAllBytes();
-    return promise.attach(std::move(in))
-        .then([pid, fd = pipefd[0]](const kj::Array<kj::byte>& data) {
-          close(fd);
-          size_t error_sz = *(size_t*)data.begin();
-          const unsigned char* msg = data.begin() + sizeof(size_t);
-          KJ_ASSERT(!error_sz, msg);
-          sandbox::ExecutionInfo outcome;
-          memcpy(&outcome, msg, sizeof(outcome));
-          int err = waitpid(pid, nullptr, 0);
-          KJ_ASSERT(err != -1, strerror(errno));
-          return outcome;
-        });
-  }
+  kj::Own<kj::AsyncOutputStream> out =
+      async_io_provider.wrapOutputFd(options_pipe[1]);
+  kj::Own<kj::AsyncInputStream> in =
+      async_io_provider.wrapInputFd(outcome_pipe[0]);
+  return out->write(&exec_options, sizeof(exec_options))
+      .attach(std::move(out))
+      .then([fd = options_pipe[1], outcome_pipe, pid,
+             in = std::move(in)]() mutable {
+        close(fd);
+        auto promise = in->readAllBytes();
+        return promise.attach(std::move(in))
+            .then([pid, fd = outcome_pipe[0]](const kj::Array<kj::byte>& data) {
+              close(fd);
+              size_t error_sz = *(size_t*)data.begin();
+              const unsigned char* msg = data.begin() + sizeof(size_t);
+              KJ_ASSERT(!error_sz, msg);
+              sandbox::ExecutionInfo outcome;
+              memcpy(&outcome, msg, sizeof(outcome));
+              int ret = 0;
+              int err = waitpid(pid, &ret, 0);
+              KJ_ASSERT(err != -1, strerror(errno));
+              KJ_ASSERT(ret == 0, "Sandbox failed");
+              return outcome;
+            });
+      });
 }
 
 void PrepareFile(const std::string& path, const util::SHA256_t& hash,

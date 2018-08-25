@@ -20,6 +20,7 @@ endif()
 
 add_library(cpp_sandbox
   sandbox/sandbox.cpp
+  sandbox/main.cpp
 )
 
 target_link_libraries(cpp_sandbox
@@ -75,6 +76,7 @@ add_library(cpp_worker
 target_link_libraries(cpp_worker
   cpp_sandbox
   cpp_util
+  whereami
 )
 
 add_library(cpp_server

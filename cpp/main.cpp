@@ -1,4 +1,5 @@
 #include "worker/main.hpp"
+#include "sandbox/main.hpp"
 #include "server/main.hpp"
 #include "util/daemon.hpp"
 #include "util/flags.hpp"
@@ -11,6 +12,7 @@ class TaskMakerMain {
   kj::MainFunc getMain() {
     worker::Main wm(context);
     server::Main sm(context);
+    sandbox::Main bm(context);
     return kj::MainBuilder(context, "Task-Maker (" + util::version + ")",
                            "The new cmsMake!")
         .addOption({'d', "daemon"}, util::setBool(Flags::daemon),
@@ -20,6 +22,8 @@ class TaskMakerMain {
                           "Path where the pidfile should be stored")
         .addSubCommand("worker", KJ_BIND_METHOD(wm, getMain), "run the worker")
         .addSubCommand("server", KJ_BIND_METHOD(sm, getMain), "run the server")
+        .addSubCommand("sandbox", KJ_BIND_METHOD(bm, getMain),
+                       "run the sandbox")
         .build();
   }
 
