@@ -24,7 +24,7 @@ extern char** environ;
 namespace {
 
 kj::Promise<sandbox::ExecutionInfo> RunSandbox(
-    sandbox::ExecutionOptions exec_options,
+    const sandbox::ExecutionOptions& exec_options,
     kj::LowLevelAsyncIoProvider& async_io_provider) {
   int options_pipe[2];
   int ret = pipe(options_pipe);
@@ -59,8 +59,10 @@ kj::Promise<sandbox::ExecutionInfo> RunSandbox(
       async_io_provider.wrapOutputFd(options_pipe[1]);
   kj::Own<kj::AsyncInputStream> in =
       async_io_provider.wrapInputFd(outcome_pipe[0]);
-  return out->write(&exec_options, sizeof(exec_options))
-      .attach(std::move(out))
+  kj::Own<sandbox::ExecutionOptions> ex_opts =
+      kj::heap<sandbox::ExecutionOptions>(exec_options);
+  return out->write(ex_opts.get(), sizeof(exec_options))
+      .attach(std::move(out), std::move(ex_opts))
       .then([fd = options_pipe[1], outcome_pipe, pid,
              in = std::move(in)]() mutable {
         close(fd);
@@ -102,18 +104,23 @@ void RetrieveFile(const std::string& path, capnproto::SHA256::Builder hash_out,
   cache_.Register(hash);
 }
 
-bool ValidateFileName(std::string name, capnproto::Result::Builder result) {
+bool ValidateFileName(std::string name, capnproto::Result::Builder result_) {
   // TODO: make this more permissive?
+  auto set_internal_error = [&result_](std::string err) {
+    for (auto result : result_.getProcesses()) {
+      result.getStatus().setInternalError(err);
+    }
+  };
   if (name.find("..") != std::string::npos) {
-    result.getStatus().setInternalError("File names should not contain ..!");
+    set_internal_error("File names should not contain ..!");
     return false;
   }
   if (name.find('\0') != std::string::npos) {
-    result.getStatus().setInternalError("File names should not contain NUL!");
+    set_internal_error("File names should not contain NUL!");
     return false;
   }
   if (name[0] == '/') {
-    result.getStatus().setInternalError("File names should not start with /!");
+    set_internal_error("File names should not start with /!");
     return false;
   }
   return true;
@@ -123,51 +130,71 @@ bool ValidateFileName(std::string name, capnproto::Result::Builder result) {
 
 namespace worker {
 
-kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
-                                    capnproto::Result::Builder result) {
-  auto executable = request.getExecutable();
-  for (const auto& input : request.getInputFiles()) {
-    if (!ValidateFileName(input.getName(), result)) return kj::READY_NOW;
-  }
-  for (const auto& output : request.getOutputFiles()) {
-    if (!ValidateFileName(output, result)) return kj::READY_NOW;
-  }
-  if (executable.isLocalFile()) {
-    if (!ValidateFileName(executable.getLocalFile().getName(), result))
-      return kj::READY_NOW;
+kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
+                                    capnproto::Result::Builder result_) {
+  for (auto request : request_.getProcesses()) {
+    auto executable = request.getExecutable();
+    for (const auto& input : request.getInputFiles()) {
+      if (!ValidateFileName(input.getName(), result_)) return kj::READY_NOW;
+    }
+    for (const auto& output : request.getOutputFiles()) {
+      if (!ValidateFileName(output, result_)) return kj::READY_NOW;
+    }
+    if (executable.isLocalFile()) {
+      if (!ValidateFileName(executable.getLocalFile().getName(), result_))
+        return kj::READY_NOW;
+    }
   }
 
-  auto fail = [&result](const std::string& error) {
-    result.getStatus().setInternalError(error);
+  auto fail = [result_](const std::string& error) mutable {
+    for (auto result : result_.getProcesses()) {
+      result.getStatus().setInternalError(error);
+    }
     return kj::READY_NOW;
   };
 
-  std::string cmdline;
-  switch (executable.which()) {
-    case capnproto::Request::Executable::SYSTEM:
-      cmdline = executable.getSystem();
-      if (cmdline.empty()) return fail("Empty command name");
-      if (cmdline[0] != '/') {
-        if (cmdline.find('/') != cmdline.npos)
-          return fail("Relative path cannot have /");
-        cmdline = util::which(cmdline);
-        if (cmdline.empty()) {
-          result.getStatus().setMissingExecutable(
-              "Cannot find system program: " +
-              std::string(executable.getSystem()));
-          return kj::READY_NOW;
+  size_t num_processes = request_.getProcesses().size();
+  util::UnionPromiseBuilder builder;
+  std::vector<util::TempDir> tmp;
+  std::vector<std::string> cmdlines(num_processes);
+  std::vector<std::string> exes(num_processes);
+  std::vector<std::string> sandbox_dirs(num_processes);
+  std::vector<std::string> stderr_paths(num_processes);
+  std::vector<std::string> stdout_paths(num_processes);
+  std::vector<sandbox::ExecutionOptions> exec_options_v;
+  result_.initProcesses(num_processes);
+  while (tmp.size() < num_processes) tmp.emplace_back(Flags::temp_directory);
+  for (size_t i = 0; i < request_.getProcesses().size(); i++) {
+    auto request = request_.getProcesses()[i];
+    auto executable = request.getExecutable();
+    auto& cmdline = cmdlines[i];
+    auto& exe = exes[i];
+    auto& sandbox_dir = sandbox_dirs[i];
+    auto& stdout_path = stdout_paths[i];
+    auto& stderr_path = stderr_paths[i];
+    switch (executable.which()) {
+      case capnproto::ProcessRequest::Executable::SYSTEM:
+        cmdline = executable.getSystem();
+        if (cmdline.empty()) return fail("Empty command name");
+        if (cmdline[0] != '/') {
+          if (cmdline.find('/') != cmdline.npos)
+            return fail("Relative path cannot have /");
+          cmdline = util::which(cmdline);
+          if (cmdline.empty()) {
+            for (auto result : result_.getProcesses()) {
+              result.getStatus().setMissingExecutable(
+                  "Cannot find system program: " +
+                  std::string(executable.getSystem()));
+            }
+            return kj::READY_NOW;
+          }
         }
-      }
-      break;
-    case capnproto::Request::Executable::LOCAL_FILE:
-      cmdline = executable.getLocalFile().getName();
-      break;
-  }
+        break;
+      case capnproto::ProcessRequest::Executable::LOCAL_FILE:
+        cmdline = executable.getLocalFile().getName();
+        break;
+    }
 
-  // TODO: move inside PrepareFile?
-  kj::Promise<void> last_load = kj::READY_NOW;
-  {
-    util::UnionPromiseBuilder builder;
     for (const auto& input : request.getInputFiles()) {
       builder.AddPromise(util::File::MaybeGet(input.getHash(), server_));
     }
@@ -176,143 +203,165 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
       builder.AddPromise(
           util::File::MaybeGet(executable.getLocalFile().getHash(), server_));
     }
-    last_load = std::move(builder).Finalize();
-  }
 
-  util::TempDir tmp(Flags::temp_directory);
+    exe = cmdline;
+    if (request.getArgs().size() != 0)
+      for (const std::string& arg : request.getArgs())
+        cmdline += " '" + arg + "'";
 
-  std::string exe = cmdline;
+    if (Flags::keep_sandboxes) {
+      tmp[i].Keep();
+      std::ofstream cmdline_file(
+          util::File::JoinPath(tmp[i].Path(), "command.txt"));
+      cmdline_file << cmdline << std::endl;
+    }
 
-  if (request.getArgs().size() != 0)
-    for (const std::string& arg : request.getArgs())
-      cmdline += " '" + arg + "'";
+    auto log = kj::str("Executing:\n", "\tCommand:        ", cmdline, "\n",
+                       "\tInside sandbox: ", tmp[i].Path());
+    KJ_LOG(INFO, log);
 
-  if (Flags::keep_sandboxes) {
-    tmp.Keep();
-    std::ofstream cmdline_file(util::File::JoinPath(tmp.Path(), "command.txt"));
-    cmdline_file << cmdline << std::endl;
-  }
+    sandbox_dir = util::File::JoinPath(tmp[i].Path(), kBoxDir);
+    util::File::MakeDirs(sandbox_dir);
 
-  auto log = kj::str("Executing:\n", "\tCommand:        ", cmdline, "\n",
-                     "\tInside sandbox: ", tmp.Path());
-  KJ_LOG(INFO, log);
+    exec_options_v.emplace_back(sandbox_dir, exe);
 
-  std::string sandbox_dir = util::File::JoinPath(tmp.Path(), kBoxDir);
-  util::File::MakeDirs(sandbox_dir);
+    auto& exec_options = exec_options_v.back();
 
-  // Folder and arguments.
-  sandbox::ExecutionOptions exec_options(sandbox_dir, exe);
-  exec_options.SetArgs(request.getArgs());
+    // Folder and arguments.
+    exec_options.SetArgs(request.getArgs());
 
-  if (executable.isLocalFile()) {
-    exec_options.prepare_executable = true;  // TODO: is this useful?
-  }
-
-  // Limits.
-  // Scale up time limits to have a good margin for random occurrences.
-  auto limits = request.getLimits();
-  exec_options.cpu_limit_millis =
-      limits.getCpuTime() * 1200 + request.getExtraTime();
-  exec_options.wall_limit_millis =
-      limits.getWallTime() * 1200 + request.getExtraTime();
-  exec_options.memory_limit_kb = limits.getMemory() * 1.2;
-  exec_options.max_files = limits.getNofiles();
-  exec_options.max_procs = limits.getNproc();
-  exec_options.max_file_size_kb = limits.getFsize();
-  exec_options.max_mlock_kb = limits.getMemlock();
-  exec_options.max_stack_kb = limits.getStack();
-  // Stdout/err files.
-  auto stdout_path = util::File::JoinPath(tmp.Path(), "stdout");
-  auto stderr_path = util::File::JoinPath(tmp.Path(), "stderr");
-  sandbox::ExecutionOptions::stringcpy(exec_options.stdout_file, stdout_path);
-  sandbox::ExecutionOptions::stringcpy(exec_options.stderr_file, stderr_path);
-
-  last_load = last_load.then([executable, sandbox_dir, exec_options, request,
-                              result, stderr_path, fail, stdout_path,
-                              tmp = std::move(tmp),
-                              this]() mutable -> kj::Promise<void> {
-    KJ_LOG(INFO, "Files loaded, starting sandbox setup");
     if (executable.isLocalFile()) {
-      auto local_file = executable.getLocalFile();
-      PrepareFile(util::File::JoinPath(sandbox_dir, local_file.getName()),
-                  local_file.getHash(), true, cache_);
+      exec_options.prepare_executable = true;  // TODO: is this useful?
     }
-    if (!util::SHA256_t(request.getStdin()).isZero()) {
-      auto stdin_path = util::File::JoinPath(tmp.Path(), "stdin");
-      PrepareFile(stdin_path, request.getStdin(), false, cache_);
-      sandbox::ExecutionOptions::stringcpy(exec_options.stdin_file, stdin_path);
-    }
-    for (const auto& input : request.getInputFiles()) {
-      PrepareFile(util::File::JoinPath(sandbox_dir, input.getName()),
-                  input.getHash(), input.getExecutable(), cache_);
+
+    // Limits.
+    // Scale up time limits to have a good margin for random occurrences.
+    auto limits = request.getLimits();
+    exec_options.cpu_limit_millis =
+        limits.getCpuTime() * 1200 + request.getExtraTime();
+    exec_options.wall_limit_millis =
+        limits.getWallTime() * 1200 + request.getExtraTime();
+    exec_options.memory_limit_kb = limits.getMemory() * 1.2;
+    exec_options.max_files = limits.getNofiles();
+    exec_options.max_procs = limits.getNproc();
+    exec_options.max_file_size_kb = limits.getFsize();
+    exec_options.max_mlock_kb = limits.getMemlock();
+    exec_options.max_stack_kb = limits.getStack();
+    // Stdout/err files.
+    stdout_path = util::File::JoinPath(tmp[i].Path(), "stdout");
+    stderr_path = util::File::JoinPath(tmp[i].Path(), "stderr");
+    sandbox::ExecutionOptions::stringcpy(exec_options.stdout_file, stdout_path);
+    sandbox::ExecutionOptions::stringcpy(exec_options.stderr_file, stderr_path);
+  }
+
+  return std::move(builder).Finalize().then([sandbox_dirs, exec_options_v,
+                                             request_, result_, stderr_paths,
+                                             stdout_paths, fail,
+                                             tmp = std::move(tmp),
+                                             num_processes, this]() mutable
+                                            -> kj::Promise<void> {
+    KJ_LOG(INFO, "Files loaded, starting sandbox setup");
+    for (size_t i = 0; i < request_.getProcesses().size(); i++) {
+      auto request = request_.getProcesses()[i];
+      auto executable = request.getExecutable();
+      if (executable.isLocalFile()) {
+        auto local_file = executable.getLocalFile();
+        PrepareFile(util::File::JoinPath(sandbox_dirs[i], local_file.getName()),
+                    local_file.getHash(), true, cache_);
+      }
+      if (!util::SHA256_t(request.getStdin()).isZero()) {
+        auto stdin_path = util::File::JoinPath(tmp[i].Path(), "stdin");
+        PrepareFile(stdin_path, request.getStdin(), false, cache_);
+        sandbox::ExecutionOptions::stringcpy(exec_options_v[i].stdin_file,
+                                             stdin_path);
+      }
+      for (const auto& input : request.getInputFiles()) {
+        PrepareFile(util::File::JoinPath(sandbox_dirs[i], input.getName()),
+                    input.getHash(), input.getExecutable(), cache_);
+      }
     }
 
     // Actual execution.
     return manager_
-        .ScheduleTask(request.getExclusive() ? manager_.NumCores() : 1,
-                      std::function<kj::Promise<sandbox::ExecutionInfo>()>(
-                          [this, exec_options]() {
-                            return RunSandbox(
-                                exec_options,
-                                manager_.Client().getLowLevelIoProvider());
-                          }))
+        .ScheduleTask(
+            request_.getExclusive() ? manager_.NumCores() : num_processes,
+            std::function<kj::Promise<kj::Array<sandbox::ExecutionInfo>>()>(
+                [this, exec_options_v, num_processes]() {
+                  kj::Vector<kj::Promise<sandbox::ExecutionInfo>> info_(
+                      num_processes);
+                  for (size_t i = 0; i < num_processes; i++) {
+                    info_.add(
+                        RunSandbox(exec_options_v[i],
+                                   manager_.Client().getLowLevelIoProvider()));
+                  }
+                  return kj::joinPromises(info_.releaseAsArray());
+                }))
         .then(
-            [result, exec_options, stdout_path, stderr_path, request,
-             sandbox_dir, tmp = std::move(tmp),
-             this](sandbox::ExecutionInfo outcome) mutable {
-              // Resource usage.
-              auto resource_usage = result.initResourceUsage();
-              resource_usage.setCpuTime(outcome.cpu_time_millis / 1000.0);
-              resource_usage.setSysTime(outcome.sys_time_millis / 1000.0);
-              resource_usage.setWallTime(outcome.wall_time_millis / 1000.0);
-              resource_usage.setMemory(outcome.memory_usage_kb);
+            [result_, exec_options_v, stdout_paths, stderr_paths, request_,
+             sandbox_dirs, tmp = std::move(tmp), num_processes,
+             this](kj::Array<sandbox::ExecutionInfo> outcomes) mutable {
+              for (size_t i = 0; i < num_processes; i++) {
+                auto result = result_.getProcesses()[i];
+                auto request = request_.getProcesses()[i];
+                auto& outcome = outcomes[i];
+                auto& exec_options = exec_options_v[i];
+                auto& stdout_path = stdout_paths[i];
+                auto& stderr_path = stderr_paths[i];
+                auto& sandbox_dir = sandbox_dirs[i];
+                // Resource usage.
+                auto resource_usage = result.initResourceUsage();
+                resource_usage.setCpuTime(outcome.cpu_time_millis / 1000.0);
+                resource_usage.setSysTime(outcome.sys_time_millis / 1000.0);
+                resource_usage.setWallTime(outcome.wall_time_millis / 1000.0);
+                resource_usage.setMemory(outcome.memory_usage_kb);
 
-              if (exec_options.memory_limit_kb != 0 &&
-                  outcome.memory_usage_kb >= exec_options.memory_limit_kb) {
-                result.getStatus().setMemoryLimit();
-              } else if (exec_options.cpu_limit_millis != 0 &&
-                         outcome.cpu_time_millis + outcome.sys_time_millis >=
-                             exec_options.cpu_limit_millis) {
-                result.getStatus().setTimeLimit();
-              } else if (exec_options.wall_limit_millis != 0 &&
-                         outcome.wall_time_millis >=
-                             exec_options.wall_limit_millis) {
-                result.getStatus().setWallLimit();
-              } else if (outcome.signal != 0) {
-                result.getStatus().setSignal(outcome.signal);
-              } else if (outcome.status_code != 0) {
-                result.getStatus().setReturnCode(outcome.status_code);
-              } else {
-                result.getStatus().setSuccess();
-              }
+                if (exec_options.memory_limit_kb != 0 &&
+                    outcome.memory_usage_kb >= exec_options.memory_limit_kb) {
+                  result.getStatus().setMemoryLimit();
+                } else if (exec_options.cpu_limit_millis != 0 &&
+                           outcome.cpu_time_millis + outcome.sys_time_millis >=
+                               exec_options.cpu_limit_millis) {
+                  result.getStatus().setTimeLimit();
+                } else if (exec_options.wall_limit_millis != 0 &&
+                           outcome.wall_time_millis >=
+                               exec_options.wall_limit_millis) {
+                  result.getStatus().setWallLimit();
+                } else if (outcome.signal != 0) {
+                  result.getStatus().setSignal(outcome.signal);
+                } else if (outcome.status_code != 0) {
+                  result.getStatus().setReturnCode(outcome.status_code);
+                } else {
+                  result.getStatus().setSuccess();
+                }
 
-              // Output files.
-              RetrieveFile(stdout_path, result.initStdout(), cache_);
-              RetrieveFile(stderr_path, result.initStderr(), cache_);
-              auto output_names = request.getOutputFiles();
-              auto outputs = result.initOutputFiles(output_names.size());
-              for (size_t i = 0; i < request.getOutputFiles().size(); i++) {
-                outputs[i].setName(output_names[i]);
-                try {
-                  RetrieveFile(
-                      util::File::JoinPath(sandbox_dir, output_names[i]),
-                      outputs[i].initHash(), cache_);
-                } catch (const std::system_error& exc) {
-                  if (exc.code().value() !=
-                      static_cast<int>(std::errc::no_such_file_or_directory)) {
-                    result.getStatus().setInternalError(exc.what());
-                  } else {
-                    if (result.getStatus().isSuccess()) {
-                      result.getStatus().setMissingFiles();
+                // Output files.
+                RetrieveFile(stdout_path, result.initStdout(), cache_);
+                RetrieveFile(stderr_path, result.initStderr(), cache_);
+                auto output_names = request.getOutputFiles();
+                auto outputs = result.initOutputFiles(output_names.size());
+                for (size_t i = 0; i < request.getOutputFiles().size(); i++) {
+                  outputs[i].setName(output_names[i]);
+                  try {
+                    RetrieveFile(
+                        util::File::JoinPath(sandbox_dir, output_names[i]),
+                        outputs[i].initHash(), cache_);
+                  } catch (const std::system_error& exc) {
+                    if (exc.code().value() !=
+                        static_cast<int>(
+                            std::errc::no_such_file_or_directory)) {
+                      result.getStatus().setInternalError(exc.what());
+                    } else {
+                      if (result.getStatus().isSuccess()) {
+                        result.getStatus().setMissingFiles();
+                      }
                     }
                   }
                 }
               }
             },
-            [fail](kj::Exception exc) { fail(exc.getDescription()); })
+            [fail](kj::Exception exc) mutable { fail(exc.getDescription()); })
         .eagerlyEvaluate(nullptr);
   });
-  return last_load;
 }  // namespace executor
 
 }  // namespace worker

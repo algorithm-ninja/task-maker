@@ -42,17 +42,21 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def_readwrite("memlock", &frontend::Resources::memlock)
       .def_readwrite("stack", &frontend::Resources::stack);
 
-  pybind11::enum_<capnproto::Result::Status::Which>(m, "ResultStatus")
-      .value("SUCCESS", capnproto::Result::Status::Which::SUCCESS)
-      .value("SIGNAL", capnproto::Result::Status::Which::SIGNAL)
-      .value("RETURN_CODE", capnproto::Result::Status::Which::RETURN_CODE)
-      .value("TIME_LIMIT", capnproto::Result::Status::Which::TIME_LIMIT)
-      .value("WALL_LIMIT", capnproto::Result::Status::Which::WALL_LIMIT)
-      .value("MEMORY_LIMIT", capnproto::Result::Status::Which::MEMORY_LIMIT)
-      .value("MISSING_FILES", capnproto::Result::Status::Which::MISSING_FILES)
-      .value("INTERNAL_ERROR", capnproto::Result::Status::Which::INTERNAL_ERROR)
+  pybind11::enum_<capnproto::ProcessResult::Status::Which>(m, "ResultStatus")
+      .value("SUCCESS", capnproto::ProcessResult::Status::Which::SUCCESS)
+      .value("SIGNAL", capnproto::ProcessResult::Status::Which::SIGNAL)
+      .value("RETURN_CODE",
+             capnproto::ProcessResult::Status::Which::RETURN_CODE)
+      .value("TIME_LIMIT", capnproto::ProcessResult::Status::Which::TIME_LIMIT)
+      .value("WALL_LIMIT", capnproto::ProcessResult::Status::Which::WALL_LIMIT)
+      .value("MEMORY_LIMIT",
+             capnproto::ProcessResult::Status::Which::MEMORY_LIMIT)
+      .value("MISSING_FILES",
+             capnproto::ProcessResult::Status::Which::MISSING_FILES)
+      .value("INTERNAL_ERROR",
+             capnproto::ProcessResult::Status::Which::INTERNAL_ERROR)
       .value("MISSING_EXECUTABLE",
-             capnproto::Result::Status::Which::MISSING_EXECUTABLE);
+             capnproto::ProcessResult::Status::Which::MISSING_EXECUTABLE);
 
   pybind11::class_<frontend::Result>(m, "Result")
       .def_readonly("status", &frontend::Result::status)
@@ -62,21 +66,27 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def_readonly("resources", &frontend::Result::resources)
       .def("__repr__", [](const frontend::Result& res) {
         std::string message = "<Result ";
-        if (res.status == capnproto::Result::Status::Which::SUCCESS)
+        if (res.status == capnproto::ProcessResult::Status::Which::SUCCESS)
           message += "SUCCESS";
-        else if (res.status == capnproto::Result::Status::Which::SIGNAL)
+        else if (res.status == capnproto::ProcessResult::Status::Which::SIGNAL)
           message += "SIGNAL " + std::to_string(res.signal);
-        else if (res.status == capnproto::Result::Status::Which::RETURN_CODE)
+        else if (res.status ==
+                 capnproto::ProcessResult::Status::Which::RETURN_CODE)
           message += "RETURN_CODE " + std::to_string(res.return_code);
-        else if (res.status == capnproto::Result::Status::Which::TIME_LIMIT)
+        else if (res.status ==
+                 capnproto::ProcessResult::Status::Which::TIME_LIMIT)
           message += "TIME_LIMIT";
-        else if (res.status == capnproto::Result::Status::Which::WALL_LIMIT)
+        else if (res.status ==
+                 capnproto::ProcessResult::Status::Which::WALL_LIMIT)
           message += "WALL_LIMIT";
-        else if (res.status == capnproto::Result::Status::Which::MEMORY_LIMIT)
+        else if (res.status ==
+                 capnproto::ProcessResult::Status::Which::MEMORY_LIMIT)
           message += "MEMORY_LIMIT";
-        else if (res.status == capnproto::Result::Status::Which::MISSING_FILES)
+        else if (res.status ==
+                 capnproto::ProcessResult::Status::Which::MISSING_FILES)
           message += "MISSING_FILES";
-        else if (res.status == capnproto::Result::Status::Which::INTERNAL_ERROR)
+        else if (res.status ==
+                 capnproto::ProcessResult::Status::Which::INTERNAL_ERROR)
           message += "INTERNAL_ERROR";
         else
           message += "UNKNOWN";

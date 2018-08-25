@@ -18,11 +18,15 @@ HandleRequest(capnproto::Evaluator::Client evaluator,
     kj::Promise<void> load_files = kj::READY_NOW;
     {
       util::UnionPromiseBuilder builder;
-      for (const auto& output : result.getOutputFiles()) {
-        builder.AddPromise(util::File::MaybeGet(output.getHash(), evaluator));
+      for (const auto& process_result : result.getProcesses()) {
+        for (const auto& output : process_result.getOutputFiles()) {
+          builder.AddPromise(util::File::MaybeGet(output.getHash(), evaluator));
+        }
+        builder.AddPromise(
+            util::File::MaybeGet(process_result.getStderr(), evaluator));
+        builder.AddPromise(
+            util::File::MaybeGet(process_result.getStdout(), evaluator));
       }
-      builder.AddPromise(util::File::MaybeGet(result.getStderr(), evaluator));
-      builder.AddPromise(util::File::MaybeGet(result.getStdout(), evaluator));
       load_files = std::move(builder).Finalize();
     }
     return load_files.then(

@@ -10,11 +10,11 @@
 namespace server {
 namespace detail {
 struct RequestHasher {
-  uint64_t operator()(capnproto::Request::Reader reader) const;
+  uint64_t operator()(capnproto::Request::Reader reader_) const;
 };
 struct RequestComparator {
-  bool operator()(capnproto::Request::Reader a,
-                  capnproto::Request::Reader b) const;
+  bool operator()(capnproto::Request::Reader a_,
+                  capnproto::Request::Reader b_) const;
 };
 }  // namespace detail
 class CacheManager {

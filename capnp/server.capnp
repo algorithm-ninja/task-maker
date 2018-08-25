@@ -3,7 +3,7 @@
 using import "file.capnp".FileSender;
 using import "file.capnp".FileReceiver;
 using import "sha256.capnp".SHA256;
-using import "evaluation.capnp".Result;
+using import "evaluation.capnp".ProcessResult;
 using import "evaluation.capnp".Resources;
 using import "evaluation.capnp".Evaluator;
 using Cxx = import "/capnp/c++.capnp";
@@ -39,7 +39,7 @@ interface Execution {
 
   # The following methods will only complete (i.e. return or call callbacks)
   # when the evaluation is complete.
-  getResult @12 () -> (result :Result);
+  getResult @12 () -> (result :ProcessResult);
 }
 
 interface FrontendContext {

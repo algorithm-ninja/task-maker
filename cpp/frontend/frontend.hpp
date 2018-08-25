@@ -27,7 +27,7 @@ struct Resources {
 };
 
 struct Result {
-  capnproto::Result::Status::Which status;
+  capnproto::ProcessResult::Status::Which status;
   uint32_t signal;
   uint32_t return_code;
   std::string error;

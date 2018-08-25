@@ -20,10 +20,107 @@ uint32_t AddFileInfo(uint32_t& last_file_id,
 }
 }  // namespace
 
-void ExecutionGroup::Register(Execution* ex) {
-  //
-  executions_.push_back(ex);
+void ExecutionGroup::Register(Execution* ex) { executions_.push_back(ex); }
+
+void ExecutionGroup::setExclusive() { request_.setExclusive(true); }
+void ExecutionGroup::disableCache() { cache_enabled_ = false; }
+kj::Promise<void> ExecutionGroup::notifyStart() {
+  return forked_start_.addBranch().then(
+      [this]() { KJ_LOG(INFO, "Execution group " + description_, "Started"); });
 }
+
+kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
+  if (!finalized_) {
+    finalized_ = true;
+    KJ_LOG(INFO, "Execution group " + description_,
+           "Creating dependency edges");
+    util::UnionPromiseBuilder dependencies;
+    dependencies.AddPromise(
+        frontend_context_.forked_evaluation_start_.addBranch(),
+        description_ + " evaluation start");
+    for (auto ex : executions_) {
+      ex->addDependencies(dependencies);
+    }
+    return std::move(dependencies)
+        .Finalize()
+        .then(
+            [this]() {
+              request_.initProcesses(executions_.size());
+              for (size_t i = 0; i < executions_.size(); i++) {
+                executions_[i]->prepareRequest();
+                request_.getProcesses().setWithCaveats(
+                    i, executions_[i]->request_);
+              }
+              KJ_LOG(INFO, "Execution group " + description_, request_);
+            },
+            [this](kj::Exception exc) {
+              start_.fulfiller->reject(kj::cp(exc));
+              for (auto ex : executions_) {
+                ex->onDependenciesFailure(kj::cp(exc));
+              }
+              kj::throwRecoverableException(std::move(exc));
+            })
+        .eagerlyEvaluate(nullptr)
+        .then([this]() mutable {
+          if (cache_enabled_ &&
+              frontend_context_.cache_manager_.Has(request_)) {
+            auto res = frontend_context_.cache_manager_.Get(request_);
+            start_.fulfiller->fulfill();
+            util::UnionPromiseBuilder dependencies_propagated_;
+            for (size_t i = 0; i < executions_.size(); i++) {
+              executions_[i]->processResult(res.getProcesses()[i],
+                                            dependencies_propagated_);
+            }
+            return std::move(dependencies_propagated_)
+                .Finalize()
+                .then([this]() {
+                  for (auto ex : executions_) {
+                    ex->onDependenciesPropagated();
+                  }
+                })
+                .eagerlyEvaluate(nullptr);
+          }
+
+          return frontend_context_.dispatcher_
+              .AddRequest(request_, std::move(start_.fulfiller))
+              .then(
+                  [this](capnp::Response<capnproto::Evaluator::EvaluateResults>
+                             results) mutable {
+                    auto res = results.getResult();
+                    util::UnionPromiseBuilder dependencies_propagated_;
+                    if (cache_enabled_) {
+                      frontend_context_.cache_manager_.Set(request_, res);
+                    }
+                    for (size_t i = 0; i < executions_.size(); i++) {
+                      executions_[i]->processResult(res.getProcesses()[i],
+                                                    dependencies_propagated_);
+                    }
+                    return std::move(dependencies_propagated_)
+                        .Finalize()
+                        .then([this]() {
+                          for (auto ex : executions_) {
+                            ex->onDependenciesPropagated();
+                          }
+                        })
+                        .eagerlyEvaluate(nullptr);
+                  },
+                  [this](kj::Exception exc) {
+                    for (auto ex : executions_) {
+                      ex->finish_promise_.fulfiller->reject(kj::cp(exc));
+                    }
+                    kj::throwRecoverableException(std::move(exc));
+                  })
+              .eagerlyEvaluate(nullptr);
+        })
+        .eagerlyEvaluate(nullptr);
+  }
+  for (size_t i = 0; i < executions_.size(); i++) {
+    if (executions_[i] == ex) {
+      return forked_done_.addBranch();
+    }
+  }
+  KJ_FAIL_ASSERT("Invalid execution for this group!");
+}  // namespace server
 
 Execution::Execution(FrontendContext& frontend_context, std::string description,
                      ExecutionGroup& group)
@@ -76,12 +173,12 @@ kj::Promise<void> Execution::setArgs(SetArgsContext context) {
 }
 kj::Promise<void> Execution::disableCache(DisableCacheContext context) {
   KJ_LOG(INFO, "Execution " + description_, "Disabling cache");
-  cache_enabled_ = false;
+  group_.disableCache();
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::makeExclusive(MakeExclusiveContext context) {
   KJ_LOG(INFO, "Execution " + description_, "Exclusive mode");
-  request_.setExclusive(true);
+  group_.setExclusive();
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::setLimits(SetLimitsContext context) {
@@ -123,8 +220,7 @@ kj::Promise<void> Execution::output(OutputContext context) {
 }
 kj::Promise<void> Execution::notifyStart(NotifyStartContext context) {
   KJ_LOG(INFO, "Execution " + description_, "Waiting for start");
-  return forked_start_.addBranch().then(
-      [this]() { KJ_LOG(INFO, "Execution " + description_, "Started"); });
+  return group_.notifyStart();
 }
 
 void Execution::addDependencies(util::UnionPromiseBuilder& dependencies) {
@@ -139,9 +235,6 @@ void Execution::addDependencies(util::UnionPromiseBuilder& dependencies) {
   for (auto& input : inputs_) {
     add_dep(input.second);
   }
-  dependencies.AddPromise(
-      frontend_context_.forked_evaluation_start_.addBranch(),
-      description_ + " evaluation start");
   dependencies.OnReady([this]() {
     KJ_LOG(INFO, "Execution " + description_, "Dependencies ready");
     frontend_context_.ready_tasks_++;
@@ -185,14 +278,14 @@ void Execution::prepareRequest() {
 }
 
 void Execution::processResult(
-    capnproto::Result::Reader result,
+    capnproto::ProcessResult::Reader result,
     util::UnionPromiseBuilder& dependencies_propagated_) {
-  KJ_LOG(INFO, "Execution " + description_, "Execution done");
+  KJ_IF_MAYBE(ctx, context_) { ctx->getResults().setResult(result); }
   KJ_LOG(INFO, "Execution " + description_, result);
-  KJ_ASSERT(!result.getStatus().isInternalError(),
-            result.getStatus().getInternalError());
-  if (cache_enabled_) {
-    frontend_context_.cache_manager_.Set(request_, result);
+  if (result.getStatus().isInternalError()) {
+    frontend_context_.evaluation_early_stop_.fulfiller->reject(
+        KJ_EXCEPTION(FAILED, result.getStatus().getInternalError()));
+    KJ_FAIL_ASSERT(result.getStatus().getInternalError());
   }
   auto set_hash = [this, &result](uint32_t id, const util::SHA256_t& hash) {
     frontend_context_.file_info_[id].hash = hash;
@@ -245,7 +338,6 @@ void Execution::onDependenciesPropagated() {
 void Execution::onDependenciesFailure(kj::Exception exc) {
   KJ_LOG(INFO, "Marking execution as failed because its dependencies failed",
          description_);
-  start_.fulfiller->reject(kj::cp(exc));
   finish_promise_.fulfiller->reject(kj::cp(exc));
   auto mark_as_failed = [this](std::string name, int id) {
     KJ_LOG(INFO, description_, "Marking as failed", name, id);
@@ -261,59 +353,11 @@ void Execution::onDependenciesFailure(kj::Exception exc) {
 }
 
 kj::Promise<void> Execution::getResult(GetResultContext context) {
-  KJ_LOG(INFO, "Execution " + description_, "Creating dependency edges");
-  util::UnionPromiseBuilder dependencies;
-  addDependencies(dependencies);
+  context_ = context;
+  frontend_context_.scheduled_tasks_++;
   frontend_context_.builder_.AddPromise(std::move(finish_promise_.promise),
                                         description_ + " finish_promise_");
-  frontend_context_.scheduled_tasks_++;
-  return std::move(dependencies)
-      .Finalize()
-      .then(
-          [this]() {
-            prepareRequest();
-            KJ_LOG(INFO, "Execution " + description_, request_);
-          },
-          [this](kj::Exception exc) {
-            onDependenciesFailure(kj::cp(exc));
-            kj::throwRecoverableException(std::move(exc));
-          })
-      .eagerlyEvaluate(nullptr)
-      .then([this, context]() mutable {
-        if (cache_enabled_ && frontend_context_.cache_manager_.Has(request_)) {
-          util::UnionPromiseBuilder dependencies_propagated_;
-          start_.fulfiller->fulfill();
-          auto res = frontend_context_.cache_manager_.Get(request_);
-          context.getResults().setResult(res);
-          processResult(res, dependencies_propagated_);
-          return std::move(dependencies_propagated_)
-              .Finalize()
-              .then([this]() { onDependenciesPropagated(); })
-              .eagerlyEvaluate(nullptr);
-        }
-
-        return frontend_context_.dispatcher_
-            .AddRequest(request_, std::move(start_.fulfiller))
-            .then(
-                [this,
-                 context](capnp::Response<capnproto::Evaluator::EvaluateResults>
-                              results) mutable {
-                  auto res = results.getResult();
-                  util::UnionPromiseBuilder dependencies_propagated_;
-                  context.getResults().setResult(res);
-                  processResult(res, dependencies_propagated_);
-                  return std::move(dependencies_propagated_)
-                      .Finalize()
-                      .then([this]() { onDependenciesPropagated(); })
-                      .eagerlyEvaluate(nullptr);
-                },
-                [this](kj::Exception exc) {
-                  finish_promise_.fulfiller->reject(kj::cp(exc));
-                  kj::throwRecoverableException(std::move(exc));
-                })
-            .eagerlyEvaluate(nullptr);
-      })
-      .eagerlyEvaluate(nullptr);
+  return group_.Finalize(this);
 }
 
 kj::Promise<void> FrontendContext::provideFile(ProvideFileContext context) {

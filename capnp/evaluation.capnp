@@ -26,7 +26,7 @@ struct Resources {
   stack @8 :UInt64; # 0 means unlimited
 }
 
-struct Request {
+struct ProcessRequest {
   executable :union {
     system@0 :Text;
     localFile @1 :FileInfo;
@@ -37,12 +37,16 @@ struct Request {
   outputFiles @5 :List(Text); # Name of outputs
   limits @6 :Resources;
   extraTime @7 :Float32; # Time that should be added to the cpu time limit.
-  exclusive @8 :Bool; # If set, no other execution should run at the same time.
+}
+
+struct Request {
+  processes @0 :List(ProcessRequest);
+  exclusive @1 :Bool; # If set, no other execution should run at the same time.
 
   # TODO: FIFOs
 }
 
-struct Result {
+struct ProcessResult {
   status :union {
     success @0 :Void;
     signal @1 :UInt32;
@@ -58,6 +62,10 @@ struct Result {
   stdout @9 :SHA256; # Hash of standard output
   stderr @10 :SHA256; # Hash of standard error
   outputFiles @11 :List(FileInfo); # Name and hash of other outputs
+}
+
+struct Result {
+  processes @0 :List(ProcessResult);
 }
 
 interface Evaluator extends(FileSender) {

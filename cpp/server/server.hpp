@@ -51,7 +51,7 @@ class Execution : public capnproto::Execution::Server {
  private:
   void addDependencies(util::UnionPromiseBuilder& dependencies);
   void prepareRequest();
-  void processResult(capnproto::Result::Reader result,
+  void processResult(capnproto::ProcessResult::Reader result,
                      util::UnionPromiseBuilder& dependencies_propagated_);
   void onDependenciesFailure(kj::Exception exc);
   void onDependenciesPropagated();
@@ -59,21 +59,19 @@ class Execution : public capnproto::Execution::Server {
   FrontendContext& frontend_context_;
   std::string description_;
   capnp::MallocMessageBuilder builder_;
-  capnproto::Request::Builder request_ =
-      builder_.initRoot<capnproto::Request>();
+  capnproto::ProcessRequest::Builder request_ =
+      builder_.initRoot<capnproto::ProcessRequest>();
   std::unordered_map<std::string, uint32_t> inputs_;
   std::unordered_map<std::string, uint32_t> outputs_;
   uint32_t executable_ = 0;
   uint32_t stdin_ = 0;
   uint32_t stdout_ = 0;
   uint32_t stderr_ = 0;
-  uint32_t cache_enabled_ = true;
-  kj::PromiseFulfillerPair<void> start_ = kj::newPromiseAndFulfiller<void>();
-  kj::ForkedPromise<void> forked_start_ = start_.promise.fork();
   kj::PromiseFulfillerPair<void> finish_promise_ =
       kj::newPromiseAndFulfiller<void>();
   friend class ExecutionGroup;
   ExecutionGroup& group_;
+  kj::Maybe<GetResultContext> context_;
 };
 
 class ExecutionGroup {
@@ -81,11 +79,24 @@ class ExecutionGroup {
   void Register(Execution* ex);
   ExecutionGroup(FrontendContext& frontend_context, std::string description)
       : frontend_context_(frontend_context), description_(description) {}
+  void setExclusive();
+  void disableCache();
+  kj::Promise<void> notifyStart();
+  kj::Promise<void> Finalize(Execution* ex);
 
  private:
-  std::vector<Execution*> executions_;
   FrontendContext& frontend_context_;
   std::string description_;
+  std::vector<Execution*> executions_;
+  kj::Promise<void> done_ = kj::READY_NOW;
+  kj::ForkedPromise<void> forked_done_ = done_.fork();
+  bool finalized_ = false;
+  capnp::MallocMessageBuilder builder_;
+  capnproto::Request::Builder request_ =
+      builder_.initRoot<capnproto::Request>();
+  uint32_t cache_enabled_ = true;
+  kj::PromiseFulfillerPair<void> start_ = kj::newPromiseAndFulfiller<void>();
+  kj::ForkedPromise<void> forked_start_ = start_.promise.fork();
 };
 
 class FrontendContext : public capnproto::FrontendContext::Server {

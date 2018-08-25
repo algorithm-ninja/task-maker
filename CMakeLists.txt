@@ -49,7 +49,7 @@ include(GoogleTest)
 find_package(PythonInterp 3.5 REQUIRED)
 
 # Enable colors in ninja
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always -Wall -Wextra -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always -Wall -Wextra -Wno-unused-parameter -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # if hunter is disabled all these lines are noop

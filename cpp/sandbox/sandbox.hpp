@@ -35,6 +35,7 @@ struct ExecutionOptions {
   char executable[str_len] = {};
   bool prepare_executable = false;
   ExecutionOptions(std::string root_, std::string executable_) {
+    memset(this, 0, sizeof(*this));
     stringcpy(root, root_.c_str());
     stringcpy(executable, executable_.c_str());
     strcpy(&args[0][0], executable);

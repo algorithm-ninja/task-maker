@@ -26,8 +26,8 @@ class Executor : public capnproto::Evaluator::Server {
   }
 
  private:
-  kj::Promise<void> Execute(capnproto::Request::Reader request,
-                            capnproto::Result::Builder result);
+  kj::Promise<void> Execute(capnproto::Request::Reader request_,
+                            capnproto::Result::Builder result_);
 
   static const constexpr char* kBoxDir = "box";
 
