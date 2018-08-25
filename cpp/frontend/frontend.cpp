@@ -24,40 +24,50 @@ class FileProvider : public capnproto::FileSender::Server {
 
 void File::getContentsAsString(
     std::function<void(const std::string&)> callback) {
+  auto pf = kj::newPromiseAndFulfiller<void>();
+  frontend_.builder_.AddPromise(std::move(pf.promise));
   frontend_.finish_builder_.AddPromise(
-      forked_promise.addBranch().then([this, callback](auto file) {
-        auto req = frontend_.frontend_context_.getFileContentsRequest();
-        auto output = kj::heap<std::string>();
-        auto output_ptr = output.get();
-        req.setFile(file);
-        req.setReceiver(kj::heap<util::File::Receiver>(
-            [output = std::move(output)](util::File::Chunk data) mutable {
-              *output += std::string(data.asChars().begin(), data.size());
-            }));
-        kj::Promise<void> ret = req.send().ignoreResult().then(
-            [output_ptr, callback]() { callback(*output_ptr); });
-        return std::move(ret);
-      }),
+      forked_promise.addBranch().then(
+          [this, callback,
+           fulfiller = std::move(pf.fulfiller)](auto file) mutable {
+            auto req = frontend_.frontend_context_.getFileContentsRequest();
+            auto output = kj::heap<std::string>();
+            auto output_ptr = output.get();
+            req.setFile(file);
+            req.setReceiver(kj::heap<util::File::Receiver>(
+                [output = std::move(output)](util::File::Chunk data) mutable {
+                  *output += std::string(data.asChars().begin(), data.size());
+                }));
+            kj::Promise<void> ret = req.send().ignoreResult().then(
+                [output_ptr, callback]() { callback(*output_ptr); });
+            fulfiller->fulfill();
+            return std::move(ret);
+          }),
       "Get file");
 }
 
 void File::getContentsToFile(const std::string& path, bool overwrite,
                              bool exist_ok) {
+  auto pf = kj::newPromiseAndFulfiller<void>();
+  frontend_.builder_.AddPromise(std::move(pf.promise));
   frontend_.finish_builder_.AddPromise(
-      forked_promise.addBranch().then(
-          [this, path, exist_ok, overwrite](auto file) {
-            auto req = frontend_.frontend_context_.getFileContentsRequest();
-            req.setFile(file);
-            req.setReceiver(kj::heap<util::File::Receiver>(
-                util::File::LazyChunkReceiver([path, overwrite, exist_ok]() {
-                  return util::File::Write(path, overwrite, exist_ok);
-                })));
-            return req.send().ignoreResult().then([this, path]() {
-              if (is_executable_) {
-                util::File::MakeExecutable(path);
-              }
-            });
-          }),
+      forked_promise.addBranch().then([this, path, exist_ok, overwrite,
+                                       fulfiller = std::move(pf.fulfiller)](
+                                          auto file) mutable {
+        auto req = frontend_.frontend_context_.getFileContentsRequest();
+        req.setFile(file);
+        req.setReceiver(kj::heap<util::File::Receiver>(
+            util::File::LazyChunkReceiver([path, overwrite, exist_ok]() {
+              return util::File::Write(path, overwrite, exist_ok);
+            })));
+        kj::Promise<void> ret = req.send().ignoreResult().then([this, path]() {
+          if (is_executable_) {
+            util::File::MakeExecutable(path);
+          }
+        });
+        fulfiller->fulfill();
+        return ret;
+      }),
       "Get file");
 }
 
