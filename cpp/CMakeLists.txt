@@ -68,6 +68,7 @@ if (UNIX)
 endif()
 
 add_library(cpp_worker
+  worker/cache.cpp
   worker/executor.cpp
   worker/manager.cpp
   worker/main.cpp

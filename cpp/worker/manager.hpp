@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "worker/cache.hpp"
+
 namespace worker {
 
 class Manager {
@@ -61,6 +63,7 @@ class Manager {
   size_t last_worker_id_ = 0;
   std::string name_;
   kj::PromiseFulfillerPair<void> on_error_ = kj::newPromiseAndFulfiller<void>();
+  Cache cache_;
 };
 
 }  // namespace worker

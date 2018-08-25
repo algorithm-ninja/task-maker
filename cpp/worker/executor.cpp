@@ -83,8 +83,9 @@ kj::Promise<sandbox::ExecutionInfo> RunSandbox(
 }
 
 void PrepareFile(const std::string& path, const util::SHA256_t& hash,
-                 bool executable) {
+                 bool executable, worker::Cache& cache_) {
   if (hash.isZero()) return;
+  cache_.Register(hash);
   util::File::Copy(util::File::PathForHash(hash), path);
   if (executable)
     util::File::MakeExecutable(path);
@@ -92,12 +93,13 @@ void PrepareFile(const std::string& path, const util::SHA256_t& hash,
     util::File::MakeImmutable(path);
 }
 
-void RetrieveFile(const std::string& path,
-                  capnproto::SHA256::Builder hash_out) {
+void RetrieveFile(const std::string& path, capnproto::SHA256::Builder hash_out,
+                  worker::Cache& cache_) {
   auto hash = util::File::Hash(path);
   hash.ToCapnp(hash_out);
   util::File::Copy(path, util::File::PathForHash(hash));
   util::File::MakeImmutable(util::File::PathForHash(hash));
+  cache_.Register(hash);
 }
 
 bool ValidateFileName(std::string name, capnproto::Result::Builder result) {
@@ -233,16 +235,16 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
     if (executable.isLocalFile()) {
       auto local_file = executable.getLocalFile();
       PrepareFile(util::File::JoinPath(sandbox_dir, local_file.getName()),
-                  local_file.getHash(), true);
+                  local_file.getHash(), true, cache_);
     }
     if (!util::SHA256_t(request.getStdin()).isZero()) {
       auto stdin_path = util::File::JoinPath(tmp.Path(), "stdin");
-      PrepareFile(stdin_path, request.getStdin(), true);
+      PrepareFile(stdin_path, request.getStdin(), false, cache_);
       sandbox::ExecutionOptions::stringcpy(exec_options.stdin_file, stdin_path);
     }
     for (const auto& input : request.getInputFiles()) {
       PrepareFile(util::File::JoinPath(sandbox_dir, input.getName()),
-                  input.getHash(), input.getExecutable());
+                  input.getHash(), input.getExecutable(), cache_);
     }
 
     // Actual execution.
@@ -256,8 +258,8 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
                           }))
         .then(
             [result, exec_options, stdout_path, stderr_path, request,
-             sandbox_dir,
-             tmp = std::move(tmp)](sandbox::ExecutionInfo outcome) mutable {
+             sandbox_dir, tmp = std::move(tmp),
+             this](sandbox::ExecutionInfo outcome) mutable {
               // Resource usage.
               auto resource_usage = result.initResourceUsage();
               resource_usage.setCpuTime(outcome.cpu_time_millis / 1000.0);
@@ -285,8 +287,8 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
               }
 
               // Output files.
-              RetrieveFile(stdout_path, result.initStdout());
-              RetrieveFile(stderr_path, result.initStderr());
+              RetrieveFile(stdout_path, result.initStdout(), cache_);
+              RetrieveFile(stderr_path, result.initStderr(), cache_);
               auto output_names = request.getOutputFiles();
               auto outputs = result.initOutputFiles(output_names.size());
               for (size_t i = 0; i < request.getOutputFiles().size(); i++) {
@@ -294,7 +296,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request,
                 try {
                   RetrieveFile(
                       util::File::JoinPath(sandbox_dir, output_names[i]),
-                      outputs[i].initHash());
+                      outputs[i].initHash(), cache_);
                 } catch (const std::system_error& exc) {
                   if (exc.code().value() !=
                       static_cast<int>(std::errc::no_such_file_or_directory)) {

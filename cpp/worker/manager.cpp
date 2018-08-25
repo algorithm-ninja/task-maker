@@ -32,7 +32,7 @@ void Manager::OnDone() {
       auto server = client_.getMain<capnproto::MainServer>();
       auto req = server.registerEvaluatorRequest();
       req.setName(name_ + " " + std::to_string(last_worker_id_++));
-      req.setEvaluator(kj::heap<Executor>(server, *this));
+      req.setEvaluator(kj::heap<Executor>(server, *this, cache_));
       req.send().detach([this](kj::Exception exc) {
         on_error_.fulfiller->reject(std::move(exc));
       });

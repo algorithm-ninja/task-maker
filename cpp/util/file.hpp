@@ -5,6 +5,7 @@
 #include <kj/common.h>
 #include <kj/debug.h>
 #include <kj/function.h>
+#include <vector>
 #include "capnp/file.capnp.h"
 #include "util/sha256.hpp"
 
@@ -18,6 +19,9 @@ class File {
   // Empty chunk = end of file.
   using ChunkReceiver = kj::Function<void(Chunk)>;
   using ChunkProducer = kj::Function<Chunk()>;
+
+  // Lists all the files in a directory, sorted by access time.
+  static std::vector<std::string> ListFiles(const std::string& path);
 
   // Reads the file specified by path in chunks.
   static ChunkProducer Read(const std::string& path);
@@ -69,6 +73,9 @@ class File {
 
   // Computes the directory name for a path
   static std::string BaseDir(const std::string& path);
+
+  // Computes the file name for a path
+  static std::string BaseName(const std::string& path);
 
   // Computes a file's size. Returns a negative number in case of errors.
   static int64_t Size(const std::string& path);

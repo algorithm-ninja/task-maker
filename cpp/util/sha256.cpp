@@ -148,6 +148,20 @@ std::string SHA256_t::Hex() const {
   return ans;
 }
 
+SHA256_t::SHA256_t(const std::string& hash) {
+  if (hash.size() != hash_.size() * 2)
+    throw std::invalid_argument("Invalid hash");
+  if (hash.find_first_not_of("0123456789abcdef") != std::string::npos)
+    throw std::invalid_argument("Invalid hash");
+  for (unsigned i = 0; i < hash_.size(); i++) {
+    hash_.at(i) =
+        hash[2 * i] > '9' ? (hash[2 * i] - 'a' + 10) : (hash[2 * i] - '0');
+    hash_.at(i) *= 16;
+    hash_.at(i) |= hash[2 * i + 1] > '9' ? (hash[2 * i + 1] - 'a' + 10)
+                                         : (hash[2 * i + 1] - '0');
+  }
+}
+
 #define TOUINT32(in, i)                                                     \
   ((uint32_t)in[i] | (uint32_t)in[i + 1] << 8 | (uint32_t)in[i + 2] << 16 | \
    (uint32_t)in[i + 3] << 24)

@@ -42,6 +42,9 @@ kj::MainFunc Main::getMain() {
       .addOptionWithArg({'r', "pending-requests"},
                         util::setInt(Flags::pending_requests), "<REQS>",
                         "Maximum number of pending requests")
+      .addOptionWithArg(
+          {'c', "cache-size"}, util::setUint(Flags::cache_size), "<SZ>",
+          "Maximum size of the cache, in megabytes. 0 means unlimited")
       .callAfterParsing(KJ_BIND_METHOD(*this, Run))
       .build();
 }

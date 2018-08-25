@@ -7,6 +7,7 @@
 #include <kj/async.h>
 #include <kj/debug.h>
 #include <kj/exception.h>
+#include <algorithm>
 #include <fstream>
 #include <system_error>
 
@@ -34,6 +35,24 @@ bool MkDir(const std::string& dir) {
 }
 
 bool OsRemove(const std::string& path) { return remove(path.c_str()) != -1; }
+
+std::vector<std::string> OsListFiles(const std::string& path) {
+  thread_local std::vector<std::pair<long, std::string>> files;
+  KJ_ASSERT(nftw(path.c_str(),
+                 [](const char* fpath, const struct stat* sb, int typeflags,
+                    struct FTW* ftwbuf) {
+                   if (typeflags != FTW_F) return 0;
+                   files.emplace_back(sb->st_atim.tv_sec, fpath);
+                   return 0;
+                 },
+                 64, FTW_DEPTH | FTW_PHYS | NFTW_EXTRA_FLAGS) != -1);
+  std::sort(files.begin(), files.end());
+  std::vector<std::string> ret;
+  ret.reserve(files.size());
+  for (auto& p : files) ret.push_back(std::move(p.second));
+  files.clear();
+  return ret;
+};
 
 bool OsRemoveTree(const std::string& path) {
   return nftw(path.c_str(),
@@ -164,7 +183,9 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
   }
   auto done = kj::heap<bool>();
   auto finalize = [done = done.get()]() {
-    KJ_REQUIRE(*done, "File never finalized!");
+    if (!*done) {
+      KJ_LOG(WARNING, "File never finalized!");
+    }
   };
   return [fd, temp_file, path, overwrite, exist_ok, done = std::move(done),
           _ = kj::defer(std::move(finalize))](util::File::Chunk chunk) mutable {
@@ -197,6 +218,10 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
 #endif
 
 namespace util {
+std::vector<std::string> File::ListFiles(const std::string& path) {
+  MakeDirs(path);
+  return OsListFiles(path);
+}
 
 File::ChunkProducer File::Read(const std::string& path) { return OsRead(path); }
 File::ChunkReceiver File::Write(const std::string& path, bool overwrite,
@@ -292,6 +317,10 @@ std::string File::JoinPath(const std::string& first,
 
 std::string File::BaseDir(const std::string& path) {
   return path.substr(0, path.find_last_of(kPathSeparators));
+}
+
+std::string File::BaseName(const std::string& path) {
+  return path.substr(path.find_last_of(kPathSeparators) + 1);
 }
 
 int64_t File::Size(const std::string& path) {

@@ -13,8 +13,8 @@ namespace worker {
 class Executor : public capnproto::Evaluator::Server {
  public:
   KJ_DISALLOW_COPY(Executor);
-  Executor(capnproto::FileSender::Client server, Manager& manager)
-      : server_(server), manager_(manager) {}
+  Executor(capnproto::FileSender::Client server, Manager& manager, Cache& cache)
+      : server_(server), manager_(manager), cache_(cache) {}
 
   kj::Promise<void> evaluate(EvaluateContext context) {
     auto request = context.getParams().getRequest();
@@ -33,6 +33,7 @@ class Executor : public capnproto::Evaluator::Server {
 
   capnproto::FileSender::Client server_;
   Manager& manager_;
+  Cache& cache_;
 };
 
 }  // namespace worker

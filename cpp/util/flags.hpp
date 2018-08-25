@@ -9,6 +9,7 @@ struct Flags {
   static std::string pidfile;
   static std::string store_directory;
   static int32_t port;
+  static uint32_t cache_size;
 
   // Worker-only flags
   static std::string server;
@@ -20,7 +21,6 @@ struct Flags {
 
   // Server-only flags
   static std::string listen_address;
-  static uint32_t cache_size;
 };
 
 #endif
