@@ -210,6 +210,7 @@ kj::Promise<void> Execution::setLimits(SetLimitsContext context) {
   request_.setLimits(context.getParams().getLimits());
   return kj::READY_NOW;
 }
+// TODO: check that this FIFO is from the correct execution group
 kj::Promise<void> Execution::addFifo(AddFifoContext context) {
   KJ_LOG(INFO, "Execution " + description_,
          "Adding FIFO with id " +
