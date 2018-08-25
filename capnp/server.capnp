@@ -14,6 +14,11 @@ struct File {
   id @0 :UInt64;
 }
 
+struct Fifo {
+  # This struct should not be modified by the client
+  id @0 :UInt64;
+}
+
 interface Execution {
   # Add input dependencies
   setExecutablePath @0 (path :Text);
@@ -34,16 +39,20 @@ interface Execution {
   stderr @9 (isExecutable :Bool = false) -> (file :File);
   output @10 (name :Text, isExecutable :Bool = false) -> (file :File);
 
+  # Add a FIFO
+  addFifo @11 (name :Text, fifo :Fifo);
+
   # To be called to be notified of the start of the evaluation
-  notifyStart @11 ();
+  notifyStart @12 ();
 
   # The following methods will only complete (i.e. return or call callbacks)
   # when the evaluation is complete.
-  getResult @12 () -> (result :ProcessResult);
+  getResult @13 () -> (result :ProcessResult);
 }
 
 interface ExecutionGroup {
   addExecution @0 (description :Text) -> (execution :Execution);
+  createFifo @1 () -> (fifo :Fifo);
 }
 
 interface FrontendContext {

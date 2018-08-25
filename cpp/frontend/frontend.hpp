@@ -36,6 +36,56 @@ struct Result {
 
 class Frontend;
 
+class Fifo {
+  friend class Execution;
+  friend class ExecutionGroup;
+  kj::Promise<capnproto::Fifo::Reader> promise;
+  kj::ForkedPromise<capnproto::Fifo::Reader> forked_promise;
+
+ protected:
+  void SetPromise(kj::Promise<capnproto::Fifo::Reader>&& prom) {
+    promise = std::move(prom);
+    forked_promise = promise.fork();
+  }
+
+ public:
+  Fifo() : promise(capnproto::Fifo::Reader()), forked_promise(promise.fork()) {}
+  virtual ~Fifo() = default;
+  template <typename T>
+  static std::unique_ptr<Fifo> New(kj::Promise<T>&& p);
+};
+
+template <typename T>
+class FifoInst : public Fifo {
+ public:
+  FifoInst(T&& p)
+      : pf(kj::newPromiseAndFulfiller<capnproto::Fifo::Reader>()),
+        promise(std::move(p)) {
+    SetPromise(std::move(pf.promise));
+    promise = promise
+                  .then(
+                      [this](auto res) {
+                        pf.fulfiller->fulfill(res.getFifo());
+                        return std::move(res);
+                      },
+                      [this](kj::Exception exc) {
+                        pf.fulfiller->rejectIfThrows(
+                            []() { KJ_FAIL_ASSERT("Request failed"); });
+                        return exc;
+                      })
+                  .eagerlyEvaluate(nullptr);
+  }
+
+ private:
+  kj::PromiseFulfillerPair<capnproto::Fifo::Reader> pf;
+  T promise;
+};
+
+template <typename T>
+std::unique_ptr<Fifo> Fifo::New(kj::Promise<T>&& p) {
+  return std::make_unique<FifoInst<kj::Promise<T>>>(std::move(p));
+}
+
 class File {
   friend class Frontend;
   friend class Execution;
@@ -118,6 +168,7 @@ class Execution {
   void setExecutable(const std::string& name, File* file);
   void setStdin(File* file);
   void addInput(const std::string& name, File* file);
+  void addFifo(const std::string& name, Fifo* fifo);
 
   void setArgs(const std::vector<std::string>& args);
 
@@ -158,9 +209,11 @@ class ExecutionGroup {
         finish_builder_(finish_builder),
         frontend_(frontend) {}
   Execution* addExecution(const std::string& description);
+  Fifo* createFifo();
 
  private:
   std::vector<std::unique_ptr<Execution>> executions_;
+  std::vector<std::unique_ptr<Fifo>> fifos_;
   std::string description_;
   capnproto::ExecutionGroup::Client execution_group_;
   std::vector<std::unique_ptr<File>>& files_;

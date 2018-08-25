@@ -84,8 +84,8 @@ class UnionPromiseBuilder {
     std::vector<kj::Promise<void>> promises;
     std::vector<kj::PromiseFulfiller<void>*> fulfillers;
     bool finalized = false;
-    std::function<void()> on_ready;
-    std::function<void(kj::Exception)> on_failure;
+    std::vector<std::function<void()>> on_ready;
+    std::vector<std::function<void(kj::Exception)>> on_failure;
 #ifdef DEBUG_UPB
     std::multiset<std::string> pending;
 #endif
@@ -101,9 +101,11 @@ class UnionPromiseBuilder {
     p_.promise = p_.promise.attach(std::move(info), std::move(p_.fulfiller));
   }
 
-  void OnReady(std::function<void()> on_ready) { info_->on_ready = on_ready; }
+  void OnReady(std::function<void()> on_ready) {
+    info_->on_ready.push_back(on_ready);
+  }
   void OnFailure(std::function<void(kj::Exception)> on_failure) {
-    info_->on_failure = on_failure;
+    info_->on_failure.push_back(on_failure);
   }
 
   kj::Promise<void> AddPromise(kj::Promise<void> p,
@@ -137,7 +139,7 @@ class UnionPromiseBuilder {
                   if (info->finalized &&
                       info->resolved == info->promises.size()) {
                     fulfiller->fulfill();
-                    if (info->on_ready) info->on_ready();
+                    for (auto f : info->on_ready) f();
                   }
                   propagate_fulfiller->fulfill();
                   info->fulfillers[index] = nullptr;
@@ -155,7 +157,7 @@ class UnionPromiseBuilder {
 #endif
                   if (info->fatalFailure) {
                     fulfiller->reject(kj::cp(exc));
-                    if (info->on_failure) info->on_failure(kj::cp(exc));
+                    for (auto f : info->on_failure) f(kj::cp(exc));
                     for (auto off : info->fulfillers)
                       if (off) off->fulfill();
                   } else {
@@ -168,7 +170,7 @@ class UnionPromiseBuilder {
                     if (info->finalized &&
                         info->resolved == info->promises.size()) {
                       fulfiller->fulfill();
-                      if (info->on_ready) info->on_ready();
+                      for (auto f : info->on_ready) f();
                     }
                   }
                   ff->fulfill();
@@ -183,7 +185,7 @@ class UnionPromiseBuilder {
     info_->finalized = true;
     if (info_->resolved == info_->promises.size()) {
       fulfiller_->fulfill();
-      if (info_->on_ready) info_->on_ready();
+      for (auto f : info_->on_ready) f();
     }
     return std::move(p_.promise);
   }

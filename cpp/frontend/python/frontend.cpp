@@ -105,11 +105,14 @@ PYBIND11_MODULE(task_maker_frontend, m) {
            })
       .def("getContentsToFile", &frontend::File::getContentsToFile);
 
+  pybind11::class_<frontend::Fifo>(m, "Fifo");
+
   pybind11::class_<frontend::Execution>(m, "Execution")
       .def("setExecutablePath", &frontend::Execution::setExecutablePath)
       .def("setExecutable", &frontend::Execution::setExecutable)
       .def("setStdin", &frontend::Execution::setStdin)
       .def("addInput", &frontend::Execution::addInput)
+      .def("addFifo", &frontend::Execution::addFifo)
       .def("setArgs", &frontend::Execution::setArgs)
       .def("disableCache", &frontend::Execution::disableCache)
       .def("makeExclusive", &frontend::Execution::makeExclusive)
@@ -144,6 +147,8 @@ PYBIND11_MODULE(task_maker_frontend, m) {
 
   pybind11::class_<frontend::ExecutionGroup>(m, "ExecutionGroup")
       .def("addExecution", &frontend::ExecutionGroup::addExecution,
+           pybind11::return_value_policy::reference)
+      .def("createFifo", &frontend::ExecutionGroup::createFifo,
            pybind11::return_value_policy::reference);
 
   pybind11::class_<frontend::Frontend>(m, "Frontend")

@@ -137,6 +137,12 @@ Execution* ExecutionGroup::addExecution(const std::string& description) {
   return executions_.back().get();
 }
 
+Fifo* ExecutionGroup::createFifo() {
+  auto req = execution_group_.createFifoRequest();
+  fifos_.push_back(Fifo::New(req.send()));
+  return fifos_.back().get();
+}
+
 void Execution::setExecutablePath(const std::string& path) {
   auto req = execution_.setExecutablePathRequest();
   req.setPath(path);
@@ -168,6 +174,16 @@ void Execution::addInput(const std::string& name, File* file) {
         auto req = execution_.addInputRequest();
         req.setName(name);
         req.setFile(file);
+        builder_.AddPromise(req.send().ignoreResult());
+      }));
+}
+
+void Execution::addFifo(const std::string& name, Fifo* fifo) {
+  my_builder_.AddPromise(
+      fifo->forked_promise.addBranch().then([this, name](auto fifo) {
+        auto req = execution_.addFifoRequest();
+        req.setName(name);
+        req.setFifo(fifo);
         builder_.AddPromise(req.send().ignoreResult());
       }));
 }

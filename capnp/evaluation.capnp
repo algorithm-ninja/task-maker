@@ -11,6 +11,11 @@ struct FileInfo {
   executable @2 :Bool; # Marks the file as executable
 }
 
+struct FifoInfo {
+  name @0 :Text;
+  id @1 :UInt32;
+}
+
 struct Resources {
   # All times are in seconds, all sizes in kilobytes.
   cpuTime @0 :Float32;
@@ -35,8 +40,9 @@ struct ProcessRequest {
   stdin @3 :SHA256; # Hash of standard input
   inputFiles @4 :List(FileInfo); # Name and hash of other inputs
   outputFiles @5 :List(Text); # Name of outputs
-  limits @6 :Resources;
-  extraTime @7 :Float32; # Time that should be added to the cpu time limit.
+  fifos @6 :List(FifoInfo); # Name and ID of FIFOs
+  limits @7 :Resources;
+  extraTime @8 :Float32; # Time that should be added to the cpu time limit.
 }
 
 struct Request {

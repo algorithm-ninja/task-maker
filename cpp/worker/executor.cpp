@@ -13,6 +13,7 @@
 #include <kj/async-io.h>
 #include <kj/debug.h>
 #include <kj/io.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -26,6 +27,7 @@ namespace {
 kj::Promise<sandbox::ExecutionInfo> RunSandbox(
     const sandbox::ExecutionOptions& exec_options,
     kj::LowLevelAsyncIoProvider& async_io_provider) {
+  KJ_LOG(INFO, "Starting sandbox");
   int options_pipe[2];
   int ret = pipe(options_pipe);
   KJ_ASSERT(ret != -1, "pipe", strerror(errno));
@@ -137,6 +139,9 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
     for (const auto& input : request.getInputFiles()) {
       if (!ValidateFileName(input.getName(), result_)) return kj::READY_NOW;
     }
+    for (const auto& fifo : request.getFifos()) {
+      if (!ValidateFileName(fifo.getName(), result_)) return kj::READY_NOW;
+    }
     for (const auto& output : request.getOutputFiles()) {
       if (!ValidateFileName(output, result_)) return kj::READY_NOW;
     }
@@ -153,9 +158,33 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
     return kj::READY_NOW;
   };
 
+  util::TempDir fifo_tmp_(Flags::temp_directory);
+
+  auto add_fifo = [&fifo_tmp_, fail](const std::string dest,
+                                     uint32_t id) mutable {
+    std::string src =
+        util::File::JoinPath(fifo_tmp_.Path(), std::to_string(id));
+    if (access(src.c_str(), F_OK) == -1) {
+      if (errno != ENOENT) {
+        fail("access: " + std::string(strerror(errno)));
+        return false;
+      }
+      if (mkfifo(src.c_str(), S_IRWXU) == -1) {
+        fail("mkfifo: " + std::string(strerror(errno)));
+        return false;
+      }
+    }
+    if (link(src.c_str(), dest.c_str()) == -1) {
+      fail("link: " + std::string(strerror(errno)));
+      return false;
+    }
+    return true;
+  };
+
   size_t num_processes = request_.getProcesses().size();
   util::UnionPromiseBuilder builder;
   std::vector<util::TempDir> tmp;
+  while (tmp.size() < num_processes) tmp.emplace_back(Flags::temp_directory);
   std::vector<std::string> cmdlines(num_processes);
   std::vector<std::string> exes(num_processes);
   std::vector<std::string> sandbox_dirs(num_processes);
@@ -163,7 +192,6 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
   std::vector<std::string> stdout_paths(num_processes);
   std::vector<sandbox::ExecutionOptions> exec_options_v;
   result_.initProcesses(num_processes);
-  while (tmp.size() < num_processes) tmp.emplace_back(Flags::temp_directory);
   for (size_t i = 0; i < request_.getProcesses().size(); i++) {
     auto request = request_.getProcesses()[i];
     auto executable = request.getExecutable();
@@ -234,6 +262,14 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
       exec_options.prepare_executable = true;  // TODO: is this useful?
     }
 
+    // FIFOs.
+    for (auto fifo : request.getFifos()) {
+      if (!add_fifo(util::File::JoinPath(sandbox_dir, fifo.getName()),
+                    fifo.getId())) {
+        return kj::READY_NOW;
+      }
+    }
+
     // Limits.
     // Scale up time limits to have a good margin for random occurrences.
     auto limits = request.getLimits();
@@ -300,6 +336,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
             [result_, exec_options_v, stdout_paths, stderr_paths, request_,
              sandbox_dirs, tmp = std::move(tmp), num_processes,
              this](kj::Array<sandbox::ExecutionInfo> outcomes) mutable {
+              KJ_LOG(INFO, "Sandbox done, processing results");
               for (size_t i = 0; i < num_processes; i++) {
                 auto result = result_.getProcesses()[i];
                 auto request = request_.getProcesses()[i];

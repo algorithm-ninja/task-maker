@@ -41,6 +41,13 @@ kj::Promise<void> ExecutionGroup::addExecution(AddExecutionContext context) {
   return kj::READY_NOW;
 }
 
+kj::Promise<void> ExecutionGroup::createFifo(CreateFifoContext context) {
+  KJ_LOG(INFO, "Creating FIFO " + std::to_string(next_fifo_) + " in group " +
+                   description_);
+  context.getResults().getFifo().setId(next_fifo_++);
+  return kj::READY_NOW;
+}
+
 kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
   if (!finalized_) {
     finalized_ = true;
@@ -53,78 +60,81 @@ kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
     for (auto ex : executions_) {
       ex->addDependencies(dependencies);
     }
-    return std::move(dependencies)
-        .Finalize()
-        .then(
-            [this]() {
-              request_.initProcesses(executions_.size());
-              for (size_t i = 0; i < executions_.size(); i++) {
-                executions_[i]->prepareRequest();
-                request_.getProcesses().setWithCaveats(
-                    i, executions_[i]->request_);
-              }
-              KJ_LOG(INFO, "Execution group " + description_, request_);
-            },
-            [this](kj::Exception exc) {
-              start_.fulfiller->reject(kj::cp(exc));
-              for (auto ex : executions_) {
-                ex->onDependenciesFailure(kj::cp(exc));
-              }
-              kj::throwRecoverableException(std::move(exc));
-            })
-        .eagerlyEvaluate(nullptr)
-        .then([this]() mutable {
-          if (cache_enabled_ &&
-              frontend_context_.cache_manager_.Has(request_)) {
-            auto res = frontend_context_.cache_manager_.Get(request_);
-            start_.fulfiller->fulfill();
-            util::UnionPromiseBuilder dependencies_propagated_;
-            for (size_t i = 0; i < executions_.size(); i++) {
-              executions_[i]->processResult(res.getProcesses()[i],
-                                            dependencies_propagated_);
-            }
-            return std::move(dependencies_propagated_)
-                .Finalize()
-                .then([this]() {
-                  for (auto ex : executions_) {
-                    ex->onDependenciesPropagated();
+    done_ =
+        std::move(dependencies)
+            .Finalize()
+            .then(
+                [this]() {
+                  request_.initProcesses(executions_.size());
+                  for (size_t i = 0; i < executions_.size(); i++) {
+                    executions_[i]->prepareRequest();
+                    request_.getProcesses().setWithCaveats(
+                        i, executions_[i]->request_);
                   }
+                  KJ_LOG(INFO, "Execution group " + description_, request_);
+                },
+                [this](kj::Exception exc) {
+                  start_.fulfiller->reject(kj::cp(exc));
+                  for (auto ex : executions_) {
+                    ex->onDependenciesFailure(kj::cp(exc));
+                  }
+                  kj::throwRecoverableException(std::move(exc));
                 })
-                .eagerlyEvaluate(nullptr);
-          }
+            .eagerlyEvaluate(nullptr)
+            .then([this]() mutable {
+              if (cache_enabled_ &&
+                  frontend_context_.cache_manager_.Has(request_)) {
+                auto res = frontend_context_.cache_manager_.Get(request_);
+                start_.fulfiller->fulfill();
+                util::UnionPromiseBuilder dependencies_propagated_;
+                for (size_t i = 0; i < executions_.size(); i++) {
+                  executions_[i]->processResult(res.getProcesses()[i],
+                                                dependencies_propagated_);
+                }
+                return std::move(dependencies_propagated_)
+                    .Finalize()
+                    .then([this]() {
+                      for (auto ex : executions_) {
+                        ex->onDependenciesPropagated();
+                      }
+                    })
+                    .eagerlyEvaluate(nullptr);
+              }
 
-          return frontend_context_.dispatcher_
-              .AddRequest(request_, std::move(start_.fulfiller))
-              .then(
-                  [this](capnp::Response<capnproto::Evaluator::EvaluateResults>
-                             results) mutable {
-                    auto res = results.getResult();
-                    util::UnionPromiseBuilder dependencies_propagated_;
-                    if (cache_enabled_) {
-                      frontend_context_.cache_manager_.Set(request_, res);
-                    }
-                    for (size_t i = 0; i < executions_.size(); i++) {
-                      executions_[i]->processResult(res.getProcesses()[i],
-                                                    dependencies_propagated_);
-                    }
-                    return std::move(dependencies_propagated_)
-                        .Finalize()
-                        .then([this]() {
-                          for (auto ex : executions_) {
-                            ex->onDependenciesPropagated();
-                          }
-                        })
-                        .eagerlyEvaluate(nullptr);
-                  },
-                  [this](kj::Exception exc) {
-                    for (auto ex : executions_) {
-                      ex->finish_promise_.fulfiller->reject(kj::cp(exc));
-                    }
-                    kj::throwRecoverableException(std::move(exc));
-                  })
-              .eagerlyEvaluate(nullptr);
-        })
-        .eagerlyEvaluate(nullptr);
+              return frontend_context_.dispatcher_
+                  .AddRequest(request_, std::move(start_.fulfiller))
+                  .then(
+                      [this](
+                          capnp::Response<capnproto::Evaluator::EvaluateResults>
+                              results) mutable {
+                        auto res = results.getResult();
+                        util::UnionPromiseBuilder dependencies_propagated_;
+                        if (cache_enabled_) {
+                          frontend_context_.cache_manager_.Set(request_, res);
+                        }
+                        for (size_t i = 0; i < executions_.size(); i++) {
+                          executions_[i]->processResult(
+                              res.getProcesses()[i], dependencies_propagated_);
+                        }
+                        return std::move(dependencies_propagated_)
+                            .Finalize()
+                            .then([this]() {
+                              for (auto ex : executions_) {
+                                ex->onDependenciesPropagated();
+                              }
+                            })
+                            .eagerlyEvaluate(nullptr);
+                      },
+                      [this](kj::Exception exc) {
+                        for (auto ex : executions_) {
+                          ex->finish_promise_.fulfiller->reject(kj::cp(exc));
+                        }
+                        kj::throwRecoverableException(std::move(exc));
+                      })
+                  .eagerlyEvaluate(nullptr);
+            })
+            .eagerlyEvaluate(nullptr);
+    forked_done_ = done_.fork();
   }
   for (size_t i = 0; i < executions_.size(); i++) {
     if (executions_[i] == ex) {
@@ -200,6 +210,15 @@ kj::Promise<void> Execution::setLimits(SetLimitsContext context) {
   request_.setLimits(context.getParams().getLimits());
   return kj::READY_NOW;
 }
+kj::Promise<void> Execution::addFifo(AddFifoContext context) {
+  KJ_LOG(INFO, "Execution " + description_,
+         "Adding FIFO with id " +
+             std::to_string(context.getParams().getFifo().getId()) + " as " +
+             std::string(context.getParams().getName()));
+  fifos_.emplace(context.getParams().getName(),
+                 context.getParams().getFifo().getId());
+  return kj::READY_NOW;
+}
 kj::Promise<void> Execution::stdout(StdoutContext context) {
   stdout_ = AddFileInfo(
       frontend_context_.last_file_id_, frontend_context_.file_info_,
@@ -269,6 +288,15 @@ void Execution::prepareRequest() {
   }
   if (executable_) {
     get_hash(executable_, request_.getExecutable().getLocalFile().initHash());
+  }
+  request_.initFifos(fifos_.size());
+  {
+    size_t i = 0;
+    for (auto& fifo : fifos_) {
+      request_.getFifos()[i].setName(fifo.first);
+      request_.getFifos()[i].setId(fifo.second);
+      i++;
+    }
   }
   request_.initInputFiles(inputs_.size());
   {
