@@ -144,6 +144,32 @@ class Execution {
   Frontend& frontend_;
 };
 
+class ExecutionGroup {
+ public:
+  ExecutionGroup(std::string description,
+                 capnproto::ExecutionGroup::Client execution_group,
+                 std::vector<std::unique_ptr<File>>& files,
+                 util::UnionPromiseBuilder& builder,
+                 util::UnionPromiseBuilder& finish_builder, Frontend& frontend)
+      : description_(std::move(description)),
+        execution_group_(execution_group),
+        files_(files),
+        builder_(builder),
+        finish_builder_(finish_builder),
+        frontend_(frontend) {}
+  Execution* addExecution(const std::string& description);
+
+ private:
+  std::vector<std::unique_ptr<Execution>> executions_;
+  std::string description_;
+  capnproto::ExecutionGroup::Client execution_group_;
+  std::vector<std::unique_ptr<File>>& files_;
+  util::UnionPromiseBuilder& builder_;
+  util::UnionPromiseBuilder& finish_builder_;
+  util::UnionPromiseBuilder my_builder_;
+  Frontend& frontend_;
+};
+
 class Frontend {
   friend class File;
 
@@ -153,6 +179,7 @@ class Frontend {
   File* provideFile(const std::string& path, const std::string& description,
                     bool is_executable);
   Execution* addExecution(const std::string& description);
+  ExecutionGroup* addExecutionGroup(const std::string& description);
   void evaluate();  // Starts evaluation and returns when complete.
   void stopEvaluation();
 
@@ -165,6 +192,7 @@ class Frontend {
   util::UnionPromiseBuilder finish_builder_;
   std::vector<std::unique_ptr<File>> files_;
   std::vector<std::unique_ptr<Execution>> executions_;
+  std::vector<std::unique_ptr<ExecutionGroup>> groups_;
   kj::Promise<void> stop_request_;
 };
 }  // namespace frontend

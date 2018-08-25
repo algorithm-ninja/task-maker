@@ -42,6 +42,10 @@ interface Execution {
   getResult @12 () -> (result :ProcessResult);
 }
 
+interface ExecutionGroup {
+  addExecution @0 (description :Text) -> (execution :Execution);
+}
+
 interface FrontendContext {
   provideFile @0 (
     hash :SHA256,
@@ -49,12 +53,13 @@ interface FrontendContext {
     isExecutable :Bool
   ) -> (file :File);
   addExecution @1 (description :Text) -> (execution :Execution);
+  addExecutionGroup @2 (description :Text) -> (group :ExecutionGroup);
   
   # The following methods should only be called after the computational
   # DAG is fully defined.
-  startEvaluation @2 (sender :FileSender);
-  getFileContents @3 (file :File, receiver :FileReceiver);
-  stopEvaluation @4 ();
+  startEvaluation @3 (sender :FileSender);
+  getFileContents @4 (file :File, receiver :FileReceiver);
+  stopEvaluation @5 ();
 }
 
 interface MainServer extends(FileSender) {

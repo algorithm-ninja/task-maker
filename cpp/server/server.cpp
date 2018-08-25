@@ -29,6 +29,18 @@ kj::Promise<void> ExecutionGroup::notifyStart() {
       [this]() { KJ_LOG(INFO, "Execution group " + description_, "Started"); });
 }
 
+kj::Promise<void> ExecutionGroup::addExecution(AddExecutionContext context) {
+  KJ_LOG(INFO, "Adding execution " +
+                   std::string(context.getParams().getDescription()) +
+                   " to group " + description_);
+  context.getResults().setExecution(
+      kj::heap<Execution>(frontend_context_,
+                          std::string(context.getParams().getDescription()) +
+                              " of group " + description_,
+                          *this));
+  return kj::READY_NOW;
+}
+
 kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
   if (!finalized_) {
     finalized_ = true;
@@ -377,6 +389,15 @@ kj::Promise<void> FrontendContext::addExecution(AddExecutionContext context) {
       kj::heap<ExecutionGroup>(*this, context.getParams().getDescription()));
   context.getResults().setExecution(kj::heap<Execution>(
       *this, context.getParams().getDescription(), *groups_.back()));
+  return kj::READY_NOW;
+}
+
+kj::Promise<void> FrontendContext::addExecutionGroup(
+    AddExecutionGroupContext context) {
+  KJ_LOG(INFO, "Adding execution group " +
+                   std::string(context.getParams().getDescription()));
+  context.getResults().setGroup(
+      kj::heap<ExecutionGroup>(*this, context.getParams().getDescription()));
   return kj::READY_NOW;
 }
 kj::Promise<void> FrontendContext::startEvaluation(

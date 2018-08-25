@@ -74,7 +74,7 @@ class Execution : public capnproto::Execution::Server {
   kj::Maybe<GetResultContext> context_;
 };
 
-class ExecutionGroup {
+class ExecutionGroup : public capnproto::ExecutionGroup::Server {
  public:
   void Register(Execution* ex);
   ExecutionGroup(FrontendContext& frontend_context, std::string description)
@@ -83,6 +83,7 @@ class ExecutionGroup {
   void disableCache();
   kj::Promise<void> notifyStart();
   kj::Promise<void> Finalize(Execution* ex);
+  kj::Promise<void> addExecution(AddExecutionContext context);
 
  private:
   FrontendContext& frontend_context_;
@@ -108,6 +109,7 @@ class FrontendContext : public capnproto::FrontendContext::Server {
         cache_manager_(cache_manager) {}
   kj::Promise<void> provideFile(ProvideFileContext context);
   kj::Promise<void> addExecution(AddExecutionContext context);
+  kj::Promise<void> addExecutionGroup(AddExecutionGroupContext context);
   kj::Promise<void> startEvaluation(StartEvaluationContext context);
   kj::Promise<void> getFileContents(GetFileContentsContext context);
   kj::Promise<void> stopEvaluation(StopEvaluationContext context);

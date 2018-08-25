@@ -102,6 +102,15 @@ Execution* Frontend::addExecution(const std::string& description) {
   return executions_.back().get();
 }
 
+ExecutionGroup* Frontend::addExecutionGroup(const std::string& description) {
+  auto req = frontend_context_.addExecutionGroupRequest();
+  req.setDescription(description);
+  groups_.push_back(std::make_unique<ExecutionGroup>(
+      description, req.send().then([](auto r) { return r.getGroup(); }), files_,
+      builder_, finish_builder_, *this));
+  return groups_.back().get();
+}
+
 void Frontend::evaluate() {
   finish_builder_.AddPromise(std::move(builder_).Finalize().then([this]() {
     auto req = frontend_context_.startEvaluationRequest();
@@ -116,6 +125,16 @@ void Frontend::evaluate() {
 void Frontend::stopEvaluation() {
   stop_request_ =
       frontend_context_.stopEvaluationRequest().send().ignoreResult();
+}
+
+Execution* ExecutionGroup::addExecution(const std::string& description) {
+  auto req = execution_group_.addExecutionRequest();
+  req.setDescription(description);
+  executions_.push_back(std::make_unique<Execution>(
+      description_ + " of group " + description,
+      req.send().then([](auto r) { return r.getExecution(); }), files_,
+      builder_, finish_builder_, frontend_));
+  return executions_.back().get();
 }
 
 void Execution::setExecutablePath(const std::string& path) {

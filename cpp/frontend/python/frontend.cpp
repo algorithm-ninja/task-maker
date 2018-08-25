@@ -142,11 +142,17 @@ PYBIND11_MODULE(task_maker_frontend, m) {
            },
            "callback"_a, "error"_a = nullptr);
 
+  pybind11::class_<frontend::ExecutionGroup>(m, "ExecutionGroup")
+      .def("addExecution", &frontend::ExecutionGroup::addExecution,
+           pybind11::return_value_policy::reference);
+
   pybind11::class_<frontend::Frontend>(m, "Frontend")
       .def(pybind11::init<std::string, int>())
       .def("provideFile", &frontend::Frontend::provideFile,
            pybind11::return_value_policy::reference)
       .def("addExecution", &frontend::Frontend::addExecution,
+           pybind11::return_value_policy::reference)
+      .def("addExecutionGroup", &frontend::Frontend::addExecutionGroup,
            pybind11::return_value_policy::reference)
       .def("evaluate", &frontend::Frontend::evaluate,
            pybind11::call_guard<pybind11::gil_scoped_release>())
