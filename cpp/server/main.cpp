@@ -6,6 +6,7 @@
 #include "server/server.hpp"
 #include "util/daemon.hpp"
 #include "util/flags.hpp"
+#include "util/log_manager.hpp"
 #include "util/misc.hpp"
 #include "util/version.hpp"
 
@@ -14,6 +15,7 @@ kj::MainBuilder::Validity Main::Run() {
   if (Flags::daemon) {
     util::daemonize("server", Flags::pidfile);
   }
+  util::LogManager log_manager(context);
   capnp::EzRpcServer server(kj::heap<server::Server>(), Flags::listen_address,
                             Flags::port);
   kj::NEVER_DONE.wait(server.getWaitScope());

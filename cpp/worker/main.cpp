@@ -5,6 +5,7 @@
 #include "capnp/server.capnp.h"
 #include "util/daemon.hpp"
 #include "util/flags.hpp"
+#include "util/log_manager.hpp"
 #include "util/misc.hpp"
 #include "util/version.hpp"
 #include "worker/executor.hpp"
@@ -21,6 +22,7 @@ kj::MainBuilder::Validity Main::Run() {
   if (!Flags::num_cores) {
     Flags::num_cores = std::thread::hardware_concurrency();
   }
+  util::LogManager log_manager(context);
   Manager manager(Flags::server, Flags::port, Flags::num_cores,
                   Flags::pending_requests, Flags::name);
   manager.Run();

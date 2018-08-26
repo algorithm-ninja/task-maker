@@ -49,7 +49,9 @@ include(GoogleTest)
 find_package(PythonInterp 3.5 REQUIRED)
 
 # Enable colors in ninja
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always -Wall -Wextra -Wno-unused-parameter -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always") 
+# Other flags
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # if hunter is disabled all these lines are noop
@@ -65,6 +67,7 @@ find_package(GTest REQUIRED)
 find_package(CapnProto CONFIG REQUIRED)
 find_package(GMock CONFIG REQUIRED)
 find_package(pybind11 CONFIG REQUIRED)
+find_package(dw CONFIG REQUIRED)  # TODO probably this won't work on OSX
 
 add_subdirectory(capnp)
 add_subdirectory(third_party)

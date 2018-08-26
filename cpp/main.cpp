@@ -15,6 +15,9 @@ class TaskMakerMain {
     sandbox::Main bm(context);
     return kj::MainBuilder(context, "Task-Maker (" + util::version + ")",
                            "The new cmsMake!")
+        .addOptionWithArg({'l', "logfile"}, util::setString(Flags::log_file),
+                          "<LOGFILE>",
+                          "Path where the log file should be stored")
         .addOption({'d', "daemon"}, util::setBool(Flags::daemon),
                    "Become a daemon")
         .addOptionWithArg({'P', "pidfile"}, util::setString(Flags::pidfile),

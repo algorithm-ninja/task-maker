@@ -9,9 +9,11 @@ add_library(cpp_util
   util/flags.cpp
   util/union_promise.cpp
   util/misc.cpp
+  util/log_manager.cpp
 )
 target_include_directories(cpp_util PUBLIC .)
 target_link_libraries(cpp_util
+  backward
   capnp_cpp
   CapnProto::kj
 )

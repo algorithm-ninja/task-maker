@@ -10,6 +10,7 @@ struct Flags {
   static std::string store_directory;
   static int32_t port;
   static uint32_t cache_size;
+  static std::string log_file;
 
   // Worker-only flags
   static std::string server;
