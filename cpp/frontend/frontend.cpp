@@ -227,6 +227,12 @@ void Execution::setLimits(const Resources& limits) {
   my_builder_.AddPromise(req.send().ignoreResult());
 }
 
+void Execution::setExtraTime(float extra_time) {
+  auto req = execution_.setExtraTimeRequest();
+  req.setExtraTime(extra_time);
+  my_builder_.AddPromise(req.send().ignoreResult());
+}
+
 File* Execution::stdout(bool is_executable) {
   auto req = execution_.stdoutRequest();
   req.setIsExecutable(is_executable);

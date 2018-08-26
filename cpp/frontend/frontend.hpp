@@ -175,6 +175,7 @@ class Execution {
   void disableCache();
   void makeExclusive();
   void setLimits(const Resources& limits);
+  void setExtraTime(float extra_time);
 
   File* stdout(bool is_executable);
   File* stderr(bool is_executable);

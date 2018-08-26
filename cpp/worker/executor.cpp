@@ -274,9 +274,9 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
     // Scale up time limits to have a good margin for random occurrences.
     auto limits = request.getLimits();
     exec_options.cpu_limit_millis =
-        limits.getCpuTime() * 1200 + request.getExtraTime();
+        limits.getCpuTime() * 1200 + request.getExtraTime() * 1000;
     exec_options.wall_limit_millis =
-        limits.getWallTime() * 1200 + request.getExtraTime();
+        limits.getWallTime() * 1200 + request.getExtraTime() * 1000;
     exec_options.memory_limit_kb = limits.getMemory() * 1.2;
     exec_options.max_files = limits.getNofiles();
     exec_options.max_procs = limits.getNproc();

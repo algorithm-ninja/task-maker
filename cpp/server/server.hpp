@@ -42,6 +42,7 @@ class Execution : public capnproto::Execution::Server {
   kj::Promise<void> disableCache(DisableCacheContext context);
   kj::Promise<void> makeExclusive(MakeExclusiveContext context);
   kj::Promise<void> setLimits(SetLimitsContext context);
+  kj::Promise<void> setExtraTime(SetExtraTimeContext context);
   kj::Promise<void> addFifo(AddFifoContext context);
   kj::Promise<void> stdout(StdoutContext context);
   kj::Promise<void> stderr(StderrContext context);

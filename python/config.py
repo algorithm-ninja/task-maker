@@ -35,7 +35,7 @@ class Config:
 
         # execution group
         self.exclusive = args.exclusive  # type: bool
-        # self.extra_time = args.extra_time  # type: float
+        self.extra_time = args.extra_time  # type: float
         self.copy_exe = args.copy_exe  # type: # bool
 
         # terry group

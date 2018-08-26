@@ -117,6 +117,7 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def("disableCache", &frontend::Execution::disableCache)
       .def("makeExclusive", &frontend::Execution::makeExclusive)
       .def("setLimits", &frontend::Execution::setLimits)
+      .def("setExtraTime", &frontend::Execution::setExtraTime)
       .def("stdout", &frontend::Execution::stdout,
            pybind11::return_value_policy::reference)
       .def("stderr", &frontend::Execution::stderr,

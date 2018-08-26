@@ -210,6 +210,13 @@ kj::Promise<void> Execution::setLimits(SetLimitsContext context) {
   request_.setLimits(context.getParams().getLimits());
   return kj::READY_NOW;
 }
+kj::Promise<void> Execution::setExtraTime(SetExtraTimeContext context) {
+  KJ_LOG(INFO, "Execution " + description_,
+         kj::str("Setting extra time to ",
+                 std::to_string(context.getParams().getExtraTime())));
+  request_.setExtraTime(context.getParams().getExtraTime());
+  return kj::READY_NOW;
+}
 // TODO: check that this FIFO is from the correct execution group
 kj::Promise<void> Execution::addFifo(AddFifoContext context) {
   KJ_LOG(INFO, "Execution " + description_,

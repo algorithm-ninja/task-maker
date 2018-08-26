@@ -27,7 +27,7 @@ class LanguageRust(CompiledLanguage):
                 % source_filenames[0])
         cmd += ["-O", "-o", exe_name]
         # with rustc you only need to specify the main file
-        cmd += source_filenames[0]
+        cmd += [source_filenames[0]]
         return CommandType.SYSTEM, cmd
 
 

@@ -33,6 +33,7 @@ interface Execution {
   disableCache @5 ();
   makeExclusive @6 ();
   setLimits @7 (limits: Resources);
+  setExtraTime @14 (extraTime: Float32);
 
   # Get file IDs representing outputs
   stdout @8 (isExecutable :Bool = false) -> (file :File);

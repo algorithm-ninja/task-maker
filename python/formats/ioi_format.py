@@ -384,6 +384,8 @@ def evaluate_solutions(
                 output = eval.stdout(False)
             if config.exclusive:
                 eval.makeExclusive()
+            if config.extra_time:
+                eval.setExtraTime(config.extra_time)
 
             interface.add_evaluate_solution(st_num, tc_num, solution.name,
                                             eval)
