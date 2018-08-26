@@ -182,8 +182,11 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
     throw std::system_error(errno, std::system_category(), "Write " + path);
   }
   auto done = kj::heap<bool>();
-  auto finalize = [done = done.get()]() {
+  auto finalize = [done = done.get(), temp_file]() {
     if (!*done) {
+      kj::UnwindDetector detector;
+      detector.catchExceptionsIfUnwinding(
+          [temp_file]() { util::File::Remove(temp_file); });
       KJ_LOG(WARNING, "File never finalized!");
     }
   };
