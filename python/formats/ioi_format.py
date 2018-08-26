@@ -311,7 +311,7 @@ def generate_inputs(frontend, task: Task, interface: IOIUIInterface,
 
                 interface.add_validation(st_num, tc_num, val)
 
-            if testcase.write_input_to:
+            if testcase.write_input_to and not config.dry_run:
                 inputs[testcase_id].getContentsToFile(testcase.write_input_to,
                                                       True, True)
 
@@ -340,7 +340,7 @@ def generate_inputs(frontend, task: Task, interface: IOIUIInterface,
 
                 interface.add_solving(st_num, tc_num, sol)
 
-            if testcase.write_output_to:
+            if testcase.write_output_to and not config.dry_run:
                 outputs[testcase_id].getContentsToFile(
                     testcase.write_output_to, True, True)
     return inputs, outputs, validations

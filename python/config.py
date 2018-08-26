@@ -15,7 +15,7 @@ class Config:
         self.max_depth = args.max_depth  # type: int
         self.ui = args.ui  # type: UIS
         self.cache = args.cache  # type: CacheMode
-        # self.dry_run = args.dry_run  # type: bool
+        self.dry_run = args.dry_run  # type: bool
         self.clean = args.clean  # type: bool
         self.format = args.format  # type: TaskFormat
 

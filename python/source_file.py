@@ -56,7 +56,7 @@ class SourceFile:
         if self.language.need_compilation:
             self._compile(frontend, config)
         else:
-            self._not_compile(frontend)
+            self._not_compile(frontend, config)
         self.prepared = True
 
     def _compile(self, frontend, config: Config):
@@ -89,13 +89,13 @@ class SourceFile:
                     dep.name, frontend.provideFile(dep.path, dep.path, False))
         self.compilation_stderr = self.compilation.stderr(False)
         self.executable = self.compilation.output(self.exe_name, True)
-        if self.write_bin_to:
+        if self.write_bin_to and not config.dry_run:
             self.executable.getContentsToFile(self.write_bin_to, True, True)
 
-    def _not_compile(self, frontend):
+    def _not_compile(self, frontend, config: Config):
         self.executable = frontend.provideFile(
             self.path, "Source file for " + self.name, True)
-        if self.write_bin_to:
+        if self.write_bin_to and not config.dry_run:
             self.executable.getContentsToFile(self.write_bin_to, True, True)
 
     def execute(self, frontend, description: str, args: List[str]):
