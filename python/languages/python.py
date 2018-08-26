@@ -24,7 +24,6 @@ def find_python_dependency(filename: str) -> List[Dependency]:
                 dependency = Dependency(basename, file_path)
                 dependencies += [dependency]
                 dependencies += find_python_dependency(file_path)
-    print("DEPS", dependencies)
     return dependencies
 
 

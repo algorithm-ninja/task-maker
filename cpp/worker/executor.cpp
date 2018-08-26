@@ -341,7 +341,6 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
                 auto result = result_.getProcesses()[i];
                 auto request = request_.getProcesses()[i];
                 auto& outcome = outcomes[i];
-                auto& exec_options = exec_options_v[i];
                 auto& stdout_path = stdout_paths[i];
                 auto& stderr_path = stderr_paths[i];
                 auto& sandbox_dir = sandbox_dirs[i];
@@ -352,16 +351,17 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
                 resource_usage.setWallTime(outcome.wall_time_millis / 1000.0);
                 resource_usage.setMemory(outcome.memory_usage_kb);
 
-                if (exec_options.memory_limit_kb != 0 &&
-                    outcome.memory_usage_kb >= exec_options.memory_limit_kb) {
+                auto limits = request.getLimits();
+                if (limits.getMemory() != 0 &&
+                    (uint64_t)outcome.memory_usage_kb >= limits.getMemory()) {
                   result.getStatus().setMemoryLimit();
-                } else if (exec_options.cpu_limit_millis != 0 &&
+                } else if (limits.getCpuTime() != 0 &&
                            outcome.cpu_time_millis + outcome.sys_time_millis >=
-                               exec_options.cpu_limit_millis) {
+                               limits.getCpuTime() * 1000) {
                   result.getStatus().setTimeLimit();
-                } else if (exec_options.wall_limit_millis != 0 &&
+                } else if (limits.getWallTime() != 0 &&
                            outcome.wall_time_millis >=
-                               exec_options.wall_limit_millis) {
+                               limits.getWallTime() * 1000) {
                   result.getStatus().setWallLimit();
                 } else if (outcome.signal != 0) {
                   result.getStatus().setSignal(outcome.signal);
