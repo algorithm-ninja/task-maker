@@ -40,7 +40,7 @@ void Manager::OnDone() {
   }
   while (!waiting_tasks_.empty()) {
     int sz = waiting_tasks_.front().first;
-    if (running_cores_ + sz >= num_cores_) break;
+    if (running_cores_ + sz > num_cores_) break;
     reserved_cores_ -= sz;
     running_cores_ += sz;
     waiting_tasks_.front().second->fulfill();

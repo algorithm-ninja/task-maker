@@ -382,6 +382,8 @@ def evaluate_solutions(
                 output = eval.output(task.output_file, False)
             else:
                 output = eval.stdout(False)
+            if config.exclusive:
+                eval.makeExclusive()
 
             interface.add_evaluate_solution(st_num, tc_num, solution.name,
                                             eval)

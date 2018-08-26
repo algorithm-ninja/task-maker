@@ -13,12 +13,12 @@ namespace worker {
 
 class Manager {
  public:
-  Manager(std::string server, int32_t port, int32_t num_cores,
+  Manager(const std::string& server, uint32_t port, int32_t num_cores,
           int32_t pending_requests, std::string name)
       : client_(server, port),
         num_cores_(num_cores),
         max_pending_requests_(pending_requests),
-        name_(name) {}
+        name_(std::move(name)) {}
 
   void Run();
 

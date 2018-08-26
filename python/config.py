@@ -34,7 +34,7 @@ class Config:
             raise ValueError("Invalid address for the server")
 
         # execution group
-        # self.exclusive = args.exclusive  # type: bool
+        self.exclusive = args.exclusive  # type: bool
         # self.extra_time = args.extra_time  # type: float
         self.copy_exe = args.copy_exe  # type: # bool
 
