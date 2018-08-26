@@ -102,35 +102,41 @@ PYBIND11_MODULE(task_maker_frontend, m) {
                    pybind11::gil_scoped_acquire acquire;
                    (*cb)(s);
                  });
-           })
-      .def("getContentsToFile", &frontend::File::getContentsToFile);
+           },
+           "callback"_a)
+      .def("getContentsToFile", &frontend::File::getContentsToFile, "path"_a,
+           "overwrite"_a = true, "exist_ok"_a = true);
 
   pybind11::class_<frontend::Fifo>(m, "Fifo");
 
   pybind11::class_<frontend::Execution>(m, "Execution")
-      .def("setExecutablePath", &frontend::Execution::setExecutablePath)
-      .def("setExecutable", &frontend::Execution::setExecutable)
-      .def("setStdin", &frontend::Execution::setStdin)
-      .def("addInput", &frontend::Execution::addInput)
-      .def("addFifo", &frontend::Execution::addFifo)
-      .def("setArgs", &frontend::Execution::setArgs)
+      .def("setExecutablePath", &frontend::Execution::setExecutablePath,
+           "path"_a)
+      .def("setExecutable", &frontend::Execution::setExecutable, "name"_a,
+           "file"_a)
+      .def("setStdin", &frontend::Execution::setStdin, "file"_a)
+      .def("addInput", &frontend::Execution::addInput, "name"_a, "file"_a)
+      .def("addFifo", &frontend::Execution::addFifo, "name"_a, "fifo"_a)
+      .def("setArgs", &frontend::Execution::setArgs, "args"_a)
       .def("disableCache", &frontend::Execution::disableCache)
       .def("makeExclusive", &frontend::Execution::makeExclusive)
-      .def("setLimits", &frontend::Execution::setLimits)
-      .def("setExtraTime", &frontend::Execution::setExtraTime)
+      .def("setLimits", &frontend::Execution::setLimits, "limits"_a)
+      .def("setExtraTime", &frontend::Execution::setExtraTime, "extra_time"_a)
       .def("stdout", &frontend::Execution::stdout,
-           pybind11::return_value_policy::reference)
+           pybind11::return_value_policy::reference, "is_executable"_a = false)
       .def("stderr", &frontend::Execution::stderr,
-           pybind11::return_value_policy::reference)
+           pybind11::return_value_policy::reference, "is_executable"_a = false)
       .def("output", &frontend::Execution::output,
-           pybind11::return_value_policy::reference)
+           pybind11::return_value_policy::reference, "name"_a,
+           "is_executable"_a = false)
       .def("notifyStart",
            [](frontend::Execution& f, std::function<void()> cb) {
              f.notifyStart([cb = destroy_with_gil(cb)]() mutable {
                pybind11::gil_scoped_acquire acquire;
                (*cb)();
              });
-           })
+           },
+           "callback"_a)
       .def("getResult",
            [](frontend::Execution& f, std::function<void(frontend::Result)> cb,
               std::function<void()> err = nullptr) {
@@ -148,16 +154,17 @@ PYBIND11_MODULE(task_maker_frontend, m) {
 
   pybind11::class_<frontend::ExecutionGroup>(m, "ExecutionGroup")
       .def("addExecution", &frontend::ExecutionGroup::addExecution,
-           pybind11::return_value_policy::reference)
+           pybind11::return_value_policy::reference, "description"_a)
       .def("createFifo", &frontend::ExecutionGroup::createFifo,
            pybind11::return_value_policy::reference);
 
   pybind11::class_<frontend::Frontend>(m, "Frontend")
       .def(pybind11::init<std::string, int>())
       .def("provideFile", &frontend::Frontend::provideFile,
-           pybind11::return_value_policy::reference)
+           pybind11::return_value_policy::reference, "path"_a, "description"_a,
+           "is_executable"_a = false)
       .def("addExecution", &frontend::Frontend::addExecution,
-           pybind11::return_value_policy::reference)
+           pybind11::return_value_policy::reference, "description"_a)
       .def("addExecutionGroup", &frontend::Frontend::addExecutionGroup,
            pybind11::return_value_policy::reference)
       .def("evaluate", &frontend::Frontend::evaluate,
