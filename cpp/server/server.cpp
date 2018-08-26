@@ -64,7 +64,7 @@ kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
         std::move(dependencies)
             .Finalize()
             .then(
-                [this]() {
+                [this]() -> kj::Promise<void> {
                   request_.initProcesses(executions_.size());
                   for (size_t i = 0; i < executions_.size(); i++) {
                     executions_[i]->prepareRequest();
@@ -72,13 +72,14 @@ kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
                         i, executions_[i]->request_);
                   }
                   KJ_LOG(INFO, "Execution group " + description_, request_);
+                  return kj::READY_NOW;
                 },
-                [this](kj::Exception exc) {
+                [this](kj::Exception exc) -> kj::Promise<void> {
                   start_.fulfiller->reject(kj::cp(exc));
                   for (auto ex : executions_) {
                     ex->onDependenciesFailure(kj::cp(exc));
                   }
-                  kj::throwRecoverableException(std::move(exc));
+                  return kj::Promise<void>(std::move(exc));
                 })
             .eagerlyEvaluate(nullptr)
             .then([this]() mutable {
@@ -129,7 +130,7 @@ kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
                         for (auto ex : executions_) {
                           ex->finish_promise_.fulfiller->reject(kj::cp(exc));
                         }
-                        kj::throwRecoverableException(std::move(exc));
+                        return kj::Promise<void>(std::move(exc));
                       })
                   .eagerlyEvaluate(nullptr);
             })
