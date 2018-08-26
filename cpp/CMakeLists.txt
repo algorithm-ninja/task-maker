@@ -7,6 +7,8 @@ add_library(cpp_util
   util/sha256.cpp
   util/which.cpp
   util/flags.cpp
+  util/union_promise.cpp
+  util/misc.cpp
 )
 target_include_directories(cpp_util PUBLIC .)
 target_link_libraries(cpp_util

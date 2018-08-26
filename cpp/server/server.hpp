@@ -4,8 +4,8 @@
 #include "capnp/server.capnp.h"
 #include "server/cache.hpp"
 #include "server/dispatcher.hpp"
-#include "util/misc.hpp"
 #include "util/sha256.hpp"
+#include "util/union_promise.hpp"
 
 #include <capnp/message.h>
 #include <unordered_map>
