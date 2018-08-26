@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 
 # enable discovery of capnp folder and installed venv
-from task_maker.config import Config
 from task_maker.syspath_patch import patch_sys_path
 
-patch_sys_path()
+patch_sys_path()  # noqa
 
 import os.path
 
-from task_maker.task_maker_frontend import Frontend
-
-from task_maker.formats import ioi_format, tm_format
 from task_maker.args import get_parser, TaskFormat
+from task_maker.config import Config
 from task_maker.detect_format import find_task_dir
+from task_maker.formats import ioi_format, tm_format
 from task_maker.languages import LanguageManager
+from task_maker.manager import get_frontend, spawn_server, spawn_worker
 
 
 def ioi_format_clean():
@@ -24,24 +23,15 @@ def tm_format_clean():
     tm_format.clean()
 
 
-def main() -> None:
+def main():
     config = Config(get_parser().parse_args())
+
+    if config.run_server:
+        return spawn_server(config)
+    if config.run_worker:
+        return spawn_worker(config)
+
     LanguageManager.load_languages()
-
-    # if args.run_manager is not None:
-    #     became_manager(args)
-    # if args.run_server is not None:
-    #     became_server(args)
-    # if args.run_worker is not None:
-    #     became_worker(args)
-
-    # if args.kill_manager:
-    #     quit_manager(args, True)
-    # if args.quit_manager:
-    #     quit_manager(args, False)
-    # if args.kill_manager or args.quit_manager:
-    #     return
-
     task_dir, format = find_task_dir(config.task_dir, config.max_depth,
                                      config.format)
     if not format:
@@ -61,7 +51,7 @@ def main() -> None:
             raise ValueError("Format %s not supported" % format)
         return
 
-    frontend = Frontend(config.host, config.port)
+    frontend = get_frontend(config)
 
     if format == TaskFormat.IOI:
         task, solutions = ioi_format.get_request(config)

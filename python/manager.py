@@ -1,11 +1,14 @@
 #!/usr/bin/python3
 
 import os.path
+import shlex
 import subprocess
 import time
 
-import grpc
-import manager_pb2_grpc
+from task_maker.config import Config
+from task_maker.task_maker_frontend import Frontend
+
+SERVER_SPAWN_TIME = 1
 
 
 def get_task_maker_path():
@@ -14,50 +17,35 @@ def get_task_maker_path():
     return os.path.abspath(task_maker)
 
 
-def spawn_manager(port: int) -> None:
-    manager = get_task_maker_path()
+def spawn_backend(type: str, args: str, daemonize: bool):
+    task_maker = get_task_maker_path()
+    args = [type] + shlex.split(args)
+    if daemonize:
+        args.insert(0, "--daemon")
+        streams = subprocess.DEVNULL
+    else:
+        streams = None
     subprocess.run(
-        [manager, "manager", "--port",
-         str(port), "--daemon"],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL)
+        [task_maker] + args,
+        stdin=streams,
+        stdout=streams,
+        stderr=streams)
 
 
-def get_manager(args):
-    manager_spawned = False
-    max_attempts = 10
-    connect_timeout = 1
-    for attempt in range(max_attempts):
-        channel = grpc.insecure_channel("127.0.0.1:" + str(args.manager_port))
-        ready_future = grpc.channel_ready_future(channel)
-        try:
-            ready_future.result(timeout=connect_timeout)
-        except grpc.FutureTimeoutError:
-            if not manager_spawned:
-                print("Spawning manager...")
-                spawn_manager(args.manager_port)
-                manager_spawned = True
-            time.sleep(0.5)
-        else:
-            return manager_pb2_grpc.TaskMakerManagerStub(channel)
-    raise RuntimeError("Failed to spawn the manager")
+def spawn_server(config: Config):
+    spawn_backend("server", config.server_args, not config.run_server)
 
 
-def became_manager(args):
-    print("Spawning manager")
-    manager_args = args.run_manager
-    os.execv(get_task_maker_path(),
-             ["task-maker", "manager", "--port", "7071"] + manager_args)
+def spawn_worker(config: Config):
+    spawn_backend("worker", config.worker_args, not config.run_worker)
 
 
-def became_server(args):
-    print("Spawning server")
-    server_args = args.run_server
-    os.execv(get_task_maker_path(), ["task-maker", "server"] + server_args)
-
-
-def became_worker(args):
-    print("Spawning worker")
-    worker_args = args.run_worker
-    os.execv(get_task_maker_path(), ["task-maker", "worker"] + worker_args)
+def get_frontend(config: Config) -> Frontend:
+    try:
+        return Frontend(config.host, config.port)
+    except:
+        print("Spawning server and workers...")
+        spawn_server(config)
+        time.sleep(SERVER_SPAWN_TIME)
+        spawn_worker(config)
+        return Frontend(config.host, config.port)

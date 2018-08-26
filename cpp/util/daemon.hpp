@@ -10,7 +10,7 @@
 
 namespace util {
 
-inline void daemonize(std::string pidfile) {
+inline void daemonize(std::string scope, std::string pidfile) {
   // first fork
   pid_t pid = fork();
   if (pid == -1) {
@@ -38,17 +38,10 @@ inline void daemonize(std::string pidfile) {
 
   umask(0);
 
-  // go to the root in order to avoid that the daemon involuntarily blocks mount
-  // points from being unmounted
-  if (chdir("/") == -1) {
-    perror("chdir");
-    exit(1);
-  }
-
   // save the pid to a pidfile
   if (pidfile.empty()) {
     uid_t uid = getuid();
-    pidfile = "/tmp/task-maker-manager-" + std::to_string(uid) + ".pid";
+    pidfile = "/tmp/task-maker-" + scope + "-" + std::to_string(uid) + ".pid";
   }
 
   remove(pidfile.c_str());

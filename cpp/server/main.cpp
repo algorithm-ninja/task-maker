@@ -12,7 +12,7 @@
 namespace server {
 kj::MainBuilder::Validity Main::Run() {
   if (Flags::daemon) {
-    util::daemonize(Flags::pidfile);
+    util::daemonize("server", Flags::pidfile);
   }
   capnp::EzRpcServer server(kj::heap<server::Server>(), Flags::listen_address,
                             Flags::port);

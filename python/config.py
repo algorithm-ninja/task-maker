@@ -21,8 +21,10 @@ class Config:
 
         # remote group
         self.server = args.server  # type: str
-        # self.run_server = args.run_server  # type: bool
-        # self.run_worker = args.run_worker  # type: bool
+        self.run_server = args.run_server  # type: bool
+        self.run_worker = args.run_worker  # type: bool
+        self.server_args = args.server_args  # type: str
+        self.worker_args = args.worker_args  # type: str
         server_addr = args.server.split(":")
         if len(server_addr) == 1:
             self.host, self.port = server_addr[0], 7071

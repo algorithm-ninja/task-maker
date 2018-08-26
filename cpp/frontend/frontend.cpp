@@ -73,10 +73,17 @@ void File::getContentsToFile(const std::string& path, bool overwrite,
 
 Frontend::Frontend(std::string server, int port)
     : client_(server, port),
-      frontend_context_(client_.getMain<capnproto::MainServer>()
-                            .registerFrontendRequest()
-                            .send()
-                            .then([](auto res) { return res.getContext(); })),
+      frontend_context_(
+          client_.getMain<capnproto::MainServer>()
+              .registerFrontendRequest()
+              .send()
+              .then([](auto res) { return res.getContext(); },
+                    [](auto exc)
+                        -> kj::Promise<capnproto::FrontendContext::Client> {
+                      kj::throwRecoverableException(kj::cp(exc));
+                      return std::move(exc);
+                    })
+              .wait(client_.getWaitScope())),
       finish_builder_(false),
       stop_request_(kj::READY_NOW) {}
 

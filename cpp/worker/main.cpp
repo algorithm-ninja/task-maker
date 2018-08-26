@@ -13,10 +13,13 @@
 namespace worker {
 kj::MainBuilder::Validity Main::Run() {
   if (Flags::daemon) {
-    util::daemonize(Flags::pidfile);
+    util::daemonize("worker", Flags::pidfile);
   }
   if (Flags::server == "") {
     return "You need to specify a server!";
+  }
+  if (!Flags::num_cores) {
+    Flags::num_cores = std::thread::hardware_concurrency();
   }
   Manager manager(Flags::server, Flags::port, Flags::num_cores,
                   Flags::pending_requests, Flags::name);

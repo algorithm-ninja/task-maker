@@ -31,7 +31,6 @@ class Arch(Enum):
     I686 = 2
 
 
-
 for cls in [UIS, CacheMode, TaskFormat, Arch]:
 
     def from_string(cls, name: str):
@@ -107,16 +106,24 @@ def add_remote_group(parser: argparse.ArgumentParser):
         default="localhost:7071")
     group.add_argument(
         "--run-server",
-        action="store",
-        nargs=argparse.REMAINDER,
+        action="store_true",
         help="Run the server in foreground instead of running a task",
-        default=None)
+        default=False)
     group.add_argument(
         "--run-worker",
-        action="store",
-        nargs=argparse.REMAINDER,
+        action="store_true",
         help="Run a worker in foreground instead of running a task",
-        default=None)
+        default=False)
+    group.add_argument(
+        "--server-args",
+        action="store",
+        help="Arguments to pass to the server if it's to be spawned",
+        default="--port=7071")
+    group.add_argument(
+        "--worker-args",
+        action="store",
+        help="Arguments to pass to the worker if it's to be spawned",
+        default="--name=local --server=localhost:7071")
 
 
 def add_execution_group(parser: argparse.ArgumentParser):
