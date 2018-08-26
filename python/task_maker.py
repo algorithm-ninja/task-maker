@@ -6,6 +6,8 @@ from task_maker.syspath_patch import patch_sys_path
 patch_sys_path()  # noqa
 
 import os.path
+import signal
+from typing import Any
 
 from task_maker.args import get_parser, TaskFormat
 from task_maker.config import Config
@@ -13,14 +15,6 @@ from task_maker.detect_format import find_task_dir
 from task_maker.formats import ioi_format, tm_format
 from task_maker.languages import LanguageManager
 from task_maker.manager import get_frontend, spawn_server, spawn_worker
-
-
-def ioi_format_clean():
-    ioi_format.clean()
-
-
-def tm_format_clean():
-    tm_format.clean()
 
 
 def main():
@@ -42,9 +36,9 @@ def main():
 
     if config.clean:
         if format == TaskFormat.IOI:
-            ioi_format_clean()
+            ioi_format.clean()
         elif format == TaskFormat.TM:
-            tm_format_clean()
+            tm_format.clean()
         # elif format == "terry":
         #     terry_format_clean(args)
         else:
@@ -52,6 +46,12 @@ def main():
         return
 
     frontend = get_frontend(config)
+
+    def stop_server(signum: int, _: Any) -> None:
+        frontend.stopEvaluation()
+
+    signal.signal(signal.SIGINT, stop_server)
+    signal.signal(signal.SIGTERM, stop_server)
 
     if format == TaskFormat.IOI:
         task, solutions = ioi_format.get_request(config)
@@ -66,20 +66,6 @@ def main():
     #     ]
     else:
         raise ValueError("Format %s not supported" % format)
-
-    # import jsonpickle
-    # import json
-    # print(json.dumps(json.loads(jsonpickle.dumps(task)), indent=4))
-
-    #
-    # def stop_server(signum: int, _: Any) -> None:
-    #     if eval_id:
-    #         ui.stop("Waiting the manager to complete the last job")
-    #         manager.Stop(StopRequest(evaluation_id=eval_id))
-    #     ui.fatal_error("Aborted with sig%d" % signum)
-    #
-    # signal.signal(signal.SIGINT, stop_server)
-    # signal.signal(signal.SIGTERM, stop_server)
 
 
 if __name__ == '__main__':
