@@ -37,14 +37,17 @@ HandleRequest(capnproto::Evaluator::Client evaluator,
 
 kj::Promise<void> Dispatcher::AddEvaluator(
     capnproto::Evaluator::Client evaluator) {
-  if (requests_.empty()) {
-    auto evaluator_promise = kj::newPromiseAndFulfiller<void>();
-    evaluators_.emplace_back(evaluator);
-    fulfillers_.push_back(std::move(evaluator_promise.fulfiller));
-    return std::move(evaluator_promise.promise);
-  }
-  auto request_info = std::move(requests_.back());
-  requests_.pop_back();
+  std::remove_reference_t<decltype(requests_.back())> request_info;
+  do {
+    if (requests_.empty()) {
+      auto evaluator_promise = kj::newPromiseAndFulfiller<void>();
+      evaluators_.emplace_back(evaluator);
+      fulfillers_.push_back(std::move(evaluator_promise.fulfiller));
+      return std::move(evaluator_promise.promise);
+    }
+    request_info = std::move(requests_.back());
+    requests_.pop_back();
+  } while (*std::get<3>(request_info));
   auto p = HandleRequest(evaluator, std::get<0>(request_info));
   // Signal execution started
   if (std::get<2>(request_info)) {
@@ -63,12 +66,13 @@ kj::Promise<void> Dispatcher::AddEvaluator(
 
 kj::Promise<capnp::Response<capnproto::Evaluator::EvaluateResults>>
 Dispatcher::AddRequest(capnproto::Request::Reader request,
-                       kj::Own<kj::PromiseFulfiller<void>> fulfiller) {
+                       kj::Own<kj::PromiseFulfiller<void>> fulfiller,
+                       std::shared_ptr<bool>& canceled) {
   if (evaluators_.empty()) {
     auto request_promise = kj::newPromiseAndFulfiller<
         capnp::Response<capnproto::Evaluator::EvaluateResults>>();
     requests_.emplace_back(request, std::move(request_promise.fulfiller),
-                           std::move(fulfiller));
+                           std::move(fulfiller), canceled);
     return std::move(request_promise.promise);
   }
   auto evaluator = std::move(evaluators_.back());

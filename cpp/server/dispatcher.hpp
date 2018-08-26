@@ -2,6 +2,7 @@
 #define SERVER_DISPATCHER_HPP
 
 #include <kj/async.h>
+#include <memory>
 #include <vector>
 #include "capnp/evaluation.capnp.h"
 
@@ -9,15 +10,17 @@ namespace server {
 
 class Dispatcher {
   template <typename T, typename U>
-  using Queue = std::vector<std::tuple<T, kj::Own<kj::PromiseFulfiller<U>>,
-                                       kj::Own<kj::PromiseFulfiller<void>>>>;
+  using Queue = std::vector<
+      std::tuple<T, kj::Own<kj::PromiseFulfiller<U>>,
+                 kj::Own<kj::PromiseFulfiller<void>>, std::shared_ptr<bool>>>;
 
  public:
   kj::Promise<void> AddEvaluator(capnproto::Evaluator::Client evaluator)
       KJ_WARN_UNUSED_RESULT;
   kj::Promise<capnp::Response<capnproto::Evaluator::EvaluateResults>>
   AddRequest(capnproto::Request::Reader request,
-             kj::Own<kj::PromiseFulfiller<void>> notify) KJ_WARN_UNUSED_RESULT;
+             kj::Own<kj::PromiseFulfiller<void>> notify,
+             std::shared_ptr<bool>& canceled) KJ_WARN_UNUSED_RESULT;
 
  private:
   // TODO: I could not make a Queue<Evaluator, void> work, for some reason

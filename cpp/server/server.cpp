@@ -25,8 +25,11 @@ void ExecutionGroup::Register(Execution* ex) { executions_.push_back(ex); }
 void ExecutionGroup::setExclusive() { request_.setExclusive(true); }
 void ExecutionGroup::disableCache() { cache_enabled_ = false; }
 kj::Promise<void> ExecutionGroup::notifyStart() {
-  return forked_start_.addBranch().then(
-      [this]() { KJ_LOG(INFO, "Execution group " + description_, "Started"); });
+  return forked_start_.addBranch()
+      .then([this]() {
+        KJ_LOG(INFO, "Execution group " + description_, "Started");
+      })
+      .exclusiveJoin(frontend_context_.forked_early_stop_.addBranch());
 }
 
 kj::Promise<void> ExecutionGroup::addExecution(AddExecutionContext context) {
@@ -103,7 +106,8 @@ kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
               }
 
               return frontend_context_.dispatcher_
-                  .AddRequest(request_, std::move(start_.fulfiller))
+                  .AddRequest(request_, std::move(start_.fulfiller),
+                              frontend_context_.canceled_)
                   .then(
                       [this](
                           capnp::Response<capnproto::Evaluator::EvaluateResults>
@@ -134,6 +138,7 @@ kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
                       })
                   .eagerlyEvaluate(nullptr);
             })
+            .exclusiveJoin(frontend_context_.forked_early_stop_.addBranch())
             .eagerlyEvaluate(nullptr);
     forked_done_ = done_.fork();
   }
@@ -406,7 +411,8 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
   frontend_context_.scheduled_tasks_++;
   frontend_context_.builder_.AddPromise(std::move(finish_promise_.promise),
                                         description_ + " finish_promise_");
-  return group_.Finalize(this);
+  return group_.Finalize(this).exclusiveJoin(
+      frontend_context_.forked_early_stop_.addBranch());
 }
 
 kj::Promise<void> FrontendContext::provideFile(ProvideFileContext context) {
@@ -483,7 +489,7 @@ kj::Promise<void> FrontendContext::startEvaluation(
       .Finalize()
       .then([]() { KJ_LOG(INFO, "Evaluation success"); },
             [](kj::Exception ex) { KJ_LOG(INFO, "Evaluation killed by", ex); })
-      .exclusiveJoin(std::move(evaluation_early_stop_.promise))
+      .exclusiveJoin(forked_early_stop_.addBranch())
       .eagerlyEvaluate(nullptr);
 }
 kj::Promise<void> FrontendContext::getFileContents(
@@ -510,20 +516,25 @@ kj::Promise<void> FrontendContext::getFileContents(
                 });
       });
   auto send_file_ptr = send_file.get();
-  return file_info_[id].forked_promise.addBranch().then(
-      [send_file = std::move(send_file)]() mutable { return (*send_file)(); },
-      [send_file = send_file_ptr, this, id](kj::Exception exc) mutable {
-        auto hash = file_info_[id].hash;
-        if (hash.isZero()) {
-          kj::throwRecoverableException(std::move(exc));
-        }
-        return (*send_file)();
-      });
+  return file_info_[id]
+      .forked_promise.addBranch()
+      .then([send_file =
+                 std::move(send_file)]() mutable { return (*send_file)(); },
+            [send_file = send_file_ptr, this, id](kj::Exception exc) mutable {
+              auto hash = file_info_[id].hash;
+              if (hash.isZero()) {
+                kj::throwRecoverableException(std::move(exc));
+              }
+              return (*send_file)();
+            })
+      .exclusiveJoin(forked_early_stop_.addBranch());
 }
 kj::Promise<void> FrontendContext::stopEvaluation(
     StopEvaluationContext context) {
   KJ_LOG(INFO, "Early stop");
-  evaluation_early_stop_.fulfiller->fulfill();
+  *canceled_ = true;
+  evaluation_early_stop_.fulfiller->reject(
+      KJ_EXCEPTION(FAILED, "Evaluation stopped"));
   return kj::READY_NOW;
 }
 

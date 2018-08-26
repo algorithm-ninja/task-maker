@@ -8,6 +8,7 @@
 #include "util/union_promise.hpp"
 
 #include <capnp/message.h>
+#include <memory>
 #include <unordered_map>
 
 namespace server {
@@ -112,6 +113,7 @@ class FrontendContext : public capnproto::FrontendContext::Server {
       : dispatcher_(dispatcher),
         builder_(false),
         cache_manager_(cache_manager) {}
+  ~FrontendContext() { *canceled_ = true; }
   kj::Promise<void> provideFile(ProvideFileContext context);
   kj::Promise<void> addExecution(AddExecutionContext context);
   kj::Promise<void> addExecutionGroup(AddExecutionGroupContext context);
@@ -132,10 +134,13 @@ class FrontendContext : public capnproto::FrontendContext::Server {
       evaluation_start_.promise.fork();
   kj::PromiseFulfillerPair<void> evaluation_early_stop_ =
       kj::newPromiseAndFulfiller<void>();
+  kj::ForkedPromise<void> forked_early_stop_ =
+      evaluation_early_stop_.promise.fork();
   uint32_t ready_tasks_ = 0;
   uint32_t scheduled_tasks_ = 0;
   CacheManager& cache_manager_;
   std::vector<kj::Own<ExecutionGroup>> groups_;
+  std::shared_ptr<bool> canceled_ = std::make_shared<bool>(false);
 };
 
 class Server : public capnproto::MainServer::Server {
