@@ -5,9 +5,9 @@ from task_maker.args import CacheMode, Arch
 from task_maker.config import Config
 from typing import Optional, Dict, List
 
-from task_maker.dependency_finder import find_dependency, Dependency
 from task_maker.detect_exe import get_exeflags, EXEFLAG_NONE
-from task_maker.language import Language, from_file as language_from_file, need_compilation
+from task_maker.languages import LanguageManager, Language, CommandType, \
+    GraderInfo, Dependency
 
 
 class SourceFile:
@@ -16,20 +16,20 @@ class SourceFile:
             path: str,
             write_to: Optional[str] = None,
             target_arch=Arch.DEFAULT,
-            grader_map: Dict[Language, "GraderInfo"] = dict()) -> "SourceFile":
+            grader_map: Dict[Language, GraderInfo] = dict()) -> "SourceFile":
         old_path = path
         if not os.path.exists(path):
             path = find_executable(path)
         if not path:
             raise ValueError("Cannot find %s" % old_path)
-        language = language_from_file(path)
-        source_file = SourceFile(path, find_dependency(path), language, None,
+        language = LanguageManager.from_file(path)
+        source_file = SourceFile(path, language.get_dependencies(path), language, None,
                                  target_arch, grader_map.get(language))
         if write_to:
             if not os.path.isabs(write_to):
                 write_to = os.path.join(os.getcwd(), write_to)
             source_file.write_bin_to = write_to
-        if not need_compilation(source_file.language):
+        if not language.need_compilation:
             if not is_executable(source_file.path):
                 raise ValueError("The file %s is not an executable. "
                                  "Please check the shebang (#!)" % path)
@@ -47,14 +47,13 @@ class SourceFile:
         self.name = os.path.basename(path)
         self.exe_name = os.path.splitext(
             os.path.basename(write_bin_to or path))[0]
-        self.need_compilation = need_compilation(self.language)
         self.prepared = False
 
     # prepare the source file for execution, compile the source if needed
     def prepare(self, frontend, config: Config):
         if self.prepared:
             return
-        if self.need_compilation:
+        if self.language.need_compilation:
             self._compile(frontend, config)
         else:
             self._not_compile(frontend)
@@ -63,53 +62,23 @@ class SourceFile:
     def _compile(self, frontend, config: Config):
         source = frontend.provideFile(self.path,
                                       "Source file for " + self.name, False)
-        if self.language == Language.CPP:
-            compiler = "c++"
-            args = [
-                "-O2", "-std=c++14", "-DEVAL", "-Wall", "-o", self.exe_name,
-                self.name
-            ]
-            if self.grader:
-                args += [f.name for f in self.grader.files]
-            if self.target_arch == Arch.I686:
-                args.append("-m32")
-        elif self.language == Language.C:
-            compiler = "cc"
-            args = [
-                "-O2", "-std=c11", "-DEVAL", "-Wall", "-o", self.exe_name,
-                self.name
-            ]
-            if self.grader:
-                args += [f.name for f in self.grader.files]
-            if self.target_arch == Arch.I686:
-                args.append("-m32")
-        elif self.language == Language.PASCAL:
-            compiler = "fpc"
-            args = ["-O2", "-XS", "-dEVAL", "-o", self.exe_name, self.name]
-            if self.grader:
-                args += [f.name for f in self.grader.files]
-            if self.target_arch != Arch.DEFAULT:
-                raise NotImplementedError(
-                    "Cannot compile %s: targetting Pascal executables is not supported yet"
-                    % self.path)
-        elif self.language == Language.RUST:
-            compiler = "rustc"
-            args = ["-O", "--cfg", "EVAL", "-o", self.exe_name, self.name]
-            if self.target_arch != Arch.DEFAULT:
-                raise NotImplementedError(
-                    "Cannot compile %s: targetting Rust executables is not supported yet"
-                    % self.path)
-        # TODO add language plugin system
-        else:
-            raise NotImplementedError(
-                "Cannot compile %s: unknown language" % self.path)
+        compilation_files = [self.name]
+        if self.grader:
+            compilation_files += [d.name for d in self.grader.files]
+        cmd_type, cmd = self.language.get_compilation_command(
+            compilation_files, self.exe_name, True, self.target_arch)
+
+        if cmd_type != CommandType.SYSTEM:
+            raise ValueError("Local file compilers are not supported yet")
+        if not cmd:
+            raise ValueError("Unexpected empty compiler command")
 
         self.compilation = frontend.addExecution(
             "Compilation of %s" % self.name)
         if config.cache == CacheMode.NOTHING:
             self.compilation.disableCache()
-        self.compilation.setExecutablePath(compiler)
-        self.compilation.setArgs(args)
+        self.compilation.setExecutablePath(cmd[0])
+        self.compilation.setArgs(cmd[1:])
         self.compilation.addInput(self.name, source)
         for dep in self.dependencies:
             self.compilation.addInput(
@@ -131,9 +100,18 @@ class SourceFile:
 
     def execute(self, frontend, description: str, args: List[str]):
         execution = frontend.addExecution(description)
-        execution.setExecutable(self.exe_name, self.executable)
-        execution.setArgs(args)
-        if not self.need_compilation:
+        cmd_type, cmd = self.language.get_execution_command(
+            self.exe_name, args, self.name)
+        execution.setArgs(cmd[1:])
+        # if the command type is local_file then the executable compiled/copied
+        # otherwise an external command is used to run the program, so it needs
+        # to be copied in the sandbox
+        if cmd_type == CommandType.LOCAL_FILE:
+            execution.setExecutable(cmd[0], self.executable)
+        else:
+            execution.setExecutablePath(cmd[0])
+            execution.addInput(self.exe_name, self.executable)
+        if not self.language.need_compilation:
             for dep in self.dependencies:
                 execution.addInput(
                     dep.name, frontend.provideFile(dep.path, dep.path, False))

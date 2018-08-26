@@ -13,6 +13,7 @@ from task_maker.task_maker_frontend import Frontend
 from task_maker.formats import ioi_format, tm_format
 from task_maker.args import get_parser, TaskFormat
 from task_maker.detect_format import find_task_dir
+from task_maker.languages import LanguageManager
 
 
 def ioi_format_clean():
@@ -25,6 +26,7 @@ def tm_format_clean():
 
 def main() -> None:
     config = Config(get_parser().parse_args())
+    LanguageManager.load_languages()
 
     # if args.run_manager is not None:
     #     became_manager(args)

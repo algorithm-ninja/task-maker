@@ -193,7 +193,8 @@ class SolutionStatus:
                 testcase_status.message = \
                     "Failed to check: invalid score: {}".format(stdout)
                 self.interface.add_error(
-                    "Invalid output '{}' for checker at testcase #{} for solution {}".
+                    "Invalid output '{}' for checker "
+                    "at testcase #{} for solution {}".
                     format(stdout, testcase, self.source_file.name))
             return
         if not 0.0 <= score <= 1.0:
@@ -201,7 +202,8 @@ class SolutionStatus:
             testcase_status.message = \
                 "Failed to check: invalid score: {}".format(stdout)
             self.interface.add_error(
-                "Invalid score '{}' from checker at testcase #{} for solution {}".
+                "Invalid score '{}' from checker "
+                "at testcase #{} for solution {}".
                 format(stdout, testcase, self.source_file.name))
             return
         self.testcase_results[subtask][testcase].score = score
@@ -272,9 +274,9 @@ class IOIUIInterface:
         name = source_file.name
         log_prefix = "Compilation of non-solution {} ".format(name).ljust(50)
         self.non_solutions[name] = SourceFileCompilationResult(
-            source_file.need_compilation)
+            source_file.language.need_compilation)
         self.printer.text(log_prefix + "WAITING\n")
-        if source_file.need_compilation:
+        if source_file.language.need_compilation:
 
             def notifyStartCompiltion():
                 self.printer.text(log_prefix + "START\n")
@@ -312,12 +314,12 @@ class IOIUIInterface:
         name = source_file.name
         log_prefix = "Compilation of solution {} ".format(name).ljust(50)
         self.solutions[name] = SourceFileCompilationResult(
-            source_file.need_compilation)
+            source_file.language.need_compilation)
         self.testing[name] = SolutionStatus(source_file, self.task, self,
                                             self.testcases)
         self.printer.text(log_prefix + "WAITING\n")
 
-        if source_file.need_compilation:
+        if source_file.language.need_compilation:
 
             def notifyStartCompiltion():
                 self.printer.text(log_prefix + "START\n")

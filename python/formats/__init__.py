@@ -4,10 +4,8 @@ import os.path
 from enum import Enum
 from typing import List, Dict, Optional, Union, Any
 
-from task_maker.dependency_finder import Dependency, find_dependency
 from task_maker.source_file import SourceFile
-from task_maker.language import valid_extensions, GraderInfo
-from task_maker.language import grader_from_file
+from task_maker.languages import GraderInfo, LanguageManager, Dependency
 
 VALIDATION_INPUT_NAME = "tm_input_file"
 
@@ -177,7 +175,7 @@ def list_files(patterns: List[str],
              for _file in glob.glob(pattern)]  # type: List[str]
     return [
         res for res in files if res not in exclude
-        and os.path.splitext(res)[1] in valid_extensions()
+        and os.path.splitext(res)[1] in LanguageManager.valid_extensions()
     ]
 
 
@@ -231,9 +229,10 @@ def gen_grader_map(graders: List[str], task: Task):
 
     for grader in graders:
         name = os.path.basename(grader)
+        language = LanguageManager.from_file(grader)
         info = GraderInfo(
-            grader_from_file(grader),
-            [Dependency(name, grader)] + find_dependency(grader))
+            language,
+            [Dependency(name, grader)] + language.get_dependencies(grader))
         grader_map[info.for_language] = info
         task.grader_info.extend([info])
     return grader_map

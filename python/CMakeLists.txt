@@ -11,7 +11,7 @@ find_program(RM_EXE NAMES rm)
 
 # Sources
 file(GLOB SOURCES_PY "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
-set(PY_MODULES formats tests uis)
+set(PY_MODULES formats tests uis languages)
 foreach(module_name ${PY_MODULES})
   file(GLOB SOURCES_PY_${module_name} "${CMAKE_CURRENT_SOURCE_DIR}/${module_name}/*.py")
 endforeach()

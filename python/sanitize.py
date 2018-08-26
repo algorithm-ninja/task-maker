@@ -3,7 +3,7 @@ import os.path
 import string
 from typing import List
 
-from task_maker.dependency_finder import Dependency
+from task_maker.languages import Dependency
 
 # TODO the new sandbox supports subfolders, so it's not needed to flatten the
 # tree
