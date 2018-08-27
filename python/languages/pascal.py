@@ -25,9 +25,11 @@ class LanguagePascal(CompiledLanguage):
                 "Cannot compile %s: "
                 "targetting Pascal executables is not supported yet"
                 % source_filenames[0])
-        cmd += ["-O2", "-XS", "-o", exe_name]
+        cmd += ["-Fe/dev/stderr"]  # fpc emits errors on stdout by default
+        cmd += ["-O2", "-XS", "-o" + exe_name]
         cmd += source_filenames
         return CommandType.SYSTEM, cmd
+
 
 def register():
     LanguageManager.register_language(LanguagePascal())
