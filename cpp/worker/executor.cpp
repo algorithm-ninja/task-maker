@@ -134,6 +134,8 @@ namespace worker {
 
 kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
                                     capnproto::Result::Builder result_) {
+  bool scheduled = false;
+  KJ_DEFER(if (!scheduled) manager_.CancelPending());
   for (auto request : request_.getProcesses()) {
     auto executable = request.getExecutable();
     for (const auto& input : request.getInputFiles()) {
@@ -290,115 +292,125 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
     sandbox::ExecutionOptions::stringcpy(exec_options.stderr_file, stderr_path);
   }
 
-  return std::move(builder).Finalize().then([sandbox_dirs, exec_options_v,
-                                             request_, result_, stderr_paths,
-                                             stdout_paths, fail,
-                                             tmp = std::move(tmp),
-                                             num_processes, this]() mutable
-                                            -> kj::Promise<void> {
-    KJ_LOG(INFO, "Files loaded, starting sandbox setup");
-    for (size_t i = 0; i < request_.getProcesses().size(); i++) {
-      auto request = request_.getProcesses()[i];
-      auto executable = request.getExecutable();
-      if (executable.isLocalFile()) {
-        auto local_file = executable.getLocalFile();
-        PrepareFile(util::File::JoinPath(sandbox_dirs[i], local_file.getName()),
-                    local_file.getHash(), true, cache_);
-      }
-      if (!util::SHA256_t(request.getStdin()).isZero()) {
-        auto stdin_path = util::File::JoinPath(tmp[i].Path(), "stdin");
-        PrepareFile(stdin_path, request.getStdin(), false, cache_);
-        sandbox::ExecutionOptions::stringcpy(exec_options_v[i].stdin_file,
-                                             stdin_path);
-      }
-      for (const auto& input : request.getInputFiles()) {
-        PrepareFile(util::File::JoinPath(sandbox_dirs[i], input.getName()),
-                    input.getHash(), input.getExecutable(), cache_);
-      }
-    }
+  scheduled = true;
+  return std::move(builder).Finalize().then(
+      [sandbox_dirs, exec_options_v, request_, result_, stderr_paths,
+       stdout_paths, fail, tmp = std::move(tmp), num_processes,
+       this]() mutable -> kj::Promise<void> {
+        KJ_LOG(INFO, "Files loaded, starting sandbox setup");
+        for (size_t i = 0; i < request_.getProcesses().size(); i++) {
+          auto request = request_.getProcesses()[i];
+          auto executable = request.getExecutable();
+          if (executable.isLocalFile()) {
+            auto local_file = executable.getLocalFile();
+            PrepareFile(
+                util::File::JoinPath(sandbox_dirs[i], local_file.getName()),
+                local_file.getHash(), true, cache_);
+          }
+          if (!util::SHA256_t(request.getStdin()).isZero()) {
+            auto stdin_path = util::File::JoinPath(tmp[i].Path(), "stdin");
+            PrepareFile(stdin_path, request.getStdin(), false, cache_);
+            sandbox::ExecutionOptions::stringcpy(exec_options_v[i].stdin_file,
+                                                 stdin_path);
+          }
+          for (const auto& input : request.getInputFiles()) {
+            PrepareFile(util::File::JoinPath(sandbox_dirs[i], input.getName()),
+                        input.getHash(), input.getExecutable(), cache_);
+          }
+        }
 
-    // Actual execution.
-    return manager_
-        .ScheduleTask(
-            request_.getExclusive() ? manager_.NumCores() : num_processes,
-            std::function<kj::Promise<kj::Array<sandbox::ExecutionInfo>>()>(
-                [this, exec_options_v, num_processes]() {
-                  kj::Vector<kj::Promise<sandbox::ExecutionInfo>> info_(
-                      num_processes);
+        // Actual execution.
+        return manager_
+            .ScheduleTask(
+                request_.getExclusive() ? manager_.NumCores() : num_processes,
+                std::function<kj::Promise<kj::Array<sandbox::ExecutionInfo>>()>(
+                    [this, exec_options_v, num_processes]() {
+                      kj::Vector<kj::Promise<sandbox::ExecutionInfo>> info_(
+                          num_processes);
+                      for (size_t i = 0; i < num_processes; i++) {
+                        info_.add(RunSandbox(
+                            exec_options_v[i],
+                            manager_.Client().getLowLevelIoProvider()));
+                      }
+                      return kj::joinPromises(info_.releaseAsArray());
+                    }))
+            .then(
+                [result_, exec_options_v, stdout_paths, stderr_paths, request_,
+                 sandbox_dirs, tmp = std::move(tmp), num_processes,
+                 this](kj::Array<sandbox::ExecutionInfo> outcomes) mutable {
+                  KJ_LOG(INFO, "Sandbox done, processing results");
                   for (size_t i = 0; i < num_processes; i++) {
-                    info_.add(
-                        RunSandbox(exec_options_v[i],
-                                   manager_.Client().getLowLevelIoProvider()));
-                  }
-                  return kj::joinPromises(info_.releaseAsArray());
-                }))
-        .then(
-            [result_, exec_options_v, stdout_paths, stderr_paths, request_,
-             sandbox_dirs, tmp = std::move(tmp), num_processes,
-             this](kj::Array<sandbox::ExecutionInfo> outcomes) mutable {
-              KJ_LOG(INFO, "Sandbox done, processing results");
-              for (size_t i = 0; i < num_processes; i++) {
-                auto result = result_.getProcesses()[i];
-                auto request = request_.getProcesses()[i];
-                auto& outcome = outcomes[i];
-                auto& stdout_path = stdout_paths[i];
-                auto& stderr_path = stderr_paths[i];
-                auto& sandbox_dir = sandbox_dirs[i];
-                // Resource usage.
-                auto resource_usage = result.initResourceUsage();
-                resource_usage.setCpuTime(outcome.cpu_time_millis / 1000.0);
-                resource_usage.setSysTime(outcome.sys_time_millis / 1000.0);
-                resource_usage.setWallTime(outcome.wall_time_millis / 1000.0);
-                resource_usage.setMemory(outcome.memory_usage_kb);
+                    auto result = result_.getProcesses()[i];
+                    auto request = request_.getProcesses()[i];
+                    auto& outcome = outcomes[i];
+                    auto& stdout_path = stdout_paths[i];
+                    auto& stderr_path = stderr_paths[i];
+                    auto& sandbox_dir = sandbox_dirs[i];
+                    // Resource usage.
+                    auto resource_usage = result.initResourceUsage();
+                    resource_usage.setCpuTime(outcome.cpu_time_millis / 1000.0);
+                    resource_usage.setSysTime(outcome.sys_time_millis / 1000.0);
+                    resource_usage.setWallTime(outcome.wall_time_millis /
+                                               1000.0);
+                    resource_usage.setMemory(outcome.memory_usage_kb);
 
-                auto limits = request.getLimits();
-                if (limits.getMemory() != 0 &&
-                    (uint64_t)outcome.memory_usage_kb >= limits.getMemory()) {
-                  result.getStatus().setMemoryLimit();
-                } else if (limits.getCpuTime() != 0 &&
-                           outcome.cpu_time_millis + outcome.sys_time_millis >=
-                               limits.getCpuTime() * 1000) {
-                  result.getStatus().setTimeLimit();
-                } else if (limits.getWallTime() != 0 &&
-                           outcome.wall_time_millis >=
-                               limits.getWallTime() * 1000) {
-                  result.getStatus().setWallLimit();
-                } else if (outcome.signal != 0) {
-                  result.getStatus().setSignal(outcome.signal);
-                } else if (outcome.status_code != 0) {
-                  result.getStatus().setReturnCode(outcome.status_code);
-                } else {
-                  result.getStatus().setSuccess();
-                }
-
-                // Output files.
-                RetrieveFile(stdout_path, result.initStdout(), cache_);
-                RetrieveFile(stderr_path, result.initStderr(), cache_);
-                auto output_names = request.getOutputFiles();
-                auto outputs = result.initOutputFiles(output_names.size());
-                for (size_t i = 0; i < request.getOutputFiles().size(); i++) {
-                  outputs[i].setName(output_names[i]);
-                  try {
-                    RetrieveFile(
-                        util::File::JoinPath(sandbox_dir, output_names[i]),
-                        outputs[i].initHash(), cache_);
-                  } catch (const std::system_error& exc) {
-                    if (exc.code().value() !=
-                        static_cast<int>(
-                            std::errc::no_such_file_or_directory)) {
-                      result.getStatus().setInternalError(exc.what());
+                    auto limits = request.getLimits();
+                    if (limits.getMemory() != 0 &&
+                        (uint64_t)outcome.memory_usage_kb >=
+                            limits.getMemory()) {
+                      result.getStatus().setMemoryLimit();
+                    } else if (limits.getCpuTime() != 0 &&
+                               outcome.cpu_time_millis +
+                                       outcome.sys_time_millis >=
+                                   limits.getCpuTime() * 1000) {
+                      result.getStatus().setTimeLimit();
+                    } else if (limits.getWallTime() != 0 &&
+                               outcome.wall_time_millis >=
+                                   limits.getWallTime() * 1000) {
+                      result.getStatus().setWallLimit();
+                    } else if (outcome.signal != 0) {
+                      result.getStatus().setSignal(outcome.signal);
+                    } else if (outcome.status_code != 0) {
+                      result.getStatus().setReturnCode(outcome.status_code);
                     } else {
-                      if (result.getStatus().isSuccess()) {
-                        result.getStatus().setMissingFiles();
+                      result.getStatus().setSuccess();
+                    }
+
+                    // Output files.
+                    RetrieveFile(stdout_path, result.initStdout(), cache_);
+                    RetrieveFile(stderr_path, result.initStderr(), cache_);
+                    auto output_names = request.getOutputFiles();
+                    auto outputs = result.initOutputFiles(output_names.size());
+                    for (size_t i = 0; i < request.getOutputFiles().size();
+                         i++) {
+                      outputs[i].setName(output_names[i]);
+                      try {
+                        RetrieveFile(
+                            util::File::JoinPath(sandbox_dir, output_names[i]),
+                            outputs[i].initHash(), cache_);
+                      } catch (const std::system_error& exc) {
+                        if (exc.code().value() !=
+                            static_cast<int>(
+                                std::errc::no_such_file_or_directory)) {
+                          result.getStatus().setInternalError(exc.what());
+                        } else {
+                          if (result.getStatus().isSuccess()) {
+                            result.getStatus().setMissingFiles();
+                          }
+                        }
                       }
                     }
                   }
-                }
-              }
-            },
-            [fail](kj::Exception exc) mutable { fail(exc.getDescription()); })
-        .eagerlyEvaluate(nullptr);
-  });
+                },
+                [fail](kj::Exception exc) mutable {
+                  fail(exc.getDescription());
+                })
+            .eagerlyEvaluate(nullptr);
+      },
+      [this](kj::Exception exc) -> kj::Promise<void> {
+        manager_.CancelPending();
+        return exc;
+      });
 }  // namespace executor
 
 }  // namespace worker

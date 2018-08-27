@@ -44,6 +44,7 @@ class Manager {
           });
     });
   }
+  void CancelPending();
 
   void OnDone();
 

@@ -47,4 +47,10 @@ void Manager::OnDone() {
     waiting_tasks_.pop();
   }
 }
+
+void Manager::CancelPending() {
+  pending_requests_--;
+  OnDone();
+}
+
 }  // namespace worker
