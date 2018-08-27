@@ -270,6 +270,7 @@ kj::Promise<void> Execution::notifyStart(NotifyStartContext context) {
 
 void Execution::addDependencies(util::UnionPromiseBuilder& dependencies) {
   auto add_dep = [&dependencies, this](uint32_t id) {
+    KJ_ASSERT(id != 0);
     frontend_context_.file_info_[id].dependencies_propagated_.AddPromise(
         dependencies.AddPromise(
             frontend_context_.file_info_[id].forked_promise.addBranch(),
@@ -293,6 +294,7 @@ void Execution::addDependencies(util::UnionPromiseBuilder& dependencies) {
 
 void Execution::prepareRequest() {
   auto get_hash = [this](uint32_t id, capnproto::SHA256::Builder builder) {
+    KJ_ASSERT(id != 0);
     auto hash = frontend_context_.file_info_[id].hash;
     KJ_ASSERT(!hash.isZero(), id);
     hash.ToCapnp(builder);
@@ -342,6 +344,7 @@ void Execution::processResult(
     KJ_FAIL_ASSERT(result.getStatus().getInternalError());
   }
   auto set_hash = [this, &result](uint32_t id, const util::SHA256_t& hash) {
+    KJ_ASSERT(id != 0);
     frontend_context_.file_info_[id].hash = hash;
     if (!result.getStatus().isSuccess()) {
       KJ_LOG(INFO, "Marking file as failed", id, description_);
@@ -395,12 +398,15 @@ void Execution::onDependenciesFailure(kj::Exception exc) {
   finish_promise_.fulfiller->reject(kj::cp(exc));
   auto mark_as_failed = [this](std::string name, int id) {
     KJ_LOG(INFO, description_, "Marking as failed", name, id);
+    KJ_ASSERT(id != 0);
     auto& ff = frontend_context_.file_info_[id].promise.fulfiller;
     if (ff)
       ff->reject(KJ_EXCEPTION(FAILED, "Dependency failed: " + description_));
   };
-  mark_as_failed("stdout", stdout_);
-  mark_as_failed("stdout", stderr_);
+  if (stdout_)
+    mark_as_failed("stdout", stdout_);
+  if (stderr_)
+    mark_as_failed("stdout", stderr_);
   for (auto f : outputs_) {
     mark_as_failed(f.first, f.second);
   }
@@ -421,6 +427,7 @@ kj::Promise<void> FrontendContext::provideFile(ProvideFileContext context) {
       AddFileInfo(last_file_id_, file_info_, context.getResults().initFile(),
                   context.getParams().getIsExecutable(), descr);
   KJ_LOG(INFO, "Generating file with id " + std::to_string(id), "" + descr);
+  KJ_ASSERT(id != 0);
   file_info_[id].provided = true;
   file_info_[id].hash = context.getParams().getHash();
   return kj::READY_NOW;
@@ -516,11 +523,13 @@ kj::Promise<void> FrontendContext::getFileContents(
                 });
       });
   auto send_file_ptr = send_file.get();
+  KJ_ASSERT(id != 0);
   return file_info_[id]
       .forked_promise.addBranch()
       .then([send_file =
                  std::move(send_file)]() mutable { return (*send_file)(); },
             [send_file = send_file_ptr, this, id](kj::Exception exc) mutable {
+              KJ_ASSERT(id != 0);
               auto hash = file_info_[id].hash;
               if (hash.isZero()) {
                 kj::throwRecoverableException(std::move(exc));
