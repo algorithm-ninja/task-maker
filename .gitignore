@@ -15,3 +15,5 @@ __pycache__/
 
 .idea
 cmake-build-debug/
+
+tags
