@@ -16,6 +16,11 @@ class ScoreMode(Enum):
     SUM = 2
 
 
+class TaskType(Enum):
+    Batch = 0
+    Communication = 1
+
+
 class Constraint:
     def __init__(self, name: str, lower_bound: Optional[float],
                  upper_bound: Optional[float], more_or_equal: bool,
@@ -131,7 +136,8 @@ class Task:
                  official_solution: Optional["SourceFile"],
                  grader_info: List[GraderInfo],
                  checker: Optional["SourceFile"], time_limit: float,
-                 memory_limit_kb: int, input_file: str, output_file: str):
+                 memory_limit_kb: int, input_file: str, output_file: str,
+                 task_type: TaskType):
         self.name = name
         self.title = title
         self.subtasks = subtasks
@@ -142,6 +148,7 @@ class Task:
         self.memory_limit_kb = memory_limit_kb
         self.input_file = input_file
         self.output_file = output_file
+        self.task_type = task_type
 
     def __repr__(self):
         return "<Task name=%s title=%s>" % (self.name, self.title)

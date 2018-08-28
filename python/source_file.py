@@ -98,8 +98,11 @@ class SourceFile:
         if self.write_bin_to and not config.dry_run:
             self.executable.getContentsToFile(self.write_bin_to, True, True)
 
-    def execute(self, frontend, description: str, args: List[str]):
-        execution = frontend.addExecution(description)
+    def execute(self, frontend, description: str, args: List[str], group=None):
+        if group:
+            execution = group.addExecution(description)
+        else:
+            execution = frontend.addExecution(description)
         cmd_type, cmd = self.language.get_execution_command(
             self.exe_name, args, self.name)
         execution.setArgs(cmd[1:])

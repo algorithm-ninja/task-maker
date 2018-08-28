@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from typing import List
 
-from task_maker.formats import Task
+from task_maker.formats import Task, TaskType
 from task_maker.printer import StdoutPrinter
 from task_maker.task_maker_frontend import ResultStatus
 from task_maker.uis import result_to_str
@@ -134,7 +134,8 @@ class IOIFinishUI:
                 if result.validation_result:
                     if result.validation_result.status == ResultStatus.SUCCESS:
                         self.printer.green("Validated")
-                        self.printer.text(" | ")
+                        if self.task.task_type != TaskType.Communication:
+                            self.printer.text(" | ")
                     else:
                         self.printer.red("Validation failed ")
                         self.printer.red(
@@ -180,18 +181,19 @@ class IOIFinishUI:
                 self.printer.text("{:>3}) ".format(tc_num))
                 if testcase.score == 0.0:
                     self.printer.red(
-                        "[{:.2}]".format(testcase.score), bold=False)
+                        "[{:.2f}]".format(testcase.score), bold=False)
                 elif testcase.score == 1.0:
                     self.printer.green(
-                        "[{:.2}]".format(testcase.score), bold=False)
+                        "[{:.2f}]".format(testcase.score), bold=False)
                 else:
                     self.printer.yellow(
-                        "[{:.2}]".format(testcase.score), bold=False)
+                        "[{:.2f}]".format(testcase.score), bold=False)
 
-                if testcase.result:
-                    used_time = testcase.result.resources.cpu_time + \
-                                testcase.result.resources.sys_time
-                    memory = testcase.result.resources.memory / 1024
+                if all(res for res in testcase.result):
+                    used_time = sum(r.resources.cpu_time + r.resources.sys_time
+                                    for r in testcase.result)
+                    memory = sum(r.resources.memory
+                                 for r in testcase.result) / 1024
                 else:
                     used_time = 0
                     memory = 0

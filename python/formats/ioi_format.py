@@ -4,6 +4,7 @@ import glob
 import os
 import shlex
 import yaml
+from task_maker.solution import Solution, BatchSolution, CommunicationSolution
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
@@ -14,7 +15,7 @@ from task_maker.uis.ioi_curses_ui import IOICursesUI
 from task_maker.uis.ioi import IOIUIInterface
 from task_maker.formats import ScoreMode, Subtask, TestCase, Task, \
     list_files, Validator, Generator, get_options, VALIDATION_INPUT_NAME, \
-    gen_grader_map, get_write_input_file, get_write_output_file
+    gen_grader_map, get_write_input_file, get_write_output_file, TaskType
 from task_maker.sanitize import sanitize_command
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import File, Frontend, Resources
@@ -163,7 +164,7 @@ def create_task_from_yaml(data: Dict[str, Any]) -> Task:
 
     task = Task(name, title, {}, None, [], None, time_limit, memory_limit,
                 input_file if input_file else "", output_file
-                if output_file else "")
+                if output_file else "", TaskType.Batch)
     return task
 
 
@@ -180,17 +181,28 @@ def get_solutions(solutions, graders) -> List[str]:
 
 
 def get_checker() -> Optional[str]:
-    checkers = list_files(["cor/checker.*", "cor/correttore.cpp"])
+    checkers = list_files(["check/checker.*", "cor/correttore.*"])
     if not checkers:
         checker = None
     elif len(checkers) == 1:
         checker = checkers[0]
     else:
-        raise ValueError("Too many checkers in cor/ folder")
+        raise ValueError("Too many checkers in check/cor folder")
     return checker
 
 
-def get_request(config: Config) -> (Task, List[SourceFile]):
+def get_manager() -> Optional[str]:
+    managers = list_files(["check/manager.*", "cor/manager.*"])
+    if not managers:
+        manager = None
+    elif len(managers) == 1:
+        manager = managers[0]
+    else:
+        raise ValueError("Too many managers in check/cor folder")
+    return manager
+
+
+def get_request(config: Config) -> (Task, List[Solution]):
     copy_compiled = config.copy_exe
     data = parse_task_yaml()
     if not data:
@@ -198,10 +210,20 @@ def get_request(config: Config) -> (Task, List[SourceFile]):
 
     task = create_task_from_yaml(data)
 
-    graders = list_files(["sol/grader.*"])
-    solutions = get_solutions(config.solutions, graders)
     checker = get_checker()
+    manager = get_manager()
+    if checker and manager:
+        raise ValueError("Both checker and manager found")
+    if manager:
+        task.task_type = TaskType.Communication
+    num_processes = get_options(data, ["num_processes"], 1)
 
+    if task.task_type == TaskType.Communication:
+        graders = list_files(["sol/stub.*"])
+    else:
+        graders = list_files(["sol/grader.*"])
+
+    solutions = get_solutions(config.solutions, graders)
     grader_map = gen_grader_map(graders, task)
 
     official_solution, subtasks = gen_testcases(copy_compiled)
@@ -214,20 +236,29 @@ def get_request(config: Config) -> (Task, List[SourceFile]):
     if checker is not None:
         task.checker = SourceFile.from_file(checker, copy_compiled
                                             and "bin/checker")
+    if manager is not None:
+        task.checker = SourceFile.from_file(manager, copy_compiled
+                                            and "bin/manager")
     for subtask_num, subtask in subtasks.items():
         task.subtasks[subtask_num] = subtask
 
-    sols = []  # type: List[SourceFile]
+    sols = []  # type: List[Solution]
     for solution in solutions:
         path, ext = os.path.splitext(os.path.basename(solution))
         bin_file = copy_compiled and "bin/" + path + "_" + ext[1:]
-        sols.extend(
-            [SourceFile.from_file(solution, bin_file, grader_map=grader_map)])
+        source = SourceFile.from_file(
+            solution, bin_file, grader_map=grader_map)
+        if task.task_type == TaskType.Batch:
+            sols.append(BatchSolution(source, task, config, task.checker))
+        else:
+            sols.append(
+                CommunicationSolution(source, task, config, task.checker,
+                                      num_processes))
 
     return task, sols
 
 
-def evaluate_task(frontend: Frontend, task: Task, solutions: List[SourceFile],
+def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
                   config: Config):
     ui_interface = IOIUIInterface(
         task,
@@ -315,105 +346,57 @@ def generate_inputs(frontend, task: Task, interface: IOIUIInterface,
                 inputs[testcase_id].getContentsToFile(testcase.write_input_to,
                                                       True, True)
 
-            # static output file
-            if testcase.output_file:
-                outputs[testcase_id] = frontend.provideFile(
-                    testcase.output_file, "Static output %d" % tc_num, False)
-            else:
-                add_non_solution(task.official_solution)
-
-                sol = task.official_solution.execute(
-                    frontend, "Generation of output %d" % tc_num, [])
-                if config.cache == CacheMode.NOTHING:
-                    sol.disableCache()
-                if testcase_id in validations:
-                    sol.addInput("wait_for_validation",
-                                 validations[testcase_id])
-                if task.input_file:
-                    sol.addInput(task.input_file, inputs[testcase_id])
+            if task.task_type == TaskType.Batch:
+                # static output file
+                if testcase.output_file:
+                    outputs[testcase_id] = frontend.provideFile(
+                        testcase.output_file, "Static output %d" % tc_num, False)
                 else:
-                    sol.setStdin(inputs[testcase_id])
-                if task.output_file:
-                    outputs[testcase_id] = sol.output(task.output_file, False)
-                else:
-                    outputs[testcase_id] = sol.stdout(False)
+                    add_non_solution(task.official_solution)
 
-                interface.add_solving(st_num, tc_num, sol)
+                    sol = task.official_solution.execute(
+                        frontend, "Generation of output %d" % tc_num, [])
+                    if config.cache == CacheMode.NOTHING:
+                        sol.disableCache()
+                    if testcase_id in validations:
+                        sol.addInput("wait_for_validation",
+                                     validations[testcase_id])
+                    if task.input_file:
+                        sol.addInput(task.input_file, inputs[testcase_id])
+                    else:
+                        sol.setStdin(inputs[testcase_id])
+                    if task.output_file:
+                        outputs[testcase_id] = sol.output(task.output_file, False)
+                    else:
+                        outputs[testcase_id] = sol.stdout(False)
 
-            if testcase.write_output_to and not config.dry_run:
-                outputs[testcase_id].getContentsToFile(
-                    testcase.write_output_to, True, True)
+                    interface.add_solving(st_num, tc_num, sol)
+
+                if testcase.write_output_to and not config.dry_run:
+                    outputs[testcase_id].getContentsToFile(
+                        testcase.write_output_to, True, True)
+    if task.checker:
+        add_non_solution(task.checker)
     return inputs, outputs, validations
 
 
 def evaluate_solutions(
         frontend, task: Task, inputs: Dict[Tuple[int, int], File],
         outputs: Dict[Tuple[int, int], File],
-        validations: Dict[Tuple[int, int], File], solutions: List[SourceFile],
+        validations: Dict[Tuple[int, int], File], solutions: List[Solution],
         interface: IOIUIInterface, config: Config):
-    def add_non_solution(source: SourceFile):
-        if not source.prepared:
-            source.prepare(frontend, config)
-            interface.add_non_solution(source)
-
     for solution in solutions:
-        solution.prepare(frontend, config)
-        interface.add_solution(solution)
+        solution.solution.prepare(frontend, config)
+        interface.add_solution(solution.solution)
         for testcase_id, input in inputs.items():
             st_num, tc_num = testcase_id
-            eval = solution.execute(
-                frontend,
-                "Evaluation of %s on testcase %d" % (solution.name, tc_num),
-                [])
-            if config.cache != CacheMode.ALL:
-                eval.disableCache()
-            limits = Resources()
-            limits.cpu_time = task.time_limit
-            limits.wall_time = task.time_limit * 1.5
-            limits.memory = task.memory_limit_kb
-            eval.setLimits(limits)
-            if testcase_id in validations:
-                eval.addInput("tm_wait_validation", validations[testcase_id])
-            if task.input_file:
-                eval.addInput(task.input_file, inputs[testcase_id])
-            else:
-                eval.setStdin(inputs[testcase_id])
-            if task.output_file:
-                output = eval.output(task.output_file, False)
-            else:
-                output = eval.stdout(False)
-            if config.exclusive:
-                eval.makeExclusive()
-            if config.extra_time:
-                eval.setExtraTime(config.extra_time)
-
-            interface.add_evaluate_solution(st_num, tc_num, solution.name,
-                                            eval)
-
-            if task.checker:
-                add_non_solution(task.checker)
-                check = task.checker.execute(
-                    frontend,
-                    "Checking solution %s for testcase %d" % testcase_id,
-                    ["input", "output", "contestant_output"])
-                check.addInput("input", inputs[testcase_id])
-            else:
-                check = frontend.addExecution(
-                    "Checking solution %s for testcase %d" % (solution.name,
-                                                              tc_num))
-                check.setExecutablePath("diff")
-                check.setArgs(["-w", "output", "contestant_output"])
-            check.addInput("output", outputs[testcase_id])
-            check.addInput("contestant_output", output)
-            if config.cache != CacheMode.ALL:
-                check.disableCache()
-            limits = Resources()
-            limits.cpu_time = task.time_limit * 2
-            limits.wall_time = task.time_limit * 1.5 * 2
-            limits.memory = task.memory_limit_kb * 2
-            check.setLimits(limits)
-            interface.add_evaluate_checking(st_num, tc_num, solution.name,
-                                            check)
+            evals, check = solution.evaluate(
+                frontend, tc_num, st_num, inputs[testcase_id],
+                validations.get(testcase_id), outputs.get(testcase_id))
+            interface.add_evaluate_solution(st_num, tc_num,
+                                            solution.solution.name, evals)
+            interface.add_evaluate_checking(st_num, tc_num,
+                                            solution.solution.name, check)
 
 
 def clean():

@@ -30,21 +30,15 @@ class SourceFileCompilationStatus(Enum):
 
 
 class TestcaseSolutionStatus(Enum):
-    WAITING = 0
-    SOLVING = 1
-    SOLVED = 2
-    CHECKING = 3
-    ACCEPTED = 4
-    WRONG_ANSWER = 5
-    PARTIAL = 6
-    SIGNAL = 7
-    RETURN_CODE = 8
-    TIME_LIMIT = 9
-    WALL_LIMIT = 10
-    MEMORY_LIMIT = 11
-    MISSING_FILES = 12
-    INTERNAL_ERROR = 13
-    SKIPPED = 14
+    WAITING = 0  # waiting to start
+    SOLVING = 1  # started the evaluation
+    SOLVED = 2  # evaluation ended but the checker didn't start nor finished
+    CHECKING = 3  # the checker started
+    ACCEPTED = 4  # the solution scored 100%
+    WRONG_ANSWER = 5  # the solution scored 0%
+    PARTIAL = 6  # the solution scored some points
+    FAILED = 7  # the solution or the checker failed
+    SKIPPED = 8  # the execution was skipped
 
 
 class SubtaskSolutionResult(Enum):
@@ -57,10 +51,13 @@ class SubtaskSolutionResult(Enum):
 
 class TestcaseSolutionInfo:
     def __init__(self):
-        self.result = None  # type: Result
+        # to be considered definitive only if checked == True
         self.status = TestcaseSolutionStatus.WAITING
+        self.result = []  # type: List[Result]
         self.score = 0.0
         self.message = "Waiting..."
+        self.checker_outcome = "Waiting..."
+        self.checked = False
 
 
 class SourceFileCompilationResult:
@@ -131,99 +128,122 @@ class SolutionStatus:
             for tc_num in subtask:
                 self.testcase_results[st_num][tc_num] = TestcaseSolutionInfo()
 
-    def update_eval_result(self, subtask: int, testcase: int, result: Result):
+    def update_eval_result(self, subtask: int, testcase: int, result: Result,
+                           num: int):
         self.subtask_results[subtask] = SubtaskSolutionResult.RUNNING
         testcase_status = self.testcase_results[subtask][testcase]
-        testcase_status.result = result
-        if result.status == ResultStatus.SIGNAL:
-            testcase_status.status = TestcaseSolutionStatus.SIGNAL
-        elif result.status == ResultStatus.RETURN_CODE:
-            testcase_status.status = TestcaseSolutionStatus.RETURN_CODE
-        elif result.status == ResultStatus.TIME_LIMIT:
-            testcase_status.status = TestcaseSolutionStatus.TIME_LIMIT
-        elif result.status == ResultStatus.WALL_LIMIT:
-            testcase_status.status = TestcaseSolutionStatus.WALL_LIMIT
-        elif result.status == ResultStatus.MEMORY_LIMIT:
-            testcase_status.status = TestcaseSolutionStatus.MEMORY_LIMIT
-        elif result.status == ResultStatus.MISSING_FILES:
-            testcase_status.status = TestcaseSolutionStatus.MISSING_FILES
-        elif result.status == ResultStatus.INTERNAL_ERROR:
-            testcase_status.status = TestcaseSolutionStatus.INTERNAL_ERROR
+        testcase_status.result[num] = result
+        self._update_eval_result_internal(subtask, testcase)
+
+    def _update_eval_result_internal(self, subtask: int, testcase: int):
+        testcase_status = self.testcase_results[subtask][testcase]
+        # do anything only when all the executions end
+        if not all(res for res in testcase_status.result):
+            return
+        if all(res.status == ResultStatus.SUCCESS
+               for res in testcase_status.result):
+            # if the checker came first do not overwrite
+            if testcase_status.status not in [
+                    TestcaseSolutionStatus.ACCEPTED,
+                    TestcaseSolutionStatus.PARTIAL,
+                    TestcaseSolutionStatus.WRONG_ANSWER,
+                    TestcaseSolutionStatus.FAILED
+            ]:
+                testcase_status.status = TestcaseSolutionStatus.SOLVED
         else:
-            testcase_status.status = TestcaseSolutionStatus.SOLVED
-        testcase_status.message = result_to_str(result)
-        if result.status != ResultStatus.SUCCESS:
-            self.st_remaining_cases[subtask] -= 1
-            if self.st_remaining_cases[subtask] == 0:
-                self._compute_st_score(subtask)
+            # if one execution fails overwrite the checker response, if any
+            testcase_status.status = TestcaseSolutionStatus.FAILED
+            testcase_status.checked = True
+            self._compute_st_score(subtask)
+        testcase_status.message = self._get_solution_message(testcase_status)
 
     def update_default_check_result(self, subtask: int, testcase: int,
                                     result: Result):
+        # the default checker is used only in batch type tasks, no need for
+        # communication's out-of-order callbacks
         testcase_status = self.testcase_results[subtask][testcase]
+        testcase_status.checked = True
         if result.status == ResultStatus.SUCCESS:
             testcase_status.status = TestcaseSolutionStatus.ACCEPTED
-            testcase_status.message = "Output is correct"
+            testcase_status.checker_outcome = "Output is correct"
             self.testcase_results[subtask][testcase].score = 1.0
         elif result.status == ResultStatus.RETURN_CODE:
             testcase_status.status = TestcaseSolutionStatus.WRONG_ANSWER
-            testcase_status.message = "Output is not correct"
+            testcase_status.checker_outcome = "Output is not correct"
             self.testcase_results[subtask][testcase].score = 0.0
         else:
-            testcase_status.status = TestcaseSolutionStatus.INTERNAL_ERROR
-            testcase_status.message = "Internal error: " + result.error
+            testcase_status.status = TestcaseSolutionStatus.FAILED
+            testcase_status.checker_outcome = "Internal error: " + result.error
 
-        self.st_remaining_cases[subtask] -= 1
-        if self.st_remaining_cases[subtask] == 0:
-            self._compute_st_score(subtask)
+        testcase_status.message = self._get_solution_message(testcase_status)
+        self._compute_st_score(subtask)
 
     def update_custom_check_result(self, subtask: int, testcase: int,
                                    state: CustomCheckerState):
+        # premise: this can be called before update_eval_result on
+        # communication or even between difference calls of it.
+        # assumption: this method may safely assume that all the next executions
+        # will end successfully. If else update_eval_result will overwrite the
+        # result later
         testcase_status = self.testcase_results[subtask][testcase]
+        # if the solution failed there is no need for the checker
+        if testcase_status.checked:
+            return
         if state.result.status != ResultStatus.SUCCESS:
-            testcase_status.status = TestcaseSolutionStatus.INTERNAL_ERROR
-            testcase_status.message = "Failed to check: " + result_to_str(
-                state.result)
+            testcase_status.status = TestcaseSolutionStatus.FAILED
+            testcase_status.checker_outcome = "Failed to check: " + \
+                                              result_to_str(state.result)
+            testcase_status.message = self._get_solution_message(
+                testcase_status)
+            testcase_status.checked = True
             return
         stdout = state.stdout.strip()
         try:
             score = float(stdout)
         except ValueError:
-            if state.result.status != ResultStatus.SUCCESS:
-                testcase_status.status = TestcaseSolutionStatus.INTERNAL_ERROR
-                testcase_status.message = \
-                    "Failed to check: invalid score: {}".format(stdout)
-                self.interface.add_error(
-                    "Invalid output '{}' for checker "
-                    "at testcase #{} for solution {}".
-                    format(stdout, testcase, self.source_file.name))
+            testcase_status.status = TestcaseSolutionStatus.FAILED
+            testcase_status.checker_outcome = \
+                "Failed to check: invalid score: {}".format(stdout)
+            testcase_status.message = self._get_solution_message(
+                testcase_status)
+            testcase_status.checked = True
+            self.interface.add_error("Invalid output '{}' for checker "
+                                     "at testcase #{} for solution {}".format(
+                                         stdout, testcase,
+                                         self.source_file.name))
             return
         if not 0.0 <= score <= 1.0:
-            testcase_status.status = TestcaseSolutionStatus.INTERNAL_ERROR
-            testcase_status.message = \
+            testcase_status.status = TestcaseSolutionStatus.FAILED
+            testcase_status.checker_outcome = \
                 "Failed to check: invalid score: {}".format(stdout)
-            self.interface.add_error(
-                "Invalid score '{}' from checker "
-                "at testcase #{} for solution {}".
-                format(stdout, testcase, self.source_file.name))
+            testcase_status.message = self._get_solution_message(
+                testcase_status)
+            testcase_status.checked = True
+            self.interface.add_error("Invalid score '{}' from checker "
+                                     "at testcase #{} for solution {}".format(
+                                         stdout, testcase,
+                                         self.source_file.name))
             return
         self.testcase_results[subtask][testcase].score = score
         if score == 1.0:
             testcase_status.status = TestcaseSolutionStatus.ACCEPTED
-            testcase_status.message = "Output is correct"
+            testcase_status.checker_outcome = "Output is correct"
         elif score == 0.0:
             testcase_status.status = TestcaseSolutionStatus.WRONG_ANSWER
-            testcase_status.message = "Output is not correct"
+            testcase_status.checker_outcome = "Output is not correct"
         else:
             testcase_status.status = TestcaseSolutionStatus.PARTIAL
-            testcase_status.message = "Output is partially correct"
+            testcase_status.checker_outcome = "Output is partially correct"
         if stdout:
-            testcase_status.message = state.stderr.strip()
-
-        self.st_remaining_cases[subtask] -= 1
-        if self.st_remaining_cases[subtask] == 0:
-            self._compute_st_score(subtask)
+            testcase_status.checker_outcome = state.stderr.strip()
+        testcase_status.message = self._get_solution_message(testcase_status)
+        testcase_status.checked = all(res for res in testcase_status.result)
+        self._compute_st_score(subtask)
 
     def _compute_st_score(self, subtask: int):
+        # skip if not all the testcases have been computed
+        if not all(t.checked for t in self.testcase_results[subtask].values()):
+            return
         scores = [t.score for t in self.testcase_results[subtask].values()]
         score_mode = self.task.subtasks[subtask].score_mode
         if score_mode == ScoreMode.MIN:
@@ -243,6 +263,14 @@ class SolutionStatus:
             self.subtask_results[subtask] = SubtaskSolutionResult.REJECTED
         else:
             self.subtask_results[subtask] = SubtaskSolutionResult.PARTIAL
+
+    def _get_solution_message(self,
+                              testcase_status: TestcaseSolutionInfo) -> str:
+        if all(res.status == ResultStatus.SUCCESS
+               for res in testcase_status.result):
+            return testcase_status.checker_outcome
+
+        return " | ".join(map(result_to_str, testcase_status.result))
 
 
 class IOIUIInterface:
@@ -461,35 +489,45 @@ class IOIUIInterface:
         solving.getResult(getResultSolving, skippedSolving)
 
     def add_evaluate_solution(self, subtask: int, testcase: int, solution: str,
-                              evaluation: Execution):
-        log_prefix = "Evaluate {} on case {} ".format(solution,
-                                                      testcase).ljust(50)
-        self.printer.text(log_prefix + "WAITING\n")
+                              evaluations: List[Execution]):
+        self.testing[solution].testcase_results[subtask][
+            testcase].result = [None] * len(evaluations)
+        started = False
+        skipped = False
+        for num, evaluation in enumerate(evaluations):
+            log_prefix = "Evaluate {}/{} on case {} ".format(
+                solution, num, testcase).ljust(50)
+            self.printer.text(log_prefix + "WAITING\n")
 
-        def notifyStartEvaluation():
-            self.printer.text(log_prefix + "START\n")
-            self.testing[solution].testcase_results[subtask][
-                testcase].status = TestcaseSolutionStatus.SOLVING
-            self.running[log_prefix] = time.monotonic()
+            def notifyStartEvaluation():
+                nonlocal started
+                self.printer.text(log_prefix + "START\n")
+                if not started and not skipped:
+                    self.testing[solution].testcase_results[subtask][
+                        testcase].status = TestcaseSolutionStatus.SOLVING
+                    started = True
+                self.running[log_prefix] = time.monotonic()
 
-        def getResultEvaluation(result: Result):
-            del self.running[log_prefix]
-            if result.status == ResultStatus.SUCCESS:
-                self.printer.green(log_prefix + "SUCCESS\n")
-            else:
-                self.printer.red(log_prefix +
-                                 "FAIL: {}\n".format(result.status))
+            def getResultEvaluation(result: Result):
+                del self.running[log_prefix]
+                if result.status == ResultStatus.SUCCESS:
+                    self.printer.green(log_prefix + "SUCCESS\n")
+                else:
+                    self.printer.red(log_prefix +
+                                     "FAIL: {}\n".format(result.status))
 
-            self.testing[solution].update_eval_result(subtask, testcase,
-                                                      result)
+                self.testing[solution].update_eval_result(
+                    subtask, testcase, result, num)
 
-        def skippedEvaluation():
-            self.testing[solution].testcase_results[subtask][
-                testcase].status = TestcaseSolutionStatus.SKIPPED
-            self.printer.yellow(log_prefix + "SKIPPED\n")
+            def skippedEvaluation():
+                nonlocal skipped
+                skipped = True
+                self.testing[solution].testcase_results[subtask][
+                    testcase].status = TestcaseSolutionStatus.SKIPPED
+                self.printer.yellow(log_prefix + "SKIPPED\n")
 
-        evaluation.notifyStart(notifyStartEvaluation)
-        evaluation.getResult(getResultEvaluation, skippedEvaluation)
+            evaluation.notifyStart(notifyStartEvaluation)
+            evaluation.getResult(getResultEvaluation, skippedEvaluation)
 
     def add_evaluate_checking(self, subtask: int, testcase: int, solution: str,
                               checking: Execution):

@@ -5,9 +5,10 @@ import threading
 from task_maker.formats import Task
 
 from task_maker.printer import CursesPrinter, Printer
+from task_maker.task_maker_frontend import ResultStatus
 from task_maker.uis.ioi import IOIUIInterface, SourceFileCompilationStatus, \
     TestcaseGenerationStatus, SubtaskSolutionResult, TestcaseSolutionStatus, \
-    SolutionStatus
+    SolutionStatus, TestcaseSolutionInfo
 
 # frames per second of the UI
 from typing import Dict
@@ -71,39 +72,53 @@ def print_subtask_result(printer: Printer, text: str,
 
 
 def print_testcase_solution_result(printer: Printer, loading: str,
-                                   result: TestcaseSolutionStatus):
-    if result == TestcaseSolutionStatus.WAITING:
+                                   info: TestcaseSolutionInfo):
+    if info.status == TestcaseSolutionStatus.WAITING:
         printer.text(".")
-    elif result == TestcaseSolutionStatus.SOLVING:
+    elif info.status == TestcaseSolutionStatus.SOLVING:
         printer.blue(loading)
-    elif result == TestcaseSolutionStatus.SOLVED:
+    elif info.status == TestcaseSolutionStatus.SOLVED:
         printer.text("s")
-    elif result == TestcaseSolutionStatus.CHECKING:
+    elif info.status == TestcaseSolutionStatus.CHECKING:
         printer.text(loading)
-    elif result == TestcaseSolutionStatus.ACCEPTED:
-        printer.green("A", bold=True)
-    elif result == TestcaseSolutionStatus.WRONG_ANSWER:
-        printer.red("W", bold=True)
-    elif result == TestcaseSolutionStatus.PARTIAL:
-        printer.yellow("P", bold=True)
-    elif result == TestcaseSolutionStatus.SIGNAL:
-        printer.red("R", bold=True)
-    elif result == TestcaseSolutionStatus.RETURN_CODE:
-        printer.red("R", bold=True)
-    elif result == TestcaseSolutionStatus.TIME_LIMIT:
-        printer.red("T", bold=True)
-    elif result == TestcaseSolutionStatus.WALL_LIMIT:
-        printer.red("T", bold=True)
-    elif result == TestcaseSolutionStatus.MEMORY_LIMIT:
-        printer.red("M", bold=True)
-    elif result == TestcaseSolutionStatus.MISSING_FILES:
-        printer.red("F", bold=True)
-    elif result == TestcaseSolutionStatus.INTERNAL_ERROR:
-        printer.bold("I", bold=True)
-    elif result == TestcaseSolutionStatus.SKIPPED:
+    elif info.status == TestcaseSolutionStatus.SKIPPED:
         printer.text("X")
+    elif info.checked and info.status == TestcaseSolutionStatus.ACCEPTED:
+        printer.green("A", bold=True)
+    elif info.checked and info.status == TestcaseSolutionStatus.WRONG_ANSWER:
+        printer.red("W", bold=True)
+    elif info.checked and info.status == TestcaseSolutionStatus.PARTIAL:
+        printer.yellow("P", bold=True)
+    elif info.checked and info.status == TestcaseSolutionStatus.FAILED:
+        for res in info.result:
+            if res.status != ResultStatus.SUCCESS:
+                result = res
+                break
+        else:
+            result = None
+        # marked as failed even if no solution failed --> the checker
+        if result is None:
+            printer.bold("I", bold=True)
+        elif result.status == ResultStatus.SIGNAL:
+            printer.red("R", bold=True)
+        elif result.status == ResultStatus.RETURN_CODE:
+            printer.red("R", bold=True)
+        elif result.status == ResultStatus.TIME_LIMIT:
+            printer.red("T", bold=True)
+        elif result.status == ResultStatus.WALL_LIMIT:
+            printer.red("T", bold=True)
+        elif result.status == ResultStatus.MEMORY_LIMIT:
+            printer.red("M", bold=True)
+        elif result.status == ResultStatus.MISSING_FILES:
+            printer.red("F", bold=True)
+        elif result.status == ResultStatus.INTERNAL_ERROR:
+            printer.bold("I", bold=True)
+        else:
+            raise ValueError(result)
+    elif not info.checked:
+        printer.blue(loading)
     else:
-        raise ValueError(result)
+        raise ValueError("{} {}".format(info.checked, info.status))
 
 
 def print_solutions_result(printer: Printer, task: Task,
@@ -119,13 +134,13 @@ def print_solutions_result(printer: Printer, task: Task,
     for solution, status in solutions.items():
         print_solution_column(printer, solution, max_sol_len)
         if all([
-                s == SubtaskSolutionResult.WAITING
-                for s in status.subtask_results
+            s == SubtaskSolutionResult.WAITING
+            for s in status.subtask_results
         ]):
             printer.text(" ... ")
         elif any([
-                s == SubtaskSolutionResult.RUNNING
-                for s in status.subtask_results
+            s == SubtaskSolutionResult.RUNNING
+            for s in status.subtask_results
         ]):
             printer.text("  {}  ".format(loading))
         else:
@@ -148,7 +163,7 @@ def print_solutions_result(printer: Printer, task: Task,
             print_subtask_result(printer, "[", st_result)
             for tc_num, testcase in testcases.items():
                 print_testcase_solution_result(printer, loading,
-                                               testcase.status)
+                                               testcase)
             print_subtask_result(printer, "]", st_result)
 
         printer.text("\n")
@@ -158,7 +173,7 @@ class IOICursesUI:
     def __init__(self, interface: IOIUIInterface):
         self.interface = interface
         self.thread = threading.Thread(
-            target=curses.wrapper, args=(self._wrapper, ))
+            target=curses.wrapper, args=(self._wrapper,))
         self.stopped = False
 
     def start(self):
