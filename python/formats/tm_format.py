@@ -14,7 +14,7 @@ from task_maker.formats.ioi_format import get_generator, \
 from task_maker.source_file import SourceFile
 
 
-def parse_cases(gen: IO, copy_compiled: bool, task: Task) -> List[Subtask]:
+def parse_cases(gen: IO, task: Task, copy_compiled: bool) -> List[Subtask]:
     lines = [l.strip() for l in gen.readlines()]
 
     subtasks = []  # type: List[Subtask]
@@ -182,7 +182,7 @@ def parse_cases(gen: IO, copy_compiled: bool, task: Task) -> List[Subtask]:
 
     def process_SUBTASK(args: List[str]):
         nonlocal current_gen, current_val, st_num
-        if len(args) < 1 or len(args) > 2:
+        if len(args) < 1:
             raise ValueError("Invalid arguments to SUBTASK: max_score [name] "
                              "(line %d)" % lineno)
         if not is_float(args[0]):
@@ -329,7 +329,7 @@ def generate_gen_GEN(subtasks: List[Subtask]):
 def get_request(config: Config) -> (Task, List[SourceFile]):
     task, sols = create_task(config)
     with open("gen/cases.gen", "r") as gen:
-        subtasks = parse_cases(gen, config.copy_exe)
+        subtasks = parse_cases(gen, task, config.copy_exe)
 
     for st_num, subtask in enumerate(subtasks):
         task.subtasks[st_num] = subtask
