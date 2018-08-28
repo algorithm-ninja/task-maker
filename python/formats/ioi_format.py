@@ -62,7 +62,7 @@ def get_official_solution() -> Optional[str]:
 
 
 def gen_testcases(
-        copy_compiled: bool) -> Tuple[Optional[str], Dict[int, Subtask]]:
+        copy_compiled: bool) -> Dict[int, Subtask]:
     subtasks = {}  # type: Dict[int, Subtask]
 
     def create_subtask(subtask_num: int, testcases: Dict[int, TestCase],
@@ -74,7 +74,7 @@ def gen_testcases(
 
     generator = get_generator()
     if not generator:
-        return None, {0: load_static_testcases()}
+        return {0: load_static_testcases()}
     else:
         generator = Generator(
             "default",
@@ -87,10 +87,6 @@ def gen_testcases(
         "default",
         SourceFile.from_file(validator, copy_compiled and "bin/validator"),
         None)
-
-    official_solution = get_official_solution()
-    if official_solution is None:
-        raise RuntimeError("No official solution found")
 
     current_testcases = {}  # type: Dict[int, TestCase]
     subtask_num = -1  # the first #ST line will skip a subtask!
@@ -127,7 +123,7 @@ def gen_testcases(
     if len(subtasks) == 1 and subtasks[0].max_score == 0:
         subtasks[0].score_mode = ScoreMode.SUM
         subtasks[0].max_score = 100
-    return official_solution, subtasks
+    return subtasks
 
 
 def detect_yaml() -> str:
@@ -202,7 +198,7 @@ def get_manager() -> Optional[str]:
     return manager
 
 
-def get_request(config: Config) -> (Task, List[Solution]):
+def create_task(config: Config):
     copy_compiled = config.copy_exe
     data = parse_task_yaml()
     if not data:
@@ -226,7 +222,9 @@ def get_request(config: Config) -> (Task, List[Solution]):
     solutions = get_solutions(config.solutions, graders)
     grader_map = gen_grader_map(graders, task)
 
-    official_solution, subtasks = gen_testcases(copy_compiled)
+    official_solution = get_official_solution()
+    if official_solution is None:
+        raise RuntimeError("No official solution found")
     if official_solution:
         task.official_solution = SourceFile.from_file(
             official_solution,
@@ -239,8 +237,6 @@ def get_request(config: Config) -> (Task, List[Solution]):
     if manager is not None:
         task.checker = SourceFile.from_file(manager, copy_compiled
                                             and "bin/manager")
-    for subtask_num, subtask in subtasks.items():
-        task.subtasks[subtask_num] = subtask
 
     sols = []  # type: List[Solution]
     for solution in solutions:
@@ -255,6 +251,14 @@ def get_request(config: Config) -> (Task, List[Solution]):
                 CommunicationSolution(source, task, config, task.checker,
                                       num_processes))
 
+    return task, sols
+
+
+def get_request(config: Config) -> (Task, List[Solution]):
+    task, sols = create_task(config)
+    subtasks = gen_testcases(config.copy_exe)
+    for subtask_num, subtask in subtasks.items():
+        task.subtasks[subtask_num] = subtask
     return task, sols
 
 

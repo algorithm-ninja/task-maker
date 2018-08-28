@@ -8,10 +8,10 @@ from task_maker.config import Config
 from task_maker.formats import ioi_format, Task, \
     Subtask, Generator, Validator, Constraint, ScoreMode, TestCase, \
     parse_variable, list_files, gen_grader_map, get_write_input_file, \
-    get_write_output_file
+    get_write_output_file, TaskType, get_options
 from task_maker.formats.ioi_format import parse_task_yaml, \
     create_task_from_yaml, get_solutions, get_checker, get_generator, \
-    get_validator, get_official_solution
+    get_validator, get_official_solution, get_manager, create_task
 from task_maker.source_file import SourceFile
 
 
@@ -328,42 +328,12 @@ def generate_gen_GEN(subtasks: List[Subtask]):
 
 
 def get_request(config: Config) -> (Task, List[SourceFile]):
-    copy_compiled = config.copy_exe
-    data = parse_task_yaml()
-    if not data:
-        raise RuntimeError("The task.yaml is not valid")
-
-    task = create_task_from_yaml(data)
-
-    graders = list_files(["sol/grader.*"])
-    solutions = get_solutions(config.solutions, graders)
-    checker = get_checker()
-    if checker is not None:
-        task.checker = SourceFile.from_file(checker, copy_compiled
-                                            and "bin/checker")
-
-    grader_map = gen_grader_map(graders, task)
-
-    official_solution = get_official_solution()
-    if official_solution is None:
-        raise RuntimeError("No official solution found")
-    task.official_solution = SourceFile.from_file(
-        official_solution,
-        copy_compiled and "bin/official_solution",
-        grader_map=grader_map)
-
+    task, sols = create_task(config)
     with open("gen/cases.gen", "r") as gen:
         subtasks = parse_cases(gen, config.copy_exe)
 
     for st_num, subtask in enumerate(subtasks):
         task.subtasks[st_num] = subtask
-
-    sols = []  # type: List[SourceFile]
-    for solution in solutions:
-        path, ext = os.path.splitext(os.path.basename(solution))
-        bin_file = copy_compiled and "bin/" + path + "_" + ext[1:]
-        sols.extend(
-            [SourceFile.from_file(solution, bin_file, grader_map=grader_map)])
 
     if os.path.exists("gen/GEN"):
         with open("gen/GEN") as f:
