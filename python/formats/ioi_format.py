@@ -18,7 +18,7 @@ from task_maker.formats import ScoreMode, Subtask, TestCase, Task, \
     gen_grader_map, get_write_input_file, get_write_output_file, TaskType
 from task_maker.sanitize import sanitize_command
 from task_maker.source_file import SourceFile
-from task_maker.task_maker_frontend import File, Frontend, Resources
+from task_maker.task_maker_frontend import File, Frontend
 
 
 def load_static_testcases() -> Subtask:
@@ -61,8 +61,7 @@ def get_official_solution() -> Optional[str]:
     return None
 
 
-def gen_testcases(
-        copy_compiled: bool) -> Dict[int, Subtask]:
+def gen_testcases(copy_compiled: bool) -> Dict[int, Subtask]:
     subtasks = {}  # type: Dict[int, Subtask]
 
     def create_subtask(subtask_num: int, testcases: Dict[int, TestCase],
@@ -273,7 +272,7 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
         curses_ui.start()
 
     ins, outs, vals = generate_inputs(frontend, task, ui_interface, config)
-    evaluate_solutions(frontend, task, ins, outs, vals, solutions,
+    evaluate_solutions(frontend, ins, outs, vals, solutions,
                        ui_interface, config)
 
     frontend.evaluate()
@@ -354,7 +353,8 @@ def generate_inputs(frontend, task: Task, interface: IOIUIInterface,
                 # static output file
                 if testcase.output_file:
                     outputs[testcase_id] = frontend.provideFile(
-                        testcase.output_file, "Static output %d" % tc_num, False)
+                        testcase.output_file, "Static output %d" % tc_num,
+                        False)
                 else:
                     add_non_solution(task.official_solution)
 
@@ -370,7 +370,8 @@ def generate_inputs(frontend, task: Task, interface: IOIUIInterface,
                     else:
                         sol.setStdin(inputs[testcase_id])
                     if task.output_file:
-                        outputs[testcase_id] = sol.output(task.output_file, False)
+                        outputs[testcase_id] = sol.output(
+                            task.output_file, False)
                     else:
                         outputs[testcase_id] = sol.stdout(False)
 
@@ -385,7 +386,7 @@ def generate_inputs(frontend, task: Task, interface: IOIUIInterface,
 
 
 def evaluate_solutions(
-        frontend, task: Task, inputs: Dict[Tuple[int, int], File],
+        frontend, inputs: Dict[Tuple[int, int], File],
         outputs: Dict[Tuple[int, int], File],
         validations: Dict[Tuple[int, int], File], solutions: List[Solution],
         interface: IOIUIInterface, config: Config):
@@ -394,9 +395,10 @@ def evaluate_solutions(
         interface.add_solution(solution.solution)
         for testcase_id, input in inputs.items():
             st_num, tc_num = testcase_id
-            evals, check = solution.evaluate(
-                frontend, tc_num, st_num, inputs[testcase_id],
-                validations.get(testcase_id), outputs.get(testcase_id))
+            evals, check = solution.evaluate(frontend, tc_num, st_num,
+                                             inputs[testcase_id],
+                                             validations.get(testcase_id),
+                                             outputs.get(testcase_id))
             interface.add_evaluate_solution(st_num, tc_num,
                                             solution.solution.name, evals)
             interface.add_evaluate_checking(st_num, tc_num,
