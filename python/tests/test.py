@@ -3,11 +3,9 @@ from task_maker.syspath_patch import patch_sys_path
 
 patch_sys_path()
 
-import argparse
 import os.path
 import pytest
 import shutil
-import sys
 from typing import Union
 
 from task_maker.args import UIS, CacheMode, get_parser

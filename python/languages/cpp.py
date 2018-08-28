@@ -21,7 +21,8 @@ class LanguageCPP(CompiledLanguage):
         return [".hpp"]
 
     def get_compilation_command(self, source_filenames: List[str],
-                                exe_name: str, for_evaluation: bool,
+                                exe_name: str, unit_name: str,
+                                for_evaluation: bool,
                                 target_arch: Arch) -> (CommandType, List[str]):
         cmd = ["c++"]
         if for_evaluation:

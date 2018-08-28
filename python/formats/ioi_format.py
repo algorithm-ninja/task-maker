@@ -61,7 +61,7 @@ def get_official_solution() -> Optional[str]:
     return None
 
 
-def gen_testcases(copy_compiled: bool) -> Dict[int, Subtask]:
+def gen_testcases(copy_compiled: bool, task: Task) -> Dict[int, Subtask]:
     subtasks = {}  # type: Dict[int, Subtask]
 
     def create_subtask(subtask_num: int, testcases: Dict[int, TestCase],
@@ -77,15 +77,15 @@ def gen_testcases(copy_compiled: bool) -> Dict[int, Subtask]:
     else:
         generator = Generator(
             "default",
-            SourceFile.from_file(generator, copy_compiled and "bin/generator"),
-            None)
+            SourceFile.from_file(generator, task.name, copy_compiled
+                                 and "bin/generator"), None)
     validator = get_validator()
     if not validator:
         raise RuntimeError("No validator found")
     validator = Validator(
         "default",
-        SourceFile.from_file(validator, copy_compiled and "bin/validator"),
-        None)
+        SourceFile.from_file(validator, task.name, copy_compiled
+                             and "bin/validator"), None)
 
     current_testcases = {}  # type: Dict[int, TestCase]
     subtask_num = -1  # the first #ST line will skip a subtask!
@@ -227,14 +227,15 @@ def create_task(config: Config):
     if official_solution:
         task.official_solution = SourceFile.from_file(
             official_solution,
+            task.name,
             copy_compiled and "bin/official_solution",
             grader_map=grader_map)
 
     if checker is not None:
-        task.checker = SourceFile.from_file(checker, copy_compiled
+        task.checker = SourceFile.from_file(checker, task.name, copy_compiled
                                             and "bin/checker")
     if manager is not None:
-        task.checker = SourceFile.from_file(manager, copy_compiled
+        task.checker = SourceFile.from_file(manager, task.name, copy_compiled
                                             and "bin/manager")
 
     sols = []  # type: List[Solution]
@@ -242,7 +243,7 @@ def create_task(config: Config):
         path, ext = os.path.splitext(os.path.basename(solution))
         bin_file = copy_compiled and "bin/" + path + "_" + ext[1:]
         source = SourceFile.from_file(
-            solution, bin_file, grader_map=grader_map)
+            solution, task.name, bin_file, grader_map=grader_map)
         if task.task_type == TaskType.Batch:
             sols.append(BatchSolution(source, task, config, task.checker))
         else:
@@ -255,7 +256,7 @@ def create_task(config: Config):
 
 def get_request(config: Config) -> (Task, List[Solution]):
     task, sols = create_task(config)
-    subtasks = gen_testcases(config.copy_exe)
+    subtasks = gen_testcases(config.copy_exe, task)
     for subtask_num, subtask in subtasks.items():
         task.subtasks[subtask_num] = subtask
     return task, sols
@@ -272,8 +273,8 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
         curses_ui.start()
 
     ins, outs, vals = generate_inputs(frontend, task, ui_interface, config)
-    evaluate_solutions(frontend, ins, outs, vals, solutions,
-                       ui_interface, config)
+    evaluate_solutions(frontend, ins, outs, vals, solutions, ui_interface,
+                       config)
 
     frontend.evaluate()
     if config.ui == UIS.CURSES:
@@ -386,11 +387,11 @@ def generate_inputs(frontend, task: Task, interface: IOIUIInterface,
     return inputs, outputs, validations
 
 
-def evaluate_solutions(
-        frontend, inputs: Dict[Tuple[int, int], File],
-        outputs: Dict[Tuple[int, int], File],
-        validations: Dict[Tuple[int, int], File], solutions: List[Solution],
-        interface: IOIUIInterface, config: Config):
+def evaluate_solutions(frontend, inputs: Dict[Tuple[int, int], File],
+                       outputs: Dict[Tuple[int, int], File],
+                       validations: Dict[Tuple[int, int], File],
+                       solutions: List[Solution], interface: IOIUIInterface,
+                       config: Config):
     for solution in solutions:
         solution.solution.prepare(frontend, config)
         interface.add_solution(solution.solution)

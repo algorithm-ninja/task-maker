@@ -14,7 +14,7 @@ from task_maker.formats.ioi_format import get_generator, \
 from task_maker.source_file import SourceFile
 
 
-def parse_cases(gen: IO, copy_compiled) -> List[Subtask]:
+def parse_cases(gen: IO, copy_compiled: bool, task: Task) -> List[Subtask]:
     lines = [l.strip() for l in gen.readlines()]
 
     subtasks = []  # type: List[Subtask]
@@ -31,13 +31,13 @@ def parse_cases(gen: IO, copy_compiled) -> List[Subtask]:
     if guessed_gen:
         default_gen = Generator(
             "default",
-            SourceFile.from_file(guessed_gen, copy_compiled
+            SourceFile.from_file(guessed_gen, task.name, copy_compiled
                                  and "bin/gen_default"), [])
     guessed_val = get_validator()
     if guessed_val:
         default_val = Validator(
             "default",
-            SourceFile.from_file(guessed_val, copy_compiled
+            SourceFile.from_file(guessed_val, task.name, copy_compiled
                                  and "bin/val_default"), [])
 
     def is_float(s):
@@ -64,7 +64,7 @@ def parse_cases(gen: IO, copy_compiled) -> List[Subtask]:
                     "Duplicate GEN definition at line %d" % lineno)
             generator = Generator(
                 name,
-                SourceFile.from_file(args[1], copy_compiled
+                SourceFile.from_file(args[1], task.name, copy_compiled
                                      and "bin/gen_" + name), args[2:])
             generators[name] = generator
             if name == "default":
@@ -95,7 +95,7 @@ def parse_cases(gen: IO, copy_compiled) -> List[Subtask]:
                     "Duplicate VAL definition at line %d" % lineno)
             validator = Validator(
                 name,
-                SourceFile.from_file(args[1], copy_compiled
+                SourceFile.from_file(args[1], task.name, copy_compiled
                                      and "bin/val_" + name), args[2:])
             validators[name] = validator
             if name == "default":

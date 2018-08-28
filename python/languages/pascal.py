@@ -14,8 +14,13 @@ class LanguagePascal(CompiledLanguage):
     def source_extensions(self):
         return [".pas"]
 
+    @property
+    def need_unit_name(self):
+        return True
+
     def get_compilation_command(self, source_filenames: List[str],
-                                exe_name: str, for_evaluation: bool,
+                                exe_name: str, unit_name: str,
+                                for_evaluation: bool,
                                 target_arch: Arch) -> (CommandType, List[str]):
         cmd = ["fpc"]
         if for_evaluation:
@@ -23,11 +28,11 @@ class LanguagePascal(CompiledLanguage):
         if target_arch != Arch.DEFAULT:
             raise NotImplementedError(
                 "Cannot compile %s: "
-                "targetting Pascal executables is not supported yet"
-                % source_filenames[0])
+                "targetting Pascal executables is not supported yet" %
+                source_filenames[0])
         cmd += ["-Fe/dev/stderr"]  # fpc emits errors on stdout by default
         cmd += ["-O2", "-XS", "-o" + exe_name]
-        cmd += source_filenames
+        cmd += [unit_name + ".pas"] + source_filenames[1:]
         return CommandType.SYSTEM, cmd
 
 

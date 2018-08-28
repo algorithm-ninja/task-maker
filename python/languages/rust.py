@@ -15,7 +15,8 @@ class LanguageRust(CompiledLanguage):
         return [".rs"]
 
     def get_compilation_command(self, source_filenames: List[str],
-                                exe_name: str, for_evaluation: bool,
+                                exe_name: str, unit_name: str,
+                                for_evaluation: bool,
                                 target_arch: Arch) -> (CommandType, List[str]):
         cmd = ["rustc"]
         if for_evaluation:
@@ -23,8 +24,8 @@ class LanguageRust(CompiledLanguage):
         if target_arch != Arch.DEFAULT:
             raise NotImplementedError(
                 "Cannot compile %s: "
-                "targetting Rust executables is not supported yet"
-                % source_filenames[0])
+                "targetting Rust executables is not supported yet" %
+                source_filenames[0])
         cmd += ["-O", "-o", exe_name]
         # with rustc you only need to specify the main file
         cmd += [source_filenames[0]]

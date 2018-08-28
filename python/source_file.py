@@ -14,6 +14,7 @@ class SourceFile:
     @staticmethod
     def from_file(
             path: str,
+            unit_name: str,
             write_to: Optional[str] = None,
             target_arch=Arch.DEFAULT,
             grader_map: Dict[Language, GraderInfo] = dict()) -> "SourceFile":
@@ -23,8 +24,9 @@ class SourceFile:
         if not path:
             raise ValueError("Cannot find %s" % old_path)
         language = LanguageManager.from_file(path)
-        source_file = SourceFile(path, language.get_dependencies(path), language, None,
-                                 target_arch, grader_map.get(language))
+        source_file = SourceFile(path, unit_name,
+                                 language.get_dependencies(path), language,
+                                 None, target_arch, grader_map.get(language))
         if write_to:
             if not os.path.isabs(write_to):
                 write_to = os.path.join(os.getcwd(), write_to)
@@ -35,10 +37,12 @@ class SourceFile:
                                  "Please check the shebang (#!)" % path)
         return source_file
 
-    def __init__(self, path: str, dependencies: List[Dependency],
-                 language: Language, write_bin_to: Optional[str],
-                 target_arch: Arch, grader: Optional["GraderInfo"]):
+    def __init__(self, path: str, unit_name: str,
+                 dependencies: List[Dependency], language: Language,
+                 write_bin_to: Optional[str], target_arch: Arch,
+                 grader: Optional["GraderInfo"]):
         self.path = path
+        self.unit_name = unit_name
         self.dependencies = dependencies
         self.language = language
         self.write_bin_to = write_bin_to
@@ -66,7 +70,8 @@ class SourceFile:
         if self.grader:
             compilation_files += [d.name for d in self.grader.files]
         cmd_type, cmd = self.language.get_compilation_command(
-            compilation_files, self.exe_name, True, self.target_arch)
+            compilation_files, self.exe_name, self.unit_name, True,
+            self.target_arch)
 
         if cmd_type != CommandType.SYSTEM:
             raise ValueError("Local file compilers are not supported yet")
@@ -79,7 +84,11 @@ class SourceFile:
             self.compilation.disableCache()
         self.compilation.setExecutablePath(cmd[0])
         self.compilation.setArgs(cmd[1:])
-        self.compilation.addInput(self.name, source)
+        if self.language.need_unit_name:
+            self.compilation.addInput(
+                self.unit_name + self.language.source_extensions[0], source)
+        else:
+            self.compilation.addInput(self.name, source)
         for dep in self.dependencies:
             self.compilation.addInput(
                 dep.name, frontend.provideFile(dep.path, dep.path, False))
