@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from task_maker.tests.test import run_tests, TestingUI
+from task_maker.tests.test import run_tests
 
 
 def test_task():
@@ -8,9 +8,8 @@ def test_task():
     interface = TestInterface("with_bugged_sol", "Testing task-maker", 1,
                               65536)
     interface.set_generator("generatore.py")
-    interface.set_generation_errors("No buono")
-    interface.set_fatal_error()
-    interface.run_checks(TestingUI.inst)
+    interface.set_solution_errors("No buono")
+    interface.run_checks()
 
 
 if __name__ == "__main__":

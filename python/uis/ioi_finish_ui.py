@@ -149,6 +149,7 @@ class IOIFinishUI:
                         self.printer.red("Solution failed ")
                         self.printer.red(
                             result_to_str(result.solution_result), bold=False)
+                        self.printer.text("\n" + result.solution_stderr)
                         success = False
 
                 self.printer.text("\n")

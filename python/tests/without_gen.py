@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from task_maker.tests.test import run_tests, TestingUI
+from task_maker.tests.test import run_tests
 
 
 def test_task():
@@ -13,7 +13,7 @@ def test_task():
         [(1, "Output is correct")] * 2 + [(0, "Output is not correct")] * 2)
     interface.add_solution("wrong_file.cpp", 0, [0],
                            [(0, "Output is not correct")] * 4)
-    interface.run_checks(TestingUI.inst)
+    interface.run_checks()
 
 
 if __name__ == "__main__":

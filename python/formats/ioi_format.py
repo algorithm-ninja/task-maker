@@ -282,6 +282,7 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
     if config.ui != UIS.SILENT:
         finish_ui = IOIFinishUI(task, ui_interface)
         finish_ui.print()
+    return ui_interface
 
 
 def generate_inputs(frontend, task: Task, interface: IOIUIInterface,

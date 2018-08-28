@@ -2,12 +2,13 @@
 
 # enable discovery of capnp folder and installed venv
 from task_maker.syspath_patch import patch_sys_path
+from task_maker.uis.ioi import IOIUIInterface
 
 patch_sys_path()  # noqa
 
 import os.path
 import signal
-from typing import Any
+from typing import Any, Union
 
 from task_maker.args import get_parser, TaskFormat
 from task_maker.config import Config
@@ -17,9 +18,7 @@ from task_maker.languages import LanguageManager
 from task_maker.manager import get_frontend, spawn_server, spawn_worker
 
 
-def main():
-    config = Config(get_parser().parse_args())
-
+def run(config: Config) -> Union[None, IOIUIInterface]:
     if config.run_server:
         return spawn_server(config)
     if config.run_worker:
@@ -43,7 +42,7 @@ def main():
         #     terry_format_clean(args)
         else:
             raise ValueError("Format %s not supported" % format)
-        return
+        return None
 
     frontend = get_frontend(config)
 
@@ -55,10 +54,10 @@ def main():
 
     if format == TaskFormat.IOI:
         task, solutions = ioi_format.get_request(config)
-        ioi_format.evaluate_task(frontend, task, solutions, config)
+        return ioi_format.evaluate_task(frontend, task, solutions, config)
     elif format == TaskFormat.TM:
         task, solutions = tm_format.get_request(config)
-        ioi_format.evaluate_task(frontend, task, solutions, config)
+        return ioi_format.evaluate_task(frontend, task, solutions, config)
     # elif format == "terry":
     #     request = terry_format.get_request(args)
     #     solutions = [
@@ -66,6 +65,11 @@ def main():
     #     ]
     else:
         raise ValueError("Format %s not supported" % format)
+
+
+def main():
+    config = Config(get_parser().parse_args())
+    run(config)
 
 
 if __name__ == '__main__':

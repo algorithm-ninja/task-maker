@@ -76,6 +76,7 @@ class TestcaseGenerationResult:
         self.validation_result = None  # type: Result
         self.validation_stderr = ""
         self.solution_result = None  # type: Result
+        self.solution_stderr = ""
 
 
 class CustomCheckerState:
@@ -483,6 +484,7 @@ class IOIUIInterface:
         def getStderr(stderr):
             if stderr:
                 self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+            testcase_status.solution_stderr = stderr
 
         solving.stderr(False).getContentsAsString(getStderr)
         solving.notifyStart(notifyStartSolving)
