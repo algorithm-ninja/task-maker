@@ -260,7 +260,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
     exec_options.SetArgs(request.getArgs());
 
     if (executable.isLocalFile()) {
-      exec_options.prepare_executable = true;  // TODO: is this useful?
+      exec_options.prepare_executable = true;
     }
 
     // FIFOs.
