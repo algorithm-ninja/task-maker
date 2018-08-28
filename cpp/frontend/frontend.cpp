@@ -292,8 +292,8 @@ void Execution::getResult(std::function<void(Result)> callback,
                           if (r.getStatus().isInternalError()) {
                             result.error = r.getStatus().getInternalError();
                           }
-                          if (r.getStatus().isMissingExecutable()) {
-                            result.error = r.getStatus().getMissingExecutable();
+                          if (r.getStatus().isInvalidRequest()) {
+                            result.error = r.getStatus().getInvalidRequest();
                           }
                           result.resources.cpu_time =
                               r.getResourceUsage().getCpuTime();

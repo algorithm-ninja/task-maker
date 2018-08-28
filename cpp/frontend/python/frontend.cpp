@@ -55,8 +55,8 @@ PYBIND11_MODULE(task_maker_frontend, m) {
              capnproto::ProcessResult::Status::Which::MISSING_FILES)
       .value("INTERNAL_ERROR",
              capnproto::ProcessResult::Status::Which::INTERNAL_ERROR)
-      .value("MISSING_EXECUTABLE",
-             capnproto::ProcessResult::Status::Which::MISSING_EXECUTABLE);
+      .value("INVALID_REQUEST",
+             capnproto::ProcessResult::Status::Which::INVALID_REQUEST);
 
   pybind11::class_<frontend::Result>(m, "Result")
       .def_readonly("status", &frontend::Result::status)

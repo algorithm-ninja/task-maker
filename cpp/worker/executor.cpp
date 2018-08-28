@@ -107,22 +107,21 @@ void RetrieveFile(const std::string& path, capnproto::SHA256::Builder hash_out,
 }
 
 bool ValidateFileName(std::string name, capnproto::Result::Builder result_) {
-  // TODO: make this more permissive?
-  auto set_internal_error = [&result_](std::string err) {
+  auto set_invalid_request = [&result_](std::string err) {
     for (auto result : result_.getProcesses()) {
-      result.getStatus().setInternalError(err);
+      result.getStatus().setInvalidRequest(err);
     }
   };
-  if (name.find("..") != std::string::npos) {
-    set_internal_error("File names should not contain ..!");
+  if (('/' + name + '/').find("/../") != std::string::npos) {
+    set_invalid_request("File names should not contain a .. component!");
     return false;
   }
   if (name.find('\0') != std::string::npos) {
-    set_internal_error("File names should not contain NUL!");
+    set_invalid_request("File names should not contain NUL!");
     return false;
   }
   if (name[0] == '/') {
-    set_internal_error("File names should not start with /!");
+    set_invalid_request("File names should not start with /!");
     return false;
   }
   return true;
@@ -212,7 +211,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
           cmdline = util::which(cmdline);
           if (cmdline.empty()) {
             for (auto result : result_.getProcesses()) {
-              result.getStatus().setMissingExecutable(
+              result.getStatus().setInvalidRequest(
                   "Cannot find system program: " +
                   std::string(executable.getSystem()));
             }

@@ -81,7 +81,7 @@ class IOIFinishUI:
             else:
                 if result.result.status != ResultStatus.INTERNAL_ERROR and \
                         result.result.status != ResultStatus.MISSING_FILES and \
-                        result.result.status != ResultStatus.MISSING_EXECUTABLE:
+                        result.result.status != ResultStatus.INVALID_REQUEST:
                     self.printer.text(" {:>6.3f}s | {:>5.1f}MiB".format(
                         result.result.resources.cpu_time +
                         result.result.resources.sys_time,
@@ -97,7 +97,7 @@ class IOIFinishUI:
                         "  Internal error %s" % result.result.error)
                 elif result.result.status == ResultStatus.MISSING_FILES:
                     self.printer.text("  Missing files")
-                elif result.result.status == ResultStatus.MISSING_EXECUTABLE:
+                elif result.result.status == ResultStatus.INVALID_REQUEST:
                     self.printer.text("  " + result.result.error)
                 elif result.result.status == ResultStatus.SUCCESS:
                     pass

@@ -61,8 +61,8 @@ struct ProcessResult {
     wallLimit @4 :Void;
     memoryLimit @5 :Void;
     missingFiles @6 :Void;
-    internalError @7 :Text;
-    missingExecutable @8 :Text;
+    invalidRequest @7 :Text;
+    internalError @8 :Text;
   }
   resourceUsage @9 :Resources;
   stdout @10 :SHA256; # Hash of standard output
