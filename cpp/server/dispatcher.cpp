@@ -71,10 +71,10 @@ kj::Promise<void> Dispatcher::AddEvaluator(
            fulfiller = std::move(std::get<1>(request_info)),
            canceled = std::get<3>(request_info)](
               kj::Exception exc) mutable -> kj::Promise<void> {
-            KJ_DBG("Worker failed");
+            KJ_LOG(WARNING, "Worker failed");
             kj::PromiseFulfillerPair<void> dummy_start =
                 kj::newPromiseAndFulfiller<void>();
-            dummy_start.promise.then([]() { KJ_DBG("Retrying..."); })
+            dummy_start.promise.then([]() { KJ_LOG(INFO, "Retrying..."); })
                 .detach([](kj::Exception exc) {
                   KJ_FAIL_ASSERT("dummy_start rejected", exc.getDescription());
                 });
@@ -123,10 +123,10 @@ Dispatcher::AddRequest(capnproto::Request::Reader request,
               kj::Exception exc) mutable
           -> kj::Promise<
               capnp::Response<capnproto::Evaluator::EvaluateResults>> {
-            KJ_DBG("Worker failed");
+            KJ_LOG(WARNING, "Worker failed");
             kj::PromiseFulfillerPair<void> dummy_start =
                 kj::newPromiseAndFulfiller<void>();
-            dummy_start.promise.then([]() { KJ_DBG("Retrying..."); })
+            dummy_start.promise.then([]() { KJ_LOG(INFO, "Retrying..."); })
                 .detach([](kj::Exception exc) {
                   KJ_FAIL_ASSERT("dummy_start rejected", exc.getDescription());
                 });

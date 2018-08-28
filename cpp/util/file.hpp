@@ -12,6 +12,7 @@
 namespace util {
 
 static const constexpr uint32_t kChunkSize = 1024 * 1024;
+static const constexpr uint32_t kInlineChunkThresh = 1024;
 
 class File {
  public:
@@ -92,6 +93,13 @@ class File {
       const std::string& path, capnproto::FileReceiver::Client receiver);
   static kj::Promise<void> HandleRequestFile(
       const util::SHA256_t hash, capnproto::FileReceiver::Client receiver) {
+    if (hash.hasContents()) {
+      auto req = receiver.sendChunkRequest();
+      req.setChunk(hash.getContents());
+      return req.send().ignoreResult().then([receiver]() mutable {
+        return receiver.sendChunkRequest().send().ignoreResult();
+      });
+    }
     return HandleRequestFile(PathForHash(hash), receiver);
   }
 
@@ -120,6 +128,12 @@ class File {
   static kj::Promise<void> Get(const util::SHA256_t& hash,
                                capnproto::FileSender::Client worker)
       KJ_WARN_UNUSED_RESULT {
+    if (hash.hasContents()) {
+      auto tmp = Write(PathForHash(hash), /*overwrite=*/true);
+      tmp(hash.getContents());
+      tmp({});
+      return kj::READY_NOW;
+    }
     auto req = worker.requestFileRequest();
     hash.ToCapnp(req.initHash());
     req.setReceiver(kj::heap<util::File::Receiver>(hash));

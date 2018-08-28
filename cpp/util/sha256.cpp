@@ -173,6 +173,9 @@ void SHA256_t::ToCapnp(capnproto::SHA256::Builder out) const {
   out.setData1(TOUINT64(hash_, 8));
   out.setData2(TOUINT64(hash_, 16));
   out.setData3(TOUINT64(hash_, 24));
+  if (hasContents()) {
+    out.setContents(getContents());
+  }
 }
 
 #define FROMUINT32(out, i, val)    \
@@ -189,6 +192,9 @@ SHA256_t::SHA256_t(capnproto::SHA256::Reader in) {
   FROMUINT64(hash_, 8, in.getData1());
   FROMUINT64(hash_, 16, in.getData2());
   FROMUINT64(hash_, 24, in.getData3());
+  if (in.hasContents()) {
+    setContents(in.getContents());
+  }
 }
 
 }  // namespace util

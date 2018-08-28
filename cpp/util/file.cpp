@@ -230,10 +230,20 @@ SHA256_t File::Hash(const std::string& path) {
   SHA256 hasher;
   auto producer = Read(path);
   Chunk chunk;
+  thread_local std::vector<uint8_t> last_chunk;
+  last_chunk.clear();
+  size_t num_chunks = 0;
   while ((chunk = producer()).size()) {
     hasher.update(chunk.begin(), chunk.size());
+    num_chunks++;
+    last_chunk.assign(chunk.begin(), chunk.begin() + chunk.size());
   }
-  return hasher.finalize();
+  SHA256_t hash = hasher.finalize();
+  if ((num_chunks == 1 && last_chunk.size() < kInlineChunkThresh) ||
+      num_chunks == 0) {
+    hash.setContents(last_chunk);
+  }
+  return hash;
 }
 
 void File::MakeDirs(const std::string& path) {
@@ -316,9 +326,11 @@ std::string File::BaseName(const std::string& path) {
 }
 
 int64_t File::Size(const std::string& path) {
-  std::ifstream fin(path, std::ios::ate | std::ios::binary);
-  if (!fin) return -1;
-  return fin.tellg();
+  struct stat st;
+  if (stat(path.c_str(), &st) != 0) {
+    return -1;
+  }
+  return st.st_size;
 }
 
 File::ChunkReceiver File::LazyChunkReceiver(kj::Function<ChunkReceiver()> f) {

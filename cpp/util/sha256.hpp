@@ -1,8 +1,10 @@
 #ifndef UTIL_SHA256_H
 #define UTIL_SHA256_H
 
+#include <kj/array.h>
 #include <array>
 #include <string>
+#include <vector>
 
 #include "capnp/sha256.capnp.h"
 
@@ -13,6 +15,8 @@ static const constexpr uint32_t DIGEST_SIZE = (256 / 8);
 
 class SHA256_t {
   std::array<uint8_t, DIGEST_SIZE> hash_;
+  std::vector<uint8_t> contents_;
+  bool has_contents_ = false;
 
  public:
   explicit SHA256_t(const std::array<uint8_t, DIGEST_SIZE>& hash)
@@ -27,6 +31,25 @@ class SHA256_t {
     for (uint32_t i = 0; i < DIGEST_SIZE; i++)
       if (hash_[i]) return false;
     return true;
+  }
+
+  kj::ArrayPtr<const uint8_t> getContents() const {
+    return {contents_.data(), contents_.size()};
+  }
+
+  bool hasContents() const { return has_contents_; }
+
+  void setContents(const uint8_t* ptr, size_t size) {
+    contents_.assign(ptr, ptr + size);
+    has_contents_ = true;
+  }
+
+  void setContents(kj::ArrayPtr<const uint8_t> data) {
+    return setContents(data.begin(), data.size());
+  }
+
+  void setContents(const std::vector<uint8_t>& data) {
+    return setContents(data.data(), data.size());
   }
 
   friend class Hasher;

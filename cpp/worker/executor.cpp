@@ -73,8 +73,9 @@ kj::Promise<sandbox::ExecutionInfo> RunSandbox(
             .then([pid, fd = outcome_pipe[0]](const kj::Array<kj::byte>& data) {
               close(fd);
               size_t error_sz = *(size_t*)data.begin();
-              const unsigned char* msg = data.begin() + sizeof(size_t);
-              KJ_ASSERT(!error_sz, msg);
+              const char* msg = (char*)data.begin() + sizeof(size_t);
+              KJ_ASSERT(!error_sz,
+                        std::string(msg, data.size() - sizeof(size_t)));
               sandbox::ExecutionInfo outcome;
               memcpy(&outcome, msg, sizeof(outcome));
               int ret = 0;

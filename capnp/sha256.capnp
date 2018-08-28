@@ -7,4 +7,5 @@ struct SHA256 {
   data1 @1 :UInt64;
   data2 @2 :UInt64;
   data3 @3 :UInt64;
+  contents @4 :Data;
 }
