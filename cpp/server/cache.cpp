@@ -185,6 +185,7 @@ CacheManager::CacheManager() {
     }
     fin.close();
   }
+  util::File::MakeDirs(Flags::store_directory);
   fout_.open(Path(), std::ios_base::out | std::ios_base::app);
 }
 
