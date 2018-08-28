@@ -91,7 +91,10 @@ void PrepareFile(const std::string& path, const util::SHA256_t& hash,
   if (hash.isZero()) return;
   cache_.Register(hash);
   util::File::Copy(util::File::PathForHash(hash), path);
-  util::File::MakeImmutable(path);
+  if (executable)
+    util::File::MakeExecutable(path);
+  else
+    util::File::MakeImmutable(path);
 }
 
 void RetrieveFile(const std::string& path, capnproto::SHA256::Builder hash_out,
@@ -257,7 +260,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
     exec_options.SetArgs(request.getArgs());
 
     if (executable.isLocalFile()) {
-      exec_options.prepare_executable = true;
+      exec_options.prepare_executable = true;  // TODO: is this useful?
     }
 
     // FIFOs.
