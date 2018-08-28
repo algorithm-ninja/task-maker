@@ -4,11 +4,10 @@ import glob
 import os
 import shlex
 import yaml
-from task_maker.solution import Solution, BatchSolution, CommunicationSolution
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
-from task_maker.args import UIS, CacheMode
+from task_maker.args import UIS, CacheMode, Arch
 from task_maker.config import Config
 from task_maker.uis.ioi_finish_ui import IOIFinishUI
 from task_maker.uis.ioi_curses_ui import IOICursesUI
@@ -17,6 +16,7 @@ from task_maker.formats import ScoreMode, Subtask, TestCase, Task, \
     list_files, Validator, Generator, get_options, VALIDATION_INPUT_NAME, \
     gen_grader_map, get_write_input_file, get_write_output_file, TaskType
 from task_maker.sanitize import sanitize_command
+from task_maker.solution import Solution, BatchSolution, CommunicationSolution
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import File, Frontend
 
@@ -75,17 +75,15 @@ def gen_testcases(copy_compiled: bool, task: Task) -> Dict[int, Subtask]:
     if not generator:
         return {0: load_static_testcases()}
     else:
-        generator = Generator(
-            "default",
-            SourceFile.from_file(generator, task.name, copy_compiled
-                                 and "bin/generator"), None)
+        gen = SourceFile.from_file(generator, task.name, copy_compiled,
+                                   "bin/generator", Arch.DEFAULT, {})
+        generator = Generator("default", gen, None)
     validator = get_validator()
     if not validator:
         raise RuntimeError("No validator found")
-    validator = Validator(
-        "default",
-        SourceFile.from_file(validator, task.name, copy_compiled
-                             and "bin/validator"), None)
+    val = SourceFile.from_file(validator, task.name, copy_compiled,
+                               "bin/validator", Arch.DEFAULT, {})
+    validator = Validator("default", val, None)
 
     current_testcases = {}  # type: Dict[int, TestCase]
     subtask_num = -1  # the first #ST line will skip a subtask!
@@ -226,24 +224,22 @@ def create_task(config: Config):
         raise RuntimeError("No official solution found")
     if official_solution:
         task.official_solution = SourceFile.from_file(
-            official_solution,
-            task.name,
-            copy_compiled and "bin/official_solution",
-            grader_map=grader_map)
+            official_solution, task.name, copy_compiled,
+            "bin/official_solution", Arch.DEFAULT, grader_map)
 
     if checker is not None:
-        task.checker = SourceFile.from_file(checker, task.name, copy_compiled
-                                            and "bin/checker")
+        task.checker = SourceFile.from_file(checker, task.name, copy_compiled,
+                                            "bin/checker", Arch.DEFAULT, {})
     if manager is not None:
-        task.checker = SourceFile.from_file(manager, task.name, copy_compiled
-                                            and "bin/manager")
+        task.checker = SourceFile.from_file(manager, task.name, copy_compiled,
+                                            "bin/manager", Arch.DEFAULT, {})
 
     sols = []  # type: List[Solution]
     for solution in solutions:
         path, ext = os.path.splitext(os.path.basename(solution))
-        bin_file = copy_compiled and "bin/" + path + "_" + ext[1:]
-        source = SourceFile.from_file(
-            solution, task.name, bin_file, grader_map=grader_map)
+        source = SourceFile.from_file(solution, task.name, copy_compiled,
+                                      "bin/" + path + "_" + ext[1:],
+                                      Arch.DEFAULT, grader_map)
         if task.task_type == TaskType.Batch:
             sols.append(BatchSolution(source, task, config, task.checker))
         else:
