@@ -2,13 +2,14 @@
 #include "util/flags.hpp"
 #include "util/sha256.hpp"
 
-#include <cstdlib>
-
 #include <kj/async.h>
 #include <kj/debug.h>
 #include <kj/exception.h>
+#include <kj/io.h>
 #include <algorithm>
+#include <cstdlib>
 #include <fstream>
+#include <queue>
 #include <system_error>
 
 #if defined(__unix__) || defined(__linux__) || defined(__APPLE__)
@@ -82,7 +83,7 @@ std::string OsTempDir(const std::string& path) {
   return data;  // NOLINT
 }
 
-int OsTempFile(const std::string& path, std::string* tmp) {
+kj::AutoCloseFd OsTempFile(const std::string& path, std::string* tmp) {
 #ifdef __APPLE__
   *tmp = path + ".";
   do {
@@ -99,7 +100,7 @@ int OsTempFile(const std::string& path, std::string* tmp) {
   strncat(data, tmp->c_str(), max_path_len - 1);  // NOLINT
   int fd = mkostemp(data, O_CLOEXEC);             // NOLINT
   *tmp = data;                                    // NOLINT
-  return fd;
+  return kj::AutoCloseFd(fd);
 #endif
 }
 
@@ -140,35 +141,23 @@ int OsAtomicCopy(const std::string& src, const std::string& dst,
 }
 
 util::File::ChunkProducer OsRead(const std::string& path) {
-  int fd = open(path.c_str(), O_CLOEXEC | O_RDONLY);  // NOLINT
-  if (fd == -1) {
+  kj::AutoCloseFd fd{open(path.c_str(), O_CLOEXEC | O_RDONLY)};  // NOLINT
+  if (fd.get() == -1) {
     throw std::system_error(errno, std::system_category(), "Read " + path);
   }
-  return [fd, path, buf = std::array<kj::byte, util::kChunkSize>()]() mutable {
-    if (fd == -1) return util::File::Chunk();
+  return [fd = std::move(fd), path,
+          buf = std::array<kj::byte, util::kChunkSize>()]() mutable {
+    if (fd.get() == -1) return util::File::Chunk();
     ssize_t amount;
-    try {
-      while ((amount = read(fd, buf.data(), util::kChunkSize))) {  // NOLINT
-        if (amount == -1 && errno == EINTR) continue;
-        if (amount == -1) break;
-        return util::File::Chunk(buf.data(), amount);
-      }
-    } catch (...) {
-      fd = -1;
-      close(fd);
-      throw;
+    while ((amount = read(fd, buf.data(), util::kChunkSize))) {  // NOLINT
+      if (amount == -1 && errno == EINTR) continue;
+      if (amount == -1) break;
+      return util::File::Chunk(buf.data(), amount);
     }
     if (amount == -1) {
-      fd = -1;
-      int error = errno;
-      close(fd);
-      throw std::system_error(error, std::system_category(), "Read " + path);
-    }
-    if (close(fd) == -1) {
-      fd = -1;
+      fd = nullptr;
       throw std::system_error(errno, std::system_category(), "Read " + path);
     }
-    fd = -1;
     return util::File::Chunk();
   };
 }
@@ -176,9 +165,9 @@ util::File::ChunkProducer OsRead(const std::string& path) {
 util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
                                   bool exist_ok) {
   std::string temp_file;
-  int fd = OsTempFile(path, &temp_file);
+  auto fd = OsTempFile(path, &temp_file);
 
-  if (fd == -1) {
+  if (fd.get() == -1) {
     throw std::system_error(errno, std::system_category(), "Write " + path);
   }
   auto done = kj::heap<bool>();
@@ -190,12 +179,13 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
       KJ_LOG(WARNING, "File never finalized!");
     }
   };
-  return [fd, temp_file, path, overwrite, exist_ok, done = std::move(done),
+  return [fd = std::move(fd), temp_file, path, overwrite, exist_ok,
+          done = std::move(done),
           _ = kj::defer(std::move(finalize))](util::File::Chunk chunk) mutable {
-    if (fd == -1) return;
+    if (fd.get() == -1) return;
     if (chunk.size() == 0) {
       *done = true;
-      if (fsync(fd) == -1 || close(fd) == -1 ||
+      if (fsync(fd) == -1 ||
           OsAtomicMove(temp_file, path, overwrite, exist_ok)) {
         throw std::system_error(errno, std::system_category(), "Write " + path);
       }
@@ -207,8 +197,7 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
                               chunk.size() - pos);
       if (written == -1 && errno == EINTR) continue;
       if (written == -1) {
-        close(fd);
-        fd = -1;
+        fd = nullptr;
         throw std::system_error(errno, std::system_category(),
                                 "write " + temp_file);
       }
@@ -363,18 +352,31 @@ kj::Promise<void> File::Receiver::sendChunk(SendChunkContext context) {
 }
 
 namespace {
-kj::Promise<void> next_chunk(File::ChunkProducer producer,
-                             capnproto::FileReceiver::Client receiver) {
-  File::Chunk chunk = producer();
-  auto req = receiver.sendChunkRequest();
+struct HandleRequestFileData {
+  File::ChunkProducer producer;
+  capnproto::FileReceiver::Client receiver;
+  static size_t num_concurrent;
+  static const constexpr size_t max_concurrent = 128;
+  static std::queue<kj::Own<kj::PromiseFulfiller<void>>> waiting;
+};
+
+size_t HandleRequestFileData::num_concurrent = 0;
+std::queue<kj::Own<kj::PromiseFulfiller<void>>> HandleRequestFileData::waiting;
+
+kj::Promise<void> next_chunk(HandleRequestFileData data) {
+  File::Chunk chunk = data.producer();
+  auto req = data.receiver.sendChunkRequest();
   req.setChunk(chunk);
   return req.send().ignoreResult().then(
-      [sz = chunk.size(), producer = std::move(producer),
-       receiver = std::move(receiver)]() mutable -> kj::Promise<void> {
-        if (sz)
-          return next_chunk(std::move(producer), receiver);
-        else
-          return kj::READY_NOW;
+      [sz = chunk.size(),
+       data = std::move(data)]() mutable -> kj::Promise<void> {
+        if (sz) return next_chunk(std::move(data));
+        if (!data.waiting.empty()) {
+          data.waiting.front()->fulfill();
+          data.waiting.pop();
+        }
+        data.num_concurrent--;
+        return kj::READY_NOW;
       });
 }
 }  // namespace
@@ -384,8 +386,18 @@ kj::Promise<void> File::HandleRequestFile(
   // TODO: see if we can easily avoid the extra round-trips while
   // still guaranteeing in-order processing (when capnp implements streams?)
   // Possibly by using UnionPromiseBuilder?
-  auto producer = Read(path);
-  return next_chunk(std::move(producer), receiver);
+  if (HandleRequestFileData::num_concurrent <
+      HandleRequestFileData::max_concurrent) {
+    HandleRequestFileData::num_concurrent++;
+    HandleRequestFileData data{Read(path), receiver};
+    return next_chunk(std::move(data));
+  } else {
+    auto pf = kj::newPromiseAndFulfiller<void>();
+    HandleRequestFileData::waiting.push(std::move(pf.fulfiller));
+    return pf.promise.then([path, receiver]() mutable {
+      return File::HandleRequestFile(path, receiver);
+    });
+  }
 }
 
 }  // namespace util
