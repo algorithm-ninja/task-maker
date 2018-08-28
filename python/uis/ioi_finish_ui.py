@@ -119,7 +119,6 @@ class IOIFinishUI:
                 if result.generation_result:
                     if result.generation_result.status == ResultStatus.SUCCESS:
                         self.printer.green("Generated")
-                        self.printer.text(" | ")
                     else:
                         self.printer.red("Generation failed ")
                         self.printer.red(
@@ -129,13 +128,11 @@ class IOIFinishUI:
                         success = False
                 else:
                     self.printer.green("Copied")
-                    self.printer.text(" | ")
 
                 if result.validation_result:
+                    self.printer.text(" | ")
                     if result.validation_result.status == ResultStatus.SUCCESS:
                         self.printer.green("Validated")
-                        if self.task.task_type != TaskType.Communication:
-                            self.printer.text(" | ")
                     else:
                         self.printer.red("Validation failed ")
                         self.printer.red(
@@ -145,6 +142,7 @@ class IOIFinishUI:
                         success = False
 
                 if result.solution_result:
+                    self.printer.text(" | ")
                     if result.solution_result.status == ResultStatus.SUCCESS:
                         self.printer.green("Solved")
                     else:

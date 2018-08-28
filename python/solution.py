@@ -85,8 +85,8 @@ class BatchSolution(Solution):
                                                           testcase))
             check.setExecutablePath("diff")
             check.setArgs(["-w", "output", "contestant_output"])
-            check.addInput("output", correct_output)
-            check.addInput("contestant_output", output)
+        check.addInput("output", correct_output)
+        check.addInput("contestant_output", output)
         if self.config.cache != CacheMode.ALL:
             check.disableCache()
         limits = Resources()
