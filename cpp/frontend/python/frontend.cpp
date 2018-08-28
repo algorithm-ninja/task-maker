@@ -64,6 +64,7 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def_readonly("return_code", &frontend::Result::return_code)
       .def_readonly("error", &frontend::Result::error)
       .def_readonly("resources", &frontend::Result::resources)
+      .def_readonly("was_cached", &frontend::Result::was_cached)
       .def("__repr__", [](const frontend::Result& res) {
         std::string message = "<Result ";
         if (res.status == capnproto::ProcessResult::Status::Which::SUCCESS)

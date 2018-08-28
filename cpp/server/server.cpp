@@ -93,7 +93,7 @@ kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
                 util::UnionPromiseBuilder dependencies_propagated_;
                 for (size_t i = 0; i < executions_.size(); i++) {
                   executions_[i]->processResult(res.getProcesses()[i],
-                                                dependencies_propagated_);
+                                                dependencies_propagated_, true);
                 }
                 return std::move(dependencies_propagated_)
                     .Finalize()
@@ -335,8 +335,11 @@ void Execution::prepareRequest() {
 
 void Execution::processResult(
     capnproto::ProcessResult::Reader result,
-    util::UnionPromiseBuilder& dependencies_propagated_) {
-  KJ_IF_MAYBE(ctx, context_) { ctx->getResults().setResult(result); }
+    util::UnionPromiseBuilder& dependencies_propagated_, bool from_cache_) {
+  KJ_IF_MAYBE(ctx, context_) {
+    ctx->getResults().setResult(result);
+    ctx->getResults().getResult().setWasCached(from_cache_);
+  }
   KJ_LOG(INFO, "Execution " + description_, result);
   if (result.getStatus().isInternalError()) {
     frontend_context_.evaluation_early_stop_.fulfiller->reject(
@@ -403,10 +406,8 @@ void Execution::onDependenciesFailure(kj::Exception exc) {
     if (ff)
       ff->reject(KJ_EXCEPTION(FAILED, "Dependency failed: " + description_));
   };
-  if (stdout_)
-    mark_as_failed("stdout", stdout_);
-  if (stderr_)
-    mark_as_failed("stdout", stderr_);
+  if (stdout_) mark_as_failed("stdout", stdout_);
+  if (stderr_) mark_as_failed("stdout", stderr_);
   for (auto f : outputs_) {
     mark_as_failed(f.first, f.second);
   }

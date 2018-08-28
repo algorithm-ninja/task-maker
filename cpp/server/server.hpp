@@ -55,7 +55,8 @@ class Execution : public capnproto::Execution::Server {
   void addDependencies(util::UnionPromiseBuilder& dependencies);
   void prepareRequest();
   void processResult(capnproto::ProcessResult::Reader result,
-                     util::UnionPromiseBuilder& dependencies_propagated_);
+                     util::UnionPromiseBuilder& dependencies_propagated_,
+                     bool from_cache_ = false);
   void onDependenciesFailure(kj::Exception exc);
   void onDependenciesPropagated();
 

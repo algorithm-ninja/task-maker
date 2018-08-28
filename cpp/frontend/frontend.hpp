@@ -32,6 +32,7 @@ struct Result {
   uint32_t return_code;
   std::string error;
   Resources resources;
+  bool was_cached;
 };
 
 class Frontend;

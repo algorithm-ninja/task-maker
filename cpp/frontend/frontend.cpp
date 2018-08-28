@@ -313,6 +313,7 @@ void Execution::getResult(std::function<void(Result)> callback,
                               r.getResourceUsage().getMemlock();
                           result.resources.stack =
                               r.getResourceUsage().getStack();
+                          result.was_cached = r.getWasCached();
                           callback(result);
                         },
                         [errored](auto exc) {

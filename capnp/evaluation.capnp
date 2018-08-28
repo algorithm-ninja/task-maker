@@ -62,12 +62,13 @@ struct ProcessResult {
     memoryLimit @5 :Void;
     missingFiles @6 :Void;
     internalError @7 :Text;
-    missingExecutable @12 :Text;
+    missingExecutable @8 :Text;
   }
-  resourceUsage @8 :Resources;
-  stdout @9 :SHA256; # Hash of standard output
-  stderr @10 :SHA256; # Hash of standard error
-  outputFiles @11 :List(FileInfo); # Name and hash of other outputs
+  resourceUsage @9 :Resources;
+  stdout @10 :SHA256; # Hash of standard output
+  stderr @11 :SHA256; # Hash of standard error
+  outputFiles @12 :List(FileInfo); # Name and hash of other outputs
+  wasCached @13 :Bool; # True if the answer comes from the cache.
 }
 
 struct Result {
