@@ -61,6 +61,13 @@ class Language(ABC):
         pass
 
     @property
+    def source_extension(self) -> str:
+        """
+        The main extension for this language (with the dot).
+        """
+        return self.source_extensions[0]
+
+    @property
     def header_extensions(self) -> List[str]:
         """
         List of the extensions (with the dot) of the header files for this
@@ -104,7 +111,9 @@ class Language(ABC):
 
     def get_dependencies(self, filename: str) -> List[Dependency]:
         """
-        Read the file and recursively search for dependencies
+        Read the file and recursively search for dependencies. If the language
+        is compiled those files will be copied at the compilation phase, if the
+        language is not compiled they will be copied at the execution phase.
         :param filename: Root file from which search the dependencies
         """
         return []

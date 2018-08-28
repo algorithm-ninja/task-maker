@@ -4,6 +4,7 @@ import shlex
 from typing import List, IO, Dict
 from typing import Optional
 
+from task_maker.args import Arch
 from task_maker.config import Config
 from task_maker.formats import ioi_format, Task, \
     Subtask, Generator, Validator, Constraint, ScoreMode, TestCase, \
@@ -14,7 +15,7 @@ from task_maker.formats.ioi_format import get_generator, \
 from task_maker.source_file import SourceFile
 
 
-def parse_cases(gen: IO, copy_compiled: bool, task: Task) -> List[Subtask]:
+def parse_cases(gen: IO, task: Task, copy_compiled: bool) -> List[Subtask]:
     lines = [l.strip() for l in gen.readlines()]
 
     subtasks = []  # type: List[Subtask]
@@ -31,14 +32,14 @@ def parse_cases(gen: IO, copy_compiled: bool, task: Task) -> List[Subtask]:
     if guessed_gen:
         default_gen = Generator(
             "default",
-            SourceFile.from_file(guessed_gen, task.name, copy_compiled
-                                 and "bin/gen_default"), [])
+            SourceFile.from_file(guessed_gen, task.name, copy_compiled,
+                                 "bin/gen_default", Arch.DEFAULT, {}), [])
     guessed_val = get_validator()
     if guessed_val:
         default_val = Validator(
             "default",
-            SourceFile.from_file(guessed_val, task.name, copy_compiled
-                                 and "bin/val_default"), [])
+            SourceFile.from_file(guessed_val, task.name, copy_compiled,
+                                 "bin/val_default", Arch.DEFAULT, {}), [])
 
     def is_float(s):
         try:
@@ -64,8 +65,9 @@ def parse_cases(gen: IO, copy_compiled: bool, task: Task) -> List[Subtask]:
                     "Duplicate GEN definition at line %d" % lineno)
             generator = Generator(
                 name,
-                SourceFile.from_file(args[1], task.name, copy_compiled
-                                     and "bin/gen_" + name), args[2:])
+                SourceFile.from_file(args[1], task.name, copy_compiled,
+                                     "bin/gen_" + name, Arch.DEFAULT, {}),
+                args[2:])
             generators[name] = generator
             if name == "default":
                 default_gen = generator
@@ -95,8 +97,9 @@ def parse_cases(gen: IO, copy_compiled: bool, task: Task) -> List[Subtask]:
                     "Duplicate VAL definition at line %d" % lineno)
             validator = Validator(
                 name,
-                SourceFile.from_file(args[1], task.name, copy_compiled
-                                     and "bin/val_" + name), args[2:])
+                SourceFile.from_file(args[1], task.name, copy_compiled,
+                                     "bin/val_" + name, Arch.DEFAULT, {}),
+                args[2:])
             validators[name] = validator
             if name == "default":
                 default_val = validator
@@ -182,7 +185,7 @@ def parse_cases(gen: IO, copy_compiled: bool, task: Task) -> List[Subtask]:
 
     def process_SUBTASK(args: List[str]):
         nonlocal current_gen, current_val, st_num
-        if len(args) < 1 or len(args) > 2:
+        if len(args) < 1:
             raise ValueError("Invalid arguments to SUBTASK: max_score [name] "
                              "(line %d)" % lineno)
         if not is_float(args[0]):
@@ -329,11 +332,13 @@ def generate_gen_GEN(subtasks: List[Subtask]):
 def get_request(config: Config) -> (Task, List[SourceFile]):
     task, sols = create_task(config)
     with open("gen/cases.gen", "r") as gen:
-        subtasks = parse_cases(gen, config.copy_exe)
+        subtasks = parse_cases(gen, task, config.copy_exe)
 
     for st_num, subtask in enumerate(subtasks):
         task.subtasks[st_num] = subtask
 
+    if config.dry_run:
+        return task, sols
     if os.path.exists("gen/GEN"):
         with open("gen/GEN") as f:
             if "tm-allow-delete" not in f.read(1024):

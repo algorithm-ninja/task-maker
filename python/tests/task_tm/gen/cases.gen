@@ -1,0 +1,40 @@
+# system command
+: GEN echo echo
+# custom generators
+: GEN default gen/even.py N
+: GEN odd gen/odd.py N
+# custom validators
+: VAL even gen/val_even.py
+: VAL odd gen/val_odd.py
+# system command
+: VAL true true
+# task constraints
+: CONSTRAINT 1 <= $N <= 100
+
+: SUBTASK 5 easy
+: VAL true
+# use custom generator
+: RUN echo 42
+: RUN echo 41
+# use default generator
+21
+
+: SUBTASK 20 all even
+: VAL even
+10
+20
+30
+
+: SUBTASK 20 all odd
+: GEN odd
+: VAL odd
+20
+21
+
+: SUBTASK 55
+# subtask constraint
+: CONSTRAINT $N >= 50
+: VAL true
+: RUN odd 50
+50
+100
