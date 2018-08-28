@@ -13,25 +13,32 @@ HandleRequest(capnproto::Evaluator::Client evaluator,
               capnproto::Request::Reader request) {
   auto req = evaluator.evaluateRequest();
   req.setRequest(request);
-  return req.send().then([evaluator](auto res) mutable {
-    auto result = res.getResult();
-    kj::Promise<void> load_files = kj::READY_NOW;
-    {
-      util::UnionPromiseBuilder builder;
-      for (const auto& process_result : result.getProcesses()) {
-        for (const auto& output : process_result.getOutputFiles()) {
-          builder.AddPromise(util::File::MaybeGet(output.getHash(), evaluator));
+  return req.send().then(
+      [evaluator](auto res) mutable {
+        auto result = res.getResult();
+        kj::Promise<void> load_files = kj::READY_NOW;
+        {
+          util::UnionPromiseBuilder builder;
+          for (const auto& process_result : result.getProcesses()) {
+            for (const auto& output : process_result.getOutputFiles()) {
+              builder.AddPromise(
+                  util::File::MaybeGet(output.getHash(), evaluator));
+            }
+            builder.AddPromise(
+                util::File::MaybeGet(process_result.getStderr(), evaluator));
+            builder.AddPromise(
+                util::File::MaybeGet(process_result.getStdout(), evaluator));
+          }
+          load_files = std::move(builder).Finalize();
         }
-        builder.AddPromise(
-            util::File::MaybeGet(process_result.getStderr(), evaluator));
-        builder.AddPromise(
-            util::File::MaybeGet(process_result.getStdout(), evaluator));
-      }
-      load_files = std::move(builder).Finalize();
-    }
-    return load_files.then(
-        [res = std::move(res)]() mutable { return std::move(res); });
-  });
+        return load_files.then(
+            [res = std::move(res)]() mutable { return std::move(res); });
+      },
+      [](kj::Exception exc) {
+        return kj::Promise<
+            capnp::Response<capnproto::Evaluator::EvaluateResults>>(
+            std::move(exc));
+      });
 }
 };  // namespace
 
@@ -56,10 +63,32 @@ kj::Promise<void> Dispatcher::AddEvaluator(
   auto ff = std::get<1>(request_info).get();
   return p
       .then(
-          [request_fulfiller = std::move(std::get<1>(request_info))](
-              auto res) mutable { request_fulfiller->fulfill(std::move(res)); },
-          [fulfiller = ff](kj::Exception exc) {
-            fulfiller->reject(std::move(exc));
+          [fulfiller = ff](auto res) -> kj::Promise<void> {
+            fulfiller->fulfill(std::move(res));
+            return kj::READY_NOW;
+          },
+          [this, request = std::get<0>(request_info),
+           fulfiller = std::move(std::get<1>(request_info)),
+           canceled = std::get<3>(request_info)](
+              kj::Exception exc) mutable -> kj::Promise<void> {
+            KJ_DBG("Worker failed");
+            kj::PromiseFulfillerPair<void> dummy_start =
+                kj::newPromiseAndFulfiller<void>();
+            dummy_start.promise.then([]() { KJ_DBG("Retrying..."); })
+                .detach([](kj::Exception exc) {
+                  KJ_FAIL_ASSERT("dummy_start rejected", exc.getDescription());
+                });
+            auto ff = fulfiller.get();
+            return AddRequest(request, std::move(dummy_start.fulfiller),
+                              canceled)
+                .then(
+                    [fulfiller = std::move(fulfiller)](auto res) mutable {
+                      fulfiller->fulfill(std::move(res));
+                    },
+                    [fulfiller = ff](kj::Exception exc) {
+                      fulfiller->reject(kj::cp(exc));
+                      return exc;
+                    });
           })
       .eagerlyEvaluate(nullptr);
 }
@@ -84,14 +113,26 @@ Dispatcher::AddRequest(capnproto::Request::Reader request,
   auto ff = evaluator_fulfiller.get();
   return p
       .then(
-          [evaluator_fulfiller =
-               std::move(evaluator_fulfiller)](auto result) mutable {
-            evaluator_fulfiller->fulfill();
+          [fulfiller = ff](auto result) mutable
+          -> kj::Promise<
+              capnp::Response<capnproto::Evaluator::EvaluateResults>> {
+            fulfiller->fulfill();
             return std::move(result);
           },
-          [fulfiller = ff](kj::Exception exc) {
+          [this, request, canceled, fulfiller = std::move(evaluator_fulfiller)](
+              kj::Exception exc) mutable
+          -> kj::Promise<
+              capnp::Response<capnproto::Evaluator::EvaluateResults>> {
+            KJ_DBG("Worker failed");
+            kj::PromiseFulfillerPair<void> dummy_start =
+                kj::newPromiseAndFulfiller<void>();
+            dummy_start.promise.then([]() { KJ_DBG("Retrying..."); })
+                .detach([](kj::Exception exc) {
+                  KJ_FAIL_ASSERT("dummy_start rejected", exc.getDescription());
+                });
             fulfiller->reject(KJ_EXCEPTION(FAILED, kj::cp(exc)));
-            return exc;
+            return AddRequest(request, std::move(dummy_start.fulfiller),
+                              canceled);
           })
       .eagerlyEvaluate(nullptr);
 }
