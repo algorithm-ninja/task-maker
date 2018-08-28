@@ -316,14 +316,15 @@ class IOIUIInterface:
             def getResultCompilation(result: Result):
                 del self.running[log_prefix]
                 self.non_solutions[name].result = result
+                cached = " [cached]" if result.was_cached else ""
                 if result.status == ResultStatus.SUCCESS:
-                    self.printer.green(log_prefix + "SUCCESS\n")
+                    self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
                     self.non_solutions[
                         name].status = SourceFileCompilationStatus.DONE
                 else:
                     self.add_error("Failed to compile " + name)
-                    self.printer.red(log_prefix +
-                                     "FAIL: {}\n".format(result.status))
+                    self.printer.red(log_prefix + "FAIL: {} {}\n".format(
+                        result.status, cached))
                     self.non_solutions[
                         name].status = SourceFileCompilationStatus.FAILURE
 
@@ -359,14 +360,15 @@ class IOIUIInterface:
             def getResultCompilation(result: Result):
                 del self.running[log_prefix]
                 self.solutions[name].result = result
+                cached = " [cached]" if result.was_cached else ""
                 if result.status == ResultStatus.SUCCESS:
-                    self.printer.green(log_prefix + "SUCCESS\n")
+                    self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
                     self.solutions[
                         name].status = SourceFileCompilationStatus.DONE
                 else:
                     self.add_warning("Failed to compile: " + name)
-                    self.printer.red(log_prefix +
-                                     "FAIL: {}\n".format(result.status))
+                    self.printer.red(log_prefix + "FAIL: {} {}\n".format(
+                        result.status, cached))
                     self.solutions[
                         name].status = SourceFileCompilationStatus.FAILURE
 
@@ -397,13 +399,14 @@ class IOIUIInterface:
         def getResultGeneration(result: Result):
             del self.running[log_prefix]
             testcase_status.generation_result = result
+            cached = " [cached]" if result.was_cached else ""
             if result.status == ResultStatus.SUCCESS:
-                self.printer.green(log_prefix + "SUCCESS\n")
+                self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
                 testcase_status.status = TestcaseGenerationStatus.GENERATED
             else:
                 self.add_error("Failed to generate testcase #%d" % testcase)
                 self.printer.red(log_prefix +
-                                 "FAIL: {}\n".format(result.status))
+                                 "FAIL: {} {}\n".format(result.status, cached))
                 testcase_status.status = TestcaseGenerationStatus.FAILURE
 
         def skippedGeneration():
@@ -433,13 +436,14 @@ class IOIUIInterface:
         def getResultValidation(result: Result):
             del self.running[log_prefix]
             testcase_status.validation_result = result
+            cached = " [cached]" if result.was_cached else ""
             if result.status == ResultStatus.SUCCESS:
-                self.printer.green(log_prefix + "SUCCESS\n")
+                self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
                 testcase_status.status = TestcaseGenerationStatus.VALIDATED
             else:
                 self.add_error("Failed to validate testcase #%d" % testcase)
                 self.printer.red(log_prefix +
-                                 "FAIL: {}\n".format(result.status))
+                                 "FAIL: {} {}\n".format(result.status, cached))
                 testcase_status.status = TestcaseGenerationStatus.FAILURE
 
         def skippedValidation():
@@ -468,14 +472,15 @@ class IOIUIInterface:
         def getResultSolving(result: Result):
             del self.running[log_prefix]
             testcase_status.solution_result = result
+            cached = " [cached]" if result.was_cached else ""
             if result.status == ResultStatus.SUCCESS:
-                self.printer.green(log_prefix + "SUCCESS\n")
+                self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
                 testcase_status.status = TestcaseGenerationStatus.DONE
             else:
                 self.add_error(
                     "Failed to generate output of testcase #%d" % testcase)
                 self.printer.red(log_prefix +
-                                 "FAIL: {}\n".format(result.status))
+                                 "FAIL: {} {}\n".format(result.status, cached))
                 testcase_status.status = TestcaseGenerationStatus.FAILURE
 
         def skippedSolving():
@@ -512,11 +517,12 @@ class IOIUIInterface:
 
             def getResultEvaluation(result: Result):
                 del self.running[log_prefix]
+                cached = " [cached]" if result.was_cached else ""
                 if result.status == ResultStatus.SUCCESS:
-                    self.printer.green(log_prefix + "SUCCESS\n")
+                    self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
                 else:
-                    self.printer.red(log_prefix +
-                                     "FAIL: {}\n".format(result.status))
+                    self.printer.red(log_prefix + "FAIL: {} {}\n".format(
+                        result.status, cached))
 
                 self.testing[solution].update_eval_result(
                     subtask, testcase, result, num)
@@ -547,18 +553,19 @@ class IOIUIInterface:
 
         def getResultChecking(result: Result):
             del self.running[log_prefix]
+            cached = " [cached]" if result.was_cached else ""
             if has_custom_checker:
                 custom_checker_state.set_result(result)
                 if result.status == ResultStatus.SUCCESS:
-                    self.printer.green(log_prefix + "SUCCESS\n")
+                    self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
                 else:
                     self.add_error(
                         "Checker failed for testcase #%d for solution %s" %
                         (testcase, solution))
-                    self.printer.red(log_prefix +
-                                     "FAIL: {}\n".format(result.status))
+                    self.printer.red(log_prefix + "FAIL: {} {}\n".format(
+                        result.status, cached))
             else:
-                self.printer.green(log_prefix + "SUCCESS\n")
+                self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
                 self.testing[solution].update_default_check_result(
                     subtask, testcase, result)
 
