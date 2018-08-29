@@ -10,22 +10,24 @@ from task_maker.languages import CompiledLanguage, CommandType, \
 CXX_INCLUDE = re.compile('#include *["<](.+)[">]')
 
 
-def find_c_dependency(filename: str) -> List[Dependency]:
+def find_c_dependency(filename: str, strip=None) -> List[Dependency]:
     scope = os.path.dirname(filename)
+    if strip is None:
+        strip = scope + "/"
     with open(filename) as file:
         content = file.read()
     includes = CXX_INCLUDE.findall(content)
     dependencies = []  # type: List[Dependency]
     for include in includes:
         file_path = os.path.join(scope, include)
+        if file_path.startswith(strip):
+            include = file_path[len(strip):]
         if os.path.islink(file_path):
             file_path = os.path.realpath(file_path)
-        # the sandbox does not support file inside subdirs (nor ../something),
-        # for convenience skip all the files that includes "/" in the name
-        if os.path.exists(file_path) and os.sep not in include:
+        if os.path.exists(file_path):
             dependency = Dependency(include, file_path)
             dependencies += [dependency]
-            dependencies += find_c_dependency(file_path)
+            dependencies += find_c_dependency(file_path, strip)
     return dependencies
 
 

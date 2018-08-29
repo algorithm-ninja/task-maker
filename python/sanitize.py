@@ -5,9 +5,6 @@ from typing import List
 
 from task_maker.languages import Dependency
 
-# TODO the new sandbox supports subfolders, so it's not needed to flatten the
-# tree
-
 
 def sanitize_command(args: List[str]) -> List[Dependency]:
     dependencies = []  # type: List[Dependency]
@@ -21,5 +18,5 @@ def sanitize_command(args: List[str]) -> List[Dependency]:
 
 def sanitize_filename(filename: str) -> str:
     return "".join(
-        filter(lambda x: x in string.ascii_letters + string.digits + "_-.",
+        filter(lambda x: x in string.ascii_letters + string.digits + "_-./",
                filename))
