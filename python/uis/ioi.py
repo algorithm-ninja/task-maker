@@ -58,6 +58,7 @@ class TestcaseSolutionInfo:
         self.message = "Waiting..."
         self.checker_outcome = "Waiting..."
         self.checked = False
+        self.checker_result = None  # type: Result
 
 
 class SourceFileCompilationResult:
@@ -120,9 +121,6 @@ class SolutionStatus:
         self.subtask_results = [SubtaskSolutionResult.WAITING] * len(subtasks)
         self.testcase_results = dict(
         )  # type: Dict[int, Dict[int, TestcaseSolutionInfo]]
-        self.st_remaining_cases = [
-            len(subtask) for subtask in subtasks.values()
-        ]
 
         for st_num, subtask in subtasks.items():
             self.testcase_results[st_num] = dict()
@@ -163,6 +161,7 @@ class SolutionStatus:
         # the default checker is used only in batch type tasks, no need for
         # communication's out-of-order callbacks
         testcase_status = self.testcase_results[subtask][testcase]
+        testcase_status.checker_result = result
         testcase_status.checked = True
         if result.status == ResultStatus.SUCCESS:
             testcase_status.status = TestcaseSolutionStatus.ACCEPTED
@@ -187,6 +186,7 @@ class SolutionStatus:
         # will end successfully. If else update_eval_result will overwrite the
         # result later
         testcase_status = self.testcase_results[subtask][testcase]
+        testcase_status.checker_result = state.result
         # if the solution failed there is no need for the checker
         if testcase_status.checked:
             return

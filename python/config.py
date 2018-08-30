@@ -38,6 +38,9 @@ class Config:
         self.extra_time = args.extra_time  # type: float
         self.copy_exe = args.copy_exe  # type: # bool
 
+        # IOI group
+        self.detailed_checker = args.detailed_checker
+
         # terry group
         # self.arch = args.arch  # type: Arch
         # self.seed = args.seed  # type: int

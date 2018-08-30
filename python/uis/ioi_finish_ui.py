@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 from typing import List
 
-from task_maker.formats import Task, TaskType
+from task_maker.config import Config
+from task_maker.formats import Task
 from task_maker.printer import StdoutPrinter
 from task_maker.task_maker_frontend import ResultStatus
 from task_maker.uis import result_to_str
@@ -13,7 +14,8 @@ LIMITS_MARGIN = 0.8
 
 
 class IOIFinishUI:
-    def __init__(self, task: Task, interface: IOIUIInterface):
+    def __init__(self, config: Config, task: Task, interface: IOIUIInterface):
+        self.config = config
         self.task = task
         self.interface = interface
         self.printer = StdoutPrinter()
@@ -196,20 +198,18 @@ class IOIFinishUI:
                 else:
                     used_time = 0
                     memory = 0
-                self.printer.text(" [")
-                if used_time >= LIMITS_MARGIN * self.task.time_limit:
-                    self.printer.yellow(
-                        "{:.3f}s".format(used_time), bold=False)
-                else:
-                    self.printer.text("{:.3f}s".format(used_time))
-                self.printer.text(" |")
-                if memory >= LIMITS_MARGIN * self.task.memory_limit_kb / 1024:
-                    self.printer.yellow(
-                        "{:5.1f}MiB".format(memory), bold=False)
-                else:
-                    self.printer.text("{:5.1f}MiB".format(memory))
-                self.printer.text("] ")
+                self._print_exec_stat(used_time, memory, self.task.time_limit,
+                                      self.task.memory_limit_kb, "")
+                if self.config.detailed_checker and testcase.checker_result:
+                    check_time = testcase.checker_result.resources.cpu_time + \
+                                 testcase.checker_result.resources.sys_time
+                    check_memory = testcase.checker_result.resources.memory
+                    self._print_exec_stat(check_time, check_memory / 1024,
+                                          self.task.time_limit * 2,
+                                          self.task.memory_limit_kb * 2,
+                                          "checker")
 
+                self.printer.text(" ")
                 self.printer.text(testcase.message)
                 self.printer.right("[{}]".format(solution))
 
@@ -221,3 +221,18 @@ class IOIFinishUI:
             self.printer.green("{:.2f} / {:.2f}".format(score, max_score))
         else:
             self.printer.yellow("{:.2f} / {:.2f}".format(score, max_score))
+
+    def _print_exec_stat(self, time, memory, time_limit, memory_limit, name):
+        self.printer.text(" [")
+        if name:
+            self.printer.text(name + " ")
+        if time >= LIMITS_MARGIN * time_limit:
+            self.printer.yellow("{:.3f}s".format(time), bold=False)
+        else:
+            self.printer.text("{:.3f}s".format(time))
+        self.printer.text(" |")
+        if memory >= LIMITS_MARGIN * memory_limit / 1024:
+            self.printer.yellow("{:5.1f}MiB".format(memory), bold=False)
+        else:
+            self.printer.text("{:5.1f}MiB".format(memory))
+        self.printer.text("]")

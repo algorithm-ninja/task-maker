@@ -146,6 +146,15 @@ def add_execution_group(parser: argparse.ArgumentParser):
         default=False)
 
 
+def add_ioi_group(parser: argparse.ArgumentParser):
+    group = parser.add_argument_group("IOI options")
+    group.add_argument(
+        "--detailed-checker",
+        help="Show the execution information also for the checker",
+        action="store_true",
+        default=False)
+
+
 def add_terry_group(parser: argparse.ArgumentParser):
     group = parser.add_argument_group("Terry options")
     group.add_argument(
@@ -171,6 +180,7 @@ def get_parser() -> argparse.ArgumentParser:
     add_generic_group(parser)
     add_remote_group(parser)
     add_execution_group(parser)
+    add_ioi_group(parser)
     add_terry_group(parser)
 
     parser.add_argument(

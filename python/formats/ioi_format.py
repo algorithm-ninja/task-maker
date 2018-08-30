@@ -277,7 +277,7 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
         curses_ui.stop()
 
     if config.ui != UIS.SILENT:
-        finish_ui = IOIFinishUI(task, ui_interface)
+        finish_ui = IOIFinishUI(config, task, ui_interface)
         finish_ui.print()
     return ui_interface
 
