@@ -102,7 +102,13 @@ PYBIND11_MODULE(task_maker_frontend, m) {
              f.getContentsAsString(
                  [cb = destroy_with_gil(cb)](std::string s) mutable {
                    pybind11::gil_scoped_acquire acquire;
-                   (*cb)(s);
+                   try {
+                     (*cb)(s);
+                   } catch (pybind11::error_already_set& exc) {
+                     std::cerr << __FILE__ << ":" << __LINE__ << " "
+                               << exc.std::exception::what() << std::endl;
+                     _Exit(1);
+                   }
                  });
            },
            "callback"_a)
@@ -138,7 +144,13 @@ PYBIND11_MODULE(task_maker_frontend, m) {
            [](frontend::Execution& f, std::function<void()> cb) {
              f.notifyStart([cb = destroy_with_gil(cb)]() mutable {
                pybind11::gil_scoped_acquire acquire;
-               (*cb)();
+               try {
+                 (*cb)();
+               } catch (pybind11::error_already_set& exc) {
+                 std::cerr << __FILE__ << ":" << __LINE__ << " "
+                           << exc.std::exception::what() << std::endl;
+                 _Exit(1);
+               }
              });
            },
            "callback"_a)
@@ -148,11 +160,23 @@ PYBIND11_MODULE(task_maker_frontend, m) {
              f.getResult(
                  [cb = destroy_with_gil(cb)](frontend::Result res) mutable {
                    pybind11::gil_scoped_acquire acquire;
-                   (*cb)(res);
+                   try {
+                     (*cb)(res);
+                   } catch (pybind11::error_already_set& exc) {
+                     std::cerr << __FILE__ << ":" << __LINE__ << " "
+                               << exc.std::exception::what() << std::endl;
+                     _Exit(1);
+                   }
                  },
                  [err = destroy_with_gil(err)]() mutable {
                    pybind11::gil_scoped_acquire acquire;
-                   if (*err) (*err)();
+                   try {
+                     if (*err) (*err)();
+                   } catch (pybind11::error_already_set& exc) {
+                     std::cerr << __FILE__ << ":" << __LINE__ << " "
+                               << exc.std::exception::what() << std::endl;
+                     _Exit(1);
+                   }
                  });
            },
            "callback"_a, "error"_a = nullptr);
