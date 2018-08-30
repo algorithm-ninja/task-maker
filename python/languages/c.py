@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import os.path
 import re
+import subprocess
 from typing import List
+from distutils.spawn import find_executable
 
 from task_maker.args import Arch
 from task_maker.languages import CompiledLanguage, CommandType, \
@@ -10,7 +12,7 @@ from task_maker.languages import CompiledLanguage, CommandType, \
 CXX_INCLUDE = re.compile('#include *["<](.+)[">]')
 
 
-def find_c_dependency(filename: str, strip=None) -> List[Dependency]:
+def old_find_c_dependency(filename: str, strip=None) -> List[Dependency]:
     scope = os.path.dirname(filename)
     if strip is None:
         strip = scope + "/"
@@ -27,8 +29,37 @@ def find_c_dependency(filename: str, strip=None) -> List[Dependency]:
         if os.path.exists(file_path):
             dependency = Dependency(include, file_path)
             dependencies += [dependency]
-            dependencies += find_c_dependency(file_path, strip)
+            dependencies += old_find_c_dependency(file_path, strip)
     return dependencies
+
+
+def new_find_c_dependency(filename: str) -> List[Dependency]:
+    proc = subprocess.run(["cc", "-MM", filename], stdout=subprocess.PIPE)
+    if proc.returncode != 0:
+        return []
+    strip = os.path.dirname(filename) + "/"
+    data = proc.stdout.decode().split()
+    if len(data) < 2:
+        return []
+    # skip the output object and the current source
+    data = data[2:]
+    result = []  # type: List[Dependency]
+    for dep in data:
+        # skip the "new lines"
+        if dep == "\\":
+            continue
+        name = dep
+        if name.startswith(strip):
+            name = name[len(strip):]
+        result.append(Dependency(name, dep))
+    return result
+
+
+def find_c_dependency(filename: str) -> List[Dependency]:
+    if find_executable("cc") is not None:
+        return new_find_c_dependency(filename)
+    else:
+        return old_find_c_dependency(filename)
 
 
 class LanguageC(CompiledLanguage):
