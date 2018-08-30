@@ -45,6 +45,9 @@ class Execution : public capnproto::Execution::Server {
   kj::Promise<void> setLimits(SetLimitsContext context);
   kj::Promise<void> setExtraTime(SetExtraTimeContext context);
   kj::Promise<void> addFifo(AddFifoContext context);
+  kj::Promise<void> setStdinFifo(SetStdinFifoContext context);
+  kj::Promise<void> setStdoutFifo(SetStdoutFifoContext context);
+  kj::Promise<void> setStderrFifo(SetStderrFifoContext context);
   kj::Promise<void> stdout(StdoutContext context);
   kj::Promise<void> stderr(StderrContext context);
   kj::Promise<void> output(OutputContext context);
@@ -70,8 +73,11 @@ class Execution : public capnproto::Execution::Server {
   std::unordered_map<std::string, uint32_t> fifos_;
   uint32_t executable_ = 0;
   uint32_t stdin_ = 0;
+  uint32_t stdin_fifo_ = 0;
   uint32_t stdout_ = 0;
+  uint32_t stdout_fifo_ = 0;
   uint32_t stderr_ = 0;
+  uint32_t stderr_fifo_ = 0;
   kj::PromiseFulfillerPair<void> finish_promise_ =
       kj::newPromiseAndFulfiller<void>();
   friend class ExecutionGroup;
@@ -104,7 +110,7 @@ class ExecutionGroup : public capnproto::ExecutionGroup::Server {
   uint32_t cache_enabled_ = true;
   kj::PromiseFulfillerPair<void> start_ = kj::newPromiseAndFulfiller<void>();
   kj::ForkedPromise<void> forked_start_ = start_.promise.fork();
-  size_t next_fifo_ = 0;
+  size_t next_fifo_ = 1;
 };
 
 class FrontendContext : public capnproto::FrontendContext::Server {

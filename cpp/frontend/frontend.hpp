@@ -32,6 +32,7 @@ struct Result {
   uint32_t return_code;
   std::string error;
   Resources resources;
+  bool was_killed;
   bool was_cached;
 };
 
@@ -170,6 +171,9 @@ class Execution {
   void setStdin(File* file);
   void addInput(const std::string& name, File* file);
   void addFifo(const std::string& name, Fifo* fifo);
+  void setStdinFifo(Fifo* fifo);
+  void setStdoutFifo(Fifo* fifo);
+  void setStderrFifo(Fifo* fifo);
 
   void setArgs(const std::vector<std::string>& args);
 

@@ -369,6 +369,9 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
 #endif
   info->status_code = WIFEXITED(child_status) ? WEXITSTATUS(child_status) : 0;
   info->signal = WIFSIGNALED(child_status) ? WTERMSIG(child_status) : 0;
+  // If the child received a KILL or XCPU signal, assume we killed it
+  // because of memory or time limits.
+  info->killed = info->signal == SIGKILL || info->signal == SIGXCPU;
   info->wall_time_millis = elapsed_millis();
   info->cpu_time_millis =
       rusage.ru_utime.tv_sec * 1000LL + rusage.ru_utime.tv_usec / 1000;

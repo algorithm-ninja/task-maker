@@ -17,7 +17,7 @@ inline void hash_combine(std::size_t& hash, const T& v) {
 }
 
 uint64_t RequestHasher::operator()(capnproto::Request::Reader reader_) const {
-  size_t hash = 0;
+  size_t hash = reader_.getProcesses().size();
   for (auto reader : reader_.getProcesses()) {
     hash_combine(hash, reader.getExecutable().which());
     switch (reader.getExecutable().which()) {
@@ -35,7 +35,18 @@ uint64_t RequestHasher::operator()(capnproto::Request::Reader reader_) const {
     for (std::string arg : reader.getArgs()) {
       hash_combine(hash, arg);
     }
-    hash_combine(hash, util::SHA256_t(reader.getStdin()).Hex());
+    hash_combine(hash, reader.getStdin().which());
+    switch (reader.getStdin().which()) {
+      case capnproto::ProcessRequest::Stdin::FIFO:
+        hash_combine(hash, reader.getStdin().getFifo());
+        break;
+      case capnproto::ProcessRequest::Stdin::HASH:
+        hash_combine(hash, util::SHA256_t(reader.getStdin().getHash()).Hex());
+        break;
+    }
+    hash_combine(hash, reader.getStdout());
+    hash_combine(hash, reader.getStderr());
+    // TODO: be consistent if the files are permuted.
     for (auto in : reader.getInputFiles()) {
       hash_combine(hash, std::string(in.getName()));
       hash_combine(hash, util::SHA256_t(in.getHash()).Hex());
@@ -43,6 +54,10 @@ uint64_t RequestHasher::operator()(capnproto::Request::Reader reader_) const {
     }
     for (std::string out : reader.getOutputFiles()) {
       hash_combine(hash, out);
+    }
+    for (auto in : reader.getFifos()) {
+      hash_combine(hash, std::string(in.getName()));
+      hash_combine(hash, in.getId());
     }
     hash_combine(hash, reader.getLimits().getCpuTime());
     hash_combine(hash, reader.getLimits().getWallTime());
@@ -84,9 +99,19 @@ bool RequestComparator::operator()(capnproto::Request::Reader a_,
     for (size_t i = 0; i < aargs.size(); i++) {
       if (aargs[i] != bargs[i]) return false;
     }
-    if (util::SHA256_t(a.getStdin()).Hex() !=
-        util::SHA256_t(b.getStdin()).Hex())
-      return false;
+    if (a.getStdin().which() != b.getStdin().which()) return false;
+    switch (a.getStdin().which()) {
+      case capnproto::ProcessRequest::Stdin::FIFO:
+        if (a.getStdin().getFifo() != b.getStdin().getFifo()) return false;
+        break;
+      case capnproto::ProcessRequest::Stdin::HASH:
+        if (util::SHA256_t(a.getStdin().getHash()).Hex() !=
+            util::SHA256_t(b.getStdin().getHash()).Hex())
+          return false;
+        break;
+    }
+    if (a.getStdout() != b.getStdout()) return false;
+    if (a.getStderr() != b.getStderr()) return false;
     std::vector<std::tuple<std::string, std::string, bool>> ainput;
     std::vector<std::tuple<std::string, std::string, bool>> binput;
     for (auto in : a.getInputFiles()) {
@@ -100,6 +125,17 @@ bool RequestComparator::operator()(capnproto::Request::Reader a_,
     std::sort(ainput.begin(), ainput.end());
     std::sort(binput.begin(), binput.end());
     if (ainput != binput) return false;
+    std::vector<std::tuple<std::string, uint32_t>> afifo;
+    std::vector<std::tuple<std::string, uint32_t>> bfifo;
+    for (auto f : a.getFifos()) {
+      afifo.emplace_back(f.getName(), f.getId());
+    }
+    for (auto f : b.getFifos()) {
+      bfifo.emplace_back(f.getName(), f.getId());
+    }
+    std::sort(afifo.begin(), afifo.end());
+    std::sort(bfifo.begin(), bfifo.end());
+    if (afifo != bfifo) return false;
     std::vector<std::string> aoutput;
     std::vector<std::string> boutput;
     for (auto out : a.getOutputFiles()) {
@@ -132,7 +168,9 @@ std::vector<util::SHA256_t> Hashes(capnproto::Request::Reader req_,
     if (!hash.isZero()) ans.push_back(hash);
   };
   for (auto req : req_.getProcesses()) {
-    add(req.getStdin());
+    if (req.getStdin().isHash()) {
+      add(req.getStdin().getHash());
+    }
     if (req.getExecutable().isLocalFile())
       add(req.getExecutable().getLocalFile().getHash());
     for (auto f : req.getInputFiles()) add(f.getHash());

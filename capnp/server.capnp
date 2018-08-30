@@ -33,22 +33,25 @@ interface Execution {
   disableCache @5 ();
   makeExclusive @6 ();
   setLimits @7 (limits: Resources);
-  setExtraTime @14 (extraTime: Float32);
+  setExtraTime @8 (extraTime: Float32);
 
   # Get file IDs representing outputs
-  stdout @8 (isExecutable :Bool = false) -> (file :File);
-  stderr @9 (isExecutable :Bool = false) -> (file :File);
-  output @10 (name :Text, isExecutable :Bool = false) -> (file :File);
+  stdout @9 (isExecutable :Bool = false) -> (file :File);
+  stderr @10 (isExecutable :Bool = false) -> (file :File);
+  output @11 (name :Text, isExecutable :Bool = false) -> (file :File);
 
   # Add a FIFO
-  addFifo @11 (name :Text, fifo :Fifo);
+  setStdinFifo @12(fifo :Fifo);
+  setStdoutFifo @13 (fifo :Fifo);
+  setStderrFifo @14 (fifo :Fifo);
+  addFifo @15 (name :Text, fifo :Fifo);
 
   # To be called to be notified of the start of the evaluation
-  notifyStart @12 ();
+  notifyStart @16 ();
 
   # The following methods will only complete (i.e. return or call callbacks)
   # when the evaluation is complete.
-  getResult @13 () -> (result :ProcessResult);
+  getResult @17 () -> (result :ProcessResult);
 }
 
 interface ExecutionGroup {

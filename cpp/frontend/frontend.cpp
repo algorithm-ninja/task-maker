@@ -194,6 +194,30 @@ void Execution::addFifo(const std::string& name, Fifo* fifo) {
         builder_.AddPromise(req.send().ignoreResult());
       }));
 }
+void Execution::setStdinFifo(Fifo* fifo) {
+  my_builder_.AddPromise(
+      fifo->forked_promise.addBranch().then([this](auto fifo) {
+        auto req = execution_.setStdinFifoRequest();
+        req.setFifo(fifo);
+        builder_.AddPromise(req.send().ignoreResult());
+      }));
+}
+void Execution::setStdoutFifo(Fifo* fifo) {
+  my_builder_.AddPromise(
+      fifo->forked_promise.addBranch().then([this](auto fifo) {
+        auto req = execution_.setStdoutFifoRequest();
+        req.setFifo(fifo);
+        builder_.AddPromise(req.send().ignoreResult());
+      }));
+}
+void Execution::setStderrFifo(Fifo* fifo) {
+  my_builder_.AddPromise(
+      fifo->forked_promise.addBranch().then([this](auto fifo) {
+        auto req = execution_.setStderrFifoRequest();
+        req.setFifo(fifo);
+        builder_.AddPromise(req.send().ignoreResult());
+      }));
+}
 
 void Execution::setArgs(const std::vector<std::string>& args) {
   auto req = execution_.setArgsRequest();
@@ -314,6 +338,7 @@ void Execution::getResult(std::function<void(Result)> callback,
                           result.resources.stack =
                               r.getResourceUsage().getStack();
                           result.was_cached = r.getWasCached();
+                          result.was_killed = r.getWasKilled();
                           callback(result);
                         },
                         [errored](auto exc) {

@@ -37,19 +37,22 @@ struct ProcessRequest {
     localFile @1 :FileInfo;
   }
   args @2 :List(Text);
-  stdin @3 :SHA256; # Hash of standard input
-  inputFiles @4 :List(FileInfo); # Name and hash of other inputs
-  outputFiles @5 :List(Text); # Name of outputs
-  fifos @6 :List(FifoInfo); # Name and ID of FIFOs
-  limits @7 :Resources;
-  extraTime @8 :Float32; # Time that should be added to the cpu time limit.
+  stdin :union {
+    hash @3 :SHA256; # Hash of standard input
+    fifo @4 :UInt32; # ID of the input FIFO
+  }
+  stdout @5 :UInt32; # ID of the stdout FIFO
+  stderr @6 :UInt32; # ID of the stderr FIFO
+  inputFiles @7 :List(FileInfo); # Name and hash of other inputs
+  outputFiles @8 :List(Text); # Name of outputs
+  fifos @9 :List(FifoInfo); # Name and ID of FIFOs
+  limits @10 :Resources;
+  extraTime @11 :Float32; # Time that should be added to the cpu time limit.
 }
 
 struct Request {
   processes @0 :List(ProcessRequest);
   exclusive @1 :Bool; # If set, no other execution should run at the same time.
-
-  # TODO: FIFOs
 }
 
 struct ProcessResult {
@@ -68,7 +71,8 @@ struct ProcessResult {
   stdout @10 :SHA256; # Hash of standard output
   stderr @11 :SHA256; # Hash of standard error
   outputFiles @12 :List(FileInfo); # Name and hash of other outputs
-  wasCached @13 :Bool; # True if the answer comes from the cache.
+  wasKilled @13 :Bool; # True if the execution was killed by the sandbox. 
+  wasCached @14 :Bool; # True if the answer comes from the cache.
 }
 
 struct Result {

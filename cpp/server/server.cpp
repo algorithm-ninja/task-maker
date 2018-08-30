@@ -177,6 +177,7 @@ kj::Promise<void> Execution::setExecutable(SetExecutableContext context) {
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::setStdin(SetStdinContext context) {
+  KJ_ASSERT(!stdin_ && !stdin_fifo_);
   KJ_LOG(INFO, "Execution " + description_,
          "Setting stdin file with id " +
              std::to_string(context.getParams().getFile().getId()));
@@ -233,7 +234,35 @@ kj::Promise<void> Execution::addFifo(AddFifoContext context) {
                  context.getParams().getFifo().getId());
   return kj::READY_NOW;
 }
+kj::Promise<void> Execution::setStdinFifo(SetStdinFifoContext context) {
+  KJ_ASSERT(!stdin_ && !stdin_fifo_);
+  KJ_LOG(INFO, "Execution " + description_,
+         "Adding FIFO with id " +
+             std::to_string(context.getParams().getFifo().getId()) +
+             " as stdin");
+  stdin_fifo_ = context.getParams().getFifo().getId();
+  return kj::READY_NOW;
+}
+kj::Promise<void> Execution::setStdoutFifo(SetStdoutFifoContext context) {
+  KJ_ASSERT(!stdout_ && !stdout_fifo_);
+  KJ_LOG(INFO, "Execution " + description_,
+         "Addoutg FIFO with id " +
+             std::to_string(context.getParams().getFifo().getId()) +
+             " as stdout");
+  stdout_fifo_ = context.getParams().getFifo().getId();
+  return kj::READY_NOW;
+}
+kj::Promise<void> Execution::setStderrFifo(SetStderrFifoContext context) {
+  KJ_ASSERT(!stderr_ && !stderr_fifo_);
+  KJ_LOG(INFO, "Execution " + description_,
+         "Adderrg FIFO with id " +
+             std::to_string(context.getParams().getFifo().getId()) +
+             " as stderr");
+  stderr_fifo_ = context.getParams().getFifo().getId();
+  return kj::READY_NOW;
+}
 kj::Promise<void> Execution::stdout(StdoutContext context) {
+  KJ_ASSERT(!stdout_ && !stdout_fifo_);
   stdout_ = AddFileInfo(
       frontend_context_.last_file_id_, frontend_context_.file_info_,
       context.getResults().initFile(), context.getParams().getIsExecutable(),
@@ -243,6 +272,7 @@ kj::Promise<void> Execution::stdout(StdoutContext context) {
   return kj::READY_NOW;
 }
 kj::Promise<void> Execution::stderr(StderrContext context) {
+  KJ_ASSERT(!stderr_ && !stderr_fifo_);
   stderr_ = AddFileInfo(
       frontend_context_.last_file_id_, frontend_context_.file_info_,
       context.getResults().initFile(), context.getParams().getIsExecutable(),
@@ -300,7 +330,15 @@ void Execution::prepareRequest() {
     hash.ToCapnp(builder);
   };
   if (stdin_) {
-    get_hash(stdin_, request_.initStdin());
+    get_hash(stdin_, request_.initStdin().initHash());
+  } else if (stdin_fifo_) {
+    request_.initStdin().setFifo(stdin_fifo_);
+  }
+  if (stdout_fifo_) {
+    request_.setStdout(stdout_fifo_);
+  }
+  if (stderr_fifo_) {
+    request_.setStderr(stderr_fifo_);
   }
   if (executable_) {
     get_hash(executable_, request_.getExecutable().getLocalFile().initHash());

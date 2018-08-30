@@ -65,6 +65,7 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def_readonly("error", &frontend::Result::error)
       .def_readonly("resources", &frontend::Result::resources)
       .def_readonly("was_cached", &frontend::Result::was_cached)
+      .def_readonly("was_killed", &frontend::Result::was_killed)
       .def("__repr__", [](const frontend::Result& res) {
         std::string message = "<Result ";
         if (res.status == capnproto::ProcessResult::Status::Which::SUCCESS)
@@ -118,6 +119,9 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def("setStdin", &frontend::Execution::setStdin, "file"_a)
       .def("addInput", &frontend::Execution::addInput, "name"_a, "file"_a)
       .def("addFifo", &frontend::Execution::addFifo, "name"_a, "fifo"_a)
+      .def("setStdinFifo", &frontend::Execution::setStdinFifo, "fifo"_a)
+      .def("setStdoutFifo", &frontend::Execution::setStdoutFifo, "fifo"_a)
+      .def("setStderrFifo", &frontend::Execution::setStderrFifo, "fifo"_a)
       .def("setArgs", &frontend::Execution::setArgs, "args"_a)
       .def("disableCache", &frontend::Execution::disableCache)
       .def("makeExclusive", &frontend::Execution::makeExclusive)

@@ -228,7 +228,10 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
     for (const auto& input : request.getInputFiles()) {
       builder.AddPromise(util::File::MaybeGet(input.getHash(), server_));
     }
-    builder.AddPromise(util::File::MaybeGet(request.getStdin(), server_));
+    if (request.getStdin().isHash()) {
+      builder.AddPromise(
+          util::File::MaybeGet(request.getStdin().getHash(), server_));
+    }
     if (executable.isLocalFile()) {
       builder.AddPromise(
           util::File::MaybeGet(executable.getLocalFile().getHash(), server_));
@@ -264,12 +267,40 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
       exec_options.prepare_executable = true;
     }
 
+    // Stdout/err files.
+    stdout_path = util::File::JoinPath(tmp[i].Path(), "stdout");
+    stderr_path = util::File::JoinPath(tmp[i].Path(), "stderr");
+    sandbox::ExecutionOptions::stringcpy(exec_options.stdout_file, stdout_path);
+    sandbox::ExecutionOptions::stringcpy(exec_options.stderr_file, stderr_path);
+
     // FIFOs.
     for (auto fifo : request.getFifos()) {
       if (!add_fifo(util::File::JoinPath(sandbox_dir, fifo.getName()),
                     fifo.getId())) {
         return kj::READY_NOW;
       }
+    }
+    if (request.getStdin().isFifo() && request.getStdin().getFifo() != 0) {
+      auto stdin_path = util::File::JoinPath(tmp[i].Path(), "stdin");
+      if (!add_fifo(stdin_path, request.getStdin().getFifo())) {
+        return kj::READY_NOW;
+      }
+      sandbox::ExecutionOptions::stringcpy(exec_options_v[i].stdin_file,
+                                           stdin_path);
+    }
+    if (request.getStdout() != 0) {
+      if (!add_fifo(stdout_path, request.getStdout())) {
+        return kj::READY_NOW;
+      }
+      sandbox::ExecutionOptions::stringcpy(exec_options_v[i].stdout_file,
+                                           stdout_path);
+    }
+    if (request.getStderr() != 0) {
+      if (!add_fifo(stderr_path, request.getStderr())) {
+        return kj::READY_NOW;
+      }
+      sandbox::ExecutionOptions::stringcpy(exec_options_v[i].stderr_file,
+                                           stderr_path);
     }
 
     // Limits.
@@ -285,11 +316,6 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
     exec_options.max_file_size_kb = limits.getFsize();
     exec_options.max_mlock_kb = limits.getMemlock();
     exec_options.max_stack_kb = limits.getStack();
-    // Stdout/err files.
-    stdout_path = util::File::JoinPath(tmp[i].Path(), "stdout");
-    stderr_path = util::File::JoinPath(tmp[i].Path(), "stderr");
-    sandbox::ExecutionOptions::stringcpy(exec_options.stdout_file, stdout_path);
-    sandbox::ExecutionOptions::stringcpy(exec_options.stderr_file, stderr_path);
   }
 
   scheduled = true;
@@ -307,9 +333,11 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
                 util::File::JoinPath(sandbox_dirs[i], local_file.getName()),
                 local_file.getHash(), true, cache_);
           }
-          if (!util::SHA256_t(request.getStdin()).isZero()) {
+          if (request.getStdin().isHash() &&
+              !util::SHA256_t(request.getStdin().getHash()).isZero()) {
             auto stdin_path = util::File::JoinPath(tmp[i].Path(), "stdin");
-            PrepareFile(stdin_path, request.getStdin(), false, cache_);
+            PrepareFile(stdin_path, request.getStdin().getHash(), false,
+                        cache_);
             sandbox::ExecutionOptions::stringcpy(exec_options_v[i].stdin_file,
                                                  stdin_path);
           }
@@ -346,6 +374,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
                     auto& stdout_path = stdout_paths[i];
                     auto& stderr_path = stderr_paths[i];
                     auto& sandbox_dir = sandbox_dirs[i];
+                    result.setWasKilled(outcome.killed);
                     // Resource usage.
                     auto resource_usage = result.initResourceUsage();
                     resource_usage.setCpuTime(outcome.cpu_time_millis / 1000.0);
@@ -377,8 +406,12 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
                     }
 
                     // Output files.
-                    RetrieveFile(stdout_path, result.initStdout(), cache_);
-                    RetrieveFile(stderr_path, result.initStderr(), cache_);
+                    if (request.getStdout() == 0) {
+                      RetrieveFile(stdout_path, result.initStdout(), cache_);
+                    }
+                    if (request.getStderr() == 0) {
+                      RetrieveFile(stderr_path, result.initStderr(), cache_);
+                    }
                     auto output_names = request.getOutputFiles();
                     auto outputs = result.initOutputFiles(output_names.size());
                     for (size_t i = 0; i < request.getOutputFiles().size();
