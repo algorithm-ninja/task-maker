@@ -302,11 +302,20 @@ def result_to_str(result: Result) -> str:
     elif status == ResultStatus.RETURN_CODE:
         return "Exited with code %d" % result.return_code
     elif status == ResultStatus.TIME_LIMIT:
-        return "Time limit exceeded"
+        if result.was_killed:
+            return "Time limit exceeded (killed)"
+        else:
+            return "Time limit exceeded"
     elif status == ResultStatus.WALL_LIMIT:
-        return "Wall time limit exceeded"
+        if result.was_killed:
+            return "Wall time limit exceeded (killed)"
+        else:
+            return "Wall time limit exceeded"
     elif status == ResultStatus.MEMORY_LIMIT:
-        return "Memory limit exceeded"
+        if result.was_killed:
+            return "Memory limit exceeded (killed)"
+        else:
+            return "Memory limit exceeded"
     elif status == ResultStatus.MISSING_FILES:
         return "Some files are missing"
     elif status == ResultStatus.INTERNAL_ERROR:
