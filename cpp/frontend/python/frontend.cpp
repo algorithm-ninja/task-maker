@@ -106,7 +106,7 @@ PYBIND11_MODULE(task_maker_frontend, m) {
                      (*cb)(s);
                    } catch (pybind11::error_already_set& exc) {
                      std::cerr << __FILE__ << ":" << __LINE__ << " "
-                               << exc.std::exception::what() << std::endl;
+                               << exc.what() << std::endl;
                      _Exit(1);
                    }
                  });
@@ -147,8 +147,8 @@ PYBIND11_MODULE(task_maker_frontend, m) {
                try {
                  (*cb)();
                } catch (pybind11::error_already_set& exc) {
-                 std::cerr << __FILE__ << ":" << __LINE__ << " "
-                           << exc.std::exception::what() << std::endl;
+                 std::cerr << __FILE__ << ":" << __LINE__ << " " << exc.what()
+                           << std::endl;
                  _Exit(1);
                }
              });
@@ -164,7 +164,7 @@ PYBIND11_MODULE(task_maker_frontend, m) {
                      (*cb)(res);
                    } catch (pybind11::error_already_set& exc) {
                      std::cerr << __FILE__ << ":" << __LINE__ << " "
-                               << exc.std::exception::what() << std::endl;
+                               << exc.what() << std::endl;
                      _Exit(1);
                    }
                  },
@@ -174,7 +174,7 @@ PYBIND11_MODULE(task_maker_frontend, m) {
                      if (*err) (*err)();
                    } catch (pybind11::error_already_set& exc) {
                      std::cerr << __FILE__ << ":" << __LINE__ << " "
-                               << exc.std::exception::what() << std::endl;
+                               << exc.what() << std::endl;
                      _Exit(1);
                    }
                  });
