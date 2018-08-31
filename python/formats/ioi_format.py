@@ -67,8 +67,7 @@ def gen_testcases(copy_compiled: bool, task: Task) -> Dict[int, Subtask]:
     def create_subtask(subtask_num: int, testcases: Dict[int, TestCase],
                        score: float) -> None:
         if testcases:
-            subtask = Subtask("Subtask {}".format(subtask_num), "",
-                              ScoreMode.MIN, score, testcases, [])
+            subtask = Subtask("", "", ScoreMode.MIN, score, testcases, [])
             subtasks[subtask_num] = subtask
 
     generator = get_generator()

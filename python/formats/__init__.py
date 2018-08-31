@@ -44,8 +44,8 @@ class Constraint:
                 return False
         return True
 
-    def __repr__(self):
-        res = "<Constraint "
+    def __str__(self):
+        res = ""
         if self.lower_bound is not None:
             res += str(self.lower_bound)
             res += " <= " if self.more_or_equal else " < "
@@ -53,8 +53,10 @@ class Constraint:
         if self.upper_bound is not None:
             res += " <= " if self.less_or_equal else " < "
             res += str(self.upper_bound)
-        res += ">"
         return res
+
+    def __repr__(self):
+        return "<Constraint {}>".format(str(self))
 
 
 class Generator:

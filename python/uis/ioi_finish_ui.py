@@ -50,8 +50,17 @@ class IOIFinishUI(FinishUI):
         success = True
         for st_num, subtask in self.interface.subtasks.items():
             self.printer.bold("Subtask {}: ".format(st_num))
-            self.printer.text("{} points\n".format(
+            self.printer.text("{} points".format(
                 int(self.task.subtasks[st_num].max_score)))
+            subtask_info = self.task.subtasks[st_num]
+            if subtask_info.name:
+                self.printer.text(" [{}]".format(
+                    subtask_info.name))
+            self.printer.text("\n")
+            if subtask_info.description:
+                self.printer.text(subtask_info.description + "\n")
+            for constraint in subtask_info.constraints:
+                self.printer.text("- {}\n".format(str(constraint)))
 
             for tc_num, result in subtask.items():
                 self.printer.text("#{:<2}  ".format(tc_num))
@@ -114,6 +123,8 @@ class IOIFinishUI(FinishUI):
             self.printer.bold("Subtask #{}: ".format(st_num))
             self._print_score(st_score, subtask_info.max_score,
                               [tc.score for tc in subtask.values()])
+            if subtask_info.name:
+                self.printer.text(" [{}]".format(subtask_info.name))
             self.printer.text("\n")
             for tc_num, testcase in subtask.items():
                 self.printer.text("{:>3}) ".format(tc_num))
