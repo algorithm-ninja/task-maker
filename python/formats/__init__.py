@@ -259,3 +259,21 @@ def gen_grader_map(graders: List[str], task: Task):
         grader_map[info.for_language] = info
         task.grader_info.extend([info])
     return grader_map
+
+
+def get_solutions(solutions: List[str], directory: str,
+                  graders: List[str]) -> List[str]:
+    if solutions:
+        paths = []
+        for sol in solutions:
+            if sol.startswith(directory):
+                paths.append(sol + "*")
+            else:
+                paths.append("{}{}*".format(directory, sol))
+        solutions = list_files(paths)
+    else:
+        solutions = list_files(
+            [directory + "*"], exclude=graders + [directory + "__init__.py"])
+        solutions = list(
+            filter(lambda s: not s.startswith(directory + "_"), solutions))
+    return solutions

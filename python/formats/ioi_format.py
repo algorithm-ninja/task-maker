@@ -14,7 +14,8 @@ from task_maker.uis.ioi_curses_ui import IOICursesUI
 from task_maker.uis.ioi import IOIUIInterface
 from task_maker.formats import ScoreMode, Subtask, TestCase, Task, \
     list_files, Validator, Generator, get_options, VALIDATION_INPUT_NAME, \
-    gen_grader_map, get_write_input_file, get_write_output_file, TaskType
+    gen_grader_map, get_write_input_file, get_write_output_file, TaskType, \
+    get_solutions
 from task_maker.sanitize import sanitize_command
 from task_maker.solution import Solution, BatchSolution, CommunicationSolution
 from task_maker.source_file import SourceFile
@@ -160,18 +161,6 @@ def create_task_from_yaml(data: Dict[str, Any]) -> Task:
     return task
 
 
-def get_solutions(solutions, graders) -> List[str]:
-    if solutions:
-        solutions = list_files([
-            sol + "*" if sol.startswith("sol/") else "sol/" + sol + "*"
-            for sol in solutions
-        ])
-    else:
-        solutions = list_files(
-            ["sol/*"], exclude=graders + ["sol/__init__.py"])
-    return solutions
-
-
 def get_checker() -> Optional[str]:
     checkers = list_files(["check/checker.*", "cor/correttore.*"])
     if not checkers:
@@ -215,7 +204,7 @@ def create_task(config: Config):
     else:
         graders = list_files(["sol/grader.*"])
 
-    solutions = get_solutions(config.solutions, graders)
+    solutions = get_solutions(config.solutions, "sol/", graders)
     grader_map = gen_grader_map(graders, task)
 
     official_solution = get_official_solution()

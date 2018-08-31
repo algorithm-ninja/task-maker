@@ -7,7 +7,7 @@ from typing import Optional, List
 
 from task_maker.args import Arch, CacheMode, UIS
 from task_maker.config import Config
-from task_maker.formats import get_options, TerryTask, list_files
+from task_maker.formats import get_options, TerryTask, list_files, get_solutions
 from task_maker.formats.ioi_format import parse_task_yaml
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import Frontend
@@ -39,18 +39,6 @@ def create_task_from_yaml(data) -> TerryTask:
     return TerryTask(name, title, max_score)
 
 
-def get_solutions(solutions) -> List[str]:
-    if solutions:
-        solutions = list_files([
-            sol + "*"
-            if sol.startswith("solutions/") else "solutions/" + sol + "*"
-            for sol in solutions
-        ])
-    else:
-        solutions = list_files(["solutions/*"], exclude=["sol/__init__.py"])
-    return solutions
-
-
 def get_manager(manager: str, target_arch: Arch,
                 optional: bool = False) -> Optional[SourceFile]:
     managers = list_files(
@@ -80,7 +68,7 @@ def get_request(config: Config) -> (TerryTask, List[SourceFile]):
         "solution", config.arch, optional=True)
     task.checker = get_manager("checker", config.arch)
 
-    solutions = get_solutions(config.solutions)
+    solutions = get_solutions(config.solutions, "solutions/", [])
     sols = []  # type: List[SourceFile]
     for solution in solutions:
         path, ext = os.path.splitext(os.path.basename(solution))
