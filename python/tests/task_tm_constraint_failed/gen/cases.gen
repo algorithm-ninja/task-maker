@@ -1,0 +1,8 @@
+# system command
+: GEN default echo N
+: CONSTRAINT 1 <= $N <= 100
+: VAL default true
+
+: SUBTASK 100 test
+# this is above the bound
+101
