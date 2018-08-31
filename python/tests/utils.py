@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 from functools import reduce
-from task_maker.task_maker_frontend import ResultStatus
-
-from task_maker.uis.ioi import SourceFileCompilationStatus, \
-    TestcaseSolutionStatus
 from typing import Optional, List, Tuple
 
+from task_maker.task_maker_frontend import ResultStatus
 from task_maker.tests.test import interface
+from task_maker.uis import SourceFileCompilationStatus
+from task_maker.uis.ioi import TestcaseSolutionStatus
+from task_maker.uis.terry import SolutionInfo
 
 
 class TestSolution:
@@ -69,24 +69,24 @@ class TestSolutionNotCompile(TestSolution):
         return "<TestSolutionNotCompile name=%s>" % self.name
 
 
-# class TerryTestSolution:
-#     def __init__(self, task: "TerryTestInterface", name: str, score: float,
-#                  tc_score: Optional[List]):
-#         self.task = task
-#         self.name = name
-#         self.score = score
-#         self.tc_score = tc_score
-#
-#     def check_solution(self):
-#         assert self.name in ui.solutions
-#         assert ui._compilation_status[self.name] == DONE
-#         solution = ui._terry_test_status[self.name]
-#         assert abs(solution.result.score * self.task.max_score -
-#                    self.score) < 0.0001
-#         if self.tc_score:
-#             for status, expected in zip(solution.result.testcases,
-#                                         self.tc_score):
-#                 assert status == expected
+class TerryTestSolution:
+    def __init__(self, task: "TerryTestInterface", name: str, score: float,
+                 tc_score: Optional[List]):
+        self.task = task
+        self.name = name
+        self.score = score
+        self.tc_score = tc_score
+
+    def check_solution(self):
+        assert self.name in interface.solutions
+        assert self.name in interface.solutions_info
+        assert interface.solutions[
+            self.name].status == SourceFileCompilationStatus.DONE
+        info = interface.solutions_info[self.name]  # type: SolutionInfo
+        assert abs(info.score * self.task.max_score - self.score) < 0.0001
+        if self.tc_score:
+            for status, expected in zip(info.testcases_status, self.tc_score):
+                assert status == expected
 
 
 class TestInterface:
@@ -185,45 +185,42 @@ class TestInterface:
             sol.check_solution()
 
 
-# class TerryTestInterface:
-#     def __init__(self, name: str, desc: str, max_score: float):
-#         self.solutions = []  # type: List[TerryTestSolution]
-#         self.generator_name = None  # type: Optional[str]
-#         self.validator_name = None  # type: Optional[str]
-#         self.checker_name = None  # type: Optional[str]
-#         self.max_score = max_score
-#         self.name = name
-#         self.desc = desc
-#         self.fatal_error = False
-#
-#     def set_generator(self, name: str):
-#         self.generator_name = name
-#
-#     def set_validator(self, name: str):
-#         self.validator_name = name
-#
-#     def set_checker(self, name: str):
-#         self.checker_name = name
-#
-#     def set_fatal_error(self):
-#         self.fatal_error = True
-#
-#     def add_solution(self, name: str, score: float, tc_score: Optional[List]):
-#         self.solutions.append(TerryTestSolution(self, name, score, tc_score))
-#
-#     def run_checks(self, ui: TestingUI):
-#         assert ui.task_name == "%s (%s)" % (self.desc, self.name)
-#         if self.fatal_error:
-#             assert ui.fatal_errors
-#         else:
-#             assert not ui.fatal_errors
-#
-#         for sol in self.solutions:
-#             sol.check_solution(ui)
-#
-#         if self.generator_name:
-#             assert self.generator_name in ui._other_compilations
-#         if self.validator_name:
-#             assert self.validator_name in ui._other_compilations
-#         if self.checker_name:
-#             assert self.checker_name in ui._other_compilations
+class TerryTestInterface:
+    def __init__(self, name: str, desc: str, max_score: float):
+        self.solutions = []  # type: List[TerryTestSolution]
+        self.generator_name = None  # type: Optional[str]
+        self.validator_name = None  # type: Optional[str]
+        self.checker_name = None  # type: Optional[str]
+        self.max_score = max_score
+        self.name = name
+        self.desc = desc
+        self.error = ""
+
+    def set_generator(self, name: str):
+        self.generator_name = name
+
+    def set_validator(self, name: str):
+        self.validator_name = name
+
+    def set_checker(self, name: str):
+        self.checker_name = name
+
+    def expect_error(self, error: str):
+        self.error = error
+
+    def add_solution(self, name: str, score: float, tc_score: Optional[List]):
+        self.solutions.append(TerryTestSolution(self, name, score, tc_score))
+
+    def run_checks(self):
+        assert interface.task.name == self.name
+        assert interface.task.title == self.desc
+        if self.generator_name:
+            assert self.generator_name in interface.non_solutions
+        if self.validator_name:
+            assert self.validator_name in interface.non_solutions
+        if self.checker_name:
+            assert self.checker_name in interface.non_solutions
+        if self.error:
+            assert any(self.error in error for error in interface.errors)
+        for sol in self.solutions:
+            sol.check_solution()

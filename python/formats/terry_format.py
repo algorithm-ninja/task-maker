@@ -93,7 +93,8 @@ def get_request(config: Config) -> (TerryTask, List[SourceFile]):
 
 
 def evaluate_task(frontend: Frontend, task: TerryTask,
-                  solutions: List[SourceFile], config: Config):
+                  solutions: List[SourceFile],
+                  config: Config) -> TerryUIInterface:
     ui_interface = TerryUIInterface(task, config.ui == UIS.PRINT)
     if config.ui == UIS.CURSES:
         curses_ui = TerryCursesUI(ui_interface)

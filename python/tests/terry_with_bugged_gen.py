@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from task_maker.tests.test import run_tests, TestingUI
+from task_maker.tests.test import run_tests
 
 
 def test_task():
@@ -10,8 +10,8 @@ def test_task():
     interface.set_generator("generator.py")
     interface.set_validator("validator.py")
     interface.set_checker("checker.py")
-    interface.set_fatal_error()
-    interface.run_checks(TestingUI.inst)
+    interface.expect_error("Failed to validate input")
+    interface.run_checks()
 
 
 if __name__ == "__main__":

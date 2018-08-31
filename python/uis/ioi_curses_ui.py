@@ -5,10 +5,11 @@ from typing import Dict
 from task_maker.formats import Task
 from task_maker.printer import CursesPrinter, Printer
 from task_maker.task_maker_frontend import ResultStatus
-from task_maker.uis import CursesUI, get_max_sol_len
-from task_maker.uis.ioi import IOIUIInterface, SourceFileCompilationStatus, \
-    TestcaseGenerationStatus, SubtaskSolutionResult, TestcaseSolutionStatus, \
-    SolutionStatus, TestcaseSolutionInfo
+from task_maker.uis import CursesUI, get_max_sol_len, \
+    SourceFileCompilationStatus
+from task_maker.uis.ioi import IOIUIInterface, TestcaseGenerationStatus, \
+    SubtaskSolutionResult, TestcaseSolutionStatus, SolutionStatus, \
+    TestcaseSolutionInfo
 
 
 def print_solution_column(printer: Printer, solution: str, max_sol_len: int):

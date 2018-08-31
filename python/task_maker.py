@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
-# enable discovery of capnp folder and installed venv
+# enable discovery of the installed venv
 from task_maker.syspath_patch import patch_sys_path
-from task_maker.uis.ioi import IOIUIInterface
 
 patch_sys_path()  # noqa
 
@@ -16,9 +15,11 @@ from task_maker.detect_format import find_task_dir
 from task_maker.formats import ioi_format, tm_format, terry_format
 from task_maker.languages import LanguageManager
 from task_maker.manager import get_frontend, spawn_server, spawn_worker
+from task_maker.uis.ioi import IOIUIInterface
+from task_maker.uis.terry import TerryUIInterface
 
 
-def run(config: Config) -> Union[None, IOIUIInterface]:
+def run(config: Config) -> Union[None, IOIUIInterface, TerryUIInterface]:
     if config.run_server:
         return spawn_server(config)
     if config.run_worker:

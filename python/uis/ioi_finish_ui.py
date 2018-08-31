@@ -3,8 +3,9 @@
 from task_maker.config import Config
 from task_maker.formats import Task
 from task_maker.task_maker_frontend import ResultStatus
-from task_maker.uis import result_to_str, FinishUI, get_max_sol_len
-from task_maker.uis.ioi import IOIUIInterface, SourceFileCompilationStatus
+from task_maker.uis import result_to_str, FinishUI, get_max_sol_len, \
+    SourceFileCompilationStatus
+from task_maker.uis.ioi import IOIUIInterface
 from task_maker.uis.ioi_curses_ui import print_solutions_result
 
 
