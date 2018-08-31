@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
-import time
-
 from enum import Enum
-from task_maker.formats import Task, ScoreMode
-from task_maker.printer import StdoutPrinter, Printer
-from task_maker.uis import result_to_str
+import time
 from typing import List, Dict
 
+from task_maker.formats import Task, ScoreMode
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import Execution, Result, ResultStatus
+from task_maker.uis import result_to_str, UIInterface
 
 
 class TestcaseGenerationStatus(Enum):
@@ -20,13 +18,6 @@ class TestcaseGenerationStatus(Enum):
     SOLVING = 5
     DONE = 6
     FAILURE = 7
-
-
-class SourceFileCompilationStatus(Enum):
-    WAITING = 0
-    COMPILING = 1
-    DONE = 2
-    FAILURE = 3
 
 
 class TestcaseSolutionStatus(Enum):
@@ -59,14 +50,6 @@ class TestcaseSolutionInfo:
         self.checker_outcome = "Waiting..."
         self.checked = False
         self.checker_result = None  # type: Result
-
-
-class SourceFileCompilationResult:
-    def __init__(self, need_compilation):
-        self.need_compilation = need_compilation
-        self.status = SourceFileCompilationStatus.WAITING
-        self.stderr = ""
-        self.result = None  # type: Result
 
 
 class TestcaseGenerationResult:
@@ -274,115 +257,26 @@ class SolutionStatus:
         return " | ".join(map(result_to_str, testcase_status.result))
 
 
-class IOIUIInterface:
+class IOIUIInterface(UIInterface):
     def __init__(self, task: Task, testcases: Dict[int, List[int]],
                  do_print: bool):
+        super().__init__(do_print)
+
         self.task = task
         self.subtasks = dict(
         )  # type: Dict[int, Dict[int, TestcaseGenerationResult]]
         self.testcases = testcases
-        self.non_solutions = dict(
-        )  # type: Dict[str, SourceFileCompilationResult]
-        self.solutions = dict()  # type: Dict[str, SourceFileCompilationResult]
         self.testing = dict()  # type: Dict[str, SolutionStatus]
-        self.running = dict()  # type: Dict[str, float]
-        self.warnings = list()  # type: List[str]
-        self.errors = list()  # type: List[str]
-
-        if do_print:
-            self.printer = StdoutPrinter()
-        else:
-            self.printer = Printer()
 
         for st_num, subtask in testcases.items():
             self.subtasks[st_num] = dict()
             for tc_num in subtask:
                 self.subtasks[st_num][tc_num] = TestcaseGenerationResult()
 
-    def add_non_solution(self, source_file: SourceFile):
-        name = source_file.name
-        log_prefix = "Compilation of non-solution {} ".format(name).ljust(50)
-        self.non_solutions[name] = SourceFileCompilationResult(
-            source_file.language.need_compilation)
-        self.printer.text(log_prefix + "WAITING\n")
-        if source_file.language.need_compilation:
-
-            def notifyStartCompiltion():
-                self.printer.text(log_prefix + "START\n")
-                self.non_solutions[
-                    name].status = SourceFileCompilationStatus.COMPILING
-                self.running[log_prefix] = time.monotonic()
-
-            def getResultCompilation(result: Result):
-                del self.running[log_prefix]
-                self.non_solutions[name].result = result
-                cached = " [cached]" if result.was_cached else ""
-                if result.status == ResultStatus.SUCCESS:
-                    self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
-                    self.non_solutions[
-                        name].status = SourceFileCompilationStatus.DONE
-                else:
-                    self.add_error("Failed to compile " + name)
-                    self.printer.red(log_prefix + "FAIL: {} {}\n".format(
-                        result.status, cached))
-                    self.non_solutions[
-                        name].status = SourceFileCompilationStatus.FAILURE
-
-            def getStderr(stderr):
-                if stderr:
-                    self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
-                self.non_solutions[name].stderr = stderr
-
-            source_file.compilation_stderr.getContentsAsString(getStderr)
-            source_file.compilation.notifyStart(notifyStartCompiltion)
-            source_file.compilation.getResult(getResultCompilation)
-        else:
-            self.printer.green(log_prefix + "SUCCESS\n")
-            self.non_solutions[name].status = SourceFileCompilationStatus.DONE
-
     def add_solution(self, source_file: SourceFile):
-        name = source_file.name
-        log_prefix = "Compilation of solution {} ".format(name).ljust(50)
-        self.solutions[name] = SourceFileCompilationResult(
-            source_file.language.need_compilation)
-        self.testing[name] = SolutionStatus(source_file, self.task, self,
-                                            self.testcases)
-        self.printer.text(log_prefix + "WAITING\n")
-
-        if source_file.language.need_compilation:
-
-            def notifyStartCompiltion():
-                self.printer.text(log_prefix + "START\n")
-                self.solutions[
-                    name].status = SourceFileCompilationStatus.COMPILING
-                self.running[log_prefix] = time.monotonic()
-
-            def getResultCompilation(result: Result):
-                del self.running[log_prefix]
-                self.solutions[name].result = result
-                cached = " [cached]" if result.was_cached else ""
-                if result.status == ResultStatus.SUCCESS:
-                    self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
-                    self.solutions[
-                        name].status = SourceFileCompilationStatus.DONE
-                else:
-                    self.add_warning("Failed to compile: " + name)
-                    self.printer.red(log_prefix + "FAIL: {} {}\n".format(
-                        result.status, cached))
-                    self.solutions[
-                        name].status = SourceFileCompilationStatus.FAILURE
-
-            def getStderr(stderr):
-                if stderr:
-                    self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
-                self.solutions[name].stderr = stderr
-
-            source_file.compilation_stderr.getContentsAsString(getStderr)
-            source_file.compilation.notifyStart(notifyStartCompiltion)
-            source_file.compilation.getResult(getResultCompilation)
-        else:
-            self.printer.green(log_prefix + "SUCCESS\n")
-            self.solutions[name].status = SourceFileCompilationStatus.DONE
+        super().add_solution(source_file)
+        self.testing[source_file.name] = SolutionStatus(
+            source_file, self.task, self, self.testcases)
 
     def add_generation(self, subtask: int, testcase: int,
                        generation: Execution):
@@ -502,8 +396,12 @@ class IOIUIInterface:
         started = False
         skipped = False
         for num, evaluation in enumerate(evaluations):
-            log_prefix = "Evaluate {}/{} on case {} ".format(
-                solution, num, testcase).ljust(50)
+            if len(evaluations) == 1:
+                log_prefix = "Evaluate {} on case {} ".format(
+                    solution, testcase).ljust(50)
+            else:
+                log_prefix = "Evaluate {}/{} on case {} ".format(
+                    solution, num, testcase).ljust(50)
             self.printer.text(log_prefix + "WAITING\n")
 
             def notifyStartEvaluation():
@@ -588,9 +486,3 @@ class IOIUIInterface:
             checking.stderr(False).getContentsAsString(getStderr)
         checking.notifyStart(notifyStartChecking)
         checking.getResult(getResultChecking, skippedChecking)
-
-    def add_warning(self, message: str):
-        self.warnings.append(message)
-
-    def add_error(self, message: str):
-        self.errors.append(message)

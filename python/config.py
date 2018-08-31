@@ -2,9 +2,7 @@
 
 from typing import List
 
-from task_maker.args import CacheMode, UIS, TaskFormat
-
-# from task_maker.formats import Arch
+from task_maker.args import CacheMode, UIS, TaskFormat, Arch
 
 
 class Config:
@@ -42,5 +40,5 @@ class Config:
         self.detailed_checker = args.detailed_checker
 
         # terry group
-        # self.arch = args.arch  # type: Arch
-        # self.seed = args.seed  # type: int
+        self.arch = args.arch  # type: Arch
+        self.seed = args.seed  # type: int

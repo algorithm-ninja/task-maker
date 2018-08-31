@@ -154,6 +154,20 @@ class Task:
         return "<Task name=%s title=%s>" % (self.name, self.title)
 
 
+class TerryTask:
+    def __init__(self, name: str, title: str, max_score: float):
+        self.name = name
+        self.title = title
+        self.max_score = max_score
+        self.generator = None  # type: SourceFile
+        self.validator = None  # type: Optional[SourceFile]
+        self.official_solution = None  # type: Optional[SourceFile]
+        self.checker = None  # type: SourceFile
+
+    def __repr__(self):
+        return "<TerryTask name={} title={}>".format(self.name, self.title)
+
+
 def get_write_input_file(tc_num: int) -> str:
     return "input/input%d.txt" % tc_num
 

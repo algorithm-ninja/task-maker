@@ -118,6 +118,9 @@ class Language(ABC):
         """
         return []
 
+    def __repr__(self):
+        return "<Language {}>".format(self.name)
+
     def __eq__(self, other):
         return self.name == other.name
 

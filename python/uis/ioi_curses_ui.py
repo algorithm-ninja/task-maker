@@ -1,19 +1,14 @@
 #!/usr/bin/env python3
 import time
-import curses
-import threading
-from task_maker.formats import Task
+from typing import Dict
 
+from task_maker.formats import Task
 from task_maker.printer import CursesPrinter, Printer
 from task_maker.task_maker_frontend import ResultStatus
+from task_maker.uis import CursesUI, get_max_sol_len
 from task_maker.uis.ioi import IOIUIInterface, SourceFileCompilationStatus, \
     TestcaseGenerationStatus, SubtaskSolutionResult, TestcaseSolutionStatus, \
     SolutionStatus, TestcaseSolutionInfo
-
-# frames per second of the UI
-from typing import Dict
-
-FPS = 30
 
 
 def print_solution_column(printer: Printer, solution: str, max_sol_len: int):
@@ -169,65 +164,13 @@ def print_solutions_result(printer: Printer, task: Task,
         printer.text("\n")
 
 
-class IOICursesUI:
+class IOICursesUI(CursesUI):
     def __init__(self, interface: IOIUIInterface):
+        super().__init__()
         self.interface = interface
-        self.thread = threading.Thread(
-            target=curses.wrapper, args=(self._wrapper,))
-        self.stopped = False
-
-    def start(self):
-        self.stopped = False
-        self.thread.start()
-
-    def stop(self):
-        self.stopped = True
-        self.thread.join()
-
-    def _wrapper(self, stdscr):
-        curses.start_color()
-        curses.use_default_colors()
-        for i in range(1, curses.COLORS):
-            curses.init_pair(i, i, -1)
-        curses.halfdelay(1)
-        pad = curses.newpad(10000, 1000)
-        printer = CursesPrinter(pad)
-        loading_chars = "-\\|/"
-        cur_loading_char = 0
-        pos_x, pos_y = 0, 0
-        while not self.stopped:
-            last_draw = time.monotonic()
-            cur_loading_char = (cur_loading_char + 1) % len(loading_chars)
-            loading = loading_chars[cur_loading_char]
-            pad.clear()
-            self._loop(printer, loading)
-
-            try:
-                pressed_key = stdscr.getkey()
-                if pressed_key == "KEY_UP":
-                    pos_y -= 1
-                elif pressed_key == "KEY_DOWN":
-                    pos_y += 1
-                elif pressed_key == "KEY_LEFT":
-                    pos_x -= 1
-                elif pressed_key == "KEY_RIGHT":
-                    pos_x += 1
-                pos_x = max(pos_x, 0)
-                pos_y = max(pos_y, 0)
-            except curses.error:
-                pass
-
-            max_y, max_x = stdscr.getmaxyx()
-            pad.refresh(pos_y, pos_x, 0, 0, max_y - 1, max_x - 1)
-
-            if time.monotonic() - last_draw < 1 / FPS:
-                time.sleep(1 / FPS - (time.monotonic() - last_draw))
-
-        curses.endwin()
 
     def _loop(self, printer: CursesPrinter, loading: str):
-        max_sol_len = 1 + max([len(s) for s in self.interface.non_solutions] +
-                              [len(s) for s in self.interface.solutions] + [0])
+        max_sol_len = 1 + get_max_sol_len(self.interface)
 
         printer.bold("Running... %s\n" % self.interface.task.name)
         printer.text("Time limit: %.2fs\n" % self.interface.task.time_limit)

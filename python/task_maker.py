@@ -13,7 +13,7 @@ from typing import Any, Union
 from task_maker.args import get_parser, TaskFormat
 from task_maker.config import Config
 from task_maker.detect_format import find_task_dir
-from task_maker.formats import ioi_format, tm_format
+from task_maker.formats import ioi_format, tm_format, terry_format
 from task_maker.languages import LanguageManager
 from task_maker.manager import get_frontend, spawn_server, spawn_worker
 
@@ -38,8 +38,8 @@ def run(config: Config) -> Union[None, IOIUIInterface]:
             ioi_format.clean()
         elif format == TaskFormat.TM:
             tm_format.clean()
-        # elif format == "terry":
-        #     terry_format_clean(args)
+        elif format == "terry":
+            terry_format.clean()
         else:
             raise ValueError("Format %s not supported" % format)
         return None
@@ -58,11 +58,9 @@ def run(config: Config) -> Union[None, IOIUIInterface]:
     elif format == TaskFormat.TM:
         task, solutions = tm_format.get_request(config)
         return ioi_format.evaluate_task(frontend, task, solutions, config)
-    # elif format == "terry":
-    #     request = terry_format.get_request(args)
-    #     solutions = [
-    #         os.path.basename(sol.solution.path) for sol in request.solutions
-    #     ]
+    elif format == TaskFormat.TERRY:
+        task, solutions = terry_format.get_request(config)
+        return terry_format.evaluate_task(frontend, task, solutions, config)
     else:
         raise ValueError("Format %s not supported" % format)
 
