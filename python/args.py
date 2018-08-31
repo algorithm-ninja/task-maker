@@ -173,6 +173,15 @@ def add_terry_group(parser: argparse.ArgumentParser):
         default=None)
 
 
+def add_help_group(parser: argparse.ArgumentParser):
+    group = parser.add_argument_group("Help options")
+    group.add_argument(
+        "--help-colors",
+        help="Display some help about the used colors in the UI",
+        action="store_true",
+        default=False)
+
+
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="The new cmsMake!")
     parser.add_argument(
@@ -182,6 +191,7 @@ def get_parser() -> argparse.ArgumentParser:
     add_execution_group(parser)
     add_ioi_group(parser)
     add_terry_group(parser)
+    add_help_group(parser)
 
     parser.add_argument(
         "solutions",

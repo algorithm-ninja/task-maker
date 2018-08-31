@@ -13,6 +13,7 @@ from task_maker.args import get_parser, TaskFormat
 from task_maker.config import Config
 from task_maker.detect_format import find_task_dir
 from task_maker.formats import ioi_format, tm_format, terry_format
+from task_maker.help import check_help
 from task_maker.languages import LanguageManager
 from task_maker.manager import get_frontend, spawn_server, spawn_worker
 from task_maker.uis.ioi import IOIUIInterface
@@ -20,6 +21,7 @@ from task_maker.uis.terry import TerryUIInterface
 
 
 def run(config: Config) -> Union[None, IOIUIInterface, TerryUIInterface]:
+    check_help(config)
     if config.run_server:
         return spawn_server(config)
     if config.run_worker:

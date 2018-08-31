@@ -49,7 +49,8 @@ class TerryFinishUI(FinishUI):
 
         self.printer.text("{:>10}: {}\n".format("Seed", info.seed))
         self.printer.text("{:>10}:".format("Generation"))
-        self._print_resources(info.gen_result.resources)
+        if info.gen_result:
+            self._print_resources(info.gen_result.resources)
         self.printer.text("\n")
         if info.gen_stderr:
             self.printer.text(info.gen_stderr)

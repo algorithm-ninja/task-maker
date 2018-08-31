@@ -42,3 +42,6 @@ class Config:
         # terry group
         self.arch = args.arch  # type: Arch
         self.seed = args.seed  # type: int
+
+        # help group
+        self.help_colors = args.help_colors  # type: bool
