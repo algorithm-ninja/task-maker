@@ -8,18 +8,6 @@ This is a python3 project, you need to have Python>=3.5 as default python
 environment (running `python --version`), the easiest way to achieve this is
 via virtualenv.
 
-There are some python dependencies that can be installed either from PyPI or
-from the system package manager:
-- `grpcio==1.9`
-- `pytest==3.2.3`
-- `PyYAML==3.12`
-- `typing==3.6.4`
-
-Note that there is a `requirements.txt` file to install all the dependencies
-with `pip install -r requirements.txt`.
-
-On Archlinux the system package versions are new enough but not on Ubuntu 16.04.  
-
 ## Usage
 
 ### Simple local usage
@@ -34,7 +22,7 @@ option:
 task-maker --cache=nothing
 ```
 
-Possible values of `--cache` are: `all`, `generation` (do not regenerate
+Possible values of `--cache` are: `all`, `reevaluate` (do not regenerate
 inputs/outputs if not needed), `nothing` (disable all the cache).
 
 ### Test only a subset of solutions
@@ -44,15 +32,8 @@ compilation and cleaning a bit the output:
 task-maker sol1.cpp sol2.py
 ```
 Note that you may or may not specify the folder of the solution (sol/ or
-solution/). You can specify only the prefix of the name of the solutions you
-want to check.
-
-### Disable multithreading
-If you want to be extra sure about the timings you can disable multithreading,
-setting the number of core to 1:
-```bash
-task-maker --num-cores=1
-```
+solution/). You can also specify only the prefix of the name of the solutions
+you want to check.
 
 ### Using different task directory
 By default the task in the current directory is executed, if you want to change
@@ -83,17 +64,17 @@ a worker is the program that executes a command, a client is you!
 
 First start a server:
 ```bash
-task-maker --run-server --logtostderr
+task-maker --run-server
 ```
 
 Then start a worker in each machine, specifying the server to connect to:
 ```bash
-task-maker --run-worker --server server_ip:7070 --logtostderr
+task-maker --run-worker --worker-args="--server server_ip:7070"
 ```
 
 To run the execution remotely just pass:
 ```bash
-task-maker --evaluate-on server_ip:7070
+task-maker --server server_ip:7070
 ```
 
 Note that the TCP port 7070 is used, the connection has to be available,
@@ -129,6 +110,10 @@ to `make`.
 If you want to enable the optimization remember to put
 `-DCMAKE_BUILD_TYPE=Release` to the `cmake` command.
 
+Note that the build system uses Hunter for managing the dependencies, in some
+cases you may find a new directory in your home called `.hunter`, to prevent
+this you can add `-DHUNTER_ROOT=/some/path` to the cmake command.
+
 ## Arch Linux
 If you are using Arch Linux you may want to install task-maker from the AUR:
 [task-maker](https://aur.archlinux.org/packages/task-maker)
@@ -139,13 +124,11 @@ or
 We support build without Hunter (ie using system packages) only on Arch Linux,
 there are some dependencies to be installed:
 
+- `core/elfutils`
 - `community/gmock`
 - `community/gtest`
-- `extra/protobuf`
-- `aur/cli11`
-- `aur/grpc`
-- `aur/nlohmann-json`
-- `aur/plog`
+- `community/capnproto`
+- `aur/pybind11`
 
 To compile the project issue:
 ```bash

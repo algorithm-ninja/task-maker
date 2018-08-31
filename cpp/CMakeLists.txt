@@ -16,6 +16,9 @@ target_link_libraries(cpp_util
   backward
   capnp_cpp
   CapnProto::kj
+  CapnProto::kj-async
+  CapnProto::capnp
+  CapnProto::capnp-rpc
 )
 # this flag is needed on travis
 if (TRAVIS)
