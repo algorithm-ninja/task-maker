@@ -23,6 +23,8 @@ HASH=$(git log --pretty=format:"%h" "$HERE/$TOOLCHAIN/Dockerfile" | head -n1)
 DOCKER_CONTAINER_NAME="edomora97/task-maker-builder-$TOOLCHAIN"
 DOCKER_CONTAINER_ID="$DOCKER_CONTAINER_NAME:$HASH"
 
+echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+
 if docker_tag_exists $DOCKER_CONTAINER_NAME $HASH; then
     echo "The docker image is up to date"
 else

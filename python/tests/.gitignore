@@ -6,6 +6,8 @@ bin/
 
 !task_without_gen/input
 !task_without_gen/output
+!task_communication/input
+!task_communication/output
 
 *.linux.x86_64
 *.linux.i686
