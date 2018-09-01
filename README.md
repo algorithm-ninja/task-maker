@@ -85,8 +85,8 @@ via the Internet.
 
 ### Something went wrong
 If something went wrong and you want to kill task-maker you have also to kill
-the manager, a daemon spawned by task-maker.
-You may find the pid of the process looking in /tmp/task-maker-manager-*.pid
+the background processes that may have been spawned.
+You may find the pid of those processes looking at `/tmp/task-maker-*-*.pid`
 
 
 ## Compilation
