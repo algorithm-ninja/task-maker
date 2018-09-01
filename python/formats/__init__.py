@@ -152,6 +152,9 @@ class Task:
         self.output_file = output_file
         self.task_type = task_type
 
+        self.default_gen = None  # type: Optional[Generator]
+        self.default_val = None  # type: Optional[Validator]
+
     def __repr__(self):
         return "<Task name=%s title=%s>" % (self.name, self.title)
 
@@ -191,14 +194,17 @@ def get_options(data: Dict[str, Any],
 
 
 def list_files(patterns: List[str],
-               exclude: Optional[List[str]] = None) -> List[str]:
+               exclude: Optional[List[str]] = None,
+               valid_extensions: List[str] = None) -> List[str]:
     if exclude is None:
         exclude = []
+    if valid_extensions is None:
+        valid_extensions = LanguageManager.valid_extensions()
     files = [_file for pattern in patterns
              for _file in glob.glob(pattern)]  # type: List[str]
     return [
-        res for res in files if res not in exclude
-        and os.path.splitext(res)[1] in LanguageManager.valid_extensions()
+        res for res in files
+        if res not in exclude and os.path.splitext(res)[1] in valid_extensions
     ]
 
 

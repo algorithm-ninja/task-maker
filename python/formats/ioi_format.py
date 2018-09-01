@@ -79,12 +79,14 @@ def gen_testcases(copy_compiled: bool, task: Task) -> Dict[int, Subtask]:
         gen = SourceFile.from_file(generator, task.name, copy_compiled,
                                    "bin/generator", Arch.DEFAULT, {})
         generator = Generator("default", gen, None)
+        task.default_gen = generator
     validator = get_validator()
     if not validator:
         raise RuntimeError("No validator found")
     val = SourceFile.from_file(validator, task.name, copy_compiled,
                                "bin/validator", Arch.DEFAULT, {})
     validator = Validator("default", val, None)
+    task.default_val = validator
 
     current_testcases = {}  # type: Dict[int, TestCase]
     subtask_num = -1  # the first #ST line will skip a subtask!
@@ -261,7 +263,7 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
     evaluate_solutions(frontend, ins, outs, vals, solutions, ui_interface,
                        config)
 
-    sanity_pre_checks(task, solutions, ui_interface)
+    sanity_pre_checks(task, solutions, frontend, config, ui_interface)
     frontend.evaluate()
     sanity_post_checks(task, solutions, ui_interface)
 

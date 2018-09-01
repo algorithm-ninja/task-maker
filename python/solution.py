@@ -5,9 +5,33 @@ from task_maker.args import CacheMode
 from task_maker.config import Config
 from task_maker.formats import Task
 from task_maker.source_file import SourceFile
-from task_maker.task_maker_frontend import File, Execution, Frontend, Resources, \
-    Fifo
-from typing import Optional, List, Tuple
+from task_maker.task_maker_frontend import File, Execution, Frontend, \
+    Resources, Fifo
+from typing import Optional, List
+
+
+def get_checker_execution(frontend: Frontend, config: Config, task: Task,
+                          checker: Optional[SourceFile], input: Optional[File],
+                          output: File, correct_output: File,
+                          message: str) -> Execution:
+    if checker:
+        check = checker.execute(frontend, message,
+                                ["input", "output", "contestant_output"])
+        check.addInput("input", input)
+    else:
+        check = frontend.addExecution(message)
+        check.setExecutablePath("diff")
+        check.setArgs(["-w", "output", "contestant_output"])
+    check.addInput("output", correct_output)
+    check.addInput("contestant_output", output)
+    if config.cache != CacheMode.ALL:
+        check.disableCache()
+    limits = Resources()
+    limits.cpu_time = task.time_limit * 2
+    limits.wall_time = task.time_limit * 1.5 * 2
+    limits.memory = task.memory_limit_kb * 2
+    check.setLimits(limits)
+    return check
 
 
 class Solution(ABC):
@@ -73,29 +97,10 @@ class BatchSolution(Solution):
         if self.config.extra_time:
             eval.setExtraTime(self.config.extra_time)
 
-        if self.checker:
-            check = self.checker.execute(
-                frontend, "Checking solution %s for testcase %d" %
-                (self.solution.name, testcase),
-                ["input", "output", "contestant_output"])
-            check.addInput("input", input)
-        else:
-            check = frontend.addExecution(
-                "Checking solution %s for testcase %d" % (self.solution.name,
-                                                          testcase))
-            check.setExecutablePath("diff")
-            check.setArgs(["-w", "output", "contestant_output"])
-        check.addInput("output", correct_output)
-        check.addInput("contestant_output", output)
-        if self.config.cache != CacheMode.ALL:
-            check.disableCache()
-        limits = Resources()
-        limits.cpu_time = self.task.time_limit * 2
-        limits.wall_time = self.task.time_limit * 1.5 * 2
-        limits.memory = self.task.memory_limit_kb * 2
-        check.setLimits(limits)
-
-        return [eval], check
+        return [eval], get_checker_execution(
+            frontend, self.config, self.task, self.checker, input, output,
+            correct_output, "Checking solution %s for testcase %d" %
+            (self.solution.name, testcase))
 
 
 class CommunicationSolution(Solution):

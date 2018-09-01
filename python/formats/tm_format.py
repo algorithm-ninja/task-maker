@@ -34,12 +34,14 @@ def parse_cases(gen: IO, task: Task, copy_compiled: bool) -> List[Subtask]:
             "default",
             SourceFile.from_file(guessed_gen, task.name, copy_compiled,
                                  "bin/gen_default", Arch.DEFAULT, {}), [])
+        task.default_gen = default_gen
     guessed_val = get_validator()
     if guessed_val:
         default_val = Validator(
             "default",
             SourceFile.from_file(guessed_val, task.name, copy_compiled,
                                  "bin/val_default", Arch.DEFAULT, {}), [])
+        task.default_val = default_val
 
     def is_float(s):
         try:
@@ -71,6 +73,7 @@ def parse_cases(gen: IO, task: Task, copy_compiled: bool) -> List[Subtask]:
             generators[name] = generator
             if name == "default":
                 default_gen = generator
+                task.default_gen = default_gen
         # subtask local GEN
         else:
             if len(args) != 1:
@@ -103,6 +106,7 @@ def parse_cases(gen: IO, task: Task, copy_compiled: bool) -> List[Subtask]:
             validators[name] = validator
             if name == "default":
                 default_val = validator
+                task.default_val = default_val
         # subtask local VAL
         else:
             if len(args) != 1:

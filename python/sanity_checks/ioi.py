@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-import subprocess
 from distutils.spawn import find_executable
 import os.path
-from typing import List, Set, Optional
+import re
+import subprocess
+import time
+from typing import List, Set, Optional, Dict
 
-from task_maker.formats import Task, list_files
+from task_maker.args import CacheMode
+from task_maker.config import Config
+from task_maker.formats import Task, list_files, VALIDATION_INPUT_NAME, TaskType
 from task_maker.languages import Language
-from task_maker.solution import Solution
+from task_maker.solution import Solution, get_checker_execution
+from task_maker.task_maker_frontend import Frontend, File, Execution, Result, \
+    ResultStatus
 from task_maker.uis.ioi import IOIUIInterface
 
 
@@ -53,6 +59,80 @@ def _check_git_has_file(path: str) -> Optional[bool]:
     if proc.stdout.decode():
         return True
     return False
+
+
+def _setup_execution_callback(interface: IOIUIInterface, execution: Execution,
+                              description: str):
+    log_prefix = "{} ".format(description).ljust(50)
+    interface.printer.text(log_prefix + "WAITING\n")
+
+    def notify_start():
+        interface.printer.text(log_prefix + "START\n")
+        interface.running[log_prefix] = time.monotonic()
+
+    def get_result(result: Result):
+        del interface.running[log_prefix]
+        cached = " [cached]" if result.was_cached else ""
+        if result.status == ResultStatus.SUCCESS:
+            interface.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+        else:
+            interface.add_error("{} failed".format(description))
+            interface.printer.red(
+                log_prefix + "FAIL: {} {}\n".format(result.status, cached))
+
+    def skipped():
+        interface.printer.red(log_prefix + "SKIPPED\n")
+
+    def get_stderr(stderr):
+        if stderr:
+            interface.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+
+    execution.notifyStart(notify_start)
+    execution.getResult(get_result, skipped)
+    execution.stderr(False).getContentsAsString(get_stderr)
+
+
+def _setup_checker_callback(interface: IOIUIInterface, checking: Execution,
+                            description: str, custom_checker: bool):
+    log_prefix = "{} ".format(description).ljust(50)
+    interface.printer.text(log_prefix + "WAITING\n")
+
+    def notify_start():
+        interface.printer.text(log_prefix + "START\n")
+        interface.running[log_prefix] = time.monotonic()
+
+    def get_result(result: Result):
+        del interface.running[log_prefix]
+        cached = " [cached]" if result.was_cached else ""
+        if result.status == ResultStatus.SUCCESS:
+            interface.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+        else:
+            interface.add_error("{} failed".format(description))
+            interface.printer.red(
+                log_prefix + "FAIL: {} {}\n".format(result.status, cached))
+
+    def skipped():
+        interface.printer.red(log_prefix + "SKIPPED\n")
+
+    def get_stdout(stdout):
+        if not custom_checker:
+            return
+        try:
+            score = float(stdout)
+        except ValueError:
+            interface.add_error(description +
+                                " failed: invalid score: {}".format(stdout))
+            return
+        if not 0.0 <= score <= 1.0:
+            interface.add_error(description +
+                                " failed: invalid score: {}".format(stdout))
+            return
+        if score == 0.0:
+            interface.add_warning(description + " does not score any points")
+
+    checking.notifyStart(notify_start)
+    checking.getResult(get_result, skipped)
+    checking.stdout(False).getContentsAsString(get_stdout)
 
 
 def check_att_folder(task: Task, solutions: List[Solution],
@@ -124,13 +204,103 @@ def check_statement(interface: IOIUIInterface):
     # TODO check if the template signatures match the one in the statement
 
 
-def check_sample_cases(interface: IOIUIInterface):
+def check_sample_cases(task: Task, frontend: Frontend, config: Config,
+                       interface: IOIUIInterface):
     """
     Check if the sample cases in the statement are valid and the output is
     correct
     """
-    # TODO run validator on the sample inputs
-    # TODO run the solution/checker on the sample outputs
+    inputs = list_files(
+        [
+            "statement/input*.txt", "statement/{}.input*.txt".format(
+                task.name), "testo/input*.txt", "testo/{}.input*.txt".format(
+                    task.name)
+        ],
+        valid_extensions=[".txt"])
+    outputs = list_files(
+        [
+            "statement/output*.txt", "statement/{}.output*.txt".format(
+                task.name), "testo/output*.txt", "testo/{}.output*.txt".format(
+                    task.name)
+        ],
+        valid_extensions=[".txt"])
+    num_to_input = dict()  # type: Dict[int, str]
+    num_to_output = dict()  # type: Dict[int, str]
+    num_to_input_file = dict()  # type: Dict[int, File]
+    num_to_output_file = dict()  # type: Dict[int, File]
+    num_to_sol_output_file = dict()  # type: Dict[int, File]
+    num_to_validation = dict()  # type: Dict[int, File]
+
+    for infile in inputs:
+        match = re.match(r".*input(\d+).txt", infile)
+        # invalid sample file format, skip it
+        if not match:
+            continue
+        sample_num = int(match.group(1))
+        num_to_input[sample_num] = infile
+        # skip the validations if there is no default validator
+        if not task.default_val:
+            break
+        num_to_input_file[sample_num] = frontend.provideFile(
+            infile, "Sample input {}".format(infile), False)
+        validation = task.default_val.source_file.execute(
+            frontend, "Validation of sample input {}".format(infile),
+            [VALIDATION_INPUT_NAME, "0"])
+        if config.cache == CacheMode.NOTHING:
+            validation.disableCache()
+        validation.addInput(VALIDATION_INPUT_NAME,
+                            num_to_input_file[sample_num])
+        num_to_validation[sample_num] = validation.stdout(False)
+        _setup_execution_callback(
+            interface, validation,
+            "Validation of sample input {}".format(infile))
+
+    # Communication tasks does not have output files
+    if task.task_type != TaskType.Batch:
+        return
+
+    for outfile in outputs:
+        match = re.match(r".*output(\d+).txt", outfile)
+        if not match:
+            continue
+        sample_num = int(match.group(1))
+        # skip the output if there is no corresponding input
+        if sample_num not in num_to_input:
+            continue
+        num_to_output[sample_num] = outfile
+        num_to_output_file[sample_num] = frontend.provideFile(
+            outfile, "Sample output {}".format(outfile), False)
+        # without official solution we cannot solve the input
+        if not task.official_solution:
+            break
+        solving = task.official_solution.execute(
+            frontend, "Solving sample output {}".format(outfile), [])
+        if config.cache != CacheMode.ALL:
+            solving.disableCache()
+        solving.addInput("wait_for_validation", num_to_validation[sample_num])
+        if task.input_file:
+            solving.addInput(task.input_file, num_to_input_file[sample_num])
+        else:
+            solving.setStdin(num_to_input_file[sample_num])
+        if task.output_file:
+            num_to_sol_output_file[sample_num] = solving.output(
+                task.output_file, False)
+        else:
+            num_to_sol_output_file[sample_num] = solving.stdout(False)
+
+        _setup_execution_callback(
+            interface, solving,
+            "Solution of sample input {}".format(num_to_input[sample_num]))
+
+        check = get_checker_execution(
+            frontend, config, task, task.checker,
+            num_to_input_file[sample_num], num_to_output_file[sample_num],
+            num_to_sol_output_file[sample_num],
+            "Checking sample output {}".format(outfile))
+
+        _setup_checker_callback(interface, check,
+                                "Checking sample output {}".format(outfile),
+                                task.checker is not None)
 
 
 def check_solution_score(task: Task, interface: IOIUIInterface):
@@ -158,12 +328,13 @@ def check_subtask_score_sum(task: Task, interface: IOIUIInterface):
 
 
 def sanity_pre_checks(task: Task, solutions: List[Solution],
+                      frontend: Frontend, config: Config,
                       interface: IOIUIInterface):
     check_subtask_score_sum(task, interface)
     check_att_folder(task, solutions, interface)
     check_sol_folder(solutions, interface)
     check_statement(interface)
-    check_sample_cases(interface)
+    check_sample_cases(task, frontend, config, interface)
 
 
 def sanity_post_checks(task: Task, solutions: List[Solution],
