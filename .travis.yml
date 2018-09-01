@@ -42,7 +42,7 @@ matrix:
           - build
 
 script:
-  - tool/check_docker.sh
+  - tools/check_docker.sh
   - docker run --rm
       -e TRAVIS=true
       -e CI=true
