@@ -12,7 +12,7 @@ RUN groupadd --gid "$UGID" "$UGNAME" && \
     apt-add-repository -y ppa:ubuntu-toolchain-r/test && \
     apt-add-repository -y ppa:jonathonf/python-3.6 && \
     apt update -y && \
-    apt install -y g++-7 git make python3.6 python3.6-dev wget rustc zip sudo && \
+    apt install -y g++-7 git make python3.6 python3.6-dev libdw-dev wget rustc zip sudo && \
     apt-get clean && \
     echo "travis ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$UGNAME && \
     ln -sf $(which $CC) /usr/bin/cc && \

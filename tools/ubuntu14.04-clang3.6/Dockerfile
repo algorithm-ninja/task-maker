@@ -16,7 +16,7 @@ RUN groupadd --gid "$UGID" "$UGNAME" && \
     apt install -y wget && \
     wget -O- http://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
     apt update -y && \
-    apt install -y libstdc++-4.9-dev clang-3.6 git make python3.6 python3.6-dev rustc zip sudo && \
+    apt install -y libstdc++-4.9-dev clang-3.6 git make python3.6 python3.6-dev libdw-dev rustc zip sudo && \
     apt-get clean && \
     echo "travis ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$UGNAME && \
     ln -sf $(which $CC) /usr/bin/cc && \

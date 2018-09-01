@@ -42,7 +42,7 @@ matrix:
           - build
 
 script:
-  - docker pull edomora97/task-maker-builder-$TOOLCHAIN:latest
+  - tool/check_docker.sh
   - docker run --rm
       -e TRAVIS=true
       -e CI=true

@@ -1,6 +1,10 @@
 FROM base/archlinux
 MAINTAINER Edoardo Morassutto <edoardo.morassutto@gmail.com>
 
+RUN mkdir -p /build
+
+WORKDIR /build
+
 ENV UGID='2000' UGNAME='travis'
 
 # setup the system
@@ -27,15 +31,6 @@ RUN cd /tmp && \
 
 # install dependencies
 RUN yaourt -Syua --needed --noconfirm \
-        python python-pip cmake rust gflags gmock google-glog gtest protobuf \
-        fpc erlang \
-        grpc nlohmann-json-bin && \
+        python python-pip cmake gmock gtest capnproto pybind11 \
+        fpc rust erlang && \
     sudo pacman -Scc --noconfirm
-
-RUN yaourt -Syua --needed --noconfirm \
-        cli11 plog && \
-    sudo pacman -Scc --noconfirm
-
-RUN sudo mkdir -p /build
-
-WORKDIR /build
