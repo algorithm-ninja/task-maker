@@ -2,6 +2,8 @@
 
 The new cmsMake!
 
+[![asciicast](https://asciinema.org/a/Kh8y6c7TD2WBjxTXDPnQQxPS1.png)](https://asciinema.org/a/Kh8y6c7TD2WBjxTXDPnQQxPS1)
+
 ## Installation
 You have to have some dependencies installed in order to use task-maker.
 This is a python3 project, you need to have Python>=3.5 as default python
