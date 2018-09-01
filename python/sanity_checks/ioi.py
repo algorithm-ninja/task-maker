@@ -34,7 +34,7 @@ def _check_graders(folder: str, languages: Set[Language],
 
 def _get_statement_path():
     for path in ["statement/statement.pdf", "testo/testo.pdf"]:
-        if os.path.exists(path):
+        if os.path.lexists(path):
             return path
     return None
 

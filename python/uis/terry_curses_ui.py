@@ -53,8 +53,7 @@ def print_terry_solution_info(printer: CursesPrinter, solution: str,
 
 class TerryCursesUI(CursesUI):
     def __init__(self, interface: TerryUIInterface):
-        super().__init__()
-        self.interface = interface
+        super().__init__(interface)
 
     def _loop(self, printer: CursesPrinter, loading: str):
         printer.bold("Running... %s\n" % self.interface.task.name)
@@ -75,3 +74,7 @@ class TerryCursesUI(CursesUI):
         for solution, info in self.interface.solutions_info.items():
             print_terry_solution_info(printer, solution, info, max_sol_len,
                                       loading, self.interface.task.max_score)
+
+        printer.text("\n")
+
+        self._print_running_tasks(printer)

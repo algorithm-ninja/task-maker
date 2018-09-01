@@ -167,8 +167,7 @@ def print_solutions_result(printer: Printer, task: Task,
 
 class IOICursesUI(CursesUI):
     def __init__(self, interface: IOIUIInterface):
-        super().__init__()
-        self.interface = interface
+        super().__init__(interface)
 
     def _loop(self, printer: CursesPrinter, loading: str):
         max_sol_len = 1 + get_max_sol_len(self.interface)
@@ -204,11 +203,4 @@ class IOICursesUI(CursesUI):
 
         printer.text("\n")
 
-        printer.blue("Running tasks:\n", bold=True)
-        running = sorted(
-            (t, n) for n, t in self.interface.running.copy().items())
-        now = time.monotonic()
-        for start, task in running:
-            duration = now - start
-            printer.text(" - {0: <50} {1: .1f}s\n".format(
-                task.strip(), duration))
+        self._print_running_tasks(printer)

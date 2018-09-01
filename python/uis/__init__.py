@@ -233,7 +233,8 @@ class FinishUI:
 class CursesUI(ABC):
     FPS = 30
 
-    def __init__(self):
+    def __init__(self, interface: UIInterface):
+        self.interface = interface
         self.thread = threading.Thread(
             target=curses.wrapper, args=(self._wrapper, ))
         self.stopped = False
@@ -290,6 +291,16 @@ class CursesUI(ABC):
     @abstractmethod
     def _loop(self, printer: CursesPrinter, loading: str):
         pass
+
+    def _print_running_tasks(self, printer: CursesPrinter):
+        printer.blue("Running tasks:\n", bold=True)
+        running = sorted(
+            (t, n) for n, t in self.interface.running.copy().items())
+        now = time.monotonic()
+        for start, task in running:
+            duration = now - start
+            printer.text(" - {0: <50} {1: .1f}s\n".format(
+                task.strip(), duration))
 
 
 def result_to_str(result: Result) -> str:
