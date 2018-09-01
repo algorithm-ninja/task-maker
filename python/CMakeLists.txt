@@ -11,7 +11,7 @@ find_program(RM_EXE NAMES rm)
 
 # Sources
 file(GLOB SOURCES_PY "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
-set(PY_MODULES formats tests uis languages)
+set(PY_MODULES formats tests uis languages sanity_checks)
 foreach(module_name ${PY_MODULES})
   file(GLOB SOURCES_PY_${module_name} "${CMAKE_CURRENT_SOURCE_DIR}/${module_name}/*.py")
 endforeach()
@@ -106,6 +106,11 @@ add_custom_command(OUTPUT ${BIN_DIRECTORY}/task-maker
   COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:task-maker> ${BIN_DIRECTORY}
   DEPENDS task-maker
 )
+
+foreach(module_name ${PY_MODULES})
+  set(SETUP_PY_MODULES "${SETUP_PY_MODULES}, 'task_maker.${module_name}'")
+endforeach()
+
 
 # generate setup.py
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in ${SETUP_PY})

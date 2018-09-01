@@ -17,6 +17,7 @@ from task_maker.formats import ScoreMode, Subtask, TestCase, Task, \
     gen_grader_map, get_write_input_file, get_write_output_file, TaskType, \
     get_solutions
 from task_maker.sanitize import sanitize_command
+from task_maker.sanity_checks.ioi import sanity_pre_checks, sanity_post_checks
 from task_maker.solution import Solution, BatchSolution, CommunicationSolution
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import File, Frontend
@@ -260,7 +261,10 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
     evaluate_solutions(frontend, ins, outs, vals, solutions, ui_interface,
                        config)
 
+    sanity_pre_checks(task, solutions, ui_interface)
     frontend.evaluate()
+    sanity_post_checks(task, solutions, ui_interface)
+
     if config.ui == UIS.CURSES:
         curses_ui.stop()
 
