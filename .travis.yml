@@ -5,6 +5,8 @@ services:
 
 matrix:
   include:
+    - env:
+        TOOLCHAIN=ubuntu16.04
 #    - env:
 #       - TOOLCHAIN=ubuntu14.04-gcc4.9 DEPLOY=1
 #    - env:

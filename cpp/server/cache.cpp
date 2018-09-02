@@ -19,7 +19,7 @@ inline void hash_combine(std::size_t& hash, const T& v) {
 uint64_t RequestHasher::operator()(capnproto::Request::Reader reader_) const {
   size_t hash = reader_.getProcesses().size();
   for (auto reader : reader_.getProcesses()) {
-    hash_combine(hash, reader.getExecutable().which());
+    hash_combine(hash, static_cast<int>(reader.getExecutable().which()));
     switch (reader.getExecutable().which()) {
       case capnproto::ProcessRequest::Executable::SYSTEM:
         hash_combine(hash, std::string(reader.getExecutable().getSystem()));
@@ -35,7 +35,7 @@ uint64_t RequestHasher::operator()(capnproto::Request::Reader reader_) const {
     for (std::string arg : reader.getArgs()) {
       hash_combine(hash, arg);
     }
-    hash_combine(hash, reader.getStdin().which());
+    hash_combine(hash, static_cast<int>(reader.getStdin().which()));
     switch (reader.getStdin().which()) {
       case capnproto::ProcessRequest::Stdin::FIFO:
         hash_combine(hash, reader.getStdin().getFifo());

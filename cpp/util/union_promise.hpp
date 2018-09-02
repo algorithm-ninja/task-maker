@@ -3,6 +3,7 @@
 #include <kj/async.h>
 #include <functional>
 #include <vector>
+#include <string>
 
 namespace util {
 namespace detail {
