@@ -15,31 +15,31 @@ matrix:
 #       - TOOLCHAIN=ubuntu14.04-clang5.0
     - env:
         - TOOLCHAIN=archlinux
-#    - os: osx
-#      env:
-#        - DEPLOY=1
-#      install:
-#        - brew upgrade python wget cmake
-#        - brew install rust
-#        - python3 -m venv /tmp/venv --without-pip
-#        - source /tmp/venv/bin/activate
-#        - wget -O- https://bootstrap.pypa.io/get-pip.py | python3
-#        - mkdir /tmp/bin
-#        - 'export PATH=/tmp/bin:$PATH'
-#        - cmake --version
-#      script:
-#        - rm -rf build
-#        - cmake -H. -Bbuild -DHUNTER_ROOT=hunter-root
-#        - cmake --build build
-#        - python build/python/setup.py install
-#        # run the tests
-#        - ( cd build && ctest -VV )
-#      before_deploy:
-#        ./tools/make_release.sh
-#      cache:
-#        directories:
-#          - hunter-root
-#          - build
+    - os: osx
+      env:
+        - DEPLOY=1
+      install:
+        - brew upgrade python wget cmake
+        - brew install rust
+        - python3 -m venv /tmp/venv --without-pip
+        - source /tmp/venv/bin/activate
+        - wget -O- https://bootstrap.pypa.io/get-pip.py | python3
+        - mkdir /tmp/bin
+        - 'export PATH=/tmp/bin:$PATH'
+        - cmake --version
+      script:
+        - rm -rf build
+        - cmake -H. -Bbuild -DHUNTER_ROOT=hunter-root
+        - cmake --build build
+        - python build/python/setup.py install
+        # run the tests
+        - ( cd build && ctest -VV )
+      before_deploy:
+        ./tools/make_release.sh
+      cache:
+        directories:
+          - hunter-root
+          - build
 
 script:
   - tools/check_docker.sh

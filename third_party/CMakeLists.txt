@@ -5,6 +5,8 @@ add_library(whereami
 target_include_directories(whereami PUBLIC whereami)
 
 add_library(backward INTERFACE)
-target_link_libraries(backward INTERFACE dw)
 target_include_directories(backward INTERFACE backward)
-target_compile_definitions(backward INTERFACE BACKWARD_HAS_DW=1)
+if (${dw_FOUND})
+  target_link_libraries(backward INTERFACE dw)
+  target_compile_definitions(backward INTERFACE BACKWARD_HAS_DW=1)
+endif ()

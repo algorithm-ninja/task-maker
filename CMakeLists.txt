@@ -63,11 +63,10 @@ hunter_add_package(pybind11)
 find_package(GTest REQUIRED)
 
 # these finders are provided by hunter, when hunter is disabled the ones in cmake are used
-# TODO: add the one for CapnProto
 find_package(CapnProto CONFIG REQUIRED)
 find_package(GMock CONFIG REQUIRED)
 find_package(pybind11 CONFIG REQUIRED)
-find_package(dw CONFIG REQUIRED)  # TODO probably this won't work on OSX
+find_package(dw CONFIG)
 
 add_subdirectory(capnp)
 add_subdirectory(third_party)
