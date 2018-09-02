@@ -127,9 +127,13 @@ class UIInterface:
 
     def add_warning(self, message: str):
         self.warnings.append(message)
+        self.printer.yellow("WARNING  ", bold=True)
+        self.printer.text(message.strip() + "\n")
 
     def add_error(self, message: str):
         self.errors.append(message)
+        self.printer.red("ERROR  ", bold=True)
+        self.printer.text(message.strip() + "\n")
 
 
 class FinishUI:

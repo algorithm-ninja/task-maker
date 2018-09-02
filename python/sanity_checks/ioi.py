@@ -45,6 +45,11 @@ def _get_statement_path():
     return None
 
 
+def _get_statement_tex():
+    return list_files(
+        ["statement/*.tex", "testo/*.tex"], valid_extensions=[".tex"])
+
+
 def _check_git_has_file(path: str) -> Optional[bool]:
     # git is not installed
     if not find_executable("git"):
@@ -59,6 +64,55 @@ def _check_git_has_file(path: str) -> Optional[bool]:
     if proc.stdout.decode():
         return True
     return False
+
+
+def _check_pdf_statement(interface: IOIUIInterface):
+    path = _get_statement_path()
+    if not path:
+        interface.add_warning("The statement file is missing")
+        return
+    if _check_git_has_file(path) is False:
+        interface.add_warning(
+            "The statement file {} is not known to git".format(path))
+    if os.path.islink(path):
+        realpath = os.path.relpath(path)
+        if not os.path.exists(realpath):
+            interface.add_warning("The statement is a broken link")
+
+
+def _check_tex_statement(task: Task, interface: IOIUIInterface):
+    statements = _get_statement_tex()
+    if not statements:
+        return
+    regex = r".*\{Subtask ([0-9]+)\} *\[(?:\\phantom\{.\})?([0-9]+).*\].*"
+    for statement in statements:
+        is_non_sequential = False
+        is_wrong = False
+        with open(statement, "r") as f:
+            matches = re.findall(regex, f.read())
+            if not matches:
+                continue
+            one_based = int(matches[0][0] == '1')
+            last = -1
+            for subtask, score in matches:
+                subtask = int(subtask) - one_based
+                score = int(score)
+                if subtask != last + 1:
+                    is_non_sequential = True
+                    # if the numbers are screwed up the scores have no sense
+                    break
+                last = subtask
+                from_task = task.subtasks.get(subtask)
+                if not from_task or from_task.max_score != score:
+                    is_wrong = True
+        if is_non_sequential:
+            interface.add_warning(
+                "The subtasks in the statement {} are "
+                "non-sequentially numbered".format(statement))
+        elif is_wrong:
+            interface.add_warning(
+                "The subtasks in the statement {} don't match "
+                "the task's ones".format(statement))
 
 
 def _setup_execution_callback(interface: IOIUIInterface, execution: Execution,
@@ -181,7 +235,7 @@ def check_sol_folder(solutions: List[Solution], interface: IOIUIInterface):
                 "Official solution {} is not a symlink".format(sol))
 
 
-def check_statement(interface: IOIUIInterface):
+def check_statement(task: Task, interface: IOIUIInterface):
     """
     Check if the statement is present and, if git is used, that is known.
     Check that the latex statements, if present contain the same subtasks, with
@@ -189,18 +243,8 @@ def check_statement(interface: IOIUIInterface):
     Check if the template functions in the statement and in the graders have the
     same signature
     """
-    path = _get_statement_path()
-    if not path:
-        interface.add_warning("The statement file is missing")
-        return
-    if _check_git_has_file(path) is False:
-        interface.add_warning(
-            "The statement file {} is not known to git".format(path))
-    if os.path.islink(path):
-        realpath = os.path.relpath(path)
-        if not os.path.exists(realpath):
-            interface.add_warning("The statement is a broken link")
-    # TODO check if the subtasks match the one in the statement
+    _check_pdf_statement(interface)
+    _check_tex_statement(task, interface)
     # TODO check if the template signatures match the one in the statement
 
 
@@ -333,7 +377,7 @@ def sanity_pre_checks(task: Task, solutions: List[Solution],
     check_subtask_score_sum(task, interface)
     check_att_folder(task, solutions, interface)
     check_sol_folder(solutions, interface)
-    check_statement(interface)
+    check_statement(task, interface)
     check_sample_cases(task, frontend, config, interface)
 
 
