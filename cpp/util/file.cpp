@@ -43,7 +43,7 @@ std::vector<std::string> OsListFiles(const std::string& path) {
                  [](const char* fpath, const struct stat* sb, int typeflags,
                     struct FTW* ftwbuf) {
                    if (typeflags != FTW_F) return 0;
-                   files.emplace_back(sb->st_atim.tv_sec, fpath);
+                   files.emplace_back(sb->st_atime, fpath);
                    return 0;
                  },
                  64, FTW_DEPTH | FTW_PHYS | NFTW_EXTRA_FLAGS) != -1);
@@ -91,7 +91,7 @@ kj::AutoCloseFd OsTempFile(const std::string& path, std::string* tmp) {
     int fd =
         open(tmp->c_str(), O_WRONLY | O_CREAT | O_CLOEXEC, S_IRUSR | S_IWUSR);
     if (fd == -1 && errno == EEXIST) continue;
-    return fd;
+    return kj::AutoCloseFd(fd);
   } while (true);
 #else
   *tmp = path + ".XXXXXX";
