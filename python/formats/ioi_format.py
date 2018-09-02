@@ -3,7 +3,7 @@
 import glob
 import os
 import shlex
-import yaml
+import ruamel.yaml
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
@@ -142,7 +142,7 @@ def detect_yaml() -> str:
 def parse_task_yaml() -> Dict[str, Any]:
     path = detect_yaml()
     with open(path) as yaml_file:
-        return yaml.load(yaml_file)
+        return ruamel.yaml.safe_load(yaml_file)
 
 
 def create_task_from_yaml(data: Dict[str, Any]) -> Task:
