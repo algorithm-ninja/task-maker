@@ -19,7 +19,7 @@ def get_task_maker_path():
 
 def spawn_backend(type: str, args: str, daemonize: bool):
     task_maker = get_task_maker_path()
-    args = [type] + shlex.split(args)
+    args = shlex.split(args)
     if daemonize:
         args.insert(0, "--daemon")
         streams = subprocess.DEVNULL

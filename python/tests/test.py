@@ -6,6 +6,7 @@ patch_sys_path()
 import os.path
 import pytest
 import shutil
+import sys
 from typing import Union
 
 from task_maker.args import UIS, CacheMode, get_parser
@@ -20,9 +21,11 @@ def run_tests(task_name, file):
     file = os.path.abspath(file)
     task_dir = "task_" + task_name
     orig_task_dir = os.path.join(os.path.dirname(__file__), task_dir)
-    task_path = os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), task_dir)
+    temp_dir = os.getenv("TEST_TMPDIR", "/tmp/task-maker")
+    task_path = os.path.join(temp_dir, task_dir)
     if os.path.exists(task_path):
         shutil.rmtree(task_path)
+    os.makedirs(temp_dir, exist_ok=True)
     shutil.copytree(orig_task_dir, task_path)
 
     os.chdir(task_path)
@@ -33,11 +36,35 @@ def run_tests(task_name, file):
     config.cache = CacheMode.NOTHING
     config.task_dir = task_path
     config.dry_run = True
-
+    config.server_args = \
+        "--store-dir='{}/files' --temp-dir='{}/temp' --pidfile='{}/server.pid' " \
+        "server --port=7070".format(temp_dir, temp_dir, temp_dir)
+    config.worker_args = \
+        "--store-dir='{}/files' --temp-dir='{}/temp' --pidfile='{}/worker.pid' " \
+        "worker --name=local --server=localhost:7070".format(temp_dir,
+                                                                temp_dir,
+                                                                temp_dir)
     global interface
     interface = run(config)
-    raise SystemExit(
-        pytest.main([
-            os.path.join(os.path.dirname(__file__), "utils.py"), file,
-            "--override-ini=python_classes=XXXX", "--verbose", "--color=yes"
-        ]))
+    exitcode = pytest.main([
+        os.path.join(os.path.dirname(__file__), "utils.py"), file,
+        "--override-ini=python_classes=XXXX", "--verbose", "--color=yes"
+    ])
+
+    try:
+        with open(temp_dir + "/server.pid") as f:
+            pid = int(f.read())
+            os.kill(pid, 9)
+    except:
+        print("Failed to kill the server", file=sys.stderr)
+    try:
+        with open(temp_dir + "/worker.pid") as f:
+            pid = int(f.read())
+            os.kill(pid, 9)
+    except:
+        print("Failed to kill the worker", file=sys.stderr)
+
+    if os.path.exists(task_path):
+        shutil.rmtree(task_path)
+
+    raise SystemExit(exitcode)
