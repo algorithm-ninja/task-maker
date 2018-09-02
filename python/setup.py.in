@@ -11,7 +11,7 @@ setup(
     name='task_maker',
     version='${PROJECT_VERSION}',
     packages=[
-        'task_maker', 'task_maker.venv', 'task_maker.bin' ${SETUP_PY_MODULES}
+        'task_maker', 'task_maker.bin' ${SETUP_PY_MODULES}, 'task_maker.venv'
     ],
     zip_safe=False,
     package_data={
