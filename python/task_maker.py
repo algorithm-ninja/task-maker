@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 
-# enable discovery of the installed venv
-from task_maker.syspath_patch import patch_sys_path
-
-patch_sys_path()  # noqa
-
 import os.path
 import signal
 from typing import Any, Union

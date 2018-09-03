@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-from task_maker.syspath_patch import patch_sys_path
-
-patch_sys_path()
 
 import os.path
 import pytest

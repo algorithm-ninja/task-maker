@@ -1,14 +1,3 @@
-# External commands
-find_program(PIP_EXE NAMES pip3 pip)
-find_program(STRIP_EXE NAMES strip)
-find_program(XARGS_EXE NAMES xargs)
-find_program(FIND_EXE NAMES find)
-find_program(CP_EXE NAMES cp)
-find_program(SED_EXE NAMES sed)
-find_program(TR_EXE NAMES tr)
-find_program(LS_EXE NAMES ls)
-find_program(RM_EXE NAMES rm)
-
 # Sources
 file(GLOB SOURCES_PY "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
 set(PY_MODULES formats tests uis languages sanity_checks)
@@ -16,7 +5,6 @@ foreach(module_name ${PY_MODULES})
   file(GLOB SOURCES_PY_${module_name} "${CMAKE_CURRENT_SOURCE_DIR}/${module_name}/*.py")
 endforeach()
 file(GLOB TESTS_TASKS "${CMAKE_CURRENT_SOURCE_DIR}/tests/task_*")
-file(GLOB CAPNP_FILES "${CMAKE_CURRENT_SOURCE_DIR}/../capnp/*.capnp")
 set(REQUIREMENTS_TXT "${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt")
 
 # Install directories
@@ -24,24 +12,17 @@ set(SOURCES_MODULE "${CMAKE_CURRENT_BINARY_DIR}/task_maker")
 foreach(module_name ${PY_MODULES})
   set(SOURCES_${module_name}_MODULE "${SOURCES_MODULE}/${module_name}")
 endforeach()
-set(CAPNP_MODULE "${SOURCES_MODULE}/capnp")
 set(BIN_DIRECTORY "${SOURCES_MODULE}/bin")
-set(VENV_DIRECTORY "${SOURCES_MODULE}/venv")
-set(TEMP_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/temp")
 
 # Create the install directories
 file(MAKE_DIRECTORY ${SOURCES_MODULE})
 foreach(module_name ${PY_MODULES})
   file(MAKE_DIRECTORY ${SOURCES_${module_name}_MODULE})
 endforeach()
-file(MAKE_DIRECTORY ${CAPNP_MODULE})
 file(MAKE_DIRECTORY ${BIN_DIRECTORY})
-file(MAKE_DIRECTORY ${VENV_DIRECTORY})
-file(WRITE "${CAPNP_MODULE}/__init__.py" "")
 file(WRITE "${BIN_DIRECTORY}/__init__.py" "")
 
 # Compute the target file paths
-string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/../capnp" "${CAPNP_MODULE}" CAPNP_TGT "${CAPNP_FILES}")
 string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "${SOURCES_MODULE}" SOURCES_PY_TGT "${SOURCES_PY}")
 foreach(module_name ${PY_MODULES})
   string(REGEX REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/${module_name}" "${SOURCES_${module_name}_MODULE}" SOURCES_PY_${module_name}_TGT "SOURCES_PY_${module_name}")
@@ -58,11 +39,6 @@ set(CPP_EXECUTABLES
 set(FRONTEND_LIB "${SOURCES_MODULE}/task_maker_frontend.so")
 
 # Copy all the files
-add_custom_command(OUTPUT ${CAPNP_TGT}
-  COMMAND ${CMAKE_COMMAND} -E copy ${CAPNP_FILES} ${CAPNP_MODULE}
-  DEPENDS "${CAPNP_FILES}"
-)
-
 add_custom_command(OUTPUT ${SOURCES_PY_TGT}
   COMMAND ${CMAKE_COMMAND} -E copy ${SOURCES_PY} ${SOURCES_MODULE}
   DEPENDS "${SOURCES_PY}"
@@ -119,54 +95,9 @@ execute_process(COMMAND chmod 555 ${SETUP_PY})
 # generate version.py
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.py.in ${VERSION_PY})
 
-# Install the python dependencies, it would be nice to use --user and --prefix but
-# if python is installed with brew on mac it doesn't work...
-# An entire linux root is created in TEMP_DIRECTORY and then the site-packages files
-# are copied to the venv directory
-add_custom_command(
-  OUTPUT ${TEMP_DIRECTORY}/root
-  COMMAND ${PIP_EXE}
-  ARGS install --ignore-installed --root=${TEMP_DIRECTORY}/root -r ${REQUIREMENTS_TXT}
-  DEPENDS ${REQUIREMENTS_TXT}
-  COMMENT "Installing python dependencies"
-  VERBATIM
-)
-
-add_custom_command(
-  OUTPUT ${TEMP_DIRECTORY}/not_stripped
-  COMMAND bash
-  ARGS -c "cp -rf $(ls $(find ${TEMP_DIRECTORY} -name site-packages) | sed \"s|^|$(find ${TEMP_DIRECTORY} -name site-packages)/|g\") ${VENV_DIRECTORY} && touch ${TEMP_DIRECTORY}/not_stripped"
-  WORKING_DIRECTORY ${VENV_DIRECTORY}
-  COMMENT "Fixing python dependencies path"
-  DEPENDS ${TEMP_DIRECTORY}/root
-  VERBATIM
-)
-
-# Strip away the symbols from the python modules
-if (NOT APPLE)
-  add_custom_command(
-    OUTPUT ${TEMP_DIRECTORY}/stripped
-    COMMAND bash
-    ARGS -c "strip -s $(find . -name '*.so') || true && touch ${TEMP_DIRECTORY}/stripped"
-    WORKING_DIRECTORY ${VENV_DIRECTORY}
-    COMMENT "Stripping .so of python dependencies"
-    DEPENDS ${TEMP_DIRECTORY}/not_stripped
-    VERBATIM
-  )
-else ()
-  add_custom_command(
-    OUTPUT ${TEMP_DIRECTORY}/stripped
-    COMMAND bash
-    ARGS -c "touch ${TEMP_DIRECTORY}/stripped"
-    DEPENDS ${TEMP_DIRECTORY}/not_stripped
-    VERBATIM
-  )
-endif()
-
 add_custom_target(module_files ALL
-  DEPENDS ${CAPNP_TGT} ${MODULES_TGT} ${REQUIREMENTS_TXT_TGT}
+  DEPENDS ${MODULES_TGT} ${REQUIREMENTS_TXT_TGT}
     "${TESTS_TASKS_TGT}" ${SOURCES_PY_TGT} ${CPP_EXECUTABLES} ${FRONTEND_LIB}
-  ${TEMP_DIRECTORY}/stripped
 )
 
 add_custom_target(develop

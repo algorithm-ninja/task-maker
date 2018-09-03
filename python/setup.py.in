@@ -1,22 +1,18 @@
 #!/usr/bin/env python3
-import glob
 import os
 from setuptools import setup
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-venv = glob.glob("task_maker/venv/*/**", recursive=True)
-
 setup(
     name='task_maker',
     version='${PROJECT_VERSION}',
     packages=[
-        'task_maker', 'task_maker.bin' ${SETUP_PY_MODULES}, 'task_maker.venv'
+        'task_maker', 'task_maker.bin' ${SETUP_PY_MODULES}
     ],
     zip_safe=False,
     package_data={
         'task_maker.bin': ['*'],
-        'task_maker.venv': [test[len("task_maker/venv/"):] for test in venv],
         'task_maker': ['*.so']
     },
     entry_points={
