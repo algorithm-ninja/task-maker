@@ -23,5 +23,7 @@ else
     python3 build/python/setup.py develop
     ( cd build && ctest -VV )
     # for some reason cmake gtest discovery is a bit bugged on ubuntu, manual execution for now
-    ( cd build/cpp && ./sandbox_unix_test --gtest_list_tests | tail -n +3 | xargs -I{} ./sandbox_unix_test --gtest_filter="UnixTest.{}" )
+    if [ "$TOOLCHAIN" == "ubuntu16.04" ]; then
+        ( cd build/cpp && ./sandbox_unix_test --gtest_list_tests | tail -n +3 | xargs -I{} ./sandbox_unix_test --gtest_filter="UnixTest.{}" )
+    fi
 fi

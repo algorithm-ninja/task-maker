@@ -8,6 +8,8 @@ matrix:
     - env:
         TOOLCHAIN=ubuntu16.04
     - env:
+        TOOLCHAIN=ubuntu18.04
+    - env:
         - TOOLCHAIN=archlinux
 #    - os: osx
 #      env:
