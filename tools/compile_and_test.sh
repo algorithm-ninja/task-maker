@@ -9,20 +9,19 @@ fi
 
 if [ "$TOOLCHAIN" == "archlinux" ]; then
     # the archlinux build user is not root
-    python3 -m venv /tmp/venv
+    python3 -m venv /tmp/venv --system-site-packages
     . /tmp/venv/bin/activate
     cmake -H. -Bbuild -DHUNTER_ENABLED=OFF -DTRAVIS=ON
+    cmake --build build
+    # with install the test data is not copied
+    python3 build/python/setup.py develop
+    ( cd build && ctest -VV )
 else
-    if [ -f /venv/bin/activate ]; then
-        . /venv/bin/activate
-    fi
     cmake -H. -Bbuild -DHUNTER_ROOT=/hunter-root -DTRAVIS=ON
+    cmake --build build
+    # with install the test data is not copied
+    python3 build/python/setup.py develop
+    ( cd build && ctest -VV )
+    # for some reason cmake gtest discovery is a bit bugged on ubuntu, manual execution for now
+    ( cd build/cpp && ./sandbox_unix_test --gtest_list_tests | tail -n +3 | xargs -I{} ./sandbox_unix_test --gtest_filter="UnixTest.{}" )
 fi
-cmake --build build
-
-# with install the test data is not copied
-python build/python/setup.py develop
-
-./build/cpp/task-maker --help || true
-
-( cd build && ctest -VV )
