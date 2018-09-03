@@ -16,7 +16,7 @@ RUN apt update -y && \
                    fpc rustc zip && \
     apt-get clean && \
     ln -sf $(which $CC) /usr/bin/cc && \
-    ln -sf $(which $CXX) /usr/bin/c++ \
+    ln -sf $(which $CXX) /usr/bin/c++ && \
     pip3 install pytest
 
 RUN mkdir /hunter-root
