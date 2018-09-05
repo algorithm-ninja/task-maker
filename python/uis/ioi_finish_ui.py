@@ -54,8 +54,7 @@ class IOIFinishUI(FinishUI):
                 int(self.task.subtasks[st_num].max_score)))
             subtask_info = self.task.subtasks[st_num]
             if subtask_info.name:
-                self.printer.text(" [{}]".format(
-                    subtask_info.name))
+                self.printer.text(" [{}]".format(subtask_info.name))
             self.printer.text("\n")
             if subtask_info.description:
                 self.printer.text(subtask_info.description + "\n")
@@ -108,8 +107,10 @@ class IOIFinishUI(FinishUI):
         self.printer.text(": ")
         status = self.interface.testing[solution]
         max_score = sum(st.max_score for st in self.task.subtasks.values())
-        self._print_score(status.score, max_score,
-                          status.subtask_scores.values())
+        self._print_score(status.score, max_score, [
+            tc.score for st in status.testcase_results.values()
+            for tc in st.values()
+        ])
         self.printer.text("\n")
         if self.interface.solutions[
                 solution].status == SourceFileCompilationStatus.FAILURE:
