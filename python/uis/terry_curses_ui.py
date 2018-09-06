@@ -1,4 +1,4 @@
-#!/usr/local/bin python3
+#!/usr/bin/env python3
 from task_maker.printer import CursesPrinter
 from task_maker.uis import CursesUI, get_max_sol_len
 from task_maker.uis.ioi_curses_ui import print_compilation_status

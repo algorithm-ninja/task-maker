@@ -1,0 +1,8 @@
+Package: task-maker
+Version: ${GIT_LAST_VERSION}
+Architecture: amd64
+Depends: libc6, libdw1, libgcc1, libstdc++6, build-essential, python3, python3-traits, python3-ruamel.yaml
+Maintainer: Edoardo Morassutto <edoardo.morassutto@gmail.com>
+Homepage: https://github.com/algorithm-ninja/task-maker
+Description: The new cmsMake!
+ The new cmsMake!
