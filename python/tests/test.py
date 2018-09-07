@@ -33,13 +33,11 @@ def run_tests(task_name, file):
     config.task_dir = task_path
     config.dry_run = True
     config.server_args = \
-        "server " \
         "--store-dir='{}/files' " \
         "--temp-dir='{}/temp' " \
         "--pidfile='{}/server.pid' " \
         "--port=7070".format(temp_dir, temp_dir, temp_dir)
     config.worker_args = \
-        "worker " \
         "--store-dir='{}/files' " \
         "--temp-dir='{}/temp' " \
         "--pidfile='{}/worker.pid' " \
