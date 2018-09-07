@@ -6,7 +6,7 @@ import shutil
 import sys
 from typing import Union
 
-from task_maker.args import UIS, CacheMode, get_parser
+from task_maker.args import UIS, CacheMode
 from task_maker.config import Config
 from task_maker.uis.ioi import IOIUIInterface
 from task_maker.task_maker import run
@@ -27,18 +27,24 @@ def run_tests(task_name, file):
 
     os.chdir(task_path)
 
-    parser = get_parser()
-    config = Config(parser.parse_args([]))
+    config = Config()
     config.ui = UIS.SILENT
     config.cache = CacheMode.NOTHING
     config.task_dir = task_path
     config.dry_run = True
     config.server_args = \
-        "--store-dir='{}/files' --temp-dir='{}/temp' --pidfile='{}/server.pid' " \
-        "server --port=7070".format(temp_dir, temp_dir, temp_dir)
+        "server " \
+        "--store-dir='{}/files' " \
+        "--temp-dir='{}/temp' " \
+        "--pidfile='{}/server.pid' " \
+        "--port=7070".format(temp_dir, temp_dir, temp_dir)
     config.worker_args = \
-        "--store-dir='{}/files' --temp-dir='{}/temp' --pidfile='{}/worker.pid' " \
-        "worker --name=local --server=localhost:7070".format(temp_dir,
+        "worker " \
+        "--store-dir='{}/files' " \
+        "--temp-dir='{}/temp' " \
+        "--pidfile='{}/worker.pid' " \
+        "--name=local " \
+        "--server=127.0.0.1:7070".format(temp_dir,
                                                                 temp_dir,
                                                                 temp_dir)
     global interface

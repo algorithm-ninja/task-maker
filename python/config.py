@@ -42,7 +42,7 @@ class Config:
         self.run_server = False
         self.run_worker = False
         self.server_args = "--port=7070"
-        self.worker_args = "--name=local --server=localhost:7070"
+        self.worker_args = "--name=local --server=127.0.0.1:7070"
         self._get_host_port()
 
         # execution group
@@ -64,6 +64,7 @@ class Config:
         for group, options in Config.OPTIONS.items():
             for arg in options:
                 self._apply_arg(arg, args)
+        self._get_host_port()
 
     def apply_file(self):
         path = os.path.join(os.path.expanduser("~"), ".task-maker.toml")
@@ -82,6 +83,7 @@ class Config:
                         "Invalid option in config.file: {}.{}".format(
                             group, item))
                 setattr(self, item, self._get_value(group, item, value))
+        self._get_host_port()
 
     def _apply_arg(self, name, args):
         value = getattr(args, name)
