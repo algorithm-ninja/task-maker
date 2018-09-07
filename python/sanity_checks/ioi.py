@@ -354,7 +354,7 @@ def check_solution_score(task: Task, interface: IOIUIInterface):
     if not task.official_solution:
         return
     official_solution_name = task.official_solution.name
-    if not official_solution_name in interface.testing:
+    if official_solution_name not in interface.testing:
         return
     max_score = sum(st.max_score for st in task.subtasks.values())
     if interface.testing[official_solution_name].score != max_score:
@@ -371,6 +371,22 @@ def check_subtask_score_sum(task: Task, interface: IOIUIInterface):
         interface.add_warning("The sum of the subtask max scores is not 100")
 
 
+def check_symlinks(interface: IOIUIInterface):
+    """
+    Check if there are broken symlinks in the task folders
+    """
+    dirs_to_check = ["att", "sol", "gen", "check", "cor", "statement", "testo"]
+    for d in dirs_to_check:
+        for root, dirs, files in os.walk(d):
+            for f in files:
+                f = os.path.join(root, f)
+                if os.path.islink(f):
+                    dest = os.path.join(os.path.dirname(f), os.readlink(f))
+                    if not os.path.exists(dest):
+                        interface.add_warning(
+                            "Broken symlink: {} -> {}".format(f, dest))
+
+
 def sanity_pre_checks(task: Task, solutions: List[Solution],
                       frontend: Frontend, config: Config,
                       interface: IOIUIInterface):
@@ -379,6 +395,7 @@ def sanity_pre_checks(task: Task, solutions: List[Solution],
     check_sol_folder(solutions, interface)
     check_statement(task, interface)
     check_sample_cases(task, frontend, config, interface)
+    check_symlinks(interface)
 
 
 def sanity_post_checks(task: Task, solutions: List[Solution],

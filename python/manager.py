@@ -8,7 +8,7 @@ import time
 from task_maker.config import Config
 from task_maker.task_maker_frontend import Frontend
 
-SERVER_SPAWN_TIME = 1
+SERVER_SPAWN_TIME = 3
 
 
 def get_task_maker_path():
