@@ -24,9 +24,21 @@ kj::MainBuilder::Validity Main::Run() {
 kj::MainFunc Main::getMain() {
   return kj::MainBuilder(context, "Task-Maker Server (" + util::version + ")",
                          "Receives evaluations and dispatches them to workers")
+      .addOptionWithArg({'L', "logfile"}, util::setString(Flags::log_file),
+                        "<LOGFILE>", "Path where the log file should be stored")
+      .addOption({'d', "daemon"}, util::setBool(Flags::daemon),
+                 "Become a daemon")
+      .addOptionWithArg({'P', "pidfile"}, util::setString(Flags::pidfile),
+                        "<PIDFILE>", "Path where the pidfile should be stored")
+      .addOptionWithArg({'S', "store-dir"},
+                        util::setString(Flags::store_directory), "<DIR>",
+                        "Path where the files should be stored")
+      .addOptionWithArg({'T', "temp-dir"},
+                        util::setString(Flags::temp_directory), "<DIR>",
+                        "Path where the sandboxes should be crated")
       .addOptionWithArg({'l', "address"},
                         util::setString(Flags::listen_address), "<ADDRESS>",
-                        "Address to connect to")
+                        "Address to listen on")
       .addOptionWithArg({'p', "port"}, util::setInt(Flags::port), "<PORT>",
                         "Port to listen on")
       .addOptionWithArg(

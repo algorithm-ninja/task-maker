@@ -118,12 +118,12 @@ def add_remote_group(parser: argparse.ArgumentParser):
         "--server-args",
         action="store",
         help="Arguments to pass to the server if it's to be spawned",
-        default="server --port=7070")
+        default="--port=7070")
     group.add_argument(
         "--worker-args",
         action="store",
         help="Arguments to pass to the worker if it's to be spawned",
-        default="worker --name=local --server=localhost:7070")
+        default="--name=local --server=localhost:7070")
 
 
 def add_execution_group(parser: argparse.ArgumentParser):
