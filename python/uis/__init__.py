@@ -340,6 +340,8 @@ def result_to_str(result: Result) -> str:
 
 
 def get_max_sol_len(interface: UIInterface):
+    if not interface.solutions and not interface.non_solutions:
+        return 0
     return max(
         map(
             len,
