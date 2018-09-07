@@ -57,44 +57,37 @@ def add_generic_group(parser: argparse.ArgumentParser):
     group = parser.add_argument_group("Generic options")
     group.add_argument(
         "--task-dir",
-        help="Directory of the task to build",
-        default=os.getcwd())
+        help="Directory of the task to build")
     group.add_argument(
         "--max-depth",
         help="Look at most for this number of parents to search the task",
-        type=int,
-        default=2)
+        type=int)
     group.add_argument(
         "--ui",
         help="UI to use",
         choices=list(UIS),
         type=UIS,
-        action="store",
-        default="curses")
+        action="store")
     group.add_argument(
         "--cache",
         help="Cache policy to use",
         action="store",
         choices=list(CacheMode),
-        type=CacheMode,
-        default="all")
+        type=CacheMode)
     group.add_argument(
         "--dry-run",
         help="Execute everything but do not touch the task directory",
-        action="store_true",
-        default=False)
+        action="store_true")
     group.add_argument(
         "--clean",
         help="Clear the task directory and exit",
-        action="store_true",
-        default=False)
+        action="store_true")
     group.add_argument(
         "--format",
         help="Format of the task",
         action="store",
         choices=list(TaskFormat),
-        type=TaskFormat,
-        default=None)
+        type=TaskFormat)
 
 
 def add_remote_group(parser: argparse.ArgumentParser):
@@ -102,28 +95,23 @@ def add_remote_group(parser: argparse.ArgumentParser):
     group.add_argument(
         "--server",
         action="store",
-        help="address[:port] of the server to connect to",
-        default="localhost:7070")
+        help="address[:port] of the server to connect to")
     group.add_argument(
         "--run-server",
         action="store_true",
-        help="Run the server in foreground instead of running a task",
-        default=False)
+        help="Run the server in foreground instead of running a task")
     group.add_argument(
         "--run-worker",
         action="store_true",
-        help="Run a worker in foreground instead of running a task",
-        default=False)
+        help="Run a worker in foreground instead of running a task")
     group.add_argument(
         "--server-args",
         action="store",
-        help="Arguments to pass to the server if it's to be spawned",
-        default="--port=7070")
+        help="Arguments to pass to the server if it's to be spawned")
     group.add_argument(
         "--worker-args",
         action="store",
-        help="Arguments to pass to the worker if it's to be spawned",
-        default="--name=local --server=localhost:7070")
+        help="Arguments to pass to the worker if it's to be spawned")
 
 
 def add_execution_group(parser: argparse.ArgumentParser):
@@ -131,19 +119,16 @@ def add_execution_group(parser: argparse.ArgumentParser):
     group.add_argument(
         "--exclusive",
         help="Evaluate the solutions one test at the time",
-        action="store_true",
-        default=False)
+        action="store_true")
     group.add_argument(
         "--extra-time",
         help="Add some time to the evaluation of the solutions",
         action="store",
-        type=float,
-        default=0)
+        type=float)
     group.add_argument(
         "--copy-exe",
         help="Copy executable files in bin/ folder",
-        action="store_true",
-        default=False)
+        action="store_true")
 
 
 def add_ioi_group(parser: argparse.ArgumentParser):
@@ -151,8 +136,7 @@ def add_ioi_group(parser: argparse.ArgumentParser):
     group.add_argument(
         "--detailed-checker",
         help="Show the execution information also for the checker",
-        action="store_true",
-        default=False)
+        action="store_true")
 
 
 def add_terry_group(parser: argparse.ArgumentParser):
@@ -162,15 +146,13 @@ def add_terry_group(parser: argparse.ArgumentParser):
         help="Architecture to target the managers in Terry format",
         action="store",
         choices=list(Arch),
-        type=Arch,
-        default="default")
+        type=Arch)
 
     group.add_argument(
         "--seed",
         help="Seed for the terry generator",
         type=int,
-        action="store",
-        default=None)
+        action="store")
 
 
 def add_help_group(parser: argparse.ArgumentParser):
@@ -178,8 +160,7 @@ def add_help_group(parser: argparse.ArgumentParser):
     group.add_argument(
         "--help-colors",
         help="Display some help about the used colors in the UI",
-        action="store_true",
-        default=False)
+        action="store_true")
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -197,7 +178,6 @@ def get_parser() -> argparse.ArgumentParser:
         "solutions",
         help="Test only these solutions",
         nargs="*",
-        default=[],
         metavar="solution")
 
     return parser

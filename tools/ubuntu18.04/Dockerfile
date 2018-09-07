@@ -12,7 +12,7 @@ WORKDIR /build
 RUN apt update -y && \
     apt install -y g++ gcc git cmake make libdw-dev \
                    python3 python3-setuptools python3-pip \
-                   python3-traits python3-ruamel.yaml \
+                   python3-traits python3-ruamel.yaml python3-pytoml \
                    fpc rustc zip && \
     apt-get clean && \
     ln -sf $(which $CC) /usr/bin/cc && \

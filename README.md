@@ -127,10 +127,14 @@ We support build without Hunter (ie using system packages) only on Arch Linux,
 there are some dependencies to be installed:
 
 - `core/elfutils`
+- `extra/cmake`
 - `community/gmock`
 - `community/gtest`
 - `community/capnproto`
 - `aur/pybind11`
+- `community/python-ruamel-yaml`
+- `community/python-traits`
+- `community/python-pytoml`
 
 To compile the project issue:
 ```bash

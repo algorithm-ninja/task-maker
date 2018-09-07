@@ -32,6 +32,6 @@ RUN cd /tmp && \
 # install dependencies
 RUN yaourt -Syua --needed --noconfirm \
         python cmake gmock gtest capnproto pybind11 \
-        python-pytest python-ruamel-yaml python-traits \
+        python-pytest python-ruamel-yaml python-traits python-pytoml \
         fpc rust erlang && \
     sudo pacman -Scc --noconfirm

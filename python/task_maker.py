@@ -64,7 +64,10 @@ def run(config: Config) -> Union[None, IOIUIInterface, TerryUIInterface]:
 
 
 def main():
-    config = Config(get_parser().parse_args())
+    config = Config()
+    args = get_parser().parse_args()
+    config.apply_file()
+    config.apply_args(args)
     run(config)
 
 
