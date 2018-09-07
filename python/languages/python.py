@@ -20,7 +20,7 @@ def find_python_dependency(filename: str) -> List[Dependency]:
     scope = os.path.dirname(filename)
     dependencies = []  # type: List[Dependency]
     pending = {filename}  # type: Set[str]
-    done = {}  # type: Set[str]
+    done = set()  # type: Set[str]
     while pending:
         path = pending.pop()
         imports = _extract_imports(path)
@@ -31,7 +31,6 @@ def find_python_dependency(filename: str) -> List[Dependency]:
                 basename = os.path.basename(imp_path)
                 dependencies.append(Dependency(basename, imp_path))
                 pending.add(imp_path)
-
     return dependencies
 
 
