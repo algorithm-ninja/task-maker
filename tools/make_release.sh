@@ -15,6 +15,8 @@ if [ "$TOOLCHAIN" == "archlinux" ]; then
     mkdir release/src
     mv /tmp/task-maker release/src/task-maker
     cd release
+    source PKGBUILD
+    yaourt -S ${makedepends[*]}
     makepkg -e
     mv $(find -name "*.tar.xz") ../${RELEASE_FILE}
 elif [ "$TOOLCHAIN" == "osx" ]; then

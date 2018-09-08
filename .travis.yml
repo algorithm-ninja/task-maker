@@ -59,6 +59,7 @@ before_deploy:
       -e TOOLCHAIN=$TOOLCHAIN
       -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME
       -e TRAVIS_TAG=$TRAVIS_TAG
+      -e RELEASE_FILE=$RELEASE_FILE
       -v $(pwd):/build
       edomora97/task-maker-builder-$TOOLCHAIN:latest
       /build/tools/make_release.sh
