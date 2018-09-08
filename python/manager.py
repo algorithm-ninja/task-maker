@@ -46,12 +46,12 @@ def get_frontend(config: Config) -> Frontend:
         return Frontend(config.host, config.port)
     except:
         spawn_server(config)
-        spawn_worker(config)
         print("Spawning server and workers", end="", flush=True)
         for _ in range(3):
             print(".", end="", flush=True)
             time.sleep(SERVER_SPAWN_TIME/3)
         print()
+        spawn_worker(config)
         for t in range(MAX_SPAWN_ATTEMPT):
             try:
                 return Frontend(config.host, config.port)
