@@ -5,10 +5,21 @@ The new cmsMake!
 [![asciicast](https://asciinema.org/a/Kh8y6c7TD2WBjxTXDPnQQxPS1.png)](https://asciinema.org/a/Kh8y6c7TD2WBjxTXDPnQQxPS1)
 
 ## Installation
-You have to have some dependencies installed in order to use task-maker.
-This is a python3 project, you need to have Python>=3.5 as default python
-environment (running `python --version`), the easiest way to achieve this is
-via virtualenv.
+
+There are may ways to install task-maker on your system, you can compile
+it yourself (instructions below) or, if you are on Ubuntu or Archlinux, there
+are easier methods.
+
+### Arch Linux
+If you are using Arch Linux you may want to install task-maker from the AUR:
+[task-maker](https://aur.archlinux.org/packages/task-maker)
+or
+[task-maker-git](https://aur.archlinux.org/packages/task-maker-git).
+
+### Ubuntu 16.04 / Ubuntu 18.04
+At [releases](https://github.com/algorithm-ninja/task-maker/releases) you
+can find prebuilt .deb files. To install them you can issue:
+`sudo dpkg -i that_file.deb` and then `sudo apt --fix-broken install`.
 
 ## Usage
 
@@ -116,13 +127,12 @@ Note that the build system uses Hunter for managing the dependencies, in some
 cases you may find a new directory in your home called `.hunter`, to prevent
 this you can add `-DHUNTER_ROOT=/some/path` to the cmake command.
 
-## Arch Linux
-If you are using Arch Linux you may want to install task-maker from the AUR:
-[task-maker](https://aur.archlinux.org/packages/task-maker)
-or
-[task-maker-git](https://aur.archlinux.org/packages/task-maker-git).
+Once the build finish you may want to install it, in `build/python` you will
+find a Python3 package. Create a virtualenv with python3 as default version
+(`virtualenv -p python3 /path`), install the python dependencies using
+`pip -r requirements.txt` and then install task-maker with `./setup.py install`.
 
-### Manual build
+### Using system packages
 We support build without Hunter (ie using system packages) only on Arch Linux,
 there are some dependencies to be installed:
 
