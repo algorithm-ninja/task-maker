@@ -8,6 +8,8 @@ if [ "$CI" != "true" ]; then
 fi
 
 if [ "$TOOLCHAIN" == "archlinux" ]; then
+    # ensure that the system is up-to-date
+    yaourt -Syua --needed --noconfirm
     # the archlinux build user is not root
     python3 -m venv /tmp/venv --system-site-packages
     . /tmp/venv/bin/activate

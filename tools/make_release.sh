@@ -8,9 +8,15 @@ if [ "$CI" != "true" ]; then
 fi
 
 if [ "$TOOLCHAIN" == "archlinux" ]; then
-    # TODO pull from aur.archlinux.org the PKGBUILD and build the package from
-    # that
-    echo "Release not supported yet"
+    # ensure that the system is up-to-date
+    yaourt -Syua --needed --noconfirm
+    cp -r . /tmp/task-maker
+    git clone https://aur.archlinux.org/task-maker-git.git release
+    mkdir release/src
+    mv /tmp/task-maker release/src/task-maker
+    cd release
+    makepkg -e
+    mv $(find -name "*.tar.xz") ../${RELEASE_FILE}
 elif [ "$TOOLCHAIN" == "osx" ]; then
     source /tmp/venv/bin/activate
     cmake -H. -Bbuild_rel -DHUNTER_ROOT=hunter-root -DCMAKE_BUILD_TYPE=Release
@@ -20,6 +26,7 @@ elif [ "$TOOLCHAIN" == "osx" ]; then
     chmod +x build_rel/python/setup.py
     # TODO build something?
 else
+    apt install -y lintian
     cmake -H. -Bbuild_rel -DHUNTER_ROOT=hunter-root -DCMAKE_BUILD_TYPE=Release
     cmake --build build_rel
     strip -s build_rel/python/task_maker/bin/task-maker
@@ -30,6 +37,6 @@ else
     find root -name __pycache__ -exec rm -rv "{}" +
     find -name site-packages | sed -e "p;s/site/dist/" | xargs -n2 mv
     cp -r ../DEBIAN root
-    dpkg-deb --build root task-maker-${TRAVIS_TAG}_${TOOLCHAIN}_amd64.deb
-    lintian task-maker-${TRAVIS_TAG}_${TOOLCHAIN}_amd64.deb -i || true
+    dpkg-deb --build root ../../${RELEASE_FILE}
+    lintian ../../${RELEASE_FILE} -i || true
 fi
