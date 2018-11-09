@@ -107,6 +107,8 @@ def evaluate_task(frontend: Frontend, task: TerryTask,
     frontend.evaluate()
 
     if config.ui == UIS.CURSES:
+        if curses_ui.errored:
+            return ui_interface
         curses_ui.stop()
     if config.ui != UIS.SILENT:
         finish_ui = TerryFinishUI(config, task, ui_interface)

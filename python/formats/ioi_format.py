@@ -268,6 +268,8 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
     sanity_post_checks(task, solutions, ui_interface)
 
     if config.ui == UIS.CURSES:
+        if curses_ui.errored:
+            return ui_interface
         curses_ui.stop()
 
     if config.ui != UIS.SILENT:

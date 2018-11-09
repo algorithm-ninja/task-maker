@@ -6,6 +6,7 @@ import signal
 import threading
 import time
 from typing import Dict, List
+import traceback
 
 from task_maker.config import Config
 from task_maker.printer import StdoutPrinter, Printer, CursesPrinter
@@ -242,6 +243,7 @@ class CursesUI(ABC):
         self.thread = threading.Thread(
             target=curses.wrapper, args=(self._wrapper, ))
         self.stopped = False
+        self.errored = False
 
     def start(self):
         self.stopped = False
@@ -252,45 +254,50 @@ class CursesUI(ABC):
         self.thread.join()
 
     def _wrapper(self, stdscr):
-        curses.start_color()
-        curses.use_default_colors()
-        for i in range(1, curses.COLORS):
-            curses.init_pair(i, i, -1)
-        curses.halfdelay(1)
-        pad = curses.newpad(10000, 1000)
-        printer = CursesPrinter(pad)
-        loading_chars = "-\\|/"
-        cur_loading_char = 0
-        pos_x, pos_y = 0, 0
-        while not self.stopped:
-            last_draw = time.monotonic()
-            cur_loading_char = (cur_loading_char + 1) % len(loading_chars)
-            loading = loading_chars[cur_loading_char]
-            pad.clear()
-            self._loop(printer, loading)
+        try:
+            curses.start_color()
+            curses.use_default_colors()
+            for i in range(1, curses.COLORS):
+                curses.init_pair(i, i, -1)
+            curses.halfdelay(1)
+            pad = curses.newpad(10000, 1000)
+            printer = CursesPrinter(pad)
+            loading_chars = "-\\|/"
+            cur_loading_char = 0
+            pos_x, pos_y = 0, 0
+            while not self.stopped:
+                last_draw = time.monotonic()
+                cur_loading_char = (cur_loading_char + 1) % len(loading_chars)
+                loading = loading_chars[cur_loading_char]
+                pad.clear()
+                self._loop(printer, loading)
 
-            try:
-                pressed_key = stdscr.getkey()
-                if pressed_key == "KEY_UP":
-                    pos_y -= 1
-                elif pressed_key == "KEY_DOWN":
-                    pos_y += 1
-                elif pressed_key == "KEY_LEFT":
-                    pos_x -= 1
-                elif pressed_key == "KEY_RIGHT":
-                    pos_x += 1
-                pos_x = max(pos_x, 0)
-                pos_y = max(pos_y, 0)
-            except curses.error:
-                pass
+                try:
+                    pressed_key = stdscr.getkey()
+                    if pressed_key == "KEY_UP":
+                        pos_y -= 1
+                    elif pressed_key == "KEY_DOWN":
+                        pos_y += 1
+                    elif pressed_key == "KEY_LEFT":
+                        pos_x -= 1
+                    elif pressed_key == "KEY_RIGHT":
+                        pos_x += 1
+                    pos_x = max(pos_x, 0)
+                    pos_y = max(pos_y, 0)
+                except curses.error:
+                    pass
 
-            max_y, max_x = stdscr.getmaxyx()
-            pad.refresh(pos_y, pos_x, 0, 0, max_y - 1, max_x - 1)
+                max_y, max_x = stdscr.getmaxyx()
+                pad.refresh(pos_y, pos_x, 0, 0, max_y - 1, max_x - 1)
 
-            if time.monotonic() - last_draw < 1 / CursesUI.FPS:
-                time.sleep(1 / CursesUI.FPS - (time.monotonic() - last_draw))
-
-        curses.endwin()
+                if time.monotonic() - last_draw < 1 / CursesUI.FPS:
+                    time.sleep(1 / CursesUI.FPS - (time.monotonic() - last_draw))
+        except:
+            curses.endwin()
+            traceback.print_exc()
+            self.errored = True
+        finally:
+            curses.endwin()
 
     @abstractmethod
     def _loop(self, printer: CursesPrinter, loading: str):
