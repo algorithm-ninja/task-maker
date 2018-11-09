@@ -3,6 +3,7 @@ import glob
 import os.path
 import platform
 import random
+import traceback
 from typing import Optional, List
 
 from task_maker.args import Arch, CacheMode, UIS
@@ -88,23 +89,29 @@ def evaluate_task(frontend: Frontend, task: TerryTask,
         curses_ui = TerryCursesUI(ui_interface)
         curses_ui.start()
 
-    task.generator.prepare(frontend, config)
-    ui_interface.add_non_solution(task.generator)
-    if task.validator:
-        task.validator.prepare(frontend, config)
-        ui_interface.add_non_solution(task.validator)
-    if task.official_solution:
-        task.official_solution.prepare(frontend, config)
-        ui_interface.add_non_solution(task.official_solution)
-    task.checker.prepare(frontend, config)
-    ui_interface.add_non_solution(task.checker)
+    try:
+        task.generator.prepare(frontend, config)
+        ui_interface.add_non_solution(task.generator)
+        if task.validator:
+            task.validator.prepare(frontend, config)
+            ui_interface.add_non_solution(task.validator)
+        if task.official_solution:
+            task.official_solution.prepare(frontend, config)
+            ui_interface.add_non_solution(task.official_solution)
+        task.checker.prepare(frontend, config)
+        ui_interface.add_non_solution(task.checker)
 
-    for solution in solutions:
-        solution.prepare(frontend, config)
-        ui_interface.add_solution(solution)
-        evaluate_solution(frontend, task, solution, config, ui_interface)
+        for solution in solutions:
+            solution.prepare(frontend, config)
+            ui_interface.add_solution(solution)
+            evaluate_solution(frontend, task, solution, config, ui_interface)
 
-    frontend.evaluate()
+        frontend.evaluate()
+    except:
+        if config.ui == UIS.CURSES:
+            curses_ui.stop()
+        traceback.print_exc()
+        return ui_interface
 
     if config.ui == UIS.CURSES:
         if curses_ui.errored:

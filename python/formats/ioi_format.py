@@ -4,6 +4,7 @@ import glob
 import os
 import shlex
 import ruamel.yaml
+import traceback
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
@@ -261,13 +262,19 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
         curses_ui = IOICursesUI(ui_interface)
         curses_ui.start()
 
-    ins, outs, vals = generate_inputs(frontend, task, ui_interface, config)
-    evaluate_solutions(frontend, ins, outs, vals, solutions, ui_interface,
-                       config)
+    try:
+        ins, outs, vals = generate_inputs(frontend, task, ui_interface, config)
+        evaluate_solutions(frontend, ins, outs, vals, solutions, ui_interface,
+                           config)
 
-    sanity_pre_checks(task, solutions, frontend, config, ui_interface)
-    frontend.evaluate()
-    sanity_post_checks(task, solutions, ui_interface)
+        sanity_pre_checks(task, solutions, frontend, config, ui_interface)
+        frontend.evaluate()
+        sanity_post_checks(task, solutions, ui_interface)
+    except:
+        if config.ui == UIS.CURSES:
+            curses_ui.stop()
+        traceback.print_exc()
+        return ui_interface
 
     if config.ui == UIS.CURSES:
         if curses_ui.errored:
