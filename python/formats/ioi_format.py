@@ -219,11 +219,13 @@ def create_task(config: Config):
             "bin/official_solution", Arch.DEFAULT, grader_map)
 
     if checker is not None:
-        task.checker = SourceFile.from_file(checker, task.name, copy_compiled,
-                                            "bin/checker", Arch.DEFAULT, {})
+        target = os.path.join(os.path.dirname(checker), "checker")
+        task.checker = SourceFile.from_file(checker, task.name, True,
+                                            target, Arch.DEFAULT, {})
     if manager is not None:
-        task.checker = SourceFile.from_file(manager, task.name, copy_compiled,
-                                            "bin/manager", Arch.DEFAULT, {})
+        target = os.path.join(os.path.dirname(checker), "manager")
+        task.checker = SourceFile.from_file(manager, task.name, True,
+                                            target, Arch.DEFAULT, {})
 
     sols = []  # type: List[Solution]
     for solution in solutions:
@@ -421,5 +423,6 @@ def clean():
         remove_dir("input", "*.txt")
         remove_dir("output", "*.txt")
     remove_dir("bin", "*")
-    remove_file(os.path.join("cor", "checker"))
-    remove_file(os.path.join("cor", "correttore"))
+    for d in ["cor", "check"]:
+        for f in ["checker", "correttore"]:
+            remove_file(os.path.join(d, f))
