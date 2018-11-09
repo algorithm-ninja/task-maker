@@ -93,11 +93,11 @@ def gen_testcases(copy_compiled: bool, task: Task) -> Dict[int, Subtask]:
     testcase_num = 0
     current_score = 0.0
     for line in open("gen/GEN"):
-        if line.startswith("#ST: "):
+        if line.startswith("#ST:"):
             create_subtask(subtask_num, current_testcases, current_score)
             subtask_num += 1
             current_testcases = {}
-            current_score = float(line.strip()[5:])
+            current_score = float(line[4:].strip())
             continue
         if line.startswith("#COPY: "):
             testcase = TestCase(None, validator, [], [], line[7:].strip(),

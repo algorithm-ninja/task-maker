@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import time
 from typing import Dict
 
 from task_maker.formats import Task
