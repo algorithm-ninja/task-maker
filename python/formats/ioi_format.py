@@ -226,7 +226,7 @@ def create_task(config: Config):
         task.checker = SourceFile.from_file(checker, task.name, True, target,
                                             Arch.DEFAULT, {})
     if manager is not None:
-        target = os.path.join(os.path.dirname(checker), "manager")
+        target = os.path.join(os.path.dirname(manager), "manager")
         task.checker = SourceFile.from_file(manager, task.name, True, target,
                                             Arch.DEFAULT, {})
 
