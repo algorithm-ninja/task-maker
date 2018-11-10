@@ -5,7 +5,7 @@ from task_maker.formats import Task
 from task_maker.task_maker_frontend import ResultStatus
 from task_maker.uis import result_to_str, FinishUI, get_max_sol_len, \
     SourceFileCompilationStatus
-from task_maker.uis.ioi import IOIUIInterface
+from task_maker.uis.ioi import IOIUIInterface, TestcaseGenerationStatus
 from task_maker.uis.ioi_curses_ui import print_solutions_result
 
 
@@ -74,7 +74,10 @@ class IOIFinishUI(FinishUI):
                         self.printer.text("\n" + result.generation_stderr)
                         success = False
                 else:
-                    self.printer.green("Copied")
+                    if result.status == TestcaseGenerationStatus.FAILURE:
+                        self.printer.red("Failed")
+                    else:
+                        self.printer.green("Copied")
 
                 if result.validation_result:
                     self.printer.text(" | ")

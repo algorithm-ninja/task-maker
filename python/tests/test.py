@@ -42,9 +42,7 @@ def run_tests(task_name, file):
         "--temp-dir='{}/temp' " \
         "--pidfile='{}/worker.pid' " \
         "--name=local " \
-        "--server=127.0.0.1:7070".format(temp_dir,
-                                                                temp_dir,
-                                                                temp_dir)
+        "--server=127.0.0.1:7070".format(temp_dir, temp_dir, temp_dir)
     global interface
     interface = run(config)
     exitcode = pytest.main([

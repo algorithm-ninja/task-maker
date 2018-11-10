@@ -67,7 +67,8 @@ class Generator:
         self.source_file = source_file
 
     def __repr__(self):
-        return "<Generator %s [%s]>" % (self.name, " ".join(self.args_spec))
+        return "<Generator %s [%s]>" % (self.name,
+                                        " ".join(self.args_spec or []))
 
 
 class Validator:

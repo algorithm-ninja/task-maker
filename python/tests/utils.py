@@ -98,6 +98,7 @@ class TestInterface:
         self.validation_errors = None  # type: Optional[str]
         self.solution_errors = None  # type: Optional[str]
         self.checker_errors = None  # type: Optional[str]
+        self.errors = None  # type: Optional[str]
         self.name = name
         self.desc = desc
         self.timelimit = timelimit
@@ -132,6 +133,9 @@ class TestInterface:
     def set_checker_errors(self, errors: str):
         self.checker_errors = errors
 
+    def set_errors(self, errors: str):
+        self.errors = errors
+
     def run_checks(self):
         task = interface.task
         assert task.name == self.name
@@ -148,6 +152,8 @@ class TestInterface:
             testcase for subtask in interface.subtasks.values()
             for testcase in subtask.values()
         ]
+        if self.errors:
+            assert self.errors in interface.errors
         if not self.generation_errors:
             for testcase in testcases:
                 if testcase.generation_result:
