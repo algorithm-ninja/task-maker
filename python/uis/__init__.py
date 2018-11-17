@@ -6,6 +6,8 @@ from enum import Enum
 import signal
 import threading
 import time
+
+from task_maker.formats import Task
 from typing import Dict, List, Optional
 import traceback
 
@@ -31,7 +33,8 @@ class SourceFileCompilationResult:
 
 
 class UIInterface:
-    def __init__(self, do_print: bool):
+    def __init__(self, task: Task, do_print: bool):
+        self.task = task
         self.non_solutions = dict(
         )  # type: Dict[str, SourceFileCompilationResult]
         self.solutions = dict()  # type: Dict[str, SourceFileCompilationResult]
@@ -159,7 +162,7 @@ class UIInterface:
 class FinishUI(ABC):
     LIMITS_MARGIN = 0.8
 
-    def __init__(self, config: Config, interface: UIInterface):
+    def __init__(self, config: Config, interface: Optional[UIInterface]):
         self.config = config
         self.interface = interface
         self.printer = StdoutPrinter()
@@ -167,6 +170,25 @@ class FinishUI(ABC):
     @abstractmethod
     def print(self):
         pass
+
+    @abstractmethod
+    def print_summary(self):
+        pass
+
+    def print_final_messages(self):
+        if not self.interface:
+            return
+        if sorted(self.interface.warnings):
+            self.printer.text("\n")
+            self.printer.yellow("Warnings:\n", bold=True)
+            for warning in self.interface.warnings:
+                self.printer.text("- " + warning + "\n")
+
+        if sorted(self.interface.errors):
+            self.printer.text("\n")
+            self.printer.red("Errors:\n", bold=True)
+            for error in self.interface.errors:
+                self.printer.text("- " + error + "\n")
 
     def _print_compilation(self, solution: str,
                            result: SourceFileCompilationResult,
@@ -244,24 +266,12 @@ class FinishUI(ABC):
             self.printer.text("{:5.1f}MiB".format(memory))
         self.printer.text("]")
 
-    def _print_final_messages(self):
-        if sorted(self.interface.warnings):
-            self.printer.text("\n")
-            self.printer.yellow("Warnings:\n", bold=True)
-            for warning in self.interface.warnings:
-                self.printer.text("- " + warning + "\n")
-
-        if sorted(self.interface.errors):
-            self.printer.text("\n")
-            self.printer.red("Errors:\n", bold=True)
-            for error in self.interface.errors:
-                self.printer.text("- " + error + "\n")
-
 
 class CursesUI(ABC):
     FPS = 30
 
-    def __init__(self, interface: UIInterface):
+    def __init__(self, config: Config, interface: UIInterface):
+        self.config = config
         self.interface = interface
         self.thread = threading.Thread(
             target=curses.wrapper, args=(self._wrapper, ))

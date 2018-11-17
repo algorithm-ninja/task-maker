@@ -3,14 +3,14 @@
 from abc import ABC, abstractmethod
 from task_maker.args import CacheMode
 from task_maker.config import Config
-from task_maker.formats import Task
+from task_maker.formats import IOITask
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import File, Execution, Frontend, \
     Resources, Fifo
 from typing import Optional, List
 
 
-def get_checker_execution(frontend: Frontend, config: Config, task: Task,
+def get_checker_execution(frontend: Frontend, config: Config, task: IOITask,
                           checker: Optional[SourceFile], input: Optional[File],
                           output: File, correct_output: File,
                           message: str) -> Execution:
@@ -35,7 +35,7 @@ def get_checker_execution(frontend: Frontend, config: Config, task: Task,
 
 
 class Solution(ABC):
-    def __init__(self, solution: SourceFile, task: Task, config: Config):
+    def __init__(self, solution: SourceFile, task: IOITask, config: Config):
         self.solution = solution
         self.task = task
         self.config = config
@@ -62,7 +62,7 @@ class Solution(ABC):
 
 
 class BatchSolution(Solution):
-    def __init__(self, solution: SourceFile, task: Task, config: Config,
+    def __init__(self, solution: SourceFile, task: IOITask, config: Config,
                  checker: SourceFile):
         super().__init__(solution, task, config)
         self.checker = checker
@@ -104,7 +104,7 @@ class BatchSolution(Solution):
 
 
 class CommunicationSolution(Solution):
-    def __init__(self, solution: SourceFile, task: Task, config: Config,
+    def __init__(self, solution: SourceFile, task: IOITask, config: Config,
                  manager: SourceFile, num_processes: int):
         super().__init__(solution, task, config)
         self.manager = manager

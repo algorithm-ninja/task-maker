@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from task_maker.config import Config
-from task_maker.formats import Task
 from task_maker.task_maker_frontend import ResultStatus
 from task_maker.uis import result_to_str, FinishUI, get_max_sol_len, \
     SourceFileCompilationStatus
@@ -10,9 +9,9 @@ from task_maker.uis.ioi_curses_ui import print_solutions_result
 
 
 class IOIFinishUI(FinishUI):
-    def __init__(self, config: Config, task: Task, interface: IOIUIInterface):
+    def __init__(self, config: Config, interface: IOIUIInterface):
         super().__init__(config, interface)
-        self.task = task
+        self.task = interface.task
 
     def print(self):
         self.printer.bold("Task: ")
@@ -41,10 +40,14 @@ class IOIFinishUI(FinishUI):
             self.printer.text("\n")
 
         self.printer.blue("Summary:\n", bold=True)
+        self.print_summary()
+
+        self.print_final_messages()
+
+    def print_summary(self):
+        max_sol_len = get_max_sol_len(self.interface)
         print_solutions_result(self.printer, self.task, self.interface.testing,
                                max_sol_len, "?")
-
-        self._print_final_messages()
 
     def _print_generation(self):
         success = True

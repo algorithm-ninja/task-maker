@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 from typing import Dict
 
-from task_maker.formats import Task
+from task_maker.config import Config
+from task_maker.formats import IOITask
 from task_maker.printer import CursesPrinter, Printer
 from task_maker.task_maker_frontend import ResultStatus
 from task_maker.uis import CursesUI, get_max_sol_len, \
@@ -116,7 +117,7 @@ def print_testcase_solution_result(printer: Printer, loading: str,
         raise ValueError("{} {}".format(info.checked, info.status))
 
 
-def print_solutions_result(printer: Printer, task: Task,
+def print_solutions_result(printer: Printer, task: IOITask,
                            solutions: Dict[str, SolutionStatus],
                            max_sol_len: int, loading: str):
     printer.text(" " * max_sol_len + " ")
@@ -165,13 +166,18 @@ def print_solutions_result(printer: Printer, task: Task,
 
 
 class IOICursesUI(CursesUI):
-    def __init__(self, interface: IOIUIInterface):
-        super().__init__(interface)
+    def __init__(self, config: Config, interface: IOIUIInterface):
+        super().__init__(config, interface)
 
     def _loop(self, printer: CursesPrinter, loading: str):
         max_sol_len = 1 + get_max_sol_len(self.interface)
 
-        printer.bold("Running... %s\n" % self.interface.task.name)
+        task_name = self.interface.task.name
+        if self.config.bulk_number is not None:
+            task_name += " [%d / %d]" % (self.config.bulk_number + 1,
+                                         self.config.bulk_total)
+
+        printer.bold("Running... %s\n" % task_name)
         printer.text("Time limit: %.2fs\n" % self.interface.task.time_limit)
         printer.text("Memory limit: %.2fMiB\n" %
                      (self.interface.task.memory_limit_kb / 1024))

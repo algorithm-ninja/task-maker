@@ -53,15 +53,16 @@ def _validate_num_cores(num: str) -> int:
         raise argparse.ArgumentTypeError(error_message)
 
 
-def add_generic_group(parser: argparse.ArgumentParser):
+def add_generic_group(parser: argparse.ArgumentParser, bulk: bool):
     group = parser.add_argument_group("Generic options")
-    group.add_argument(
-        "--task-dir",
-        help="Directory of the task to build")
-    group.add_argument(
-        "--max-depth",
-        help="Look at most for this number of parents to search the task",
-        type=int)
+    if not bulk:
+        group.add_argument(
+            "--task-dir",
+            help="Directory of the task to build")
+        group.add_argument(
+            "--max-depth",
+            help="Look at most for this number of parents to search the task",
+            type=int)
     group.add_argument(
         "--ui",
         help="UI to use",
@@ -163,16 +164,26 @@ def add_help_group(parser: argparse.ArgumentParser):
         action="store_true")
 
 
-def get_parser() -> argparse.ArgumentParser:
+def add_bulk_group(parser: argparse.ArgumentParser):
+    group = parser.add_argument_group("Bulk options")
+    group.add_argument("--contest-dir",
+                       help="Directory with all the tasks to build")
+    group.add_argument("--contest-yaml",
+                       help="Path to the contest.yaml to get the tasks from")
+
+
+def get_parser(bulk: bool) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="The new cmsMake!")
     parser.add_argument(
         "--version", action="version", version=TASK_MAKER_VERSION)
-    add_generic_group(parser)
+    add_generic_group(parser, bulk)
     add_remote_group(parser)
     add_execution_group(parser)
     add_ioi_group(parser)
     add_terry_group(parser)
     add_help_group(parser)
+    if bulk:
+        add_bulk_group(parser)
 
     parser.add_argument(
         "solutions",

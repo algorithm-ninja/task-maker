@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from task_maker.config import Config
 from task_maker.printer import CursesPrinter
 from task_maker.uis import CursesUI, get_max_sol_len
 from task_maker.uis.ioi_curses_ui import print_compilation_status
@@ -52,11 +53,16 @@ def print_terry_solution_info(printer: CursesPrinter, solution: str,
 
 
 class TerryCursesUI(CursesUI):
-    def __init__(self, interface: TerryUIInterface):
-        super().__init__(interface)
+    def __init__(self, config: Config, interface: TerryUIInterface):
+        super().__init__(config, interface)
 
     def _loop(self, printer: CursesPrinter, loading: str):
-        printer.bold("Running... %s\n" % self.interface.task.name)
+        task_name = self.interface.task.name
+        if self.config.bulk_number is not None:
+            task_name += " [%d / %d]" % (self.config.bulk_number + 1,
+                                         self.config.bulk_total)
+
+        printer.bold("Running... %s\n" % task_name)
         printer.text("\n")
 
         max_sol_len = get_max_sol_len(self.interface)

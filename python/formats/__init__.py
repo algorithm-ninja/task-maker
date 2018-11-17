@@ -138,15 +138,20 @@ class Subtask:
         return "<Subtask name=%s max_score=%f>" % (self.name, self.max_score)
 
 
-class Task:
+class Task(ABC):
+    def __init__(self, name: str, title: str):
+        self.name = name
+        self.title = title
+
+
+class IOITask(Task):
     def __init__(self, name: str, title: str, subtasks: Dict[int, Subtask],
                  official_solution: Optional["SourceFile"],
                  grader_map: Dict[Language, GraderInfo],
                  checker: Optional["SourceFile"], time_limit: float,
                  memory_limit_kb: int, input_file: str, output_file: str,
                  task_type: TaskType):
-        self.name = name
-        self.title = title
+        super().__init__(name, title)
         self.subtasks = subtasks
         self.official_solution = official_solution
         self.grader_map = grader_map
@@ -164,10 +169,9 @@ class Task:
         return "<Task name=%s title=%s>" % (self.name, self.title)
 
 
-class TerryTask:
+class TerryTask(Task):
     def __init__(self, name: str, title: str, max_score: float):
-        self.name = name
-        self.title = title
+        super().__init__(name, title)
         self.max_score = max_score
         self.generator = None  # type: SourceFile
         self.validator = None  # type: Optional[SourceFile]

@@ -17,7 +17,8 @@ class Config:
         "execution": ["exclusive", "extra_time", "copy_exe"],
         "ioi": ["detailed_checker"],
         "terry": ["arch", "seed"],
-        "help": ["help_colors"]
+        "help": ["help_colors"],
+        "bulk": ["contest_dir", "contest_yaml"]
     }
     CUSTOM_TYPES = {
         "ui": UIS,
@@ -59,6 +60,13 @@ class Config:
 
         # help group
         self.help_colors = False
+
+        # bulk group
+        self.contest_dir = os.getcwd()
+        self.contest_yaml = None
+        # current index in bulk run and total number of bulk tasks
+        self.bulk_number = None  # type: Optional[int]
+        self.bulk_total = None  # type: Optional[int]
 
     def apply_args(self, args):
         for group, options in Config.OPTIONS.items():

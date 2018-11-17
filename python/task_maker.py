@@ -37,7 +37,7 @@ def setup(config: Config):
 
 def run(config: Config) -> Union[None, IOIUIInterface, TerryUIInterface]:
     task_dir, fmt = find_task_dir(config.task_dir, config.max_depth,
-                                     config.format)
+                                  config.format)
     if not fmt:
         raise ValueError(
             "Cannot detect format! It's probable that the task is ill-formed")
@@ -62,7 +62,7 @@ def run(config: Config) -> Union[None, IOIUIInterface, TerryUIInterface]:
 
 def main():
     config = Config()
-    args = get_parser().parse_args()
+    args = get_parser(False).parse_args()
     config.apply_file()
     config.apply_args(args)
     setup(config)

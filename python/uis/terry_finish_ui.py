@@ -7,10 +7,9 @@ from task_maker.uis.terry_curses_ui import print_terry_solution_info
 
 
 class TerryFinishUI(FinishUI):
-    def __init__(self, config: Config, task: TerryTask,
-                 interface: TerryUIInterface):
+    def __init__(self, config: Config, interface: TerryUIInterface):
         super().__init__(config, interface)
-        self.task = task
+        self.task = interface.task
 
     def print(self):
         self.printer.bold("Task: ")
@@ -33,10 +32,14 @@ class TerryFinishUI(FinishUI):
             self.printer.text("\n")
 
         self.printer.blue("Summary\n", bold=True)
+        self.print_summary()
+
+        self.print_final_messages()
+
+    def print_summary(self):
+        max_sol_len = get_max_sol_len(self.interface)
         for solution in self.interface.solutions_info:
             self._print_summary_row(solution, max_sol_len)
-
-        self._print_final_messages()
 
     def _print_solution(self, solution: str):
         info = self.interface.solutions_info[solution]  # type: SolutionInfo

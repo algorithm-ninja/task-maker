@@ -16,5 +16,8 @@ setup(
         'task_maker': ['*.so']
     },
     entry_points={
-        "console_scripts": ["task-maker = task_maker.task_maker:main"]
+        "console_scripts": [
+            "task-maker = task_maker.task_maker:main",
+            "bulk-maker = task_maker.bulk_maker:main"
+        ]
     })

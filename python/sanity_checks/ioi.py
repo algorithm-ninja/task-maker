@@ -8,7 +8,7 @@ from typing import List, Set, Optional, Dict
 
 from task_maker.args import CacheMode
 from task_maker.config import Config
-from task_maker.formats import Task, list_files, VALIDATION_INPUT_NAME, TaskType
+from task_maker.formats import IOITask, list_files, VALIDATION_INPUT_NAME, TaskType
 from task_maker.languages import Language
 from task_maker.solution import Solution, get_checker_execution
 from task_maker.task_maker_frontend import Frontend, File, Execution, Result, \
@@ -80,7 +80,7 @@ def _check_pdf_statement(interface: IOIUIInterface):
             interface.add_warning("The statement is a broken link")
 
 
-def _check_tex_statement(task: Task, interface: IOIUIInterface):
+def _check_tex_statement(task: IOITask, interface: IOIUIInterface):
     statements = _get_statement_tex()
     if not statements:
         return
@@ -189,7 +189,7 @@ def _setup_checker_callback(interface: IOIUIInterface, checking: Execution,
     checking.stdout(False).getContentsAsString(get_stdout)
 
 
-def check_att_folder(task: Task, solutions: List[Solution],
+def check_att_folder(task: IOITask, solutions: List[Solution],
                      interface: IOIUIInterface):
     """
     Check if the following files are present:
@@ -235,7 +235,7 @@ def check_sol_folder(solutions: List[Solution], interface: IOIUIInterface):
                 "Official solution {} is not a symlink".format(sol))
 
 
-def check_statement(task: Task, interface: IOIUIInterface):
+def check_statement(task: IOITask, interface: IOIUIInterface):
     """
     Check if the statement is present and, if git is used, that is known.
     Check that the latex statements, if present contain the same subtasks, with
@@ -248,7 +248,7 @@ def check_statement(task: Task, interface: IOIUIInterface):
     # TODO check if the template signatures match the one in the statement
 
 
-def check_sample_cases(task: Task, frontend: Frontend, config: Config,
+def check_sample_cases(task: IOITask, frontend: Frontend, config: Config,
                        interface: IOIUIInterface):
     """
     Check if the sample cases in the statement are valid and the output is
@@ -347,7 +347,7 @@ def check_sample_cases(task: Task, frontend: Frontend, config: Config,
                                 task.checker is not None)
 
 
-def check_solution_score(task: Task, interface: IOIUIInterface):
+def check_solution_score(task: IOITask, interface: IOIUIInterface):
     """
     Check if the official solution scores full score
     """
@@ -363,7 +363,7 @@ def check_solution_score(task: Task, interface: IOIUIInterface):
                 official_solution_name))
 
 
-def check_subtask_score_sum(task: Task, interface: IOIUIInterface):
+def check_subtask_score_sum(task: IOITask, interface: IOIUIInterface):
     """
     Check if the sum of the subtask max_score is 100
     """
@@ -387,7 +387,7 @@ def check_symlinks(interface: IOIUIInterface):
                             "Broken symlink: {} -> {}".format(f, dest))
 
 
-def sanity_pre_checks(task: Task, solutions: List[Solution],
+def sanity_pre_checks(task: IOITask, solutions: List[Solution],
                       frontend: Frontend, config: Config,
                       interface: IOIUIInterface):
     check_subtask_score_sum(task, interface)
@@ -398,6 +398,6 @@ def sanity_pre_checks(task: Task, solutions: List[Solution],
     check_symlinks(interface)
 
 
-def sanity_post_checks(task: Task, solutions: List[Solution],
+def sanity_post_checks(task: IOITask, solutions: List[Solution],
                        interface: IOIUIInterface):
     check_solution_score(task, interface)

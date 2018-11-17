@@ -6,7 +6,7 @@ from typing import Optional
 
 from task_maker.args import Arch
 from task_maker.config import Config
-from task_maker.formats import ioi_format, Task, \
+from task_maker.formats import ioi_format, IOITask, \
     Subtask, Generator, Validator, Constraint, ScoreMode, TestCase, \
     parse_variable, get_write_input_file, \
     get_write_output_file, TaskFormat
@@ -16,7 +16,7 @@ from task_maker.formats.ioi_format import get_generator, \
 from task_maker.source_file import SourceFile
 
 
-def parse_cases(gen: IO, task: Task, copy_compiled: bool) -> List[Subtask]:
+def parse_cases(gen: IO, task: IOITask, copy_compiled: bool) -> List[Subtask]:
     lines = [l.strip() for l in gen.readlines()]
 
     subtasks = []  # type: List[Subtask]
@@ -334,7 +334,7 @@ def generate_gen_GEN(subtasks: List[Subtask]):
     return GEN
 
 
-def write_gen_GEN(task: Task):
+def write_gen_GEN(task: IOITask):
     if os.path.exists("gen/GEN"):
         with open("gen/GEN") as f:
             if "tm-allow-delete" not in f.read(1024):

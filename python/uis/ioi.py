@@ -3,7 +3,7 @@ from enum import Enum
 import time
 from typing import List, Dict
 
-from task_maker.formats import Task, ScoreMode
+from task_maker.formats import IOITask, ScoreMode
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import Execution, Result, ResultStatus
 from task_maker.uis import result_to_str, UIInterface
@@ -94,7 +94,7 @@ class CustomCheckerState:
 
 
 class SolutionStatus:
-    def __init__(self, source_file: SourceFile, task: Task,
+    def __init__(self, source_file: SourceFile, task: IOITask,
                  interface: "IOIUIInterface", subtasks: Dict[int, List[int]]):
         self.interface = interface
         self.source_file = source_file
@@ -258,9 +258,9 @@ class SolutionStatus:
 
 
 class IOIUIInterface(UIInterface):
-    def __init__(self, task: Task, testcases: Dict[int, List[int]],
+    def __init__(self, task: IOITask, testcases: Dict[int, List[int]],
                  do_print: bool):
-        super().__init__(do_print)
+        super().__init__(task, do_print)
 
         self.task = task
         self.subtasks = dict(

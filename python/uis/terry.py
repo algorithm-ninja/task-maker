@@ -48,7 +48,7 @@ class SolutionInfo:
 
 class TerryUIInterface(UIInterface):
     def __init__(self, task: TerryTask, do_print: bool):
-        super().__init__(do_print)
+        super().__init__(task, do_print)
         self.task = task
         self.solutions_info = dict()  # type: Dict[str, SolutionInfo]
 

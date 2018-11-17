@@ -12,7 +12,7 @@ from task_maker.config import Config
 from task_maker.uis.ioi_finish_ui import IOIFinishUI
 from task_maker.uis.ioi_curses_ui import IOICursesUI
 from task_maker.uis.ioi import IOIUIInterface, TestcaseGenerationStatus
-from task_maker.formats import ScoreMode, Subtask, TestCase, Task, TaskFormat, \
+from task_maker.formats import ScoreMode, Subtask, TestCase, IOITask, TaskFormat, \
     list_files, Validator, Generator, get_options, VALIDATION_INPUT_NAME, \
     gen_grader_map, get_write_input_file, get_write_output_file, TaskType, \
     get_solutions
@@ -63,7 +63,7 @@ def get_official_solution() -> Optional[str]:
     return None
 
 
-def gen_testcases(copy_compiled: bool, task: Task) -> Dict[int, Subtask]:
+def gen_testcases(copy_compiled: bool, task: IOITask) -> Dict[int, Subtask]:
     subtasks = {}  # type: Dict[int, Subtask]
 
     def create_subtask(subtask_num: int, testcases: Dict[int, TestCase],
@@ -147,7 +147,7 @@ def parse_task_yaml() -> Dict[str, Any]:
         return ruamel.yaml.safe_load(yaml_file)
 
 
-def create_task_from_yaml(data: Dict[str, Any]) -> Task:
+def create_task_from_yaml(data: Dict[str, Any]) -> IOITask:
     name = get_options(data, ["name", "nome_breve"])
     title = get_options(data, ["title", "nome"])
     if name is None:
@@ -160,9 +160,9 @@ def create_task_from_yaml(data: Dict[str, Any]) -> Task:
     input_file = get_options(data, ["infile"], "input.txt")
     output_file = get_options(data, ["outfile"], "output.txt")
 
-    task = Task(name, title, {}, None, [], None, time_limit, memory_limit,
-                input_file if input_file else "",
-                output_file if output_file else "", TaskType.Batch)
+    task = IOITask(name, title, {}, None, [], None, time_limit, memory_limit,
+                   input_file if input_file else "",
+                   output_file if output_file else "", TaskType.Batch)
     return task
 
 
@@ -188,14 +188,14 @@ def get_manager() -> Optional[str]:
     return manager
 
 
-def get_graders(task: Task):
+def get_graders(task: IOITask):
     if task.task_type == TaskType.Communication:
         return list_files(["sol/stub.*"])
     else:
         return list_files(["sol/grader.*"])
 
 
-def get_task_without_testcases(config: Config) -> Task:
+def get_task_without_testcases(config: Config) -> IOITask:
     data = parse_task_yaml()
     if not data:
         raise RuntimeError("The task.yaml is not valid")
@@ -231,7 +231,7 @@ def get_task_without_testcases(config: Config) -> Task:
     return task
 
 
-def get_task(config: Config) -> Task:
+def get_task(config: Config) -> IOITask:
     task = get_task_without_testcases(config)
     subtasks = gen_testcases(config.copy_exe, task)
     for subtask_num, subtask in subtasks.items():
@@ -239,7 +239,7 @@ def get_task(config: Config) -> Task:
     return task
 
 
-def get_task_solutions(config: Config, task: Task) -> List[Solution]:
+def get_task_solutions(config: Config, task: IOITask) -> List[Solution]:
     data = parse_task_yaml()
     num_processes = get_options(data, ["num_processes"], 1)
     graders = get_graders(task)
@@ -260,7 +260,7 @@ def get_task_solutions(config: Config, task: Task) -> List[Solution]:
     return sols
 
 
-def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
+def evaluate_task(frontend: Frontend, task: IOITask, solutions: List[Solution],
                   config: Config):
     ui_interface = IOIUIInterface(
         task,
@@ -269,9 +269,9 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
     curses_ui = None
     finish_ui = None
     if config.ui == UIS.CURSES:
-        curses_ui = IOICursesUI(ui_interface)
-    if config.ui != UIS.SILENT:
-        finish_ui = IOIFinishUI(config, task, ui_interface)
+        curses_ui = IOICursesUI(config, ui_interface)
+    if config.ui != UIS.SILENT and config.bulk_number is None:
+        finish_ui = IOIFinishUI(config, ui_interface)
 
     with ui_interface.run_in_ui(curses_ui, finish_ui):
         ins, outs, vals = generate_inputs(frontend, task, ui_interface, config)
@@ -286,7 +286,7 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
 
 
 def generate_inputs(
-        frontend, task: Task, interface: IOIUIInterface, config: Config
+        frontend, task: IOITask, interface: IOIUIInterface, config: Config
 ) -> (Dict[Tuple[int, int], File], Dict[Tuple[int, int], File],
       Dict[Tuple[int, int], File]):
     def add_non_solution(source: SourceFile):

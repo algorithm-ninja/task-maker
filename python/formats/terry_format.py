@@ -91,9 +91,9 @@ def evaluate_task(frontend: Frontend, task: TerryTask,
     curses_ui = None
     finish_ui = None
     if config.ui == UIS.CURSES:
-        curses_ui = TerryCursesUI(ui_interface)
-    if config.ui != UIS.SILENT:
-        finish_ui = TerryFinishUI(config, task, ui_interface)
+        curses_ui = TerryCursesUI(config, ui_interface)
+    if config.ui != UIS.SILENT and config.bulk_number is None:
+        finish_ui = TerryFinishUI(config, ui_interface)
 
     with ui_interface.run_in_ui(curses_ui, finish_ui):
         task.generator.prepare(frontend, config)
