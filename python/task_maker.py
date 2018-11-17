@@ -25,7 +25,7 @@ def get_task_format(fmt: TaskFormat):
     raise ValueError("Format %s not supported" % fmt)
 
 
-def run(config: Config) -> Union[None, IOIUIInterface, TerryUIInterface]:
+def setup(config: Config):
     check_help(config)
     if config.run_server:
         return spawn_server(config)
@@ -33,9 +33,12 @@ def run(config: Config) -> Union[None, IOIUIInterface, TerryUIInterface]:
         return spawn_worker(config)
 
     LanguageManager.load_languages()
+
+
+def run(config: Config) -> Union[None, IOIUIInterface, TerryUIInterface]:
     task_dir, fmt = find_task_dir(config.task_dir, config.max_depth,
                                      config.format)
-    if not format:
+    if not fmt:
         raise ValueError(
             "Cannot detect format! It's probable that the task is ill-formed")
     task_format = get_task_format(fmt)
@@ -62,6 +65,7 @@ def main():
     args = get_parser().parse_args()
     config.apply_file()
     config.apply_args(args)
+    setup(config)
     run(config)
 
 

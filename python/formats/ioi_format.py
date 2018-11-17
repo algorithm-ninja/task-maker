@@ -4,7 +4,6 @@ import glob
 import os
 import shlex
 import ruamel.yaml
-import traceback
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 

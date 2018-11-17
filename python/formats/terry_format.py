@@ -3,7 +3,6 @@ import glob
 import os.path
 import platform
 import random
-import traceback
 from typing import Optional, List
 
 from task_maker.args import Arch, CacheMode, UIS
