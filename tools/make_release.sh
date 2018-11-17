@@ -15,6 +15,7 @@ if [ "$TOOLCHAIN" == "archlinux" ]; then
     mkdir release/src
     mv /tmp/task-maker release/src/task-maker
     cd release
+    sed -i "s/pkgver=.*/pkgver=${TRAVIS_TAG:1}/" PKGBUILD
     source PKGBUILD
     yaourt --needed --noconfirm -S ${makedepends[*]}
     makepkg -e
