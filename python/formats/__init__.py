@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 import glob
 import os.path
+from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Dict, Optional, Union, Any
 
+from task_maker.config import Config
+from task_maker.task_maker_frontend import Frontend
 from task_maker.source_file import SourceFile
-from task_maker.languages import GraderInfo, LanguageManager, Dependency
+from task_maker.languages import GraderInfo, LanguageManager, Dependency, \
+    Language
 
 VALIDATION_INPUT_NAME = "tm_input_file"
 
@@ -137,7 +141,7 @@ class Subtask:
 class Task:
     def __init__(self, name: str, title: str, subtasks: Dict[int, Subtask],
                  official_solution: Optional["SourceFile"],
-                 grader_info: List[GraderInfo],
+                 grader_map: Dict[Language, GraderInfo],
                  checker: Optional["SourceFile"], time_limit: float,
                  memory_limit_kb: int, input_file: str, output_file: str,
                  task_type: TaskType):
@@ -145,7 +149,7 @@ class Task:
         self.title = title
         self.subtasks = subtasks
         self.official_solution = official_solution
-        self.grader_info = grader_info
+        self.grader_map = grader_map
         self.checker = checker
         self.time_limit = time_limit
         self.memory_limit_kb = memory_limit_kb
@@ -172,6 +176,18 @@ class TerryTask:
 
     def __repr__(self):
         return "<TerryTask name={} title={}>".format(self.name, self.title)
+
+
+class TaskFormat(ABC):
+    @staticmethod
+    @abstractmethod
+    def evaluate_task(frontend: Frontend, config: Config):
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def clean():
+        pass
 
 
 def get_write_input_file(tc_num: int) -> str:
@@ -254,7 +270,7 @@ def parse_variable(arg: str, testcase: TestCase, subtask: Subtask, tc_num: int,
             "Cannot match variable '%s' in testcase %s" % (arg, testcase))
 
 
-def gen_grader_map(graders: List[str], task: Task):
+def gen_grader_map(graders: List[str]):
     grader_map = dict()
 
     for grader in graders:
@@ -264,7 +280,6 @@ def gen_grader_map(graders: List[str], task: Task):
             language,
             [Dependency(name, grader)] + language.get_dependencies(grader))
         grader_map[info.for_language] = info
-        task.grader_info.extend([info])
     return grader_map
 
 

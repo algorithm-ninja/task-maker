@@ -13,7 +13,7 @@ from task_maker.config import Config
 from task_maker.uis.ioi_finish_ui import IOIFinishUI
 from task_maker.uis.ioi_curses_ui import IOICursesUI
 from task_maker.uis.ioi import IOIUIInterface, TestcaseGenerationStatus
-from task_maker.formats import ScoreMode, Subtask, TestCase, Task, \
+from task_maker.formats import ScoreMode, Subtask, TestCase, Task, TaskFormat, \
     list_files, Validator, Generator, get_options, VALIDATION_INPUT_NAME, \
     gen_grader_map, get_write_input_file, get_write_output_file, TaskType, \
     get_solutions
@@ -189,8 +189,14 @@ def get_manager() -> Optional[str]:
     return manager
 
 
-def create_task(config: Config):
-    copy_compiled = config.copy_exe
+def get_graders(task: Task):
+    if task.task_type == TaskType.Communication:
+        return list_files(["sol/stub.*"])
+    else:
+        return list_files(["sol/grader.*"])
+
+
+def get_task_without_testcases(config: Config) -> Task:
     data = parse_task_yaml()
     if not data:
         raise RuntimeError("The task.yaml is not valid")
@@ -203,23 +209,17 @@ def create_task(config: Config):
         raise ValueError("Both checker and manager found")
     if manager:
         task.task_type = TaskType.Communication
-    num_processes = get_options(data, ["num_processes"], 1)
 
-    if task.task_type == TaskType.Communication:
-        graders = list_files(["sol/stub.*"])
-    else:
-        graders = list_files(["sol/grader.*"])
-
-    solutions = get_solutions(config.solutions, "sol/", graders)
-    grader_map = gen_grader_map(graders, task)
+    graders = get_graders(task)
+    task.grader_map = gen_grader_map(graders)
 
     official_solution = get_official_solution()
     if official_solution is None:
         raise RuntimeError("No official solution found")
     if official_solution:
         task.official_solution = SourceFile.from_file(
-            official_solution, task.name, copy_compiled,
-            "bin/official_solution", Arch.DEFAULT, grader_map)
+            official_solution, task.name, config.copy_exe,
+            "bin/official_solution", Arch.DEFAULT, task.grader_map)
 
     if checker is not None:
         target = os.path.join(os.path.dirname(checker), "checker")
@@ -229,13 +229,28 @@ def create_task(config: Config):
         target = os.path.join(os.path.dirname(manager), "manager")
         task.checker = SourceFile.from_file(manager, task.name, True, target,
                                             Arch.DEFAULT, {})
+    return task
 
+
+def get_task(config: Config) -> Task:
+    task = get_task_without_testcases(config)
+    subtasks = gen_testcases(config.copy_exe, task)
+    for subtask_num, subtask in subtasks.items():
+        task.subtasks[subtask_num] = subtask
+    return task
+
+
+def get_task_solutions(config: Config, task: Task) -> List[Solution]:
+    data = parse_task_yaml()
+    num_processes = get_options(data, ["num_processes"], 1)
+    graders = get_graders(task)
+    solutions = get_solutions(config.solutions, "sol/", graders)
     sols = []  # type: List[Solution]
     for solution in solutions:
         path, ext = os.path.splitext(os.path.basename(solution))
-        source = SourceFile.from_file(solution, task.name, copy_compiled,
+        source = SourceFile.from_file(solution, task.name, config.copy_exe,
                                       "bin/" + path + "_" + ext[1:],
-                                      Arch.DEFAULT, grader_map)
+                                      Arch.DEFAULT, task.grader_map)
         if task.task_type == TaskType.Batch:
             sols.append(BatchSolution(source, task, config, task.checker))
         else:
@@ -243,15 +258,7 @@ def create_task(config: Config):
                 CommunicationSolution(source, task, config, task.checker,
                                       num_processes))
 
-    return task, sols
-
-
-def get_request(config: Config) -> (Task, List[Solution]):
-    task, sols = create_task(config)
-    subtasks = gen_testcases(config.copy_exe, task)
-    for subtask_num, subtask in subtasks.items():
-        task.subtasks[subtask_num] = subtask
-    return task, sols
+    return sols
 
 
 def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
@@ -419,28 +426,36 @@ def evaluate_solutions(frontend, inputs: Dict[Tuple[int, int], File],
                                             solution.solution.name, check)
 
 
-def clean():
-    def remove_dir(path: str, pattern: str) -> None:
-        if not os.path.exists(path):
-            return
-        for file in glob.glob(os.path.join(path, pattern)):
-            os.remove(file)
-        try:
-            os.rmdir(path)
-        except OSError:
-            print(
-                "Directory %s not empty, kept non-%s files" % (path, pattern))
+class IOIFormat(TaskFormat):
+    @staticmethod
+    def clean():
+        def remove_dir(path: str, pattern: str) -> None:
+            if not os.path.exists(path):
+                return
+            for file in glob.glob(os.path.join(path, pattern)):
+                os.remove(file)
+            try:
+                os.rmdir(path)
+            except OSError:
+                print(
+                    "Directory %s not empty, kept non-%s files" % (path, pattern))
 
-    def remove_file(path: str) -> None:
-        try:
-            os.remove(path)
-        except OSError:
-            pass
+        def remove_file(path: str) -> None:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
 
-    if get_generator():
-        remove_dir("input", "*.txt")
-        remove_dir("output", "*.txt")
-    remove_dir("bin", "*")
-    for d in ["cor", "check"]:
-        for f in ["checker", "correttore"]:
-            remove_file(os.path.join(d, f))
+        if get_generator():
+            remove_dir("input", "*.txt")
+            remove_dir("output", "*.txt")
+        remove_dir("bin", "*")
+        for d in ["cor", "check"]:
+            for f in ["checker", "correttore"]:
+                remove_file(os.path.join(d, f))
+
+    @staticmethod
+    def evaluate_task(frontend: Frontend, config: Config):
+        task = get_task(config)
+        solutions = get_task_solutions(config, task)
+        return evaluate_task(frontend, task, solutions, config)

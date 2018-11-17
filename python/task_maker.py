@@ -15,6 +15,16 @@ from task_maker.uis.ioi import IOIUIInterface
 from task_maker.uis.terry import TerryUIInterface
 
 
+def get_task_format(fmt: TaskFormat):
+    if fmt == TaskFormat.IOI:
+        return ioi_format.IOIFormat
+    elif fmt == TaskFormat.TM:
+        return tm_format.TMFormat
+    elif fmt == TaskFormat.TERRY:
+        return terry_format.TerryFormat
+    raise ValueError("Format %s not supported" % fmt)
+
+
 def run(config: Config) -> Union[None, IOIUIInterface, TerryUIInterface]:
     check_help(config)
     if config.run_server:
@@ -23,23 +33,17 @@ def run(config: Config) -> Union[None, IOIUIInterface, TerryUIInterface]:
         return spawn_worker(config)
 
     LanguageManager.load_languages()
-    task_dir, format = find_task_dir(config.task_dir, config.max_depth,
+    task_dir, fmt = find_task_dir(config.task_dir, config.max_depth,
                                      config.format)
     if not format:
         raise ValueError(
             "Cannot detect format! It's probable that the task is ill-formed")
+    task_format = get_task_format(fmt)
 
     os.chdir(task_dir)
 
     if config.clean:
-        if format == TaskFormat.IOI:
-            ioi_format.clean()
-        elif format == TaskFormat.TM:
-            tm_format.clean()
-        elif format == "terry":
-            terry_format.clean()
-        else:
-            raise ValueError("Format %s not supported" % format)
+        task_format.clean()
         return None
 
     frontend = get_frontend(config)
@@ -50,17 +54,7 @@ def run(config: Config) -> Union[None, IOIUIInterface, TerryUIInterface]:
     signal.signal(signal.SIGINT, stop_server)
     signal.signal(signal.SIGTERM, stop_server)
 
-    if format == TaskFormat.IOI:
-        task, solutions = ioi_format.get_request(config)
-        return ioi_format.evaluate_task(frontend, task, solutions, config)
-    elif format == TaskFormat.TM:
-        task, solutions = tm_format.get_request(config)
-        return ioi_format.evaluate_task(frontend, task, solutions, config)
-    elif format == TaskFormat.TERRY:
-        task, solutions = terry_format.get_request(config)
-        return terry_format.evaluate_task(frontend, task, solutions, config)
-    else:
-        raise ValueError("Format %s not supported" % format)
+    return task_format.evaluate_task(frontend, config)
 
 
 def main():

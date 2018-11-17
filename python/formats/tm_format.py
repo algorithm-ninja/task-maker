@@ -9,9 +9,10 @@ from task_maker.config import Config
 from task_maker.formats import ioi_format, Task, \
     Subtask, Generator, Validator, Constraint, ScoreMode, TestCase, \
     parse_variable, get_write_input_file, \
-    get_write_output_file
+    get_write_output_file, TaskFormat
+from task_maker.task_maker_frontend import Frontend
 from task_maker.formats.ioi_format import get_generator, \
-    get_validator, create_task
+    get_validator, get_task_without_testcases, get_task_solutions
 from task_maker.source_file import SourceFile
 
 
@@ -333,31 +334,38 @@ def generate_gen_GEN(subtasks: List[Subtask]):
     return GEN
 
 
-def get_request(config: Config) -> (Task, List[SourceFile]):
-    task, sols = create_task(config)
-    with open("gen/cases.gen", "r") as gen:
-        subtasks = parse_cases(gen, task, config.copy_exe)
-
-    for st_num, subtask in enumerate(subtasks):
-        task.subtasks[st_num] = subtask
-
-    if config.dry_run:
-        return task, sols
+def write_gen_GEN(task: Task):
     if os.path.exists("gen/GEN"):
         with open("gen/GEN") as f:
             if "tm-allow-delete" not in f.read(1024):
-                return task, sols
+                return
 
     with open("gen/GEN", "w") as f:
-        f.write(generate_gen_GEN(subtasks))
-    return task, sols
+        f.write(generate_gen_GEN(task.subtasks.values()))
 
 
-def clean():
-    ioi_format.clean()
-    if os.path.exists("gen/GEN"):
-        with open("gen/GEN") as f:
-            if "tm-allow-delete" not in f.read():
-                print("Kept non task-maker gen/GEN")
-            else:
-                os.remove("gen/GEN")
+class TMFormat(TaskFormat):
+    @staticmethod
+    def clean():
+        ioi_format.IOIFormat.clean()
+        if os.path.exists("gen/GEN"):
+            with open("gen/GEN") as f:
+                if "tm-allow-delete" not in f.read():
+                    print("Kept non task-maker gen/GEN")
+                else:
+                    os.remove("gen/GEN")
+
+    @staticmethod
+    def evaluate_task(frontend: Frontend, config: Config):
+        task = get_task_without_testcases(config)
+        solutions = get_task_solutions(config, task)
+        with open("gen/cases.gen", "r") as gen:
+            subtasks = parse_cases(gen, task, config.copy_exe)
+
+        for st_num, subtask in enumerate(subtasks):
+            task.subtasks[st_num] = subtask
+
+        if not config.dry_run:
+            write_gen_GEN(task)
+
+        return ioi_format.evaluate_task(frontend, task, solutions, config)

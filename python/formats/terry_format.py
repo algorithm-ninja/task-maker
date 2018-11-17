@@ -8,7 +8,8 @@ from typing import Optional, List
 
 from task_maker.args import Arch, CacheMode, UIS
 from task_maker.config import Config
-from task_maker.formats import get_options, TerryTask, list_files, get_solutions
+from task_maker.formats import get_options, TerryTask, list_files, \
+    get_solutions, TaskFormat
 from task_maker.formats.ioi_format import parse_task_yaml
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import Frontend
@@ -56,7 +57,7 @@ def get_manager(manager: str, target_arch: Arch,
         {})
 
 
-def get_request(config: Config) -> (TerryTask, List[SourceFile]):
+def get_task(config: Config) -> TerryTask:
     data = parse_task_yaml()
     if not data:
         raise RuntimeError("The task.yaml is not valid")
@@ -68,7 +69,10 @@ def get_request(config: Config) -> (TerryTask, List[SourceFile]):
     task.official_solution = get_manager(
         "solution", config.arch, optional=True)
     task.checker = get_manager("checker", config.arch)
+    return task
 
+
+def get_task_solutions(config: Config, task: TerryTask) -> List[SourceFile]:
     solutions = get_solutions(config.solutions, "solutions/", [])
     sols = []  # type: List[SourceFile]
     for solution in solutions:
@@ -78,7 +82,7 @@ def get_request(config: Config) -> (TerryTask, List[SourceFile]):
                                       Arch.DEFAULT, {})
         sols.append(source)
 
-    return task, sols
+    return sols
 
 
 def evaluate_task(frontend: Frontend, task: TerryTask,
@@ -177,12 +181,20 @@ def evaluate_solution(frontend: Frontend, task: TerryTask,
     interface.add_checking(name, checker)
 
 
-def clean():
-    def remove_file(path: str) -> None:
-        try:
-            os.remove(path)
-        except OSError:
-            pass
+class TerryFormat(TaskFormat):
+    @staticmethod
+    def clean():
+        def remove_file(path: str) -> None:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
 
-    for manager in glob.glob("managers/*.linux.*"):
-        remove_file(manager)
+        for manager in glob.glob("managers/*.*.*"):
+            remove_file(manager)
+
+    @staticmethod
+    def evaluate_task(frontend: Frontend, config: Config):
+        task = get_task(config)
+        solutions = get_task_solutions(config, task)
+        return evaluate_task(frontend, task, solutions, config)
