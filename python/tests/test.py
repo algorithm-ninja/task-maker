@@ -9,7 +9,7 @@ from typing import Union
 from task_maker.args import UIS, CacheMode
 from task_maker.config import Config
 from task_maker.uis.ioi import IOIUIInterface
-from task_maker.task_maker import run
+from task_maker.task_maker import run, setup
 
 interface = None  # type: Union[IOIUIInterface]
 
@@ -44,6 +44,7 @@ def run_tests(task_name, file):
         "--name=local " \
         "--server=127.0.0.1:7070".format(temp_dir, temp_dir, temp_dir)
     global interface
+    setup(config)
     interface = run(config)
     exitcode = pytest.main([
         os.path.join(os.path.dirname(__file__), "utils.py"), file,
