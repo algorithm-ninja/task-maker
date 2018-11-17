@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import curses
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from enum import Enum
 import signal
 import threading
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional
 import traceback
 
 from task_maker.config import Config
@@ -136,14 +137,36 @@ class UIInterface:
         self.printer.red("ERROR  ", bold=True)
         self.printer.text(message.strip() + "\n")
 
+    @contextmanager
+    def run_in_ui(self, curses_ui: Optional["CursesUI"],
+                  finish_ui: Optional["FinishUI"]):
+        if curses_ui:
+            curses_ui.start()
+        try:
+            yield
+        except:
+            if curses_ui:
+                curses_ui.stop()
+            traceback.print_exc()
+            return
+        else:
+            if curses_ui:
+                curses_ui.stop()
+        if finish_ui:
+            finish_ui.print()
 
-class FinishUI:
+
+class FinishUI(ABC):
     LIMITS_MARGIN = 0.8
 
     def __init__(self, config: Config, interface: UIInterface):
         self.config = config
         self.interface = interface
         self.printer = StdoutPrinter()
+
+    @abstractmethod
+    def print(self):
+        pass
 
     def _print_compilation(self, solution: str,
                            result: SourceFileCompilationResult,

@@ -267,11 +267,14 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
         task,
         dict((st_num, [tc for tc in st.testcases.keys()])
              for st_num, st in task.subtasks.items()), config.ui == UIS.PRINT)
+    curses_ui = None
+    finish_ui = None
     if config.ui == UIS.CURSES:
         curses_ui = IOICursesUI(ui_interface)
-        curses_ui.start()
+    if config.ui != UIS.SILENT:
+        finish_ui = IOIFinishUI(config, task, ui_interface)
 
-    try:
+    with ui_interface.run_in_ui(curses_ui, finish_ui):
         ins, outs, vals = generate_inputs(frontend, task, ui_interface, config)
         evaluate_solutions(frontend, ins, outs, vals, solutions, ui_interface,
                            config)
@@ -279,20 +282,7 @@ def evaluate_task(frontend: Frontend, task: Task, solutions: List[Solution],
         sanity_pre_checks(task, solutions, frontend, config, ui_interface)
         frontend.evaluate()
         sanity_post_checks(task, solutions, ui_interface)
-    except:
-        if config.ui == UIS.CURSES:
-            curses_ui.stop()
-        traceback.print_exc()
-        return ui_interface
 
-    if config.ui == UIS.CURSES:
-        if curses_ui.errored:
-            return ui_interface
-        curses_ui.stop()
-
-    if config.ui != UIS.SILENT:
-        finish_ui = IOIFinishUI(config, task, ui_interface)
-        finish_ui.print()
     return ui_interface
 
 
