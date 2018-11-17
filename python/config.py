@@ -94,7 +94,7 @@ class Config:
         self._get_host_port()
 
     def _apply_arg(self, name, args):
-        value = getattr(args, name)
+        value = getattr(args, name, None)
         if value is not None and value is not False:
             setattr(self, name, value)
 
