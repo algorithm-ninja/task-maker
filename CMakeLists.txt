@@ -11,6 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(HunterGate)
 include(AddressSanitizer)
+include(MemorySanitizer)
 include(ThreadSanitizer)
 include(UndefinedSanitizer)
 
