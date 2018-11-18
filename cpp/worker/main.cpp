@@ -11,6 +11,10 @@
 #include "worker/executor.hpp"
 #include "worker/manager.hpp"
 
+const size_t EXP_BACKOFF_MIN = 1;
+const size_t EXP_BACKOFF_MAX = 60000;
+const size_t EXP_BACKOFF_MAX_RETRIES = 70;
+
 namespace worker {
 kj::MainBuilder::Validity Main::Run() {
   if (Flags::daemon) {
@@ -23,10 +27,33 @@ kj::MainBuilder::Validity Main::Run() {
     Flags::num_cores = std::thread::hardware_concurrency();
   }
   util::LogManager log_manager(context);
-  Manager manager(Flags::server, Flags::port, Flags::num_cores,
-                  Flags::pending_requests, Flags::name);
-  manager.Run();
-  return true;
+  size_t sleepTime = 0;
+  size_t numRetries = 0;
+  while (true) {
+    try {
+      Manager manager(Flags::server, Flags::port, Flags::num_cores,
+                      Flags::pending_requests, Flags::name);
+      manager.Run();
+      return true;
+    } catch (std::exception& ex) {
+      KJ_LOG(ERROR, "Manager failed!", ex.what());
+      bool connectionRefused =
+          strstr(ex.what(), "connect(): Connection refused");
+
+      if (connectionRefused) {
+        numRetries++;
+        sleepTime *= 2;
+        if (sleepTime < EXP_BACKOFF_MIN) sleepTime = EXP_BACKOFF_MIN;
+        if (sleepTime > EXP_BACKOFF_MAX) sleepTime = EXP_BACKOFF_MAX;
+        if (numRetries > EXP_BACKOFF_MAX_RETRIES) return false;
+      } else {
+        numRetries = 0;
+        sleepTime = EXP_BACKOFF_MIN;
+      }
+      KJ_LOG(INFO, "Sleeping for", sleepTime, "ms");
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
+    }
+  }
 }
 
 kj::MainFunc Main::getMain() {

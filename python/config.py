@@ -39,11 +39,11 @@ class Config:
         self.format = None  # type: Optional[TaskFormat]
 
         # remote group
-        self.server = "127.0.0.1:7070"  # type: str
+        self.server = "127.0.0.1:7070"
         self.run_server = False
         self.run_worker = False
-        self.server_args = "--port=7070"
-        self.worker_args = "--name=local --server=127.0.0.1:7070"
+        self.server_args = "--port=7070 --logfile=/tmp/task-maker-server.log"
+        self.worker_args = "--name=local --server=127.0.0.1:7070 --logfile=/tmp/task-maker-worker.log"
         self._get_host_port()
 
         # execution group
