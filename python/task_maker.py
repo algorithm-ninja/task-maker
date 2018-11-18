@@ -3,6 +3,8 @@
 import os.path
 import signal
 import sys
+
+from collections import namedtuple
 from typing import Any, Union
 
 from task_maker.args import get_parser, TaskFormat
@@ -12,8 +14,9 @@ from task_maker.formats import ioi_format, tm_format, terry_format
 from task_maker.help import check_help
 from task_maker.languages import LanguageManager
 from task_maker.manager import get_frontend, spawn_server, spawn_worker
-from task_maker.uis.ioi import IOIUIInterface
-from task_maker.uis.terry import TerryUIInterface
+
+
+MainRet = namedtuple("MainRet", ["exitcode", "interface", "stopped"])
 
 
 def get_task_format(fmt: TaskFormat):
@@ -36,7 +39,7 @@ def setup(config: Config):
     LanguageManager.load_languages()
 
 
-def run(config: Config) -> Union[None, IOIUIInterface, TerryUIInterface]:
+def run(config: Config) -> MainRet:
     task_dir, fmt = find_task_dir(config.task_dir, config.max_depth,
                                   config.format)
     if not fmt:
@@ -48,17 +51,22 @@ def run(config: Config) -> Union[None, IOIUIInterface, TerryUIInterface]:
 
     if config.clean:
         task_format.clean()
-        return None
+        return MainRet(exitcode=0, interface=None, stopped=False)
 
     frontend = get_frontend(config)
 
+    stopped = False
     def stop_server(signum: int, _: Any) -> None:
+        nonlocal stopped
         frontend.stopEvaluation()
+        stopped = True
 
     signal.signal(signal.SIGINT, stop_server)
     signal.signal(signal.SIGTERM, stop_server)
 
-    return task_format.evaluate_task(frontend, config)
+    interface = task_format.evaluate_task(frontend, config)
+    return MainRet(exitcode=len(interface.errors), interface=interface,
+                   stopped=stopped)
 
 
 def main():
@@ -67,8 +75,7 @@ def main():
     config.apply_file()
     config.apply_args(args)
     setup(config)
-    interface = run(config)
-    sys.exit(len(interface.errors))
+    sys.exit(run(config).exitcode)
 
 
 if __name__ == '__main__':

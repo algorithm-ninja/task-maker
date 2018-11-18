@@ -26,7 +26,7 @@ def bulk_run(config: Config) -> int:
         raise ValueError("No tasks found")
     config.bulk_total = len(tasks)
     finish_ui = BulkFinishUI(config)
-    num_errors = 0
+    exitcode = 0
     for index, task in enumerate(tasks):
         config.task_dir = task
         config.bulk_number = index
@@ -34,16 +34,19 @@ def bulk_run(config: Config) -> int:
             if config.ui != UIS.SILENT:
                 print("Running task %s [%d / %d]" %
                       (task, config.bulk_number + 1, config.bulk_total))
-            interface = run(config)
-            finish_ui.add_interface(interface)
-            num_errors += len(interface.errors)
+            ret = run(config)
+            if ret.interface:
+                finish_ui.add_interface(ret.interface)
+            exitcode += ret.exitcode
+            if ret.stopped:
+                break
         except:
             finish_ui.add_error("Failed to build " + task)
-            num_errors += 1
+            exitcode += 1
 
     if config.ui != UIS.SILENT:
         finish_ui.print()
-    return num_errors
+    return exitcode
 
 
 def main():

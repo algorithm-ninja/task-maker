@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 import curses
-from abc import ABC, abstractmethod
-from contextlib import contextmanager
-from enum import Enum
 import signal
 import threading
 import time
-
-from task_maker.formats import Task
-from typing import Dict, List, Optional
 import traceback
+from abc import ABC, abstractmethod
+from contextlib import contextmanager
+from enum import Enum
+from typing import Dict, List, Optional
 
 from task_maker.config import Config
+from task_maker.formats import Task
 from task_maker.printer import StdoutPrinter, Printer, CursesPrinter
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import Result, ResultStatus, Resources

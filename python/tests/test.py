@@ -45,7 +45,8 @@ def run_tests(task_name, file):
         "--server=127.0.0.1:7070".format(temp_dir, temp_dir, temp_dir)
     global interface
     setup(config)
-    interface = run(config)
+    ret = run(config)
+    interface = ret.interface
     exitcode = pytest.main([
         os.path.join(os.path.dirname(__file__), "utils.py"), file,
         "--override-ini=python_classes=XXXX", "--verbose", "--color=yes"
