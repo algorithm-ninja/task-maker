@@ -192,6 +192,7 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
           OsAtomicMove(temp_file, path, overwrite, exist_ok)) {
         throw std::system_error(errno, std::system_category(), "Write " + path);
       }
+      fd = kj::AutoCloseFd();
       return;
     }
     while (*pos < chunk.size()) {

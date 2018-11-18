@@ -141,7 +141,7 @@ there are some dependencies to be installed:
 - `community/gmock`
 - `community/gtest`
 - `community/capnproto`
-- `aur/pybind11`
+- `community/pybind11`
 - `community/python-ruamel-yaml`
 - `community/python-traits`
 - `community/python-pytoml`
