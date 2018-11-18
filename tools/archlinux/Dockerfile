@@ -30,7 +30,7 @@ RUN cd /tmp && \
 
 
 # install dependencies
-RUN yaourt -Syua --needed --noconfirm \
+RUN yaourt -Syua --needed --noconfirm --nocheck \
         python cmake gmock gtest capnproto pybind11 \
         python-pytest python-ruamel-yaml python-traits python-pytoml \
         fpc rust erlang && \
