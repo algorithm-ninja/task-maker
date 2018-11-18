@@ -2,6 +2,7 @@
 
 import os.path
 import signal
+import sys
 from typing import Any, Union
 
 from task_maker.args import get_parser, TaskFormat
@@ -66,7 +67,8 @@ def main():
     config.apply_file()
     config.apply_args(args)
     setup(config)
-    run(config)
+    interface = run(config)
+    sys.exit(len(interface.errors))
 
 
 if __name__ == '__main__':

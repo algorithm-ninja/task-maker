@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+
 import ruamel.yaml
 from typing import List
 import os
+import sys
 
 from task_maker.uis.bulk_finish_ui import BulkFinishUI
 from task_maker.args import get_parser, UIS
@@ -18,12 +20,13 @@ def get_task_paths(config: Config) -> List[str]:
     return [d.path for d in os.scandir(config.contest_dir) if d.is_dir()]
 
 
-def bulk_run(config: Config):
+def bulk_run(config: Config) -> int:
     tasks = get_task_paths(config)
     if not tasks:
         raise ValueError("No tasks found")
     config.bulk_total = len(tasks)
     finish_ui = BulkFinishUI(config)
+    num_errors = 0
     for index, task in enumerate(tasks):
         config.task_dir = task
         config.bulk_number = index
@@ -33,11 +36,14 @@ def bulk_run(config: Config):
                       (task, config.bulk_number + 1, config.bulk_total))
             interface = run(config)
             finish_ui.add_interface(interface)
+            num_errors += len(interface.errors)
         except:
             finish_ui.add_error("Failed to build " + task)
+            num_errors += 1
 
     if config.ui != UIS.SILENT:
         finish_ui.print()
+    return num_errors
 
 
 def main():
@@ -46,7 +52,7 @@ def main():
     config.apply_file()
     config.apply_args(args)
     setup(config)
-    bulk_run(config)
+    sys.exit(bulk_run(config))
 
 
 if __name__ == '__main__':
