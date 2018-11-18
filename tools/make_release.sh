@@ -9,7 +9,7 @@ fi
 
 if [ "$TOOLCHAIN" == "archlinux" ]; then
     # ensure that the system is up-to-date
-    yaourt -Syua --needed --noconfirm
+    yay -Syu --needed --noconfirm --mflags --nocheck
     cp -r . /tmp/task-maker
     git clone https://aur.archlinux.org/task-maker-git.git release
     mkdir release/src
@@ -17,7 +17,7 @@ if [ "$TOOLCHAIN" == "archlinux" ]; then
     cd release
     sed -i "s/pkgver=.*/pkgver=${TRAVIS_TAG:1}/" PKGBUILD
     source PKGBUILD
-    yaourt --needed --noconfirm -S ${makedepends[*]}
+    yay --needed --noconfirm --mflags --nocheck -S ${makedepends[*]}
     makepkg -e
     mv $(find -name "*.tar.xz") ../${RELEASE_FILE}
 elif [ "$TOOLCHAIN" == "osx" ]; then

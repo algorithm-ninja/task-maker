@@ -16,21 +16,16 @@ RUN groupadd --gid "$UGID" "$UGNAME" && \
 
 USER $UGNAME
 
-# install yaourt
+# install yay
 RUN cd /tmp && \
-    git clone https://aur.archlinux.org/package-query.git && \
-    cd package-query && \
-    makepkg -s && \
-    find -name "*pkg.tar.xz" | xargs sudo pacman --noconfirm -U && \
-    cd /tmp && \
-    git clone https://aur.archlinux.org/yaourt.git && \
-    cd yaourt && \
+    git clone https://aur.archlinux.org/yay-bin.git && \
+    cd yay-bin && \
     makepkg -s && \
     find -name "*pkg.tar.xz" | xargs sudo pacman --noconfirm -U
 
 
 # install dependencies
-RUN yaourt -Syu --needed --noconfirm --m-arg --nocheck \
+RUN yay -Syu --needed --noconfirm --mflags --nocheck \
         python cmake gmock gtest capnproto pybind11 \
         python-pytest python-ruamel-yaml python-traits python-pytoml \
         fpc rust erlang && \
