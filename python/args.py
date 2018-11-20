@@ -5,7 +5,7 @@ from enum import Enum
 
 try:
     from task_maker.version import TASK_MAKER_VERSION
-except ModuleNotFoundError:
+except ImportError:
     TASK_MAKER_VERSION = "unknown"
 
 
