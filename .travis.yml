@@ -14,6 +14,12 @@ matrix:
     - env:
         - TOOLCHAIN=archlinux
         - RELEASE_FILE=task-maker-${TRAVIS_TAG}_archlinux_amd64.tar.xz
+    - env:
+        - TOOLCHAIN=archlinux
+      script:
+        - tools/check_docker.sh
+        - docker run --rm edomora97/task-maker-builder-archlinux:latest yay -Syu --noconfirm task-maker-git
+      deploy: []
 #    - os: osx
 #      env:
 #        - TOOLCHAIN=osx
