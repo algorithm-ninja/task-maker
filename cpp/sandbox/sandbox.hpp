@@ -1,7 +1,7 @@
 #ifndef SANDBOX_SANDBOX_HPP
 #define SANDBOX_SANDBOX_HPP
 
-#include <string.h>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <string>
@@ -34,11 +34,11 @@ struct ExecutionOptions {
   char root[str_len] = {};
   char executable[str_len] = {};
   bool prepare_executable = false;
-  ExecutionOptions(std::string root_, std::string executable_) {
+  ExecutionOptions(const std::string& root_, const std::string& executable_) {
     memset(this, 0, sizeof(*this));
-    stringcpy(root, root_.c_str());
-    stringcpy(executable, executable_.c_str());
-    strcpy(&args[0][0], executable);
+    stringcpy(root, root_);
+    stringcpy(executable, executable_);
+    strncpy(&args[0][0], executable, str_len);
   }
   template <typename T>
   void SetArgs(const T& a_) {
@@ -52,14 +52,14 @@ struct ExecutionOptions {
     size_t i = 1;
     for (const char* s : a_) {
       if (strlen(s) >= str_len) throw std::runtime_error("string too long");
-      strcpy(&args[i][0], s);
+      strncpy(&args[i][0], s, str_len);
       if (i++ >= narg) throw std::runtime_error("Too many arguments");
     }
   }
 
   static void stringcpy(char* dst, const std::string& s) {
     if (s.size() >= str_len) throw std::runtime_error("string too long");
-    strcpy(dst, s.c_str());
+    strncpy(dst, s.c_str(), str_len - 1);
   }
 };
 
@@ -125,8 +125,8 @@ class Sandbox {
 
   // Prepares a newly-created file for execution. Returns false on error,
   // and sets error_msg.
-  virtual bool PrepareForExecution(const std::string& executable,
-                                   std::string* error_msg) {
+  virtual bool PrepareForExecution(const std::string& /*executable*/,
+                                   std::string* /*error_msg*/) {
     return true;
   }
 

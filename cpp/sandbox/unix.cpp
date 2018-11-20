@@ -229,6 +229,7 @@ void Unix::Child() {
   memcpy(args, options_->args, sizeof(args));
   char* argsp[ExecutionOptions::narg + 1] = {};
   size_t narg = 0;
+  // NOLINTNEXTLINE
   for (size_t i = 0; i < ExecutionOptions::narg; i++) {
     if (!args[i][0]) break;
     argsp[narg++] = &args[i][0];
@@ -328,8 +329,9 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
   while (!options_->wall_limit_millis ||
          elapsed_millis() < options_->wall_limit_millis) {
     if (options_->memory_limit_kb != 0 &&
-        memory_usage > options_->memory_limit_kb)
+        memory_usage > options_->memory_limit_kb) {
       break;
+    }
     int ret = waitpid(child_pid_, &child_status, WNOHANG);
     if (ret == -1) {
       // This should never happen.
@@ -378,9 +380,9 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
   info->sys_time_millis =
       rusage.ru_stime.tv_sec * 1000LL + rusage.ru_stime.tv_usec / 1000;
   if (info->signal != 0) {
-    strcpy(info->message, strsignal(info->signal));
+    strncpy(info->message, strsignal(info->signal), sizeof(info->message));
   } else if (info->status_code != 0) {
-    strcpy(info->message, "Non-zero return code");
+    strncpy(info->message, "Non-zero return code", sizeof(info->message));
   }
   OnFinish(info);
   return true;

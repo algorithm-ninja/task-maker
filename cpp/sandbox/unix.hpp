@@ -22,7 +22,7 @@ class Unix : public Sandbox {
   bool Setup(std::string* error_msg);
 
   // Hook that is executed at the end of PreFork.
-  virtual bool OnSetup(std::string* error_msg) { return true; }
+  virtual bool OnSetup(std::string* /* error_msg*/) { return true; }
 
   // Creates a child process and saves its PID in child_pid_. The child process
   // should execute Child and must not return.
@@ -35,7 +35,7 @@ class Unix : public Sandbox {
   // wrong and exec should not be called. The error_msg string must not be
   // longer then buflen characters. This function must not use dynamic memory
   // allocation.
-  virtual bool OnChild(char* error_msg, size_t buflen) { return true; }
+  virtual bool OnChild(char* /*error_msg*/, size_t /*buflen*/) { return true; }
 
   // Waits for the termination of the child, possibly killing it if it exceeds
   // the provided wall time limit.

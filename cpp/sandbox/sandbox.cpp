@@ -5,8 +5,8 @@
 namespace sandbox {
 
 Sandbox::store_t* Sandbox::Boxes_() {
-  static auto boxes = new store_t;
-  return boxes;
+  static auto boxes = std::make_unique<store_t>();
+  return boxes.get();
 }
 
 void Sandbox::Register_(Sandbox::create_t create, Sandbox::score_t score) {

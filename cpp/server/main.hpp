@@ -6,7 +6,7 @@ namespace server {
 
 class Main {
  public:
-  Main(kj::ProcessContext& context) : context(context) {}
+  explicit Main(kj::ProcessContext* context) : context(*context) {}
   kj::MainBuilder::Validity Run();
   kj::MainFunc getMain();
 

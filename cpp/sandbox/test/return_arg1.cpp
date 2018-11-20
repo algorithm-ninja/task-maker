@@ -1,2 +1,3 @@
-#include <stdlib.h>
-int main(int argc, char** argv) { return atoi(argv[1]); }
+#include <cstdlib>
+
+int main(int /*argc*/, char** argv) { return atoi(argv[1]); }

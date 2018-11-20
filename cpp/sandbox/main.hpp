@@ -7,13 +7,13 @@ namespace sandbox {
 
 class Main {
  public:
-  Main(kj::ProcessContext& context) : context(context) {}
+  explicit Main(kj::ProcessContext* context) : context(*context) {}
   kj::MainBuilder::Validity Run();
   kj::MainFunc getMain();
 
  private:
   kj::ProcessContext& context;
-  bool read_binary;
+  bool read_binary = false;
 };
 }  // namespace sandbox
 #endif

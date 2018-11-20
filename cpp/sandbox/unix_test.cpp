@@ -9,14 +9,15 @@
 
 namespace {
 
-const std::string TEST_TMPDIR = "/tmp/task_maker_testdir";
+const char* test_tmpdir = "/tmp/task_maker_testdir";
 
 using ::testing::AnyOf;
 using ::testing::Eq;
 using ::testing::StartsWith;
 
-using namespace sandbox;
+using namespace sandbox;  // NOLINT
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestNoDir) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -27,6 +28,7 @@ TEST(UnixTest, TestNoDir) {
   EXPECT_THAT(error_msg, StartsWith("chdir:"));
 }
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestNoFile) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -37,6 +39,7 @@ TEST(UnixTest, TestNoFile) {
   EXPECT_THAT(error_msg, StartsWith("exec:"));
 }
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestReturnArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -50,6 +53,7 @@ TEST(UnixTest, TestReturnArg1) {
   EXPECT_EQ(info.signal, 0);
 }
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestSignalArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -63,6 +67,7 @@ TEST(UnixTest, TestSignalArg1) {
   EXPECT_EQ(info.status_code, 0);
 }
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestWaitArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -80,6 +85,7 @@ TEST(UnixTest, TestWaitArg1) {
   EXPECT_LE(info.sys_time_millis, 300);
 }
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestBusyWaitArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -98,6 +104,7 @@ TEST(UnixTest, TestBusyWaitArg1) {
   EXPECT_LE(info.sys_time_millis, 500);
 }
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestMallocArg1) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -113,6 +120,7 @@ TEST(UnixTest, TestMallocArg1) {
   EXPECT_LE(info.memory_usage_kb, 15 * sizeof(int) * 1024);
 }
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestMemoryLimitOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -129,6 +137,7 @@ TEST(UnixTest, TestMemoryLimitOk) {
   EXPECT_LE(info.memory_usage_kb, 15 * sizeof(int) * 1024);
 }
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestMemoryLimitNotOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -143,6 +152,7 @@ TEST(UnixTest, TestMemoryLimitNotOk) {
   EXPECT_EQ(info.status_code, 0);
 }
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestWallLimitOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -159,6 +169,7 @@ TEST(UnixTest, TestWallLimitOk) {
   EXPECT_LE(info.wall_time_millis, 1900);
 }
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestWallLimitNotOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -175,6 +186,7 @@ TEST(UnixTest, TestWallLimitNotOk) {
   EXPECT_LE(info.wall_time_millis, 800);
 }
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestCpuLimitOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -191,6 +203,7 @@ TEST(UnixTest, TestCpuLimitOk) {
   EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 1500);
 }
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestCpuLimitNotOk) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
@@ -207,26 +220,26 @@ TEST(UnixTest, TestCpuLimitNotOk) {
   EXPECT_LE(info.cpu_time_millis + info.sys_time_millis, 1500);
 }
 
+// NOLINTNEXTLINE
 TEST(UnixTest, TestIORedirect) {
   std::unique_ptr<Sandbox> sandbox = Sandbox::Create();
   ASSERT_TRUE(sandbox);
   ExecutionOptions options("sandbox/test", "copy_int");
-  const char* test_tmpdir = TEST_TMPDIR.c_str();
   mkdir(test_tmpdir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-  strcpy(options.stdin_file, test_tmpdir);
-  strcat(options.stdin_file, "/in");
+  strncpy(options.stdin_file, test_tmpdir, ExecutionOptions::str_len);
+  strncat(options.stdin_file, "/in", ExecutionOptions::str_len - 1);
 
-  strcpy(options.stdout_file, test_tmpdir);
-  strcat(options.stdout_file, "/out");
+  strncpy(options.stdout_file, test_tmpdir, ExecutionOptions::str_len);
+  strncat(options.stdout_file, "/out", ExecutionOptions::str_len - 1);
 
-  strcpy(options.stderr_file, test_tmpdir);
-  strcat(options.stderr_file, "/err");
+  strncpy(options.stderr_file, test_tmpdir, ExecutionOptions::str_len);
+  strncat(options.stderr_file, "/err", ExecutionOptions::str_len - 1);
 
   {
-    FILE* in = fopen(options.stdin_file, "w");
+    FILE* in = fopen(options.stdin_file, "w");  // NOLINT
     EXPECT_TRUE(in);
     EXPECT_EQ(fprintf(in, "10"), 2);
-    EXPECT_EQ(fclose(in), 0);
+    EXPECT_EQ(fclose(in), 0);  // NOLINT
   }
 
   ExecutionInfo info;
@@ -240,14 +253,14 @@ TEST(UnixTest, TestIORedirect) {
   int err = 0;
 
   {
-    FILE* fout = fopen(options.stdout_file, "r");
-    FILE* ferr = fopen(options.stderr_file, "r");
+    FILE* fout = fopen(options.stdout_file, "r");  // NOLINT
+    FILE* ferr = fopen(options.stderr_file, "r");  // NOLINT
     EXPECT_TRUE(fout);
     EXPECT_TRUE(ferr);
     EXPECT_EQ(fscanf(fout, "%d", &out), 1);
     EXPECT_EQ(fscanf(ferr, "%d", &err), 1);
-    EXPECT_EQ(fclose(fout), 0);
-    EXPECT_EQ(fclose(ferr), 0);
+    EXPECT_EQ(fclose(fout), 0);  // NOLINT
+    EXPECT_EQ(fclose(ferr), 0);  // NOLINT
   }
 
   EXPECT_EQ(out, 10);

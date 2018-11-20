@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <vector>
 
-int main(int argc, char** argv) {
+int main(int /*argc*/, char** argv) {
   const constexpr int sz = 10240;
   std::clock_t startcputime = std::clock();
   std::vector<int> v;

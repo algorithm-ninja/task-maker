@@ -8,7 +8,9 @@
 
 class TaskMakerMain {
  public:
-  TaskMakerMain(kj::ProcessContext& context) : context(context) {}
+  // NOLINTNEXTLINE(google-runtime-references)
+  explicit TaskMakerMain(kj::ProcessContext& context)
+      : context(context), wm(&context), sm(&context), bm(&context) {}
   kj::MainFunc getMain() {
     return kj::MainBuilder(context, "Task-Maker (" + util::version + ")",
                            "The new cmsMake!")
@@ -21,9 +23,9 @@ class TaskMakerMain {
 
  private:
   kj::ProcessContext& context;
-  worker::Main wm = context;
-  server::Main sm = context;
-  sandbox::Main bm = context;
+  worker::Main wm;
+  server::Main sm;
+  sandbox::Main bm;
 };
 
 KJ_MAIN(TaskMakerMain);

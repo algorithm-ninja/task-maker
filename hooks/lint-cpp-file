@@ -1,13 +1,12 @@
 #!/bin/bash -e
 
 INCLUDES="-Icpp -Ithird_party $(pkgconf --cflags python3) -Ibuild"
-EXCLUDE_CHECKS="-fuchsia-multiple-inheritance,-fuchsia-overloaded-operator,-fuchsia-default-arguments,-hicpp-braces-around-statements,-readability-braces-around-statements,-llvm-header-guard,-llvm-include-order,-bugprone-suspicious-semicolon"
+EXCLUDE_CHECKS="-fuchsia-multiple-inheritance,-fuchsia-overloaded-operator,-fuchsia-default-arguments,-hicpp-braces-around-statements,-readability-braces-around-statements,-llvm-header-guard,-llvm-include-order,-bugprone-suspicious-semicolon,-google-readability-todo,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-pro-bounds-constant-array-index,-readability-implicit-bool-conversion,-hicpp-no-array-decay,-hicpp-vararg,-fuchsia-statically-constructed-objects,-hicpp-signed-bitwise,-cppcoreguidelines-pro-type-vararg,-android-cloexec-fopen,-cert-err34-c,-cppcoreguidelines-pro-type-union-access,-cppcoreguidelines-pro-bounds-pointer-arithmetic"
 
 check_file_clang() {
   file="${1}"
   echo "====> clang-tiding $file"
-  # TODO: add -quiet as soon as it is supported
-  clang-tidy --checks=*,${EXCLUDE_CHECKS} \
+  clang-tidy --checks=*,${EXCLUDE_CHECKS} -quiet \
     --warnings-as-errors=*,${EXCLUDE_CHECKS} ${1} \
     -- -std=c++14 ${INCLUDES}
 }
