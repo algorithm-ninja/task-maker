@@ -5,11 +5,12 @@ namespace frontend {
 namespace {
 class FileProvider : public capnproto::FileSender::Server {
  public:
-  FileProvider(std::unordered_map<util::SHA256_t, std::string,
-                                  util::SHA256_t::Hasher>& known_files)
-      : known_files_(known_files) {}
+  explicit FileProvider(
+      std::unordered_map<util::SHA256_t, std::string, util::SHA256_t::Hasher>
+          known_files)
+      : known_files_(std::move(known_files)) {}
 
-  kj::Promise<void> requestFile(RequestFileContext context) {
+  kj::Promise<void> requestFile(RequestFileContext context) override {
     std::string path = known_files_.at(context.getParams().getHash());
     return util::File::HandleRequestFile(path,
                                          context.getParams().getReceiver());
@@ -23,7 +24,7 @@ class FileProvider : public capnproto::FileSender::Server {
 }  // namespace
 
 void File::getContentsAsString(
-    std::function<void(const std::string&)> callback) {
+    const std::function<void(const std::string&)>& callback) {
   auto pf = kj::newPromiseAndFulfiller<void>();
   frontend_.builder_.AddPromise(std::move(pf.promise));
   frontend_.finish_builder_.AddPromise(
@@ -71,7 +72,7 @@ void File::getContentsToFile(const std::string& path, bool overwrite,
       "Get file");
 }
 
-Frontend::Frontend(std::string server, int port)
+Frontend::Frontend(const std::string& server, int port)
     : client_(server, port),
       frontend_context_(
           client_.getMain<capnproto::MainServer>()
@@ -96,7 +97,7 @@ File* Frontend::provideFile(const std::string& path,
   hash.ToCapnp(req.initHash());
   req.setDescription(description);
   req.setIsExecutable(is_executable);
-  files_.push_back(File::New(req.send(), *this, is_executable));
+  files_.push_back(File::New(req.send(), this, is_executable));
   return files_.back().get();
 }
 
@@ -105,7 +106,7 @@ Execution* Frontend::addExecution(const std::string& description) {
   req.setDescription(description);
   executions_.push_back(std::make_unique<Execution>(
       description, req.send().then([](auto r) { return r.getExecution(); }),
-      files_, builder_, finish_builder_, *this));
+      &files_, &builder_, &finish_builder_, this));
   return executions_.back().get();
 }
 
@@ -113,8 +114,8 @@ ExecutionGroup* Frontend::addExecutionGroup(const std::string& description) {
   auto req = frontend_context_.addExecutionGroupRequest();
   req.setDescription(description);
   groups_.push_back(std::make_unique<ExecutionGroup>(
-      description, req.send().then([](auto r) { return r.getGroup(); }), files_,
-      builder_, finish_builder_, *this));
+      description, req.send().then([](auto r) { return r.getGroup(); }),
+      &files_, &builder_, &finish_builder_, this));
   return groups_.back().get();
 }
 
@@ -139,8 +140,8 @@ Execution* ExecutionGroup::addExecution(const std::string& description) {
   req.setDescription(description);
   executions_.push_back(std::make_unique<Execution>(
       description_ + " of group " + description,
-      req.send().then([](auto r) { return r.getExecution(); }), files_,
-      builder_, finish_builder_, frontend_));
+      req.send().then([](auto r) { return r.getExecution(); }), &files_,
+      &builder_, &finish_builder_, &frontend_));
   return executions_.back().get();
 }
 
@@ -260,25 +261,25 @@ void Execution::setExtraTime(float extra_time) {
 File* Execution::stdout(bool is_executable) {
   auto req = execution_.stdoutRequest();
   req.setIsExecutable(is_executable);
-  files_.push_back(File::New(req.send(), frontend_, is_executable));
+  files_.push_back(File::New(req.send(), &frontend_, is_executable));
   return files_.back().get();
 }
 
 File* Execution::stderr(bool is_executable) {
   auto req = execution_.stderrRequest();
   req.setIsExecutable(is_executable);
-  files_.push_back(File::New(req.send(), frontend_, is_executable));
+  files_.push_back(File::New(req.send(), &frontend_, is_executable));
   return files_.back().get();
 }
 File* Execution::output(const std::string& name, bool is_executable) {
   auto req = execution_.outputRequest();
   req.setIsExecutable(is_executable);
   req.setName(name);
-  files_.push_back(File::New(req.send(), frontend_, is_executable));
+  files_.push_back(File::New(req.send(), &frontend_, is_executable));
   return files_.back().get();
 }
 
-void Execution::notifyStart(std::function<void()> callback) {
+void Execution::notifyStart(const std::function<void()>& callback) {
   finish_builder_.AddPromise(
       execution_.notifyStartRequest()
           .send()
@@ -288,8 +289,8 @@ void Execution::notifyStart(std::function<void()> callback) {
       "Notify start " + description_);
 }
 
-void Execution::getResult(std::function<void(Result)> callback,
-                          std::function<void()> errored) {
+void Execution::getResult(const std::function<void(Result)>& callback,
+                          const std::function<void()>& errored) {
   auto promise = kj::newPromiseAndFulfiller<void>();
   builder_.AddPromise(std::move(promise.promise));
   auto ff = promise.fulfiller.get();

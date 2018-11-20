@@ -53,6 +53,10 @@ class Fifo {
  public:
   Fifo() : promise(capnproto::Fifo::Reader()), forked_promise(promise.fork()) {}
   virtual ~Fifo() = default;
+  Fifo(const Fifo&) = delete;
+  Fifo(Fifo&&) = default;
+  Fifo& operator=(const Fifo&) = delete;
+  Fifo& operator=(Fifo&&) = default;
   template <typename T>
   static std::unique_ptr<Fifo> New(kj::Promise<T>&& p);
 };
@@ -60,7 +64,7 @@ class Fifo {
 template <typename T>
 class FifoInst : public Fifo {
  public:
-  FifoInst(T&& p)
+  explicit FifoInst(T&& p)
       : pf(kj::newPromiseAndFulfiller<capnproto::Fifo::Reader>()),
         promise(std::move(p)) {
     SetPromise(std::move(pf.promise));
@@ -102,19 +106,24 @@ class File {
     promise = std::move(prom);
     forked_promise = promise.fork();
   }
-  File(Frontend& frontend, bool is_executable)
+  File(Frontend* frontend, bool is_executable)
       : promise(capnproto::File::Reader()),
         forked_promise(promise.fork()),
         is_executable_(is_executable),
-        frontend_(frontend) {}
+        frontend_(*frontend) {}
 
  public:
   template <typename T>
-  static std::unique_ptr<File> New(kj::Promise<T>&& p, Frontend& frontend,
+  static std::unique_ptr<File> New(kj::Promise<T>&& p, Frontend* frontend,
                                    bool is_executable);
   virtual ~File() = default;
+  File(const File&) = delete;
+  File(File&&) = delete;
+  File& operator=(const File&) = delete;
+  File& operator=(File&&) = delete;
 
-  void getContentsAsString(std::function<void(const std::string&)> callback);
+  void getContentsAsString(
+      const std::function<void(const std::string&)>& callback);
   void getContentsToFile(const std::string& path, bool overwrite,
                          bool exist_ok);
 };
@@ -122,7 +131,7 @@ class File {
 template <typename T>
 class FileInst : public File {
  public:
-  FileInst(T&& p, Frontend& frontend, bool is_executable)
+  FileInst(T&& p, Frontend* frontend, bool is_executable)
       : File(frontend, is_executable),
         pf(kj::newPromiseAndFulfiller<capnproto::File::Reader>()),
         promise(std::move(p)) {
@@ -147,7 +156,7 @@ class FileInst : public File {
 };
 
 template <typename T>
-std::unique_ptr<File> File::New(kj::Promise<T>&& p, Frontend& frontend,
+std::unique_ptr<File> File::New(kj::Promise<T>&& p, Frontend* frontend,
                                 bool is_executable) {
   return std::make_unique<FileInst<kj::Promise<T>>>(std::move(p), frontend,
                                                     is_executable);
@@ -156,15 +165,15 @@ std::unique_ptr<File> File::New(kj::Promise<T>&& p, Frontend& frontend,
 class Execution {
  public:
   Execution(std::string description, capnproto::Execution::Client execution,
-            std::vector<std::unique_ptr<File>>& files,
-            util::UnionPromiseBuilder& builder,
-            util::UnionPromiseBuilder& finish_builder, Frontend& frontend)
+            std::vector<std::unique_ptr<File>>* files,
+            util::UnionPromiseBuilder* builder,
+            util::UnionPromiseBuilder* finish_builder, Frontend* frontend)
       : description_(std::move(description)),
-        execution_(execution),
-        files_(files),
-        builder_(builder),
-        finish_builder_(finish_builder),
-        frontend_(frontend) {}
+        execution_(std::move(execution)),
+        files_(*files),
+        builder_(*builder),
+        finish_builder_(*finish_builder),
+        frontend_(*frontend) {}
 
   void setExecutablePath(const std::string& path);
   void setExecutable(const std::string& name, File* file);
@@ -186,10 +195,10 @@ class Execution {
   File* stderr(bool is_executable);
   File* output(const std::string& name, bool is_executable);
 
-  void notifyStart(std::function<void()> callback);
+  void notifyStart(const std::function<void()>& callback);
 
-  void getResult(std::function<void(Result)> callback,
-                 std::function<void()> errored = nullptr);
+  void getResult(const std::function<void(Result)>& callback,
+                 const std::function<void()>& errored = nullptr);
 
  private:
   std::string description_;
@@ -205,15 +214,15 @@ class ExecutionGroup {
  public:
   ExecutionGroup(std::string description,
                  capnproto::ExecutionGroup::Client execution_group,
-                 std::vector<std::unique_ptr<File>>& files,
-                 util::UnionPromiseBuilder& builder,
-                 util::UnionPromiseBuilder& finish_builder, Frontend& frontend)
+                 std::vector<std::unique_ptr<File>>* files,
+                 util::UnionPromiseBuilder* builder,
+                 util::UnionPromiseBuilder* finish_builder, Frontend* frontend)
       : description_(std::move(description)),
-        execution_group_(execution_group),
-        files_(files),
-        builder_(builder),
-        finish_builder_(finish_builder),
-        frontend_(frontend) {}
+        execution_group_(std::move(execution_group)),
+        files_(*files),
+        builder_(*builder),
+        finish_builder_(*finish_builder),
+        frontend_(*frontend) {}
   Execution* addExecution(const std::string& description);
   Fifo* createFifo();
 
@@ -233,7 +242,7 @@ class Frontend {
   friend class File;
 
  public:
-  Frontend(std::string server, int port);
+  Frontend(const std::string& server, int port);
 
   File* provideFile(const std::string& path, const std::string& description,
                     bool is_executable);

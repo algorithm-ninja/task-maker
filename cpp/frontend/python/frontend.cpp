@@ -7,20 +7,24 @@
 
 #include "frontend/frontend.hpp"
 
-using namespace pybind11::literals;
+using pybind11::literals::operator""_a;
 
 template <typename T>
 class DestroyWithGIL {
  public:
-  explicit DestroyWithGIL(T t) : t_(t) {}
-  T& operator*() { return t_; }
+  explicit DestroyWithGIL(T t) : t_(std::make_shared<T>(t)) {}
+  T& operator*() { return *t_; }
   ~DestroyWithGIL() {
     pybind11::gil_scoped_acquire acquire;
-    t_ = T();
+    t_ = nullptr;
   }
+  DestroyWithGIL(const DestroyWithGIL& other) = default;
+  DestroyWithGIL(DestroyWithGIL&& other) noexcept = default;
+  DestroyWithGIL& operator=(const DestroyWithGIL& other) = default;
+  DestroyWithGIL& operator=(DestroyWithGIL&& other) noexcept = default;
 
  private:
-  T t_;
+  std::shared_ptr<T> t_;
 };
 
 template <typename T>
@@ -28,6 +32,7 @@ DestroyWithGIL<T> destroy_with_gil(T t) {
   return DestroyWithGIL<T>(t);
 }
 
+// NOLINTNEXTLINE
 PYBIND11_MODULE(task_maker_frontend, m) {
   m.doc() = "Task-maker frontend module";
   pybind11::class_<frontend::Resources>(m, "Resources")
@@ -68,30 +73,32 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def_readonly("was_killed", &frontend::Result::was_killed)
       .def("__repr__", [](const frontend::Result& res) {
         std::string message = "<Result ";
-        if (res.status == capnproto::ProcessResult::Status::Which::SUCCESS)
+        if (res.status == capnproto::ProcessResult::Status::Which::SUCCESS) {
           message += "SUCCESS";
-        else if (res.status == capnproto::ProcessResult::Status::Which::SIGNAL)
+        } else if (res.status ==
+                   capnproto::ProcessResult::Status::Which::SIGNAL) {
           message += "SIGNAL " + std::to_string(res.signal);
-        else if (res.status ==
-                 capnproto::ProcessResult::Status::Which::RETURN_CODE)
+        } else if (res.status ==
+                   capnproto::ProcessResult::Status::Which::RETURN_CODE) {
           message += "RETURN_CODE " + std::to_string(res.return_code);
-        else if (res.status ==
-                 capnproto::ProcessResult::Status::Which::TIME_LIMIT)
+        } else if (res.status ==
+                   capnproto::ProcessResult::Status::Which::TIME_LIMIT) {
           message += "TIME_LIMIT";
-        else if (res.status ==
-                 capnproto::ProcessResult::Status::Which::WALL_LIMIT)
+        } else if (res.status ==
+                   capnproto::ProcessResult::Status::Which::WALL_LIMIT) {
           message += "WALL_LIMIT";
-        else if (res.status ==
-                 capnproto::ProcessResult::Status::Which::MEMORY_LIMIT)
+        } else if (res.status ==
+                   capnproto::ProcessResult::Status::Which::MEMORY_LIMIT) {
           message += "MEMORY_LIMIT";
-        else if (res.status ==
-                 capnproto::ProcessResult::Status::Which::MISSING_FILES)
+        } else if (res.status ==
+                   capnproto::ProcessResult::Status::Which::MISSING_FILES) {
           message += "MISSING_FILES";
-        else if (res.status ==
-                 capnproto::ProcessResult::Status::Which::INTERNAL_ERROR)
+        } else if (res.status ==
+                   capnproto::ProcessResult::Status::Which::INTERNAL_ERROR) {
           message += "INTERNAL_ERROR";
-        else
+        } else {
           message += "UNKNOWN";
+        }
         message += ">";
         return message;
       });
@@ -115,7 +122,7 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def("getContentsToFile", &frontend::File::getContentsToFile, "path"_a,
            "overwrite"_a = true, "exist_ok"_a = true);
 
-  pybind11::class_<frontend::Fifo>(m, "Fifo");
+  pybind11::class_<frontend::Fifo> _(m, "Fifo");
 
   pybind11::class_<frontend::Execution>(m, "Execution")
       .def("setExecutablePath", &frontend::Execution::setExecutablePath,
