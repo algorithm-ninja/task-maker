@@ -2,6 +2,7 @@
 
 import argparse
 import os.path
+from itertools import chain
 
 
 def zsh_autocomplete(parser: argparse.ArgumentParser, command: str):
@@ -60,6 +61,30 @@ def zsh_autocomplete(parser: argparse.ArgumentParser, command: str):
     return result
 
 
+def bash_autocomplete(parser: argparse.ArgumentParser, command: str):
+    """
+    Generate a bash-completion script, after generation you should place
+    the file in $(pkg-config --variable=completionsdir bash-completion)
+    """
+    options = [value.option_strings
+               for value in parser._option_string_actions.values()]
+    options = " ".join(sorted(set(chain(*options))))
+    script_name = "_" + command.replace("-", "_")
+    result = "%s()\n" % script_name
+    result += "{\n"
+    result += "    local cur prev words cword\n"
+    result += "    _init_completion || return\n"
+    result += "\n"
+    result += "    if [[ \"$cur\" == -* ]]; then\n"
+    result += "        COMPREPLY=( $( compgen -W '%s' -- \"$cur\" ) )\n" % options
+    result += "    else\n"
+    result += "        _xfunc\n"
+    result += "    fi\n"
+    result += "} &&\n"
+    result += "complete -F %s %s\n" % (script_name, command)
+    return result
+
+
 def get_parser(*args, **kwargs):
     args_file = os.path.join(
         os.path.abspath(os.path.dirname(__file__)), "..", "python", "args.py")
@@ -83,7 +108,7 @@ def main():
     if args.shell == "zsh":
         result = zsh_autocomplete(the_parser, command)
     else:
-        raise NotImplementedError()
+        result = bash_autocomplete(the_parser, command)
     if args.output:
         with open(args.output, "w") as f:
             f.write(result)
