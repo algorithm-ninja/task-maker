@@ -15,6 +15,10 @@ matrix:
         - TOOLCHAIN=archlinux
         - RELEASE_FILE=task-maker-${TRAVIS_TAG}_archlinux_amd64.tar.xz
     - env:
+        - TOOLCHAIN=archlinux-clang
+        - ADDRESSSANITIZER=ON
+      deploy: []
+    - env:
         - TOOLCHAIN=archlinux
       script:
         - tools/check_docker.sh
@@ -55,6 +59,7 @@ script:
       -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME
       -e TRAVIS_TAG=$TRAVIS_TAG
       -v $(pwd):/build
+      --cap-add SYS_PTRACE
       edomora97/task-maker-builder-$TOOLCHAIN:latest
       /build/tools/compile_and_test.sh
 
@@ -67,6 +72,7 @@ before_deploy:
       -e TRAVIS_TAG=$TRAVIS_TAG
       -e RELEASE_FILE=$RELEASE_FILE
       -v $(pwd):/build
+      --cap-add SYS_PTRACE
       edomora97/task-maker-builder-$TOOLCHAIN:latest
       /build/tools/make_release.sh
 

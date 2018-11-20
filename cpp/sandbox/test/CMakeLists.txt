@@ -1,8 +1,9 @@
 project(task-maker-cpp-sandbox-test)
 
-add_executable(busywait_arg1 busywait_arg1.cpp)
-add_executable(copy_int copy_int.cpp)
-add_executable(malloc_arg1 malloc_arg1.cpp)
-add_executable(return_arg1 return_arg1.cpp)
-add_executable(signal_arg1 signal_arg1.cpp)
-add_executable(wait_arg1 wait_arg1.cpp)
+SET(TESTS busywait_arg1 copy_int malloc_arg1 return_arg1 signal_arg1 wait_arg1)
+
+foreach(test ${TESTS})
+  add_executable(${test} ${test}.cpp)
+  apply_global_cxx_flags_to_all_targets()
+  remove_flag_from_file(${test} ${test}.cpp -fsanitize=address)
+endforeach()

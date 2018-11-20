@@ -75,7 +75,11 @@ foreach(task ${TESTS_TASKS})
     FILE_PERMISSIONS OWNER_EXECUTE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_READ WORLD_EXECUTE
   )
 
-  add_test(NAME pytest.${task_name} COMMAND env PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR} "${TEST_DST_DIR}/${task_name}.py")
+  if (ADDRESSSANITIZER)
+    set(ASAN_EXTRA_ENV ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/libasan.so)
+  endif()
+
+  add_test(NAME pytest.${task_name} COMMAND env PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR} ${ASAN_EXTRA_ENV} "${TEST_DST_DIR}/${task_name}.py")
 endforeach(task)
 
 add_custom_command(OUTPUT ${BIN_DIRECTORY}/task-maker

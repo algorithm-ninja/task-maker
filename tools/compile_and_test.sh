@@ -13,7 +13,7 @@ if [ "$TOOLCHAIN" == "archlinux" ]; then
     # the archlinux build user is not root
     python3 -m venv /tmp/venv --system-site-packages
     . /tmp/venv/bin/activate
-    cmake -H. -Bbuild -DHUNTER_ENABLED=OFF -DTRAVIS=ON
+    cmake -H. -Bbuild -DHUNTER_ENABLED=OFF -DTRAVIS=ON -DADDRESSSANITIZER=$ADDRESSSANITIZER
     cmake --build build
     # with install the test data is not copied
     python3 build/python/setup.py develop

@@ -14,6 +14,7 @@ include(AddressSanitizer)
 include(MemorySanitizer)
 include(ThreadSanitizer)
 include(UndefinedSanitizer)
+include(RemoveFlags)
 
 HunterGate(
     URL "https://github.com/ruslo/hunter/archive/v0.23.54.tar.gz"
@@ -53,7 +54,6 @@ find_package(PythonInterp 3.5 REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always") 
 # Other flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter -g")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-delete-non-virtual-dtor")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # if hunter is disabled all these lines are noop
