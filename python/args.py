@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
 import argparse
-import os.path
 from enum import Enum
 
-from task_maker.version import TASK_MAKER_VERSION
+try:
+    from task_maker.version import TASK_MAKER_VERSION
+except ModuleNotFoundError:
+    TASK_MAKER_VERSION = "unknown"
 
 
 class CacheMode(Enum):

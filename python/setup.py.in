@@ -18,6 +18,6 @@ setup(
     entry_points={
         "console_scripts": [
             "task-maker = task_maker.task_maker:main",
-            "bulk-maker = task_maker.bulk_maker:main"
+            "contest-maker = task_maker.contest_maker:main"
         ]
     })

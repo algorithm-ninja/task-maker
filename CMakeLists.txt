@@ -49,9 +49,6 @@ include(GoogleTest)
 
 find_package(PythonInterp 3.5 REQUIRED)
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/tools/DEBIAN/control.in
-               ${CMAKE_CURRENT_BINARY_DIR}/DEBIAN/control)
-
 # Enable colors in ninja
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always") 
 # Other flags
@@ -77,3 +74,4 @@ add_subdirectory(capnp)
 add_subdirectory(third_party)
 add_subdirectory(cpp)
 add_subdirectory(python)
+add_subdirectory(tools)

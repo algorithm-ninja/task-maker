@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 
 import argparse
+import os.path
 
 
-def zsh_autocomplete(parser: argparse.ArgumentParser):
+def zsh_autocomplete(parser: argparse.ArgumentParser, command: str):
     """
     Generate a compdef autocompletion script, after generation you should place
     the file in a path in $fpath then relog
     """
-    result = "#compdef task-maker\n"
-    result += "\n"
-    result += "# Add this file (_task_maker) to a directory in $fpath\n"
+    result = "#compdef %s\n" % command
     result += "\n"
     result += "args=(\n"
 
@@ -29,7 +28,9 @@ def zsh_autocomplete(parser: argparse.ArgumentParser):
         registered |= strings
         if not len(strings):
             return
-        help = option.help.replace("'", "'\"'\"'")
+        help = option.help.replace("'", "'\"'\"'")\
+                          .replace("[", "\\[")\
+                          .replace("]", "\\]")
         if isinstance(option, argparse._StoreAction):
             strings = [s + "=" if s.startswith("--") else s + "+"
                        for s in strings]
@@ -57,3 +58,38 @@ def zsh_autocomplete(parser: argparse.ArgumentParser):
     result += "_arguments -s -S $args\n"
 
     return result
+
+
+def get_parser(*args, **kwargs):
+    args_file = os.path.join(
+        os.path.abspath(os.path.dirname(__file__)), "..", "python", "args.py")
+    globals = dict()
+    exec(open(args_file).read(), globals)
+    return globals["get_parser"](*args, **kwargs)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--contest-maker", action="store_true",
+                        help="Generate the completion for contest-maker")
+    parser.add_argument("-o", "--output",
+                        help="Save the file to the specified path")
+    parser.add_argument("shell", choices=["zsh", "bash"],
+                        help="Completion for which shell")
+    args = parser.parse_args()
+
+    the_parser = get_parser(args.contest_maker)
+    command = "contest-maker" if args.contest_maker else "task-maker"
+    if args.shell == "zsh":
+        result = zsh_autocomplete(the_parser, command)
+    else:
+        raise NotImplementedError()
+    if args.output:
+        with open(args.output, "w") as f:
+            f.write(result)
+    else:
+        print(result)
+
+
+if __name__ == '__main__':
+    main()
