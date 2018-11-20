@@ -69,6 +69,12 @@ If you want to clean everything, for example after the contest, simply run:
 task-maker --clean
 ```
 
+### Building all the tasks of a contest
+You may want to build all the tasks of a contest, to do so just issue
+`contest-maker` in the contest directory. You can also specify
+`--contest-dir` to build all the tasks inside that folder or you can select
+a specific `contest.yaml` file with `--contest-yaml`.
+
 ### Using a remote executor
 One of the best feature of task-maker is the ability to execute a task remotely.
 The setup is really simple, you need to start some programs: a server and
