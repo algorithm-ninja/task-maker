@@ -5,9 +5,10 @@ services:
 
 matrix:
   include:
-    - env:
-        - TOOLCHAIN=ubuntu16.04
-        - RELEASE_FILE=task-maker-${TRAVIS_TAG}_ubuntu16.04_amd64.deb
+# disabled for now because cmake version is too old
+#    - env:
+#        - TOOLCHAIN=ubuntu16.04
+#        - RELEASE_FILE=task-maker-${TRAVIS_TAG}_ubuntu16.04_amd64.deb
     - env:
         - TOOLCHAIN=ubuntu18.04
         - RELEASE_FILE=task-maker-${TRAVIS_TAG}_ubuntu18.04_amd64.deb
@@ -24,6 +25,7 @@ matrix:
         - tools/check_docker.sh
         - docker run --rm edomora97/task-maker-builder-archlinux:latest yay -Syu --noconfirm task-maker-git
       deploy: []
+# disabled because it's very broken
 #    - os: osx
 #      env:
 #        - TOOLCHAIN=osx
@@ -55,6 +57,7 @@ script:
   - docker run --rm
       -e TRAVIS=true
       -e CI=true
+      -e ADDRESSSANITIZER=$ADDRESSSANITIZER
       -e TOOLCHAIN=$TOOLCHAIN
       -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME
       -e TRAVIS_TAG=$TRAVIS_TAG
@@ -67,6 +70,7 @@ before_deploy:
   - docker run --rm
       -e TRAVIS=true
       -e CI=true
+      -e ADDRESSSANITIZER=$ADDRESSSANITIZER
       -e TOOLCHAIN=$TOOLCHAIN
       -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME
       -e TRAVIS_TAG=$TRAVIS_TAG
