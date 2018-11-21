@@ -7,14 +7,14 @@
 
 namespace server {
 namespace {
-uint32_t AddFileInfo(uint32_t& last_file_id,
-                     std::unordered_map<uint32_t, detail::FileInfo>& info,
+uint32_t AddFileInfo(uint32_t* last_file_id,
+                     std::unordered_map<uint32_t, detail::FileInfo>* info,
                      capnproto::File::Builder builder, bool executable,
                      const std::string& description) {
-  uint32_t id = last_file_id++;
-  info[id].id = id;
-  info[id].description = description;
-  info[id].executable = executable;
+  uint32_t id = (*last_file_id)++;
+  (*info)[id].id = id;
+  (*info)[id].description = description;
+  (*info)[id].executable = executable;
   builder.setId(id);
   return id;
 }
@@ -37,10 +37,10 @@ kj::Promise<void> ExecutionGroup::addExecution(AddExecutionContext context) {
                    std::string(context.getParams().getDescription()) +
                    " to group " + description_);
   context.getResults().setExecution(
-      kj::heap<Execution>(frontend_context_,
+      kj::heap<Execution>(&frontend_context_,
                           std::string(context.getParams().getDescription()) +
                               " of group " + description_,
-                          *this));
+                          this));
   return kj::READY_NOW;
 }
 
@@ -61,7 +61,7 @@ kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
         frontend_context_.forked_evaluation_start_.addBranch(),
         description_ + " evaluation start");
     for (auto ex : executions_) {
-      ex->addDependencies(dependencies);
+      ex->addDependencies(&dependencies);
     }
     done_ =
         std::move(dependencies)
@@ -90,12 +90,12 @@ kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
                   frontend_context_.cache_manager_.Has(request_)) {
                 auto res = frontend_context_.cache_manager_.Get(request_);
                 start_.fulfiller->fulfill();
-                util::UnionPromiseBuilder dependencies_propagated_;
+                util::UnionPromiseBuilder dependencies_propagated;
                 for (size_t i = 0; i < executions_.size(); i++) {
                   executions_[i]->processResult(res.getProcesses()[i],
-                                                dependencies_propagated_, true);
+                                                &dependencies_propagated, true);
                 }
-                return std::move(dependencies_propagated_)
+                return std::move(dependencies_propagated)
                     .Finalize()
                     .then([this]() {
                       for (auto ex : executions_) {
@@ -113,15 +113,15 @@ kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
                           capnp::Response<capnproto::Evaluator::EvaluateResults>
                               results) mutable {
                         auto res = results.getResult();
-                        util::UnionPromiseBuilder dependencies_propagated_;
+                        util::UnionPromiseBuilder dependencies_propagated;
                         if (cache_enabled_) {
                           frontend_context_.cache_manager_.Set(request_, res);
                         }
                         for (size_t i = 0; i < executions_.size(); i++) {
                           executions_[i]->processResult(
-                              res.getProcesses()[i], dependencies_propagated_);
+                              res.getProcesses()[i], &dependencies_propagated);
                         }
-                        return std::move(dependencies_propagated_)
+                        return std::move(dependencies_propagated)
                             .Finalize()
                             .then([this]() {
                               for (auto ex : executions_) {
@@ -142,19 +142,19 @@ kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
             .eagerlyEvaluate(nullptr);
     forked_done_ = done_.fork();
   }
-  for (size_t i = 0; i < executions_.size(); i++) {
-    if (executions_[i] == ex) {
+  for (const auto& execution : executions_) {
+    if (execution == ex) {
       return forked_done_.addBranch();
     }
   }
   KJ_FAIL_ASSERT("Invalid execution for this group!");
 }  // namespace server
 
-Execution::Execution(FrontendContext& frontend_context, std::string description,
-                     ExecutionGroup& group)
-    : frontend_context_(frontend_context),
-      description_(description),
-      group_(group) {
+Execution::Execution(FrontendContext* frontend_context, std::string description,
+                     ExecutionGroup* group)
+    : frontend_context_(*frontend_context),
+      description_(std::move(description)),
+      group_(*group) {
   group_.Register(this);
 }
 
@@ -200,12 +200,12 @@ kj::Promise<void> Execution::setArgs(SetArgsContext context) {
   request_.setArgs(context.getParams().getArgs());
   return kj::READY_NOW;
 }
-kj::Promise<void> Execution::disableCache(DisableCacheContext context) {
+kj::Promise<void> Execution::disableCache(DisableCacheContext /*context*/) {
   KJ_LOG(INFO, "Execution " + description_, "Disabling cache");
   group_.disableCache();
   return kj::READY_NOW;
 }
-kj::Promise<void> Execution::makeExclusive(MakeExclusiveContext context) {
+kj::Promise<void> Execution::makeExclusive(MakeExclusiveContext /*context*/) {
   KJ_LOG(INFO, "Execution " + description_, "Exclusive mode");
   group_.setExclusive();
   return kj::READY_NOW;
@@ -264,7 +264,7 @@ kj::Promise<void> Execution::setStderrFifo(SetStderrFifoContext context) {
 kj::Promise<void> Execution::stdout(StdoutContext context) {
   KJ_ASSERT(!stdout_ && !stdout_fifo_);
   stdout_ = AddFileInfo(
-      frontend_context_.last_file_id_, frontend_context_.file_info_,
+      &frontend_context_.last_file_id_, &frontend_context_.file_info_,
       context.getResults().initFile(), context.getParams().getIsExecutable(),
       "Standard output of execution " + description_);
   KJ_LOG(INFO, "Execution " + description_,
@@ -274,7 +274,7 @@ kj::Promise<void> Execution::stdout(StdoutContext context) {
 kj::Promise<void> Execution::stderr(StderrContext context) {
   KJ_ASSERT(!stderr_ && !stderr_fifo_);
   stderr_ = AddFileInfo(
-      frontend_context_.last_file_id_, frontend_context_.file_info_,
+      &frontend_context_.last_file_id_, &frontend_context_.file_info_,
       context.getResults().initFile(), context.getParams().getIsExecutable(),
       "Standard error of execution " + description_);
   KJ_LOG(INFO, "Execution " + description_,
@@ -283,7 +283,7 @@ kj::Promise<void> Execution::stderr(StderrContext context) {
 }
 kj::Promise<void> Execution::output(OutputContext context) {
   uint32_t id = AddFileInfo(
-      frontend_context_.last_file_id_, frontend_context_.file_info_,
+      &frontend_context_.last_file_id_, &frontend_context_.file_info_,
       context.getResults().initFile(), context.getParams().getIsExecutable(),
       "Output " + std::string(context.getParams().getName()) +
           " of execution " + description_);
@@ -293,16 +293,16 @@ kj::Promise<void> Execution::output(OutputContext context) {
   outputs_.emplace(context.getParams().getName(), id);
   return kj::READY_NOW;
 }
-kj::Promise<void> Execution::notifyStart(NotifyStartContext context) {
+kj::Promise<void> Execution::notifyStart(NotifyStartContext /*context*/) {
   KJ_LOG(INFO, "Execution " + description_, "Waiting for start");
   return group_.notifyStart();
 }
 
-void Execution::addDependencies(util::UnionPromiseBuilder& dependencies) {
+void Execution::addDependencies(util::UnionPromiseBuilder* dependencies) {
   auto add_dep = [&dependencies, this](uint32_t id) {
     KJ_ASSERT(id != 0);
     frontend_context_.file_info_[id].dependencies_propagated_.AddPromise(
-        dependencies.AddPromise(
+        dependencies->AddPromise(
             frontend_context_.file_info_[id].forked_promise.addBranch(),
             description_ + " dep to " + std::to_string(id)));
   };
@@ -311,11 +311,11 @@ void Execution::addDependencies(util::UnionPromiseBuilder& dependencies) {
   for (auto& input : inputs_) {
     add_dep(input.second);
   }
-  dependencies.OnReady([this]() {
+  dependencies->OnReady([this]() {
     KJ_LOG(INFO, "Execution " + description_, "Dependencies ready");
     frontend_context_.ready_tasks_++;
   });
-  dependencies.OnFailure([this](kj::Exception exc) {
+  dependencies->OnFailure([this](kj::Exception exc) {
     // Dependencies setup failed. Remove the scheduled task
     KJ_LOG(INFO, "Execution " + description_, "Dependencies failed");
     frontend_context_.scheduled_tasks_--;
@@ -373,10 +373,10 @@ void Execution::prepareRequest() {
 
 void Execution::processResult(
     capnproto::ProcessResult::Reader result,
-    util::UnionPromiseBuilder& dependencies_propagated_, bool from_cache_) {
+    util::UnionPromiseBuilder* dependencies_propagated, bool from_cache) {
   KJ_IF_MAYBE(ctx, context_) {
     ctx->getResults().setResult(result);
-    ctx->getResults().getResult().setWasCached(from_cache_);
+    ctx->getResults().getResult().setWasCached(from_cache);
   }
   KJ_LOG(INFO, "Execution " + description_, result);
   if (result.getStatus().isInternalError()) {
@@ -409,10 +409,12 @@ void Execution::processResult(
   }
   // Reject all the non-fulfilled promises.
   util::UnionPromiseBuilder builder;
-  for (auto f : outputs_) {
+  for (const auto& f : outputs_) {
     auto& ff = frontend_context_.file_info_[f.second].promise.fulfiller;
-    if (ff) ff->reject(KJ_EXCEPTION(FAILED, "Missing file"));
-    dependencies_propagated_.AddPromise(
+    if (ff) {
+      ff->reject(KJ_EXCEPTION(FAILED, "Missing file"));
+    }
+    dependencies_propagated->AddPromise(
         std::move(
             frontend_context_.file_info_[f.second].dependencies_propagated_)
             .Finalize());
@@ -441,12 +443,13 @@ void Execution::onDependenciesFailure(kj::Exception exc) {
     KJ_LOG(INFO, description_, "Marking as failed", name, id);
     KJ_ASSERT(id != 0);
     auto& ff = frontend_context_.file_info_[id].promise.fulfiller;
-    if (ff)
+    if (ff) {
       ff->reject(KJ_EXCEPTION(FAILED, "Dependency failed: " + description_));
+    }
   };
   if (stdout_) mark_as_failed("stdout", stdout_);
   if (stderr_) mark_as_failed("stdout", stderr_);
-  for (auto f : outputs_) {
+  for (const auto& f : outputs_) {
     mark_as_failed(f.first, f.second);
   }
 }
@@ -463,7 +466,7 @@ kj::Promise<void> Execution::getResult(GetResultContext context) {
 kj::Promise<void> FrontendContext::provideFile(ProvideFileContext context) {
   std::string descr = context.getParams().getDescription();
   uint32_t id =
-      AddFileInfo(last_file_id_, file_info_, context.getResults().initFile(),
+      AddFileInfo(&last_file_id_, &file_info_, context.getResults().initFile(),
                   context.getParams().getIsExecutable(), descr);
   KJ_LOG(INFO, "Generating file with id " + std::to_string(id), "" + descr);
   KJ_ASSERT(id != 0);
@@ -475,9 +478,9 @@ kj::Promise<void> FrontendContext::addExecution(AddExecutionContext context) {
   KJ_LOG(INFO, "Adding execution " +
                    std::string(context.getParams().getDescription()));
   groups_.push_back(
-      kj::heap<ExecutionGroup>(*this, context.getParams().getDescription()));
+      kj::heap<ExecutionGroup>(this, context.getParams().getDescription()));
   context.getResults().setExecution(kj::heap<Execution>(
-      *this, context.getParams().getDescription(), *groups_.back()));
+      this, context.getParams().getDescription(), groups_.back()));
   return kj::READY_NOW;
 }
 
@@ -486,7 +489,7 @@ kj::Promise<void> FrontendContext::addExecutionGroup(
   KJ_LOG(INFO, "Adding execution group " +
                    std::string(context.getParams().getDescription()));
   context.getResults().setGroup(
-      kj::heap<ExecutionGroup>(*this, context.getParams().getDescription()));
+      kj::heap<ExecutionGroup>(this, context.getParams().getDescription()));
   return kj::READY_NOW;
 }
 kj::Promise<void> FrontendContext::startEvaluation(
@@ -578,7 +581,7 @@ kj::Promise<void> FrontendContext::getFileContents(
       .exclusiveJoin(forked_early_stop_.addBranch());
 }
 kj::Promise<void> FrontendContext::stopEvaluation(
-    StopEvaluationContext context) {
+    StopEvaluationContext /*context*/) {
   KJ_LOG(INFO, "Early stop");
   *canceled_ = true;
   evaluation_early_stop_.fulfiller->reject(
@@ -588,7 +591,7 @@ kj::Promise<void> FrontendContext::stopEvaluation(
 
 kj::Promise<void> Server::registerFrontend(RegisterFrontendContext context) {
   context.getResults().setContext(
-      kj::heap<FrontendContext>(dispatcher_, cache_manager_));
+      kj::heap<FrontendContext>(&dispatcher_, &cache_manager_));
   return kj::READY_NOW;
 }
 

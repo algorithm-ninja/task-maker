@@ -20,7 +20,7 @@ class Dispatcher {
   kj::Promise<capnp::Response<capnproto::Evaluator::EvaluateResults>>
   AddRequest(capnproto::Request::Reader request,
              kj::Own<kj::PromiseFulfiller<void>> notify,
-             std::shared_ptr<bool>& canceled) KJ_WARN_UNUSED_RESULT;
+             const std::shared_ptr<bool>& canceled) KJ_WARN_UNUSED_RESULT;
 
  private:
   // TODO: I could not make a Queue<Evaluator, void> work, for some reason

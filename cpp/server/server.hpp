@@ -31,35 +31,35 @@ class ExecutionGroup;
 
 class Execution : public capnproto::Execution::Server {
  public:
-  KJ_DISALLOW_COPY(Execution);
-  Execution(FrontendContext& frontend_context, std::string description,
-            ExecutionGroup& group);
+  Execution(FrontendContext* frontend_context, std::string description,
+            ExecutionGroup* group);
 
-  kj::Promise<void> setExecutablePath(SetExecutablePathContext context);
-  kj::Promise<void> setExecutable(SetExecutableContext context);
-  kj::Promise<void> setStdin(SetStdinContext context);
-  kj::Promise<void> addInput(AddInputContext context);
-  kj::Promise<void> setArgs(SetArgsContext context);
-  kj::Promise<void> disableCache(DisableCacheContext context);
-  kj::Promise<void> makeExclusive(MakeExclusiveContext context);
-  kj::Promise<void> setLimits(SetLimitsContext context);
-  kj::Promise<void> setExtraTime(SetExtraTimeContext context);
-  kj::Promise<void> addFifo(AddFifoContext context);
-  kj::Promise<void> setStdinFifo(SetStdinFifoContext context);
-  kj::Promise<void> setStdoutFifo(SetStdoutFifoContext context);
-  kj::Promise<void> setStderrFifo(SetStderrFifoContext context);
-  kj::Promise<void> stdout(StdoutContext context);
-  kj::Promise<void> stderr(StderrContext context);
-  kj::Promise<void> output(OutputContext context);
-  kj::Promise<void> notifyStart(NotifyStartContext context);
-  kj::Promise<void> getResult(GetResultContext context);
+  kj::Promise<void> setExecutablePath(
+      SetExecutablePathContext context) override;
+  kj::Promise<void> setExecutable(SetExecutableContext context) override;
+  kj::Promise<void> setStdin(SetStdinContext context) override;
+  kj::Promise<void> addInput(AddInputContext context) override;
+  kj::Promise<void> setArgs(SetArgsContext context) override;
+  kj::Promise<void> disableCache(DisableCacheContext context) override;
+  kj::Promise<void> makeExclusive(MakeExclusiveContext context) override;
+  kj::Promise<void> setLimits(SetLimitsContext context) override;
+  kj::Promise<void> setExtraTime(SetExtraTimeContext context) override;
+  kj::Promise<void> addFifo(AddFifoContext context) override;
+  kj::Promise<void> setStdinFifo(SetStdinFifoContext context) override;
+  kj::Promise<void> setStdoutFifo(SetStdoutFifoContext context) override;
+  kj::Promise<void> setStderrFifo(SetStderrFifoContext context) override;
+  kj::Promise<void> stdout(StdoutContext context) override;
+  kj::Promise<void> stderr(StderrContext context) override;
+  kj::Promise<void> output(OutputContext context) override;
+  kj::Promise<void> notifyStart(NotifyStartContext context) override;
+  kj::Promise<void> getResult(GetResultContext context) override;
 
  private:
-  void addDependencies(util::UnionPromiseBuilder& dependencies);
+  void addDependencies(util::UnionPromiseBuilder* dependencies);
   void prepareRequest();
   void processResult(capnproto::ProcessResult::Reader result,
-                     util::UnionPromiseBuilder& dependencies_propagated_,
-                     bool from_cache_ = false);
+                     util::UnionPromiseBuilder* dependencies_propagated,
+                     bool from_cache = false);
   void onDependenciesFailure(kj::Exception exc);
   void onDependenciesPropagated();
 
@@ -88,14 +88,15 @@ class Execution : public capnproto::Execution::Server {
 class ExecutionGroup : public capnproto::ExecutionGroup::Server {
  public:
   void Register(Execution* ex);
-  ExecutionGroup(FrontendContext& frontend_context, std::string description)
-      : frontend_context_(frontend_context), description_(description) {}
+  ExecutionGroup(FrontendContext* frontend_context, std::string description)
+      : frontend_context_(*frontend_context),
+        description_(std::move(description)) {}
   void setExclusive();
   void disableCache();
   kj::Promise<void> notifyStart();
   kj::Promise<void> Finalize(Execution* ex);
-  kj::Promise<void> addExecution(AddExecutionContext context);
-  kj::Promise<void> createFifo(CreateFifoContext context);
+  kj::Promise<void> addExecution(AddExecutionContext context) override;
+  kj::Promise<void> createFifo(CreateFifoContext context) override;
 
  private:
   FrontendContext& frontend_context_;
@@ -115,18 +116,22 @@ class ExecutionGroup : public capnproto::ExecutionGroup::Server {
 
 class FrontendContext : public capnproto::FrontendContext::Server {
  public:
-  KJ_DISALLOW_COPY(FrontendContext);
-  FrontendContext(Dispatcher& dispatcher, CacheManager& cache_manager)
-      : dispatcher_(dispatcher),
+  FrontendContext(Dispatcher* dispatcher, CacheManager* cache_manager)
+      : dispatcher_(*dispatcher),
         builder_(false),
-        cache_manager_(cache_manager) {}
+        cache_manager_(*cache_manager) {}
   ~FrontendContext() { *canceled_ = true; }
-  kj::Promise<void> provideFile(ProvideFileContext context);
-  kj::Promise<void> addExecution(AddExecutionContext context);
-  kj::Promise<void> addExecutionGroup(AddExecutionGroupContext context);
-  kj::Promise<void> startEvaluation(StartEvaluationContext context);
-  kj::Promise<void> getFileContents(GetFileContentsContext context);
-  kj::Promise<void> stopEvaluation(StopEvaluationContext context);
+  FrontendContext(const FrontendContext&) = delete;
+  FrontendContext(FrontendContext&&) = delete;
+  FrontendContext& operator=(const FrontendContext&) = delete;
+  FrontendContext& operator=(FrontendContext&&) = delete;
+  kj::Promise<void> provideFile(ProvideFileContext context) override;
+  kj::Promise<void> addExecution(AddExecutionContext context) override;
+  kj::Promise<void> addExecutionGroup(
+      AddExecutionGroupContext context) override;
+  kj::Promise<void> startEvaluation(StartEvaluationContext context) override;
+  kj::Promise<void> getFileContents(GetFileContentsContext context) override;
+  kj::Promise<void> stopEvaluation(StopEvaluationContext context) override;
 
  private:
   friend class Execution;
@@ -152,9 +157,10 @@ class FrontendContext : public capnproto::FrontendContext::Server {
 
 class Server : public capnproto::MainServer::Server {
  public:
-  kj::Promise<void> registerFrontend(RegisterFrontendContext context);
-  kj::Promise<void> registerEvaluator(RegisterEvaluatorContext context);
-  kj::Promise<void> requestFile(RequestFileContext context);
+  kj::Promise<void> registerFrontend(RegisterFrontendContext context) override;
+  kj::Promise<void> registerEvaluator(
+      RegisterEvaluatorContext context) override;
+  kj::Promise<void> requestFile(RequestFileContext context) override;
   friend class FrontendContext;
 
  private:

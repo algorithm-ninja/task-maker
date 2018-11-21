@@ -95,20 +95,20 @@ kj::Promise<void> Dispatcher::AddEvaluator(
 
 kj::Promise<capnp::Response<capnproto::Evaluator::EvaluateResults>>
 Dispatcher::AddRequest(capnproto::Request::Reader request,
-                       kj::Own<kj::PromiseFulfiller<void>> fulfiller,
-                       std::shared_ptr<bool>& canceled) {
+                       kj::Own<kj::PromiseFulfiller<void>> notify,
+                       const std::shared_ptr<bool>& canceled) {
   if (evaluators_.empty()) {
     auto request_promise = kj::newPromiseAndFulfiller<
         capnp::Response<capnproto::Evaluator::EvaluateResults>>();
     requests_.emplace_back(request, std::move(request_promise.fulfiller),
-                           std::move(fulfiller), canceled);
+                           std::move(notify), canceled);
     return std::move(request_promise.promise);
   }
   auto evaluator = std::move(evaluators_.back());
   evaluators_.pop_back();
   auto evaluator_fulfiller = std::move(fulfillers_.back());
   fulfillers_.pop_back();
-  fulfiller->fulfill();
+  notify->fulfill();
   auto p = HandleRequest(evaluator, request);
   auto ff = evaluator_fulfiller.get();
   return p
