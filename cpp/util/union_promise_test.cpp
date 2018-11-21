@@ -151,6 +151,29 @@ TEST(UnionPromise, SinglePromisesRejectedAfterFinalize) {
   EXPECT_TRUE(errored);
 }
 
+// NOLINTNEXTLINE
+TEST(UnionPromise, SinglePromisesRejectedWithException) {
+  kj::EventLoop loop;
+  kj::WaitScope waitScope(loop);
+
+  auto pair = kj::newPromiseAndFulfiller<void>();
+
+  util::UnionPromiseBuilder builder;
+  builder.AddPromise(
+      std::move(pair.promise).then([]() { throw std::runtime_error("Ups"); }));
+
+  pair.fulfiller->fulfill();
+
+  bool finalized = false;
+  bool errored = false;
+  std::move(builder)
+      .Finalize()
+      .then([&]() { finalized = true; }, [&](auto ex) { errored = true; })
+      .wait(waitScope);
+  EXPECT_FALSE(finalized);
+  EXPECT_TRUE(errored);
+}
+
 /*
  * Multiple Promises fulfilled
  */
@@ -277,6 +300,33 @@ TEST(UnionPromise, MultiplePromisesOneRejectedBeforeAdd) {
 }
 
 // NOLINTNEXTLINE
+TEST(UnionPromise, MultiplePromisesOneRejectedBeforeAddWithException) {
+  kj::EventLoop loop;
+  kj::WaitScope waitScope(loop);
+
+  auto pair1 = kj::newPromiseAndFulfiller<void>();
+  auto pair2 = kj::newPromiseAndFulfiller<void>();
+
+  pair1.fulfiller->fulfill();
+  pair2.fulfiller->fulfill();
+
+  util::UnionPromiseBuilder builder;
+  builder.AddPromise(std::move(pair1.promise));
+  builder.AddPromise(std::move(pair2.promise).then([]() {
+    throw std::runtime_error("Nope");
+  }));
+
+  bool finalized = false;
+  bool errored = false;
+  std::move(builder)
+      .Finalize()
+      .then([&]() { finalized = true; }, [&](auto ex) { errored = true; })
+      .wait(waitScope);
+  EXPECT_FALSE(finalized);
+  EXPECT_TRUE(errored);
+}
+
+// NOLINTNEXTLINE
 TEST(UnionPromise, MultiplePromisesOneRejectedAfterAdd) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -293,6 +343,34 @@ TEST(UnionPromise, MultiplePromisesOneRejectedAfterAdd) {
   pair2.fulfiller->reject(kj::Exception(kj::Exception::Type::FAILED,
                                         kj::heapString(__FILE__), __LINE__,
                                         kj::heapString("Oh no!")));
+
+  bool finalized = false;
+  bool errored = false;
+  std::move(builder)
+      .Finalize()
+      .then([&]() { finalized = true; }, [&](auto ex) { errored = true; })
+      .wait(waitScope);
+  EXPECT_FALSE(finalized);
+  EXPECT_TRUE(errored);
+}
+
+// NOLINTNEXTLINE
+TEST(UnionPromise, MultiplePromisesOneRejectedAfterAddWithException) {
+  kj::EventLoop loop;
+  kj::WaitScope waitScope(loop);
+
+  auto pair1 = kj::newPromiseAndFulfiller<void>();
+  auto pair2 = kj::newPromiseAndFulfiller<void>();
+
+  pair1.fulfiller->fulfill();
+
+  util::UnionPromiseBuilder builder;
+  builder.AddPromise(std::move(pair1.promise));
+  builder.AddPromise(std::move(pair2.promise).then([]() {
+    throw std::runtime_error("Nope");
+  }));
+
+  pair2.fulfiller->fulfill();
 
   bool finalized = false;
   bool errored = false;
@@ -326,6 +404,33 @@ TEST(UnionPromise, MultiplePromisesOneRejectedAfterFinalize) {
   pair2.fulfiller->reject(kj::Exception(kj::Exception::Type::FAILED,
                                         kj::heapString(__FILE__), __LINE__,
                                         kj::heapString("Oh no!")));
+  finalizer.wait(waitScope);
+  EXPECT_FALSE(finalized);
+  EXPECT_TRUE(errored);
+}
+
+// NOLINTNEXTLINE
+TEST(UnionPromise, MultiplePromisesOneRejectedAfterFinalizeWithException) {
+  kj::EventLoop loop;
+  kj::WaitScope waitScope(loop);
+
+  auto pair1 = kj::newPromiseAndFulfiller<void>();
+  auto pair2 = kj::newPromiseAndFulfiller<void>();
+
+  pair1.fulfiller->fulfill();
+
+  util::UnionPromiseBuilder builder;
+  builder.AddPromise(std::move(pair1.promise));
+  builder.AddPromise(std::move(pair2.promise).then([]() {
+    throw std::runtime_error("Nope");
+  }));
+
+  bool finalized = false;
+  bool errored = false;
+  auto finalizer = std::move(builder).Finalize().then(
+      [&]() { finalized = true; }, [&](auto ex) { errored = true; });
+
+  pair2.fulfiller->fulfill();
   finalizer.wait(waitScope);
   EXPECT_FALSE(finalized);
   EXPECT_TRUE(errored);
@@ -474,6 +579,43 @@ TEST(UnionPromise, ChainedPromises) {
   A.fulfiller->fulfill();
   finalizer.wait(waitScope);
   EXPECT_TRUE(finalized);
+}
+
+// NOLINTNEXTLINE
+TEST(UnionPromise, RejectedWithException) {
+  kj::EventLoop loop;
+  kj::WaitScope waitScope(loop);
+
+  // A --- [B] -- D*
+  //   \-- C*
+
+  auto A = kj::newPromiseAndFulfiller<void>();
+  auto forkedA = A.promise.fork();
+
+  auto B = kj::newPromiseAndFulfiller<void>();
+  auto C = kj::newPromiseAndFulfiller<void>();
+  auto D = kj::newPromiseAndFulfiller<void>();
+
+  auto tmp1 = forkedA.addBranch()
+                  .then([&]() { B.fulfiller->fulfill(); })
+                  .eagerlyEvaluate(nullptr);
+  auto tmp2 = forkedA.addBranch()
+                  .then([&]() { C.fulfiller->fulfill(); })
+                  .eagerlyEvaluate(nullptr);
+  auto tmp3 = std::move(B.promise)
+                  .then([&]() { throw std::runtime_error("auch"); })
+                  .eagerlyEvaluate(nullptr);
+
+  util::UnionPromiseBuilder builder;
+  builder.AddPromise(std::move(C.promise));
+  builder.AddPromise(std::move(D.promise));
+
+  bool finalized = false;
+  auto finalizer =
+      std::move(builder).Finalize().then([&]() { finalized = true; });
+  A.fulfiller->fulfill();
+  EXPECT_THROW(finalizer.wait(waitScope), kj::Exception);  // NOLINT
+  EXPECT_FALSE(finalized);
 }
 
 /*
