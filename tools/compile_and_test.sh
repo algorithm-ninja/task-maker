@@ -7,7 +7,7 @@ if [ "$CI" != "true" ]; then
     exit 1
 fi
 
-if [ "$TOOLCHAIN" == "archlinux" ]; then
+if [[ "$TOOLCHAIN" == archlinux* ]]; then
     # ensure that the system is up-to-date
     yay -Syu --needed --noconfirm --mflags --nocheck
     # the archlinux build user is not root
