@@ -10,7 +10,7 @@ WORKDIR /build
 # setup the system
 # yes, i feel guilty for "pip install", but it's only for the tests
 RUN apt update -y && \
-    apt install -y g++ gcc git cmake make libdw-dev \
+    apt install -y g++ gcc git make libdw-dev wget \
                    python3 python3-setuptools python3-pip \
                    python3-traits python3-ruamel.yaml python3-pytoml \
                    fpc rustc zip && \
@@ -18,6 +18,10 @@ RUN apt update -y && \
     ln -sf $(which $CC) /usr/bin/cc && \
     ln -sf $(which $CXX) /usr/bin/c++ && \
     pip3 install pytest
+
+RUN wget -O installer.sh https://github.com/Kitware/CMake/releases/download/v3.13.0/cmake-3.13.0-Linux-x86_64.sh && \
+    sh installer.sh --skip-license --prefix=/usr && \
+    rm installer.sh
 
 RUN mkdir /hunter-root
 
