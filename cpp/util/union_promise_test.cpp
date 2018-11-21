@@ -13,6 +13,7 @@ kj::Exception getError(std::string what = "on no!") {
                        kj::str(what));
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, NoPromises) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -24,13 +25,14 @@ TEST(UnionPromise, NoPromises) {
       .Finalize()
       .then([&]() { finalized = true; })
       .wait(waitScope);
-  ASSERT_TRUE(finalized);
+  EXPECT_TRUE(finalized);
 }
 
 /*
  * Single Promise fulfilled
  */
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, SinglePromiseFulfilledBeforeAdd) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -45,9 +47,10 @@ TEST(UnionPromise, SinglePromiseFulfilledBeforeAdd) {
       .Finalize()
       .then([&]() { finalized = true; })
       .wait(waitScope);
-  ASSERT_TRUE(finalized);
+  EXPECT_TRUE(finalized);
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, SinglePromiseFulfilledAfterAdd) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -62,9 +65,10 @@ TEST(UnionPromise, SinglePromiseFulfilledAfterAdd) {
       .Finalize()
       .then([&]() { finalized = true; })
       .wait(waitScope);
-  ASSERT_TRUE(finalized);
+  EXPECT_TRUE(finalized);
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, SinglePromiseFulfilledAfterFinalize) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -76,13 +80,14 @@ TEST(UnionPromise, SinglePromiseFulfilledAfterFinalize) {
       std::move(builder).Finalize().then([&]() { finalized = true; });
   pair.fulfiller->fulfill();
   finalizer.wait(waitScope);
-  ASSERT_TRUE(finalized);
+  EXPECT_TRUE(finalized);
 }
 
 /*
  * Single Promise rejected
  */
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, SinglePromisesRejectedBefore) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -99,10 +104,11 @@ TEST(UnionPromise, SinglePromisesRejectedBefore) {
       .Finalize()
       .then([&]() { finalized = true; }, [&](auto ex) { errored = true; })
       .wait(waitScope);
-  ASSERT_FALSE(finalized);
-  ASSERT_TRUE(errored);
+  EXPECT_FALSE(finalized);
+  EXPECT_TRUE(errored);
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, SinglePromisesRejectedAfterAdd) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -120,10 +126,11 @@ TEST(UnionPromise, SinglePromisesRejectedAfterAdd) {
       .Finalize()
       .then([&]() { finalized = true; }, [&](auto ex) { errored = true; })
       .wait(waitScope);
-  ASSERT_FALSE(finalized);
-  ASSERT_TRUE(errored);
+  EXPECT_FALSE(finalized);
+  EXPECT_TRUE(errored);
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, SinglePromisesRejectedAfterFinalize) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -140,14 +147,15 @@ TEST(UnionPromise, SinglePromisesRejectedAfterFinalize) {
 
   pair.fulfiller->reject(getError());
   finalizer.wait(waitScope);
-  ASSERT_FALSE(finalized);
-  ASSERT_TRUE(errored);
+  EXPECT_FALSE(finalized);
+  EXPECT_TRUE(errored);
 }
 
 /*
  * Multiple Promises fulfilled
  */
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, MultiplePromisesFulfilledBeforeAdd) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -166,9 +174,10 @@ TEST(UnionPromise, MultiplePromisesFulfilledBeforeAdd) {
       .Finalize()
       .then([&]() { finalized = true; })
       .wait(waitScope);
-  ASSERT_TRUE(finalized);
+  EXPECT_TRUE(finalized);
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, MultiplePromisesFulfilledBeforeAndAfterAdd) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -188,9 +197,10 @@ TEST(UnionPromise, MultiplePromisesFulfilledBeforeAndAfterAdd) {
       .Finalize()
       .then([&]() { finalized = true; })
       .wait(waitScope);
-  ASSERT_TRUE(finalized);
+  EXPECT_TRUE(finalized);
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, MultiplePromisesFulfilledAfterAdd) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -210,9 +220,10 @@ TEST(UnionPromise, MultiplePromisesFulfilledAfterAdd) {
       .Finalize()
       .then([&]() { finalized = true; })
       .wait(waitScope);
-  ASSERT_TRUE(finalized);
+  EXPECT_TRUE(finalized);
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, MultiplePromisesFulfilledAfterFinalize) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -231,13 +242,14 @@ TEST(UnionPromise, MultiplePromisesFulfilledAfterFinalize) {
 
   pair2.fulfiller->fulfill();
   finalizer.wait(waitScope);
-  ASSERT_TRUE(finalized);
+  EXPECT_TRUE(finalized);
 }
 
 /*
  * Multiple Promises rejected
  */
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, MultiplePromisesOneRejectedBeforeAdd) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -260,10 +272,11 @@ TEST(UnionPromise, MultiplePromisesOneRejectedBeforeAdd) {
       .Finalize()
       .then([&]() { finalized = true; }, [&](auto ex) { errored = true; })
       .wait(waitScope);
-  ASSERT_FALSE(finalized);
-  ASSERT_TRUE(errored);
+  EXPECT_FALSE(finalized);
+  EXPECT_TRUE(errored);
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, MultiplePromisesOneRejectedAfterAdd) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -287,10 +300,11 @@ TEST(UnionPromise, MultiplePromisesOneRejectedAfterAdd) {
       .Finalize()
       .then([&]() { finalized = true; }, [&](auto ex) { errored = true; })
       .wait(waitScope);
-  ASSERT_FALSE(finalized);
-  ASSERT_TRUE(errored);
+  EXPECT_FALSE(finalized);
+  EXPECT_TRUE(errored);
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, MultiplePromisesOneRejectedAfterFinalize) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -313,14 +327,15 @@ TEST(UnionPromise, MultiplePromisesOneRejectedAfterFinalize) {
                                         kj::heapString(__FILE__), __LINE__,
                                         kj::heapString("Oh no!")));
   finalizer.wait(waitScope);
-  ASSERT_FALSE(finalized);
-  ASSERT_TRUE(errored);
+  EXPECT_FALSE(finalized);
+  EXPECT_TRUE(errored);
 }
 
 /*
  * Use cases
  */
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, NonFatalFailures) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -342,12 +357,13 @@ TEST(UnionPromise, NonFatalFailures) {
       .Finalize()
       .then([&]() { success = true; }, [&](auto ex) { errored = true; })
       .wait(waitScope);
-  ASSERT_TRUE(success);
-  ASSERT_FALSE(errored);
-  ASSERT_TRUE(onReadyCalled);
-  ASSERT_FALSE(onFailureCalled);
+  EXPECT_TRUE(success);
+  EXPECT_FALSE(errored);
+  EXPECT_TRUE(onReadyCalled);
+  EXPECT_FALSE(onFailureCalled);
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, RandomResolveOrder) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -363,7 +379,7 @@ TEST(UnionPromise, RandomResolveOrder) {
     fulfillers[i] = std::move(pair.fulfiller);
   }
 
-  std::mt19937 rnd(SEED);
+  std::mt19937 rnd(SEED);  // NOLINT
   std::shuffle(fulfillers.begin(), fulfillers.end(), rnd);
 
   util::UnionPromiseBuilder builder;
@@ -379,9 +395,10 @@ TEST(UnionPromise, RandomResolveOrder) {
       .Finalize()
       .then([&]() { finalized = true; })
       .wait(waitScope);
-  ASSERT_TRUE(finalized);
+  EXPECT_TRUE(finalized);
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, RandomResolveOrderOneFailed) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -397,7 +414,7 @@ TEST(UnionPromise, RandomResolveOrderOneFailed) {
     fulfillers[i] = std::move(pair.fulfiller);
   }
 
-  std::mt19937 rnd(SEED);
+  std::mt19937 rnd(SEED);  // NOLINT
   std::shuffle(fulfillers.begin(), fulfillers.end(), rnd);
 
   util::UnionPromiseBuilder builder;
@@ -406,10 +423,11 @@ TEST(UnionPromise, RandomResolveOrderOneFailed) {
   }
   size_t failIndex = rnd() % NUM_PROMISES;
   for (size_t i = 0; i < NUM_PROMISES; i++) {
-    if (i == failIndex)
+    if (i == failIndex) {
       fulfillers[i]->reject(getError());
-    else
+    } else {
       fulfillers[i]->fulfill();
+    }
   }
 
   bool finalized = false;
@@ -418,10 +436,11 @@ TEST(UnionPromise, RandomResolveOrderOneFailed) {
       .Finalize()
       .then([&]() { finalized = true; }, [&](auto ex) { errored = true; })
       .wait(waitScope);
-  ASSERT_FALSE(finalized);
-  ASSERT_TRUE(errored);
+  EXPECT_FALSE(finalized);
+  EXPECT_TRUE(errored);
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, ChainedPromises) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -454,13 +473,14 @@ TEST(UnionPromise, ChainedPromises) {
       std::move(builder).Finalize().then([&]() { finalized = true; });
   A.fulfiller->fulfill();
   finalizer.wait(waitScope);
-  ASSERT_TRUE(finalized);
+  EXPECT_TRUE(finalized);
 }
 
 /*
  * Callback methods
  */
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, OnReady) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -476,10 +496,11 @@ TEST(UnionPromise, OnReady) {
   builder.OnFailure([&errored](auto ex) { errored = true; });
 
   std::move(builder).Finalize().wait(waitScope);
-  ASSERT_TRUE(done.all());
-  ASSERT_FALSE(errored);
+  EXPECT_TRUE(done.all());
+  EXPECT_FALSE(errored);
 }
 
+// NOLINTNEXTLINE
 TEST(UnionPromise, OnFailure) {
   kj::EventLoop loop;
   kj::WaitScope waitScope(loop);
@@ -500,8 +521,8 @@ TEST(UnionPromise, OnFailure) {
   pair.fulfiller->reject(getError());
 
   std::move(builder).Finalize().then([]() {}, [](auto ex) {}).wait(waitScope);
-  ASSERT_TRUE(failCallbacks.all());
-  ASSERT_FALSE(succeded);
+  EXPECT_TRUE(failCallbacks.all());
+  EXPECT_FALSE(succeded);
 }
 
 }  // namespace

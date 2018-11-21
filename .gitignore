@@ -1,6 +1,5 @@
-build
-_build
-_builds
+build*
+_build*
 
 *.swp
 
