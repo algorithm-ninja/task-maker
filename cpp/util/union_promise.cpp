@@ -125,8 +125,4 @@ kj::Promise<void> UnionPromiseBuilder::Finalize() && {
   return std::move(p_.promise);
 }
 
-int UnionPromiseBuilder::GetMissing() {
-  return info_->promises.size() - info_->resolved;
-}
-
 }  // namespace util

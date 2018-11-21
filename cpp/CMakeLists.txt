@@ -24,6 +24,8 @@ target_link_libraries(cpp_util
 if (TRAVIS)
   target_compile_definitions(cpp_util PRIVATE REMOVE_ALSO_MOUNT_POINTS=1)
 endif()
+add_executable(union_promise_test util/union_promise_test.cpp)
+target_link_libraries(union_promise_test cpp_util GTest::Main)
 
 add_library(cpp_sandbox
   sandbox/sandbox.cpp
@@ -108,3 +110,4 @@ target_link_libraries(task-maker
 target_compile_definitions(task-maker PRIVATE TASK_MAKER_VERSION="${GIT_FULL_VERSION}")
 
 gtest_discover_tests(sandbox_unix_test)
+gtest_discover_tests(union_promise_test)
