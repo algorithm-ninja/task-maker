@@ -21,14 +21,18 @@ matrix:
         - WHAT=test
         - TOOLCHAIN=archlinux-clang
         - ADDRESSSANITIZER=ON
-      deploy: []
+      branches:
+        except:
+        - /^v.*/
     - env:
         - WHAT=test-AUR-package
         - TOOLCHAIN=archlinux
       script:
         - tools/check_docker.sh
         - docker run --rm edomora97/task-maker-builder-archlinux:latest yay -Syu --noconfirm task-maker-git
-      deploy: []
+      branches:
+        except:
+        - /^v.*/
     - env:
         - WHAT=clang-tidy
         - TOOLCHAIN=archlinux-clang
@@ -45,7 +49,9 @@ matrix:
             --cap-add SYS_PTRACE
             edomora97/task-maker-builder-$TOOLCHAIN:latest
             /build/tools/compile_and_lint.sh
-      deploy: []
+      branches:
+        except:
+        - /^v.*/
     - os: osx
       env:
         - WHAT=test
