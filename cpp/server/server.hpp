@@ -48,9 +48,9 @@ class Execution : public capnproto::Execution::Server {
   kj::Promise<void> setStdinFifo(SetStdinFifoContext context) override;
   kj::Promise<void> setStdoutFifo(SetStdoutFifoContext context) override;
   kj::Promise<void> setStderrFifo(SetStderrFifoContext context) override;
-  kj::Promise<void> stdout(StdoutContext context) override;
-  kj::Promise<void> stderr(StderrContext context) override;
-  kj::Promise<void> output(OutputContext context) override;
+  kj::Promise<void> getStdout(GetStdoutContext context) override;
+  kj::Promise<void> getStderr(GetStderrContext context) override;
+  kj::Promise<void> getOutput(GetOutputContext context) override;
   kj::Promise<void> notifyStart(NotifyStartContext context) override;
   kj::Promise<void> getResult(GetResultContext context) override;
 

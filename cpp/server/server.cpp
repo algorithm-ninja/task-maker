@@ -261,7 +261,7 @@ kj::Promise<void> Execution::setStderrFifo(SetStderrFifoContext context) {
   stderr_fifo_ = context.getParams().getFifo().getId();
   return kj::READY_NOW;
 }
-kj::Promise<void> Execution::stdout(StdoutContext context) {
+kj::Promise<void> Execution::getStdout(GetStdoutContext context) {
   KJ_ASSERT(!stdout_ && !stdout_fifo_);
   stdout_ = AddFileInfo(
       &frontend_context_.last_file_id_, &frontend_context_.file_info_,
@@ -271,7 +271,7 @@ kj::Promise<void> Execution::stdout(StdoutContext context) {
          "Creating stdout file with id " + std::to_string(stdout_));
   return kj::READY_NOW;
 }
-kj::Promise<void> Execution::stderr(StderrContext context) {
+kj::Promise<void> Execution::getStderr(GetStderrContext context) {
   KJ_ASSERT(!stderr_ && !stderr_fifo_);
   stderr_ = AddFileInfo(
       &frontend_context_.last_file_id_, &frontend_context_.file_info_,
@@ -281,7 +281,7 @@ kj::Promise<void> Execution::stderr(StderrContext context) {
          "Creating stderr file with id " + std::to_string(stderr_));
   return kj::READY_NOW;
 }
-kj::Promise<void> Execution::output(OutputContext context) {
+kj::Promise<void> Execution::getOutput(GetOutputContext context) {
   uint32_t id = AddFileInfo(
       &frontend_context_.last_file_id_, &frontend_context_.file_info_,
       context.getResults().initFile(), context.getParams().getIsExecutable(),

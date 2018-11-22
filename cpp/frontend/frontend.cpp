@@ -258,21 +258,21 @@ void Execution::setExtraTime(float extra_time) {
   my_builder_.AddPromise(req.send().ignoreResult());
 }
 
-File* Execution::stdout(bool is_executable) {
-  auto req = execution_.stdoutRequest();
+File* Execution::getStdout(bool is_executable) {
+  auto req = execution_.getStdoutRequest();
   req.setIsExecutable(is_executable);
   files_.push_back(File::New(req.send(), &frontend_, is_executable));
   return files_.back().get();
 }
 
-File* Execution::stderr(bool is_executable) {
-  auto req = execution_.stderrRequest();
+File* Execution::getStderr(bool is_executable) {
+  auto req = execution_.getStderrRequest();
   req.setIsExecutable(is_executable);
   files_.push_back(File::New(req.send(), &frontend_, is_executable));
   return files_.back().get();
 }
-File* Execution::output(const std::string& name, bool is_executable) {
-  auto req = execution_.outputRequest();
+File* Execution::getOutput(const std::string& name, bool is_executable) {
+  auto req = execution_.getOutputRequest();
   req.setIsExecutable(is_executable);
   req.setName(name);
   files_.push_back(File::New(req.send(), &frontend_, is_executable));

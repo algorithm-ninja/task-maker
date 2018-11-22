@@ -140,11 +140,11 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def("makeExclusive", &frontend::Execution::makeExclusive)
       .def("setLimits", &frontend::Execution::setLimits, "limits"_a)
       .def("setExtraTime", &frontend::Execution::setExtraTime, "extra_time"_a)
-      .def("stdout", &frontend::Execution::stdout,
+      .def("stdout", &frontend::Execution::getStdout,
            pybind11::return_value_policy::reference, "is_executable"_a = false)
-      .def("stderr", &frontend::Execution::stderr,
+      .def("stderr", &frontend::Execution::getStderr,
            pybind11::return_value_policy::reference, "is_executable"_a = false)
-      .def("output", &frontend::Execution::output,
+      .def("output", &frontend::Execution::getOutput,
            pybind11::return_value_policy::reference, "name"_a,
            "is_executable"_a = false)
       .def("notifyStart",

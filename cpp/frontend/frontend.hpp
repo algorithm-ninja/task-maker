@@ -191,9 +191,9 @@ class Execution {
   void setLimits(const Resources& limits);
   void setExtraTime(float extra_time);
 
-  File* stdout(bool is_executable);
-  File* stderr(bool is_executable);
-  File* output(const std::string& name, bool is_executable);
+  File* getStdout(bool is_executable);
+  File* getStderr(bool is_executable);
+  File* getOutput(const std::string& name, bool is_executable);
 
   void notifyStart(const std::function<void()>& callback);
 

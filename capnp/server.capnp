@@ -36,9 +36,9 @@ interface Execution {
   setExtraTime @8 (extraTime: Float32);
 
   # Get file IDs representing outputs
-  stdout @9 (isExecutable :Bool = false) -> (file :File);
-  stderr @10 (isExecutable :Bool = false) -> (file :File);
-  output @11 (name :Text, isExecutable :Bool = false) -> (file :File);
+  getStdout @9 (isExecutable :Bool = false) -> (file :File);
+  getStderr @10 (isExecutable :Bool = false) -> (file :File);
+  getOutput @11 (name :Text, isExecutable :Bool = false) -> (file :File);
 
   # Add a FIFO
   setStdinFifo @12(fifo :Fifo);
