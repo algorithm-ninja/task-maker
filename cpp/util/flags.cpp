@@ -5,7 +5,7 @@ std::string Flags::pidfile;
 std::string Flags::store_directory = "files";
 int32_t Flags::port = 7070;
 uint32_t Flags::cache_size = 0;
-std::string Flags::log_file = "";
+std::string Flags::log_file;
 
 std::string Flags::server;
 std::string Flags::name = "unnamed_worker";

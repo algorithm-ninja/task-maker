@@ -8,36 +8,36 @@ std::vector<std::string> split(const std::string& s, char delim) {
   return elems;
 }
 
-std::function<bool()> setBool(bool& var) {
+std::function<bool()> setBool(bool* var) {
   return [&var]() {
-    var = true;
+    *var = true;
     return true;
   };
 };
 
-std::function<bool(kj::StringPtr)> setString(std::string& var) {
+std::function<bool(kj::StringPtr)> setString(std::string* var) {
   return [&var](kj::StringPtr p) {
-    var = p;
+    *var = p;
     return true;
   };
 };
 
-std::function<bool(kj::StringPtr)> setInt(int& var) {
+std::function<bool(kj::StringPtr)> setInt(int* var) {
   return [&var](kj::StringPtr p) {
-    var = std::stoi(std::string(p));
+    *var = std::stoi(std::string(p));
     return true;
   };
 };
 
-std::function<bool(kj::StringPtr)> setUint(uint32_t& var) {
+std::function<bool(kj::StringPtr)> setUint(uint32_t* var) {
   return [&var](kj::StringPtr p) {
-    var = std::stoi(std::string(p));
+    *var = std::stoi(std::string(p));
     return true;
   };
 };
 
 void print_memory_chunk(const void* data, size_t size, size_t bytes_per_line) {
-  const char* ptr = (const char*)data;
+  const char* ptr = static_cast<const char*>(data);
   for (size_t i = 0; i < size; i += bytes_per_line) {
     printf("%10lu\t", i);
     size_t j = 0;

@@ -42,19 +42,19 @@ kj::MainBuilder::Validity Main::Run() {
 kj::MainFunc Main::getMain() {
   return kj::MainBuilder(context, "Task-Maker Worker (" + util::version + ")",
                          "Executes requests pulled from a server")
-      .addOptionWithArg({'L', "logfile"}, util::setString(Flags::log_file),
+      .addOptionWithArg({'L', "logfile"}, util::setString(&Flags::log_file),
                         "<LOGFILE>", "Path where the log file should be stored")
-      .addOption({'d', "daemon"}, util::setBool(Flags::daemon),
+      .addOption({'d', "daemon"}, util::setBool(&Flags::daemon),
                  "Become a daemon")
-      .addOptionWithArg({'P', "pidfile"}, util::setString(Flags::pidfile),
+      .addOptionWithArg({'P', "pidfile"}, util::setString(&Flags::pidfile),
                         "<PIDFILE>", "Path where the pidfile should be stored")
       .addOptionWithArg({'S', "store-dir"},
-                        util::setString(Flags::store_directory), "<DIR>",
+                        util::setString(&Flags::store_directory), "<DIR>",
                         "Path where the files should be stored")
       .addOptionWithArg({'T', "temp-dir"},
-                        util::setString(Flags::temp_directory), "<DIR>",
+                        util::setString(&Flags::temp_directory), "<DIR>",
                         "Path where the sandboxes should be crated")
-      .addOption({'b', "bin"}, util::setBool(read_binary),
+      .addOption({'b', "bin"}, util::setBool(&read_binary),
                  "Read/write options/results in binary.")
       // TODO: allow to specify options from the command line
       .callAfterParsing(KJ_BIND_METHOD(*this, Run))

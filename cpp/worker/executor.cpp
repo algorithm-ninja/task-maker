@@ -20,13 +20,11 @@
 
 #include <spawn.h>
 
-extern char** environ;
-
 namespace {
 
 kj::Promise<sandbox::ExecutionInfo> RunSandbox(
     const sandbox::ExecutionOptions& exec_options,
-    kj::LowLevelAsyncIoProvider& async_io_provider) {
+    kj::LowLevelAsyncIoProvider* async_io_provider) {
   KJ_LOG(INFO, "Starting sandbox");
   int options_pipe[2];
   int ret = pipe(options_pipe);
@@ -45,7 +43,7 @@ kj::Promise<sandbox::ExecutionInfo> RunSandbox(
   posix_spawn_file_actions_addclose(&actions, outcome_pipe[1]);
 
   std::string self = whereami::getExecutablePath();
-#define VPARAM(s) s, s + strlen(s) + 1
+#define VPARAM(s) (s), (s) + strlen(s) + 1
   std::vector<char> self_mut(VPARAM(self.c_str()));
   std::vector<char> sandbox_mut(VPARAM("sandbox"));
   std::vector<char> bin_mut(VPARAM("--bin"));
@@ -58,9 +56,9 @@ kj::Promise<sandbox::ExecutionInfo> RunSandbox(
   close(outcome_pipe[1]);
   KJ_ASSERT(pid != -1, strerror(errno));
   kj::Own<kj::AsyncOutputStream> out =
-      async_io_provider.wrapOutputFd(options_pipe[1]);
+      async_io_provider->wrapOutputFd(options_pipe[1]);
   kj::Own<kj::AsyncInputStream> in =
-      async_io_provider.wrapInputFd(outcome_pipe[0]);
+      async_io_provider->wrapInputFd(outcome_pipe[0]);
   kj::Own<sandbox::ExecutionOptions> ex_opts =
       kj::heap<sandbox::ExecutionOptions>(exec_options);
   return out->write(ex_opts.get(), sizeof(exec_options))
@@ -72,8 +70,11 @@ kj::Promise<sandbox::ExecutionInfo> RunSandbox(
         return promise.attach(std::move(in))
             .then([pid, fd = outcome_pipe[0]](const kj::Array<kj::byte>& data) {
               close(fd);
-              size_t error_sz = *(size_t*)data.begin();
-              const char* msg = (char*)data.begin() + sizeof(size_t);
+              size_t error_sz =
+                  *reinterpret_cast<const size_t*>(data.begin());  // NOLINT
+              const char* msg =
+                  reinterpret_cast<const char*>(data.begin()) +  // NOLINT
+                  sizeof(size_t);
               KJ_ASSERT(!error_sz,
                         std::string(msg, data.size() - sizeof(size_t)));
               sandbox::ExecutionInfo outcome;
@@ -88,23 +89,24 @@ kj::Promise<sandbox::ExecutionInfo> RunSandbox(
 }
 
 void PrepareFile(const std::string& path, const util::SHA256_t& hash,
-                 bool executable, worker::Cache& cache_) {
+                 bool executable, worker::Cache* cache_) {
   if (hash.isZero()) return;
-  cache_.Register(hash);
+  cache_->Register(hash);
   util::File::Copy(util::File::PathForHash(hash), path);
-  if (executable)
+  if (executable) {
     util::File::MakeExecutable(path);
-  else
+  } else {
     util::File::MakeImmutable(path);
+  }
 }
 
 void RetrieveFile(const std::string& path, capnproto::SHA256::Builder hash_out,
-                  worker::Cache& cache_) {
+                  worker::Cache* cache_) {
   auto hash = util::File::Hash(path);
   hash.ToCapnp(hash_out);
   util::File::Copy(path, util::File::PathForHash(hash));
   util::File::MakeImmutable(util::File::PathForHash(hash));
-  cache_.Register(hash);
+  cache_->Register(hash);
 }
 
 bool ValidateFileName(std::string name, capnproto::Result::Builder result_) {
@@ -135,7 +137,7 @@ namespace worker {
 kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
                                     capnproto::Result::Builder result_) {
   bool scheduled = false;
-  KJ_DEFER(if (!scheduled) manager_.CancelPending());
+  KJ_DEFER(if (!scheduled) manager_->CancelPending());
   for (auto request : request_.getProcesses()) {
     auto executable = request.getExecutable();
     for (const auto& input : request.getInputFiles()) {
@@ -148,8 +150,9 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
       if (!ValidateFileName(output, result_)) return kj::READY_NOW;
     }
     if (executable.isLocalFile()) {
-      if (!ValidateFileName(executable.getLocalFile().getName(), result_))
+      if (!ValidateFileName(executable.getLocalFile().getName(), result_)) {
         return kj::READY_NOW;
+      }
     }
   }
 
@@ -207,8 +210,9 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
         cmdline = executable.getSystem();
         if (cmdline.empty()) return fail("Empty command name");
         if (cmdline[0] != '/') {
-          if (cmdline.find('/') != cmdline.npos)
+          if (cmdline.find('/') != std::string::npos) {
             return fail("Relative path cannot have /");
+          }
           cmdline = util::which(cmdline);
           if (cmdline.empty()) {
             for (auto result : result_.getProcesses()) {
@@ -238,9 +242,10 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
     }
 
     exe = cmdline;
-    if (request.getArgs().size() != 0)
-      for (const std::string& arg : request.getArgs())
+    if (request.getArgs().size() != 0) {
+      for (const std::string& arg : request.getArgs())  // NOLINT
         cmdline += " '" + arg + "'";
+    }
 
     if (Flags::keep_sandboxes) {
       tmp[i].Keep();
@@ -306,11 +311,11 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
     // Limits.
     // Scale up time limits to have a good margin for random occurrences.
     auto limits = request.getLimits();
-    exec_options.cpu_limit_millis =
-        limits.getCpuTime() * 1200 + request.getExtraTime() * 1000;
-    exec_options.wall_limit_millis =
-        limits.getWallTime() * 1200 + request.getExtraTime() * 1000;
-    exec_options.memory_limit_kb = limits.getMemory() * 1.2;
+    exec_options.cpu_limit_millis = limits.getCpuTime() * 1200 +  // NOLINT
+                                    request.getExtraTime() * 1000;
+    exec_options.wall_limit_millis = limits.getWallTime() * 1200 +  // NOLINT
+                                     request.getExtraTime() * 1000;
+    exec_options.memory_limit_kb = limits.getMemory() * 1.2; // NOLINT
     exec_options.max_files = limits.getNofiles();
     exec_options.max_procs = limits.getNproc();
     exec_options.max_file_size_kb = limits.getFsize();
@@ -349,8 +354,8 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
 
         // Actual execution.
         return manager_
-            .ScheduleTask(
-                request_.getExclusive() ? manager_.NumCores() : num_processes,
+            ->ScheduleTask(
+                request_.getExclusive() ? manager_->NumCores() : num_processes,
                 std::function<kj::Promise<kj::Array<sandbox::ExecutionInfo>>()>(
                     [this, exec_options_v, num_processes]() {
                       kj::Vector<kj::Promise<sandbox::ExecutionInfo>> info_(
@@ -358,7 +363,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
                       for (size_t i = 0; i < num_processes; i++) {
                         info_.add(RunSandbox(
                             exec_options_v[i],
-                            manager_.Client().getLowLevelIoProvider()));
+                            &manager_->Client().getLowLevelIoProvider()));
                       }
                       return kj::joinPromises(info_.releaseAsArray());
                     }))
@@ -385,7 +390,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
 
                     auto limits = request.getLimits();
                     if (limits.getMemory() != 0 &&
-                        (uint64_t)outcome.memory_usage_kb >=
+                        static_cast<uint64_t>(outcome.memory_usage_kb) >=
                             limits.getMemory()) {
                       result.getStatus().setMemoryLimit();
                     } else if (limits.getCpuTime() != 0 &&
@@ -441,7 +446,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
             .eagerlyEvaluate(nullptr);
       },
       [this](kj::Exception exc) -> kj::Promise<void> {
-        manager_.CancelPending();
+        manager_->CancelPending();
         return exc;
       });
 }  // namespace executor

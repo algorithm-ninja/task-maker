@@ -1,7 +1,7 @@
 #ifndef WORKER_MANAGER_HPP
 #define WORKER_MANAGER_HPP
 #include <capnp/ez-rpc.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <functional>
 #include <queue>
 #include <string>

@@ -9,7 +9,7 @@ namespace util {
 
 namespace detail {
 struct UnionPromiseBuilderInfo {
-  bool fatalFailure;
+  bool fatalFailure = true;
   size_t resolved = 0;
   std::vector<kj::Promise<void>> promises;
   std::vector<kj::PromiseFulfiller<void>*> fulfillers;
@@ -44,16 +44,16 @@ UnionPromiseBuilder::UnionPromiseBuilder(bool fatalFailure)
   p_.promise = p_.promise.attach(std::move(info), std::move(p_.fulfiller));
 }
 
-void UnionPromiseBuilder::OnReady(std::function<void()> on_ready) {
+void UnionPromiseBuilder::OnReady(const std::function<void()>& on_ready) {
   info_->on_ready.push_back(on_ready);
 }
 void UnionPromiseBuilder::OnFailure(
-    std::function<void(kj::Exception)> on_failure) {
+    const std::function<void(kj::Exception)>& on_failure) {
   info_->on_failure.push_back(on_failure);
 }
 
 kj::Promise<void> UnionPromiseBuilder::AddPromise(kj::Promise<void> p,
-                                                  std::string what) {
+                                                  const std::string& what) {
   KJ_LOG(INFO, "Adding promise " + what);
   kj::PromiseFulfillerPair<void> pf = kj::newPromiseAndFulfiller<void>();
   auto ff = pf.fulfiller.get();
@@ -79,7 +79,7 @@ kj::Promise<void> UnionPromiseBuilder::AddPromise(kj::Promise<void> p,
                 if (info->finalized &&
                     info->resolved == info->promises.size()) {
                   fulfiller->fulfill();
-                  for (auto f : info->on_ready) f();
+                  for (const auto& f : info->on_ready) f();
                 }
                 propagate_fulfiller->fulfill();
                 info->fulfillers[index] = nullptr;
@@ -92,9 +92,10 @@ kj::Promise<void> UnionPromiseBuilder::AddPromise(kj::Promise<void> p,
 #endif
                 if (info->fatalFailure) {
                   fulfiller->reject(kj::cp(exc));
-                  for (auto f : info->on_failure) f(kj::cp(exc));
-                  for (auto off : info->fulfillers)
+                  for (const auto& f : info->on_failure) f(kj::cp(exc));
+                  for (auto off : info->fulfillers) {
                     if (off) off->fulfill();
+                  }
                 } else {
                   info->resolved++;
 #ifdef DEBUG_UPB
@@ -105,7 +106,7 @@ kj::Promise<void> UnionPromiseBuilder::AddPromise(kj::Promise<void> p,
                   if (info->finalized &&
                       info->resolved == info->promises.size()) {
                     fulfiller->fulfill();
-                    for (auto f : info->on_ready) f();
+                    for (const auto& f : info->on_ready) f();
                   }
                 }
                 ff->fulfill();
@@ -120,7 +121,7 @@ kj::Promise<void> UnionPromiseBuilder::Finalize() && {
   info_->finalized = true;
   if (info_->resolved == info_->promises.size()) {
     fulfiller_->fulfill();
-    for (auto f : info_->on_ready) f();
+    for (const auto& f : info_->on_ready) f();
   }
   return std::move(p_.promise);
 }

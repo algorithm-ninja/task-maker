@@ -13,15 +13,18 @@ namespace worker {
 class Executor : public capnproto::Evaluator::Server {
  public:
   KJ_DISALLOW_COPY(Executor);
-  Executor(capnproto::FileSender::Client server, Manager& manager, Cache& cache)
-      : server_(server), manager_(manager), cache_(cache) {}
+  Executor(capnproto::FileSender::Client server, Manager* manager, Cache* cache)
+      : server_(std::move(server)), manager_(manager), cache_(cache) {}
+  Executor(Executor&&) = default;
+  Executor& operator=(Executor&&) = default;
+  ~Executor() = default;
 
-  kj::Promise<void> evaluate(EvaluateContext context) {
+  kj::Promise<void> evaluate(EvaluateContext context) override {
     auto request = context.getParams().getRequest();
     return Execute(request, context.getResults().initResult());
   }
 
-  kj::Promise<void> requestFile(RequestFileContext context) {
+  kj::Promise<void> requestFile(RequestFileContext context) override {
     return util::File::HandleRequestFile(context);
   }
 
@@ -32,8 +35,8 @@ class Executor : public capnproto::Evaluator::Server {
   static const constexpr char* kBoxDir = "box";
 
   capnproto::FileSender::Client server_;
-  Manager& manager_;
-  Cache& cache_;
+  Manager* manager_;
+  Cache* cache_;
 };
 
 }  // namespace worker

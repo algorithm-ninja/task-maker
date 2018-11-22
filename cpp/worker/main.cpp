@@ -20,13 +20,13 @@ kj::MainBuilder::Validity Main::Run() {
   if (Flags::daemon) {
     util::daemonize("worker", Flags::pidfile);
   }
-  if (Flags::server == "") {
+  if (Flags::server.empty()) {
     return "You need to specify a server!";
   }
   if (!Flags::num_cores) {
     Flags::num_cores = std::thread::hardware_concurrency();
   }
-  util::LogManager log_manager(context);
+  util::LogManager log_manager(&context);
   size_t sleepTime = 0;
   size_t numRetries = 0;
   while (true) {
@@ -59,35 +59,35 @@ kj::MainBuilder::Validity Main::Run() {
 kj::MainFunc Main::getMain() {
   return kj::MainBuilder(context, "Task-Maker Worker (" + util::version + ")",
                          "Executes requests pulled from a server")
-      .addOptionWithArg({'L', "logfile"}, util::setString(Flags::log_file),
+      .addOptionWithArg({'L', "logfile"}, util::setString(&Flags::log_file),
                         "<LOGFILE>", "Path where the log file should be stored")
-      .addOption({'d', "daemon"}, util::setBool(Flags::daemon),
+      .addOption({'d', "daemon"}, util::setBool(&Flags::daemon),
                  "Become a daemon")
-      .addOptionWithArg({'P', "pidfile"}, util::setString(Flags::pidfile),
+      .addOptionWithArg({'P', "pidfile"}, util::setString(&Flags::pidfile),
                         "<PIDFILE>", "Path where the pidfile should be stored")
       .addOptionWithArg({'S', "store-dir"},
-                        util::setString(Flags::store_directory), "<DIR>",
+                        util::setString(&Flags::store_directory), "<DIR>",
                         "Path where the files should be stored")
       .addOptionWithArg({'T', "temp-dir"},
-                        util::setString(Flags::temp_directory), "<DIR>",
+                        util::setString(&Flags::temp_directory), "<DIR>",
                         "Path where the sandboxes should be crated")
-      .addOption({'k', "keep_sandboxes"}, util::setBool(Flags::keep_sandboxes),
+      .addOption({'k', "keep_sandboxes"}, util::setBool(&Flags::keep_sandboxes),
                  "Keep the sandboxes after evaluation")
-      .addOptionWithArg({'n', "num-cores"}, util::setInt(Flags::num_cores),
+      .addOptionWithArg({'n', "num-cores"}, util::setInt(&Flags::num_cores),
                         "<N>", "Number of cores to use")
-      .addOptionWithArg({'s', "server"}, util::setString(Flags::server),
+      .addOptionWithArg({'s', "server"}, util::setString(&Flags::server),
                         "<ADDRESS>", "Address to connect to")
-      .addOptionWithArg({'p', "port"}, util::setInt(Flags::port), "<PORT>",
+      .addOptionWithArg({'p', "port"}, util::setInt(&Flags::port), "<PORT>",
                         "Port to connect to")
-      .addOptionWithArg({"name"}, util::setString(Flags::name), "<NAME>",
+      .addOptionWithArg({"name"}, util::setString(&Flags::name), "<NAME>",
                         "Name of this worker")
-      .addOptionWithArg({'t', "temp"}, util::setString(Flags::temp_directory),
+      .addOptionWithArg({'t', "temp"}, util::setString(&Flags::temp_directory),
                         "<TEMP>", "Where to store the sandboxes")
       .addOptionWithArg({'r', "pending-requests"},
-                        util::setInt(Flags::pending_requests), "<REQS>",
+                        util::setInt(&Flags::pending_requests), "<REQS>",
                         "Maximum number of pending requests")
       .addOptionWithArg(
-          {'c', "cache-size"}, util::setUint(Flags::cache_size), "<SZ>",
+          {'c', "cache-size"}, util::setUint(&Flags::cache_size), "<SZ>",
           "Maximum size of the cache, in megabytes. 0 means unlimited")
       .callAfterParsing(KJ_BIND_METHOD(*this, Run))
       .build();

@@ -38,7 +38,7 @@ bool MkDir(const std::string& dir) {
 bool OsRemove(const std::string& path) { return remove(path.c_str()) != -1; }
 
 std::vector<std::string> OsListFiles(const std::string& path) {
-  thread_local std::vector<std::pair<long, std::string>> files;
+  thread_local std::vector<std::pair<int64_t, std::string>> files;
   KJ_ASSERT(nftw(path.c_str(),
                  [](const char* fpath, const struct stat* sb, int typeflags,
                     struct FTW* ftwbuf) {
@@ -121,7 +121,7 @@ int OsAtomicMove(const std::string& src, const std::string& dst,
 }
 
 bool OsIsLink(const std::string& path) {
-  struct stat buf;
+  struct stat buf {};
   if (lstat(path.c_str(), &buf) == -1) return false;
   return S_ISLNK(buf.st_mode);
 }
@@ -288,23 +288,27 @@ void File::Move(const std::string& from, const std::string& to, bool overwrite,
 }
 
 void File::Remove(const std::string& path) {
-  if (!OsRemove(path))
+  if (!OsRemove(path)) {
     throw std::system_error(errno, std::system_category(), "remove");
+  }
 }
 
 void File::RemoveTree(const std::string& path) {
-  if (!OsRemoveTree(path))
+  if (!OsRemoveTree(path)) {
     throw std::system_error(errno, std::system_category(), "removetree");
+  }
 }
 
 void File::MakeExecutable(const std::string& path) {
-  if (!OsMakeExecutable(path))
+  if (!OsMakeExecutable(path)) {
     throw std::system_error(errno, std::system_category(), "chmod");
+  }
 }
 
 void File::MakeImmutable(const std::string& path) {
-  if (!OsMakeImmutable(path))
+  if (!OsMakeImmutable(path)) {
     throw std::system_error(errno, std::system_category(), "chmod");
+  }
 }
 
 std::string File::PathForHash(const SHA256_t& hash) {
@@ -329,7 +333,7 @@ std::string File::BaseName(const std::string& path) {
 }
 
 int64_t File::Size(const std::string& path) {
-  struct stat st;
+  struct stat st {};
   if (stat(path.c_str(), &st) != 0) {
     return -1;
   }
@@ -347,13 +351,17 @@ File::ChunkReceiver File::LazyChunkReceiver(kj::Function<ChunkReceiver()> f) {
 TempDir::TempDir(const std::string& base) {
   File::MakeDirs(base);
   path_ = OsTempDir(base);
-  if (path_.empty())
+  if (path_.empty()) {
     throw std::system_error(errno, std::system_category(), "mkdtemp");
+  }
 }
 void TempDir::Keep() { keep_ = true; }
 const std::string& TempDir::Path() const { return path_; }
-TempDir::~TempDir() {
-  if (!keep_ && !moved_) File::RemoveTree(path_);
+TempDir::~TempDir() {  // NOLINT
+  if (!keep_ && !moved_) {
+    kj::UnwindDetector detector;
+    detector.catchExceptionsIfUnwinding([&]() { File::RemoveTree(path_); });
+  }
 }
 
 std::string File::SHAToPath(const std::string& store_directory,
@@ -386,11 +394,11 @@ kj::Promise<void> next_chunk(HandleRequestFileData data) {
       [sz = chunk.size(),
        data = std::move(data)]() mutable -> kj::Promise<void> {
         if (sz) return next_chunk(std::move(data));
-        if (!data.waiting.empty()) {
-          data.waiting.front()->fulfill();
-          data.waiting.pop();
+        if (!HandleRequestFileData::waiting.empty()) {
+          HandleRequestFileData::waiting.front()->fulfill();
+          HandleRequestFileData::waiting.pop();
         }
-        data.num_concurrent--;
+        HandleRequestFileData::num_concurrent--;
         return kj::READY_NOW;
       });
 }
@@ -406,13 +414,12 @@ kj::Promise<void> File::HandleRequestFile(
     HandleRequestFileData::num_concurrent++;
     HandleRequestFileData data{Read(path), receiver};
     return next_chunk(std::move(data));
-  } else {
-    auto pf = kj::newPromiseAndFulfiller<void>();
-    HandleRequestFileData::waiting.push(std::move(pf.fulfiller));
-    return pf.promise.then([path, receiver]() mutable {
-      return File::HandleRequestFile(path, receiver);
-    });
   }
+  auto pf = kj::newPromiseAndFulfiller<void>();
+  HandleRequestFileData::waiting.push(std::move(pf.fulfiller));
+  return pf.promise.then([path, receiver]() mutable {
+    return File::HandleRequestFile(path, receiver);
+  });
 }
 
 }  // namespace util

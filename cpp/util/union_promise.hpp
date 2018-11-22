@@ -2,21 +2,21 @@
 #define UTIL_UNION_PROMISE
 #include <kj/async.h>
 #include <functional>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace util {
 namespace detail {
 struct UnionPromiseBuilderInfo;
-}
+}  // namespace detail
 
 class UnionPromiseBuilder {
  public:
   explicit UnionPromiseBuilder(bool fatalFailure = true);
-  void OnReady(std::function<void()> on_ready);
-  void OnFailure(std::function<void(kj::Exception)> on_failure);
+  void OnReady(const std::function<void()>& on_ready);
+  void OnFailure(const std::function<void(kj::Exception)>& on_failure);
   kj::Promise<void> AddPromise(kj::Promise<void> p,
-                               std::string what = "unanamed");
+                               const std::string& what = "unanamed");
   kj::Promise<void> Finalize() && KJ_WARN_UNUSED_RESULT;
 
  private:

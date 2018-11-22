@@ -10,7 +10,7 @@
 
 namespace util {
 
-inline void daemonize(std::string scope, std::string pidfile) {
+inline void daemonize(const std::string& scope, std::string pidfile) {
   // first fork
   pid_t pid = fork();
   if (pid == -1) {

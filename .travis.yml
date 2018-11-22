@@ -24,6 +24,11 @@ matrix:
         - tools/check_docker.sh
         - docker run --rm edomora97/task-maker-builder-archlinux:latest yay -Syu --noconfirm task-maker-git
       deploy: []
+    - env:
+        - TOOLCHAIN=clang-tidy
+      script:
+        - hooks/lint-all
+      deploy: []
     - os: osx
       env:
         - TOOLCHAIN=osx
@@ -40,6 +45,7 @@ matrix:
         - rm -rf build
         - cmake -H. -Bbuild -DHUNTER_ROOT=hunter-root
         - cmake --build build
+        - pip install -r build/python/requirements.txt
         - python build/python/setup.py install
         # run the tests
         - ( cd build && ctest -VV )

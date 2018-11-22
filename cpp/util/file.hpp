@@ -92,7 +92,7 @@ class File {
   static kj::Promise<void> HandleRequestFile(
       const std::string& path, capnproto::FileReceiver::Client receiver);
   static kj::Promise<void> HandleRequestFile(
-      const util::SHA256_t hash, capnproto::FileReceiver::Client receiver) {
+      const util::SHA256_t& hash, capnproto::FileReceiver::Client receiver) {
     if (hash.hasContents()) {
       auto req = receiver.sendChunkRequest();
       req.setChunk(hash.getContents());
@@ -114,11 +114,12 @@ class File {
   // Simple capnproto server implementation to receive a file
   class Receiver : public capnproto::FileReceiver::Server {
    public:
-    Receiver(ChunkReceiver receiver) : receiver_(std::move(receiver)) {}
-    Receiver(util::SHA256_t hash) {
+    explicit Receiver(ChunkReceiver receiver)
+        : receiver_(std::move(receiver)) {}
+    explicit Receiver(const util::SHA256_t& hash) {
       receiver_ = Write(PathForHash(hash), /*overwrite=*/true);
     }
-    kj::Promise<void> sendChunk(SendChunkContext context);
+    kj::Promise<void> sendChunk(SendChunkContext context) override;
 
    private:
     ChunkReceiver receiver_;
@@ -147,9 +148,8 @@ class File {
     if (hash.isZero()) return kj::READY_NOW;
     if (!util::File::Exists(util::File::PathForHash(hash))) {
       return Get(hash, worker);
-    } else {
-      return kj::READY_NOW;
     }
+    return kj::READY_NOW;
   }
 
   // Creates a ChunkReceiver that lazily calls f to do get the actual receiver.
@@ -163,8 +163,8 @@ class TempDir {
   void Keep();
   ~TempDir();
 
-  TempDir(TempDir&& other) { *this = std::move(other); }
-  TempDir& operator=(TempDir&& other) {
+  TempDir(TempDir&& other) noexcept { *this = std::move(other); }
+  TempDir& operator=(TempDir&& other) noexcept {
     path_ = std::move(other.path_);
     keep_ = other.keep_;
     other.moved_ = true;

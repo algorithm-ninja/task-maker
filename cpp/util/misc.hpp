@@ -19,14 +19,14 @@ void split(const std::string& s, char delim, Out result) {
 }
 std::vector<std::string> split(const std::string& s, char delim);
 
-std::function<bool()> setBool(bool& var);
-std::function<bool(kj::StringPtr)> setString(std::string& var);
-std::function<bool(kj::StringPtr)> setInt(int& var);
-std::function<bool(kj::StringPtr)> setUint(uint32_t& var);
+std::function<bool()> setBool(bool* var);
+std::function<bool(kj::StringPtr)> setString(std::string* var);
+std::function<bool(kj::StringPtr)> setInt(int* var);
+std::function<bool(kj::StringPtr)> setUint(uint32_t* var);
 
 void print_memory_chunk(const void* data, size_t size,
                         size_t bytes_per_line = 20);
-#define PRINT_MEMORY_CHUNK(v) util::print_memory_chunk(&v, sizeof(v))
+#define PRINT_MEMORY_CHUNK(v) util::print_memory_chunk(&(v), sizeof(v))
 
 }  // namespace util
 #endif
