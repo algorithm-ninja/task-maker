@@ -9,28 +9,28 @@ std::vector<std::string> split(const std::string& s, char delim) {
 }
 
 std::function<bool()> setBool(bool* var) {
-  return [&var]() {
+  return [var]() {
     *var = true;
     return true;
   };
 };
 
 std::function<bool(kj::StringPtr)> setString(std::string* var) {
-  return [&var](kj::StringPtr p) {
+  return [var](kj::StringPtr p) {
     *var = p;
     return true;
   };
 };
 
 std::function<bool(kj::StringPtr)> setInt(int* var) {
-  return [&var](kj::StringPtr p) {
+  return [var](kj::StringPtr p) {
     *var = std::stoi(std::string(p));
     return true;
   };
 };
 
 std::function<bool(kj::StringPtr)> setUint(uint32_t* var) {
-  return [&var](kj::StringPtr p) {
+  return [var](kj::StringPtr p) {
     *var = std::stoi(std::string(p));
     return true;
   };

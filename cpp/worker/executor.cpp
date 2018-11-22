@@ -20,6 +20,9 @@
 
 #include <spawn.h>
 
+// needed on osx
+extern char** environ;  // NOLINT
+
 namespace {
 
 kj::Promise<sandbox::ExecutionInfo> RunSandbox(

@@ -25,9 +25,20 @@ matrix:
         - docker run --rm edomora97/task-maker-builder-archlinux:latest yay -Syu --noconfirm task-maker-git
       deploy: []
     - env:
-        - TOOLCHAIN=clang-tidy
+        - TOOLCHAIN=archlinux-clang
       script:
-        - hooks/lint-all
+        - tools/check_docker.sh
+        - docker run --rm
+            -e TRAVIS=true
+            -e CI=true
+            -e ADDRESSSANITIZER=$ADDRESSSANITIZER
+            -e TOOLCHAIN=$TOOLCHAIN
+            -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME
+            -e TRAVIS_TAG=$TRAVIS_TAG
+            -v $(pwd):/build
+            --cap-add SYS_PTRACE
+            edomora97/task-maker-builder-$TOOLCHAIN:latest
+            hooks/lint-all
       deploy: []
     - os: osx
       env:
