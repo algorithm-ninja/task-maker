@@ -299,24 +299,11 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
     return false;
   }
   std::atomic<int64_t> memory_usage{0};
-#ifdef __APPLE__
-  bool done = false;
-  std::thread memory_watcher(
-      [&memory_usage, &done](int pid) {
-        while (!done) {
-          int64_t mem;
-          if (GetProcessMemoryUsage(pid, &mem) == 0) {
-            if (mem > memory_usage) memory_usage = mem;
-          }
-          std::this_thread::sleep_for(std::chrono::microseconds(100));
-        }
-      },
-      child_pid_);
-#endif
 
   close(pipe_fds_[0]);
 
   auto program_start = std::chrono::high_resolution_clock::now();
+  int64_t wall_time = 0;
   auto elapsed_millis = [&program_start]() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
                std::chrono::high_resolution_clock::now() - program_start)
@@ -332,6 +319,10 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
         memory_usage > options_->memory_limit_kb) {
       break;
     }
+#ifdef __APPLE__
+    struct rusage rusage_prewait {};
+    getrusage(RUSAGE_CHILDREN, &rusage_prewait);
+#endif
     int ret = waitpid(child_pid_, &child_status, WNOHANG);
     if (ret == -1) {
       // This should never happen.
@@ -340,12 +331,27 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
     }
     if (ret == child_pid_) {
       getrusage(RUSAGE_CHILDREN, &rusage);
+#ifdef __APPLE__
+      timersub(&rusage.ru_utime, &rusage_prewait.ru_utime, &rusage.ru_utime);
+      timersub(&rusage.ru_stime, &rusage_prewait.ru_stime, &rusage.ru_stime);
+#endif
+      wall_time = elapsed_millis();
       has_exited = true;
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+#ifdef __APPLE__
+    int64_t mem;
+    if (GetProcessMemoryUsage(child_pid_, &mem) == 0) {
+      if (mem > memory_usage) memory_usage = mem;
+    }
+#endif
   }
   if (!has_exited) {
+#ifdef __APPLE__
+    struct rusage rusage_prewait {};
+    getrusage(RUSAGE_CHILDREN, &rusage_prewait);
+#endif
     if (options_->wall_limit_millis != 0 ||
         (options_->memory_limit_kb != 0 &&
          memory_usage > options_->memory_limit_kb)) {
@@ -361,11 +367,14 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
       exit(1);
     }
     getrusage(RUSAGE_CHILDREN, &rusage);
+#ifdef __APPLE__
+    rusage.ru_utime.tv_sec -= rusage_prewait.ru_utime.tv_sec;
+    rusage.ru_stime.tv_sec -= rusage_prewait.ru_stime.tv_sec;
+#endif
+    wall_time = elapsed_millis();
   }
 #ifdef __APPLE__
-  done = true;
-  memory_watcher.join();
-  info->memory_usage_kb = rusage.ru_maxrss / 1024;
+  info->memory_usage_kb = memory_usage;
 #else
   info->memory_usage_kb = rusage.ru_maxrss;
 #endif
@@ -374,7 +383,7 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
   // If the child received a KILL or XCPU signal, assume we killed it
   // because of memory or time limits.
   info->killed = info->signal == SIGKILL || info->signal == SIGXCPU;
-  info->wall_time_millis = elapsed_millis();
+  info->wall_time_millis = wall_time;
   info->cpu_time_millis =
       rusage.ru_utime.tv_sec * 1000LL + rusage.ru_utime.tv_usec / 1000;
   info->sys_time_millis =
