@@ -12,8 +12,8 @@ class TaskMakerMain {
   explicit TaskMakerMain(kj::ProcessContext& context)
       : context(context), wm(&context), sm(&context), bm(&context) {}
   kj::MainFunc getMain() {
-    return kj::MainBuilder(context, "Task-Maker (" + util::version + ")",
-                           "The new cmsMake!")
+    static std::string version = "Task-Maker (" + util::version + ")";
+    return kj::MainBuilder(context, version, "The new cmsMake!")
         .addSubCommand("worker", KJ_BIND_METHOD(wm, getMain), "run the worker")
         .addSubCommand("server", KJ_BIND_METHOD(sm, getMain), "run the server")
         .addSubCommand("sandbox", KJ_BIND_METHOD(bm, getMain),
