@@ -10,6 +10,9 @@ ENV UGID='2000' UGNAME='travis'
 # setup the system
 RUN groupadd --gid "$UGID" "$UGNAME" && \
     useradd --create-home --uid "$UGID" --gid "$UGID" "${UGNAME}" && \
+    echo 'Server = http://mirrors.evowise.com/archlinux/$repo/os/$arch' > /etc/pacman.d/mirrorlist && \
+    echo 'Server = http://mirror.rackspace.com/archlinux/$repo/os/$arch' >> /etc/pacman.d/mirrorlist && \
+    echo 'Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch' >> /etc/pacman.d/mirrorlist && \
     pacman -Syu --needed --noconfirm base-devel git sudo yajl && \
     pacman -Scc --noconfirm && \
     echo "travis ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$UGNAME

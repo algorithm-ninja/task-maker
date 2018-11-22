@@ -29,7 +29,10 @@ matrix:
         - TOOLCHAIN=archlinux
       script:
         - tools/check_docker.sh
-        - docker run --rm edomora97/task-maker-builder-archlinux:latest yay -Syu --noconfirm task-maker-git
+        - docker run --rm
+            -v $(pwd):/build
+            edomora97/task-maker-builder-archlinux:latest
+            /build/tools/test_aur_package.sh
       branches:
         except:
         - /^v.*/
