@@ -1,6 +1,6 @@
 project(task-maker-cpp-sandbox-test)
 
-SET(TESTS busywait_arg1 copy_int malloc_arg1 return_arg1 signal_arg1 wait_arg1)
+set(TESTS busywait_arg1 copy_int malloc_arg1 return_arg1 signal_arg1 wait_arg1)
 
 foreach(test ${TESTS})
   add_executable(${test} ${test}.cpp)
