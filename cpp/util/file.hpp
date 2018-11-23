@@ -91,10 +91,6 @@ class File {
   // Returns true if a file exists
   static bool Exists(const std::string& path) { return Size(path) >= 0; }
 
-  // Returns the storage path of a file with the given SHA.
-  static std::string SHAToPath(const std::string& store_directory,
-                               const SHA256_t& hash);
-
   // Utility to implement RequestFile methods, given the path and the receiver
   static kj::Promise<void> HandleRequestFile(
       const std::string& path, capnproto::FileReceiver::Client receiver);

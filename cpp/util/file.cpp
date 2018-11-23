@@ -367,11 +367,6 @@ TempDir::~TempDir() {  // NOLINT
   }
 }
 
-std::string File::SHAToPath(const std::string& store_directory,
-                            const SHA256_t& hash) {
-  return util::File::JoinPath(store_directory, util::File::PathForHash(hash));
-}
-
 kj::Promise<void> File::Receiver::sendChunk(SendChunkContext context) {
   receiver_(context.getParams().getChunk());
   return kj::READY_NOW;
