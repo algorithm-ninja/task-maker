@@ -29,6 +29,8 @@ add_executable(file_test util/file_test.cpp)
 target_link_libraries(file_test cpp_util GTest::Main GMock::gmock)
 add_executable(misc_test util/misc_test.cpp)
 target_link_libraries(misc_test cpp_util GTest::Main GMock::gmock)
+add_executable(which_test util/which_test.cpp)
+target_link_libraries(which_test cpp_util GTest::Main GMock::gmock)
 
 add_library(cpp_sandbox sandbox/sandbox.cpp sandbox/main.cpp)
 
@@ -89,3 +91,4 @@ gtest_discover_tests(sandbox_unix_test)
 gtest_discover_tests(union_promise_test)
 gtest_discover_tests(file_test)
 gtest_discover_tests(misc_test)
+gtest_discover_tests(which_test)
