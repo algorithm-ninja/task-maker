@@ -16,9 +16,16 @@ static const constexpr uint32_t kInlineChunkThresh = 1024;
 
 class File {
  public:
+  // A non-owning pointer to a sequence of bytes, usually representing a part of
+  // a file.
   using Chunk = kj::ArrayPtr<const kj::byte>;
-  // Empty chunk = end of file.
+
+  // A ChunkReceiver is a function that should be called one or more times with
+  // a valid Chunk. An empty Chunk represents EOF.
   using ChunkReceiver = kj::Function<void(Chunk)>;
+
+  // Subsequent calls to this function produce consecutive Chunks from some
+  // source. On EOF, an empty Chunk is returned.
   using ChunkProducer = kj::Function<Chunk()>;
 
   // Lists all the files in a directory, sorted by access time.
@@ -35,7 +42,7 @@ class File {
   // Computes the hash of the file specified by path.
   static SHA256_t Hash(const std::string& path);
 
-  // Creates all the folder that are needed to write the specified file
+  // Creates all the folders that are needed to write the specified file
   // or, if path is a directory, creates all the folders.
   static void MakeDirs(const std::string& path);
 
@@ -153,14 +160,24 @@ class File {
   }
 
   // Creates a ChunkReceiver that lazily calls f to do get the actual receiver.
+  // This is useful to, for example, create a file for Write only after at least
+  // a chunk has been received.
   static ChunkReceiver LazyChunkReceiver(kj::Function<ChunkReceiver()> f);
-};  // namespace util
+};
 
+// Creates a temporary directory in a given folder. The folder will be
+// (recursively) removed on destruction.
 class TempDir {
  public:
+  // base is the directory in which the temporary directory will be created.
   explicit TempDir(const std::string& base);
+
+  // Returns the path of the temporary folder.
   const std::string& Path() const;
+
+  // Disables automatic deletion of the folder.
   void Keep();
+
   ~TempDir();
 
   TempDir(TempDir&& other) noexcept { *this = std::move(other); }

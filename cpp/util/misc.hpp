@@ -17,13 +17,17 @@ void split(const std::string& s, char delim, Out result) {
     if (!item.empty()) *(result++) = item;
   }
 }
+
+// Splits a string into pieces delimited by delim.
 std::vector<std::string> split(const std::string& s, char delim);
 
+// Utility methods for argument parsing.
 std::function<bool()> setBool(bool* var);
 std::function<bool(kj::StringPtr)> setString(std::string* var);
 std::function<bool(kj::StringPtr)> setInt(int* var);
 std::function<bool(kj::StringPtr)> setUint(uint32_t* var);
 
+// Prints a chunk of memory starting at data and of size bytes.
 void print_memory_chunk(const void* data, size_t size,
                         size_t bytes_per_line = 20);
 #define PRINT_MEMORY_CHUNK(v) util::print_memory_chunk(&(v), sizeof(v))

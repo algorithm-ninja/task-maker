@@ -7,6 +7,7 @@
 
 namespace util {
 
+// Colorful logging with file support and backward-cpp stack traces.
 class LogManager : public kj::ExceptionCallback {
  public:
   explicit LogManager(kj::ProcessContext* context);

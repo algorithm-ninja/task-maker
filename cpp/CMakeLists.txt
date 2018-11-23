@@ -10,6 +10,7 @@ add_library(cpp_util
   util/union_promise.cpp
   util/misc.cpp
   util/log_manager.cpp
+  util/daemon.cpp
 )
 target_include_directories(cpp_util PUBLIC .)
 target_link_libraries(cpp_util
