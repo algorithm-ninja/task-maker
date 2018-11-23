@@ -131,8 +131,8 @@ int OsAtomicCopy(const std::string& src, const std::string& dst,
                  bool overwrite = false, bool exist_ok = true) {
   if (link(src.c_str(), dst.c_str()) == -1) {
     if (errno != EEXIST) return errno;
-    if (exist_ok) return 0;
     if (!overwrite) return errno;
+    if (!exist_ok) return errno;
     if (!OsRemove(dst)) return errno;
     if (link(src.c_str(), dst.c_str()) == -1) return errno;
     return 0;
@@ -195,6 +195,7 @@ util::File::ChunkReceiver OsWrite(const std::string& path, bool overwrite,
       fd = kj::AutoCloseFd();
       return;
     }
+    *pos = 0;
     while (*pos < chunk.size()) {
       ssize_t written = write(fd, chunk.begin() + *pos,  // NOLINT
                               chunk.size() - *pos);
@@ -222,6 +223,7 @@ File::ChunkProducer File::Read(const std::string& path) { return OsRead(path); }
 File::ChunkReceiver File::Write(const std::string& path, bool overwrite,
                                 bool exist_ok) {
   MakeDirs(BaseDir(path));
+  KJ_ASSERT(!(overwrite && !exist_ok));
   if (!overwrite && Size(path) >= 0) {
     if (exist_ok) return [](Chunk chunk) {};
     throw std::system_error(EEXIST, std::system_category(), "Write " + path);
@@ -281,7 +283,7 @@ void File::Copy(const std::string& from, const std::string& to, bool overwrite,
 
 void File::Move(const std::string& from, const std::string& to, bool overwrite,
                 bool exist_ok) {
-  if (OsIsLink(from) || !OsAtomicMove(from, to, overwrite, exist_ok)) {
+  if (OsIsLink(from) || OsAtomicMove(from, to, overwrite, exist_ok)) {
     Copy(from, to, overwrite, exist_ok);
     Remove(from);
   }
@@ -325,6 +327,7 @@ std::string File::JoinPath(const std::string& first,
 }
 
 std::string File::BaseDir(const std::string& path) {
+  if (path.find_last_of(kPathSeparators) == std::string::npos) return "";
   return path.substr(0, path.find_last_of(kPathSeparators));
 }
 

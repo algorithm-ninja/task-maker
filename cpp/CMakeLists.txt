@@ -27,6 +27,8 @@ if (TRAVIS)
 endif()
 add_executable(union_promise_test util/union_promise_test.cpp)
 target_link_libraries(union_promise_test cpp_util GTest::Main)
+add_executable(file_test util/file_test.cpp)
+target_link_libraries(file_test cpp_util GTest::Main GMock::gmock)
 
 add_library(cpp_sandbox
   sandbox/sandbox.cpp
@@ -112,3 +114,4 @@ target_compile_definitions(task-maker PRIVATE TASK_MAKER_VERSION="${GIT_FULL_VER
 
 gtest_discover_tests(sandbox_unix_test)
 gtest_discover_tests(union_promise_test)
+gtest_discover_tests(file_test)

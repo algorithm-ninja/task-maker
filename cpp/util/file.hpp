@@ -28,14 +28,14 @@ class File {
   // source. On EOF, an empty Chunk is returned.
   using ChunkProducer = kj::Function<Chunk()>;
 
-  // Lists all the files in a directory, sorted by access time.
+  // Lists all the files in a directory.
   static std::vector<std::string> ListFiles(const std::string& path);
 
   // Reads the file specified by path in chunks.
   static ChunkProducer Read(const std::string& path);
 
-  // Returns a receiver that writes to the given file and finalizes
-  // the write when destroyed.
+  // Returns a receiver that writes to the given file, the file ends when an
+  // empty chunk is received, and finalizes the write when destroyed.
   static ChunkReceiver Write(const std::string& path, bool overwrite = false,
                              bool exist_ok = true);
 
