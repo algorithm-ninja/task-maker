@@ -11,6 +11,9 @@
 
 namespace worker {
 
+// Class that requests work from the server at server:port, keeping at most
+// max_pending_requests requests pending to the server and ensuring that the
+// running requests do not use up more than num_cores.
 class Manager {
  public:
   Manager(const std::string& server, uint32_t port, int32_t num_cores,
@@ -20,8 +23,11 @@ class Manager {
         max_pending_requests_(pending_requests),
         name_(std::move(name)) {}
 
+  // Starts the manager.
   void Run();
 
+  // Schedule a task that uses size cores. This should be called following an
+  // answer from the server.
   template <typename T>
   kj::Promise<T> ScheduleTask(size_t size, std::function<kj::Promise<T>()> f) {
     kj::PromiseFulfillerPair<void> pf = kj::newPromiseAndFulfiller<void>();
@@ -44,8 +50,12 @@ class Manager {
           });
     });
   }
+
+  // Removes a pending request to the server, typically because of a failure.
   void CancelPending();
 
+  // Automatically called to run scheduled tasks and to refill the pending
+  // request queue.
   void OnDone();
 
   int32_t NumCores() const { return num_cores_; }

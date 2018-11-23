@@ -8,6 +8,7 @@
 
 namespace server {
 
+// Class to dispatch execution requests to workers.
 class Dispatcher {
   template <typename T, typename U>
   using Queue = std::vector<
@@ -15,8 +16,19 @@ class Dispatcher {
                  kj::Own<kj::PromiseFulfiller<void>>, std::shared_ptr<bool>>>;
 
  public:
+  // Adds a new evaluator to the worker queue. Returns a promise that will
+  // resolve when the worker has executed a request.
   kj::Promise<void> AddEvaluator(capnproto::Evaluator::Client evaluator)
       KJ_WARN_UNUSED_RESULT;
+
+  // Adds a new request to the request queue. Returns a promise that will
+  // resolve when some worker has finished running the request. When a worker
+  // is available:
+  //  - if the request has been cancelled by setting cancelled to true,
+  //    the promise will be rejected.
+  //  - otherwise, notify->fulfill() will be called, the request will be
+  //    dispatched to the worker and the promise will resolve when the worker
+  //    completes the execution.
   kj::Promise<capnp::Response<capnproto::Evaluator::EvaluateResults>>
   AddRequest(capnproto::Request::Reader request,
              kj::Own<kj::PromiseFulfiller<void>> notify,

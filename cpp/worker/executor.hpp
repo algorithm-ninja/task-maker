@@ -10,6 +10,7 @@
 
 namespace worker {
 
+// Implements the evaluator interface.
 class Executor : public capnproto::Evaluator::Server {
  public:
   KJ_DISALLOW_COPY(Executor);

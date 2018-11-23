@@ -4,6 +4,7 @@
 
 namespace sandbox {
 
+// Dummy sandbox that just echoes the executed commands.
 class Echo : public Sandbox {
  public:
   static Sandbox* Create() { return new Echo(); }

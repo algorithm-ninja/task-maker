@@ -6,9 +6,13 @@
 
 namespace worker {
 
+// Manages the file cache ensuring that the total size does not go beyond the
+// limit imposed by Flags::cache_size.
 class Cache {
  public:
   Cache();
+
+  // Tracks the file with the given hash in the cache.
   void Register(util::SHA256_t hash);
 
  private:

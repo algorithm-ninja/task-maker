@@ -17,11 +17,19 @@ struct RequestComparator {
                   capnproto::Request::Reader b_) const;
 };
 }  // namespace detail
+
+// Manages a cache of executions.
 class CacheManager {
  public:
   CacheManager();
+
+  // Returns true if the request is in cache.
   bool Has(capnproto::Request::Reader req);
+
+  // Returns the result of the given request.
   capnproto::Result::Reader Get(capnproto::Request::Reader req);
+
+  // Saves a request, result pair in cache.
   void Set(capnproto::Request::Reader req, capnproto::Result::Reader res);
 
  private:

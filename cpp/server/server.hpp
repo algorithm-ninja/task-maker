@@ -26,6 +26,8 @@ struct FileInfo {
 };
 };  // namespace detail
 
+// Implementations of the server interface.
+
 class FrontendContext;
 class ExecutionGroup;
 
@@ -93,10 +95,13 @@ class ExecutionGroup : public capnproto::ExecutionGroup::Server {
         description_(std::move(description)) {}
   void setExclusive();
   void disableCache();
-  kj::Promise<void> notifyStart();
-  kj::Promise<void> Finalize(Execution* ex);
+
   kj::Promise<void> addExecution(AddExecutionContext context) override;
   kj::Promise<void> createFifo(CreateFifoContext context) override;
+
+  // Utility methods
+  kj::Promise<void> notifyStart();
+  kj::Promise<void> Finalize(Execution* ex);
 
  private:
   FrontendContext& frontend_context_;
