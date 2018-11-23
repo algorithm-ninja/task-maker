@@ -31,7 +31,7 @@ class SHA256_t {
   std::string Hex() const;
 
   // Conversion from/to a capnproto SHA256 message.
-  explicit SHA256_t(capnproto::SHA256::Reader in);
+  SHA256_t(capnproto::SHA256::Reader in);  // NOLINT
   void ToCapnp(capnproto::SHA256::Builder out) const;
 
   // True if the hash is all zeros.

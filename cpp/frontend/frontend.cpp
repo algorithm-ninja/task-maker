@@ -2,6 +2,72 @@
 #include "util/file.hpp"
 
 namespace frontend {
+
+template <typename T>
+class FifoInst : public Fifo {
+ public:
+  explicit FifoInst(T&& p)
+      : pf(kj::newPromiseAndFulfiller<capnproto::Fifo::Reader>()),
+        promise(std::move(p)) {
+    SetPromise(std::move(pf.promise));
+    promise = promise
+                  .then(
+                      [this](auto res) {
+                        pf.fulfiller->fulfill(res.getFifo());
+                        return std::move(res);
+                      },
+                      [this](kj::Exception exc) {
+                        pf.fulfiller->rejectIfThrows(
+                            []() { KJ_FAIL_ASSERT("Request failed"); });
+                        return exc;
+                      })
+                  .eagerlyEvaluate(nullptr);
+  }
+
+ private:
+  kj::PromiseFulfillerPair<capnproto::Fifo::Reader> pf;
+  T promise;
+};
+
+template <typename T>
+class FileInst : public File {
+ public:
+  FileInst(T&& p, Frontend* frontend, bool is_executable)
+      : File(frontend, is_executable),
+        pf(kj::newPromiseAndFulfiller<capnproto::File::Reader>()),
+        promise(std::move(p)) {
+    SetPromise(std::move(pf.promise));
+    promise = promise
+                  .then(
+                      [this](auto res) {
+                        pf.fulfiller->fulfill(res.getFile());
+                        return std::move(res);
+                      },
+                      [this](kj::Exception exc) {
+                        pf.fulfiller->rejectIfThrows(
+                            []() { KJ_FAIL_ASSERT("Request failed"); });
+                        return exc;
+                      })
+                  .eagerlyEvaluate(nullptr);
+  }
+
+ private:
+  kj::PromiseFulfillerPair<capnproto::File::Reader> pf;
+  T promise;
+};
+
+template <typename T>
+std::unique_ptr<File> File::New(kj::Promise<T>&& p, Frontend* frontend,
+                                bool is_executable) {
+  return std::make_unique<FileInst<kj::Promise<T>>>(std::move(p), frontend,
+                                                    is_executable);
+}
+
+template <typename T>
+std::unique_ptr<Fifo> Fifo::New(kj::Promise<T>&& p) {
+  return std::make_unique<FifoInst<kj::Promise<T>>>(std::move(p));
+}
+
 namespace {
 class FileProvider : public capnproto::FileSender::Server {
  public:
