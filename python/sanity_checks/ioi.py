@@ -390,6 +390,9 @@ def check_symlinks(interface: IOIUIInterface):
 def sanity_pre_checks(task: IOITask, solutions: List[Solution],
                       frontend: Frontend, config: Config,
                       interface: IOIUIInterface):
+    """
+    Runs all the checks that should be run before the execution of the task.
+    """
     check_subtask_score_sum(task, interface)
     check_att_folder(task, solutions, interface)
     check_sol_folder(solutions, interface)
@@ -400,4 +403,7 @@ def sanity_pre_checks(task: IOITask, solutions: List[Solution],
 
 def sanity_post_checks(task: IOITask, solutions: List[Solution],
                        interface: IOIUIInterface):
+    """
+    Runs all the checks that should be run after the execution of the task.
+    """
     check_solution_score(task, interface)

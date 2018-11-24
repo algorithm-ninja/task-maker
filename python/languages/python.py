@@ -10,6 +10,9 @@ PY_IMPORT = re.compile('import +(.+)|from +(.+) +import')
 
 
 def _extract_imports(filename: str) -> List[str]:
+    """
+    Read a file and extract the name of all the imported modules.
+    """
     with open(filename) as file:
         content = file.read()
     imports = PY_IMPORT.findall(content)
@@ -17,6 +20,10 @@ def _extract_imports(filename: str) -> List[str]:
 
 
 def find_python_dependency(filename: str) -> List[Dependency]:
+    """
+    Looks inside the python source files and search for all the imports. It
+    transitively add them to the returned list (with may contains duplicates).
+    """
     scope = os.path.dirname(filename)
     dependencies = []  # type: List[Dependency]
     pending = {filename}  # type: Set[str]

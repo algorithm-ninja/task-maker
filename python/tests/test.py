@@ -17,7 +17,10 @@ from task_maker.task_maker import run, setup
 interface = None  # type: Union[IOIUIInterface]
 
 
-def run_tests(task_name, file):
+def run_tests(task_name: str, file: str):
+    """
+    Run all the tests of the specified `task_name` test.
+    """
     os.environ.pop("LD_PRELOAD", None)  # disable AddressSanitizer leakage
 
     file = os.path.abspath(file)

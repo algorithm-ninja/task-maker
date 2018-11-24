@@ -18,6 +18,11 @@ from task_maker.uis.terry_finish_ui import TerryFinishUI
 
 
 def get_extension(target_arch: Arch):
+    """
+    In terry format the managers should have an extension dependent on the
+    platform and the architecture. This function returns the extension (starting
+    with a dot).
+    """
     if target_arch == Arch.DEFAULT:
         return "." + platform.system().lower() + "." + platform.machine()
     elif target_arch == Arch.X86_64:
@@ -28,20 +33,14 @@ def get_extension(target_arch: Arch):
         raise ValueError("Unsupported architecture")
 
 
-def create_task_from_yaml(data) -> TerryTask:
-    name = get_options(data, ["name", "nome_breve"])
-    title = get_options(data, ["description", "nome"])
-    max_score = get_options(data, ["max_score"])
-    if name is None:
-        raise ValueError("The name is not set in the yaml")
-    if title is None:
-        raise ValueError("The title is not set in the yaml")
-
-    return TerryTask(name, title, max_score)
-
-
 def get_manager(manager: str, target_arch: Arch,
                 optional: bool = False) -> Optional[SourceFile]:
+    """
+    Search for a manager and create the relative SourceFile. `manager` is the
+    base name without the extension (eg. "checker"). If `optional` is set to
+    true and no managers are found, None is returned, otherwise an exception is
+    raised.
+    """
     managers = list_files(
         ["managers/%s.*" % manager], exclude=["managers/%s.*.*" % manager])
     if len(managers) == 0:
@@ -56,7 +55,25 @@ def get_manager(manager: str, target_arch: Arch,
         {})
 
 
+def create_task_from_yaml(data) -> TerryTask:
+    """
+    Extract the base information about a task.
+    """
+    name = get_options(data, ["name", "nome_breve"])
+    title = get_options(data, ["description", "nome"])
+    max_score = get_options(data, ["max_score"])
+    if name is None:
+        raise ValueError("The name is not set in the yaml")
+    if title is None:
+        raise ValueError("The title is not set in the yaml")
+
+    return TerryTask(name, title, max_score)
+
+
 def get_task(config: Config) -> TerryTask:
+    """
+    Extract all the information of a task.
+    """
     data = parse_task_yaml()
     if not data:
         raise RuntimeError("The task.yaml is not valid")
@@ -72,6 +89,10 @@ def get_task(config: Config) -> TerryTask:
 
 
 def get_task_solutions(config: Config, task: TerryTask) -> List[SourceFile]:
+    """
+    Search in the solutions/ folder and using the provided filters, get a list
+    of all the solutions.
+    """
     solutions = get_solutions(config.solutions, "solutions/", [])
     sols = []  # type: List[SourceFile]
     for solution in solutions:
@@ -87,6 +108,9 @@ def get_task_solutions(config: Config, task: TerryTask) -> List[SourceFile]:
 def evaluate_task(frontend: Frontend, task: TerryTask,
                   solutions: List[SourceFile],
                   config: Config) -> TerryUIInterface:
+    """
+    Build the computation DAG and run it in order to test all the solutions.
+    """
     ui_interface = TerryUIInterface(task, config.ui == UIS.PRINT)
     curses_ui = None
     finish_ui = None
@@ -119,6 +143,9 @@ def evaluate_task(frontend: Frontend, task: TerryTask,
 def evaluate_solution(frontend: Frontend, task: TerryTask,
                       solution: SourceFile, config: Config,
                       interface: TerryUIInterface):
+    """
+    Build the part of the DAG relative of a single solution.
+    """
     if config.seed:
         seed = config.seed
     else:
@@ -171,8 +198,14 @@ def evaluate_solution(frontend: Frontend, task: TerryTask,
 
 
 class TerryFormat(TaskFormat):
+    """
+    Entry point for the terry format
+    """
     @staticmethod
     def clean():
+        """
+        Clean all the generated files: all the compiled managers.
+        """
         def remove_file(path: str) -> None:
             try:
                 os.remove(path)
@@ -184,6 +217,9 @@ class TerryFormat(TaskFormat):
 
     @staticmethod
     def evaluate_task(frontend: Frontend, config: Config):
+        """
+        Evaluate the task, compiling the solutions and testing them.
+        """
         task = get_task(config)
         solutions = get_task_solutions(config, task)
         return evaluate_task(frontend, task, solutions, config)

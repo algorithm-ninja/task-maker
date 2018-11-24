@@ -13,6 +13,11 @@ CXX_INCLUDE = re.compile('#include *["<](.+)[">]')
 
 
 def old_find_c_dependency(filename: str, strip=None) -> List[Dependency]:
+    """
+    Legacy method to find all the non-system dependencies of a C/C++ source
+    file. Will be used if no compiler (cc command) is found on this system.
+    Will return the list of all the headers required for the compilation.
+    """
     scope = os.path.dirname(filename)
     if strip is None:
         strip = scope + "/"
@@ -34,9 +39,20 @@ def old_find_c_dependency(filename: str, strip=None) -> List[Dependency]:
 
 
 def new_find_c_dependency(filename: str) -> List[Dependency]:
+    """
+    New method for finding the headers required for the compilation. It uses the
+    cc command (default C compiler) for fetching the list of dependencies (it
+    uses the -MM flag).
+    """
     proc = subprocess.run(["cc", "-MM", filename], stdout=subprocess.PIPE)
     if proc.returncode != 0:
         return []
+    # the output of this command is something like:
+    #
+    #   filename.o: \
+    #    /abs/path/to/file1.h \
+    #    /abs/path/to/file2.h \
+    #
     strip = os.path.dirname(filename) + "/"
     data = proc.stdout.decode().split()
     if len(data) < 2:
@@ -56,6 +72,10 @@ def new_find_c_dependency(filename: str) -> List[Dependency]:
 
 
 def find_c_dependency(filename: str) -> List[Dependency]:
+    """
+    Chooses which method to use for getting the list of all the compile time
+    dependencies.
+    """
     if find_executable("cc") is not None:
         return new_find_c_dependency(filename)
     else:

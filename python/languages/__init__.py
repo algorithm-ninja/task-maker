@@ -10,6 +10,10 @@ from typing import List, Dict
 
 
 class Dependency:
+    """
+    Describes a dependency of an executable. The `name` is the name to use
+    inside the sandbox, the `path` is outside the sandbox.
+    """
     def __init__(self, name: str, path: str):
         self.name = name
         self.path = path
@@ -19,6 +23,10 @@ class Dependency:
 
 
 class GraderInfo:
+    """
+    Contains the information about a grader, the language it's for and a list
+    of files required during the compilation/execution.
+    """
     def __init__(self, for_language: "Language", files: List[Dependency]):
         self.for_language = for_language
         self.files = files
@@ -28,6 +36,11 @@ class GraderInfo:
 
 
 class CommandType(Enum):
+    """
+    Type of command to execute in the sandbox for the specified language:
+    * LOCAL_FILE: a file inside the sandbox (like a solution)
+    * SYSTEM: a file present outside the sandbox (like a compiler)
+    """
     LOCAL_FILE = 0
     SYSTEM = 1
 
@@ -129,17 +142,30 @@ class Language(ABC):
 
 
 class CompiledLanguage(Language, ABC):
+    """
+    A language that needs an extra phase: compilation.
+    """
     @property
     def need_compilation(self):
         return True
 
 
 class LanguageManager:
+    """
+    Manage all the supported languages. LanguageManager.load_languages() should
+    be called in order to support the languages.
+    """
+    # List of the known languages.
     LANGUAGES = []  # type: List[Language]
+    # (extension with dot -> Language) association.
     EXT_CACHE = {}  # type: Dict[str, Language]
 
     @staticmethod
     def load_languages():
+        """
+        Iterates through the files in this package, load them and register the
+        languages.
+        """
         languages = glob.glob(os.path.dirname(__file__) + "/*.py")
         for language in languages:
             if language.endswith("__init__.py"):
@@ -157,6 +183,10 @@ class LanguageManager:
 
     @staticmethod
     def register_language(language: Language):
+        """
+        Given a loaded language put it in the cache of known languages, building
+        the cache of the known extensions.
+        """
         LanguageManager.LANGUAGES.append(language)
         for ext in language.source_extensions:
             if ext in LanguageManager.EXT_CACHE:
@@ -167,6 +197,10 @@ class LanguageManager:
 
     @staticmethod
     def from_file(path: str) -> Language:
+        """
+        Given the path to a file, returns the associated language. Raises an
+        excepetion if the language is unknown.
+        """
         name, ext = os.path.splitext(path)
         if ext not in LanguageManager.EXT_CACHE:
             raise ValueError("Unknown language for file {}".format(path))
@@ -174,8 +208,14 @@ class LanguageManager:
 
     @staticmethod
     def valid_extensions() -> List[str]:
+        """
+        Returns a list of all the known extensions (with the dots).
+        """
         return list(LanguageManager.EXT_CACHE.keys())
 
 
 def make_unique(deps: List[Dependency]) -> List[Dependency]:
+    """
+    Remove all the duplicates from a list of dependencies.
+    """
     return list(item[1] for item in {dep.name: dep for dep in deps}.items())

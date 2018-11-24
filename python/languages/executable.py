@@ -3,7 +3,7 @@
 from task_maker.languages import Language, LanguageManager
 
 
-class LanguagePython(Language):
+class LanguageExecutable(Language):
     @property
     def name(self):
         return "Executable"
@@ -14,4 +14,4 @@ class LanguagePython(Language):
 
 
 def register():
-    LanguageManager.register_language(LanguagePython())
+    LanguageManager.register_language(LanguageExecutable())
