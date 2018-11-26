@@ -397,7 +397,7 @@ def sanity_pre_checks(task: IOITask, solutions: List[Solution],
     check_att_folder(task, solutions, interface)
     check_sol_folder(solutions, interface)
     check_statement(task, interface)
-    check_sample_cases(task, frontend, config, interface)
+    # check_sample_cases(task, frontend, config, interface)
     check_symlinks(interface)
 
 

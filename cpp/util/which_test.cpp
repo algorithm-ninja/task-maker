@@ -26,7 +26,7 @@ TEST(Which, Which) {
 }
 
 // It's not clear whether this behavior should be expected, on Linux it getenv
-// of an known variable returns nullptr and the std::string constructor raises
+// of an unknown variable returns nullptr and the std::string constructor raises
 // an exception. On OSX it gets a SIGSEGV. Disabled for now.
 //// NOLINTNEXTLINE
 //TEST(Which, WhichEmptyPath) {
