@@ -273,7 +273,11 @@ def get_task_without_testcases(config: Config) -> IOITask:
             "bin/official_solution", Arch.DEFAULT, task.grader_map)
 
     if checker is not None:
-        target = os.path.join(os.path.dirname(checker), "checker")
+        checker_dir = os.path.dirname(checker)
+        if checker_dir.endswith("cor"):
+            target = os.path.join(checker_dir, "correttore")
+        else:
+            target = os.path.join(checker_dir, "checker")
         task.checker = SourceFile.from_file(checker, task.name, True, target,
                                             Arch.DEFAULT, {})
     if manager is not None:
