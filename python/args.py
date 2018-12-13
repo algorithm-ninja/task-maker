@@ -58,19 +58,13 @@ def _validate_num_cores(num: str) -> int:
 def add_generic_group(parser: argparse.ArgumentParser, bulk: bool):
     group = parser.add_argument_group("Generic options")
     if not bulk:
-        group.add_argument(
-            "--task-dir",
-            help="Directory of the task to build")
+        group.add_argument("--task-dir", help="Directory of the task to build")
         group.add_argument(
             "--max-depth",
             help="Look at most for this number of parents to search the task",
             type=int)
     group.add_argument(
-        "--ui",
-        help="UI to use",
-        choices=list(UIS),
-        type=UIS,
-        action="store")
+        "--ui", help="UI to use", choices=list(UIS), type=UIS, action="store")
     group.add_argument(
         "--cache",
         help="Cache policy to use",
@@ -108,13 +102,76 @@ def add_remote_group(parser: argparse.ArgumentParser):
         action="store_true",
         help="Run a worker in foreground instead of running a task")
     group.add_argument(
-        "--server-args",
+        "--storedir",
         action="store",
-        help="Arguments to pass to the server if it's to be spawned")
+        help="Path where the files should be stored")
     group.add_argument(
-        "--worker-args",
+        "--tempdir",
         action="store",
-        help="Arguments to pass to the worker if it's to be spawned")
+        help="Path where the sandboxes should be stored")
+    group.add_argument(
+        "--cache-size",
+        action="store",
+        type=int,
+        help="Maximum size of the cache, in megabytes. 0 means unlimited")
+
+
+def add_server_group(parser: argparse.ArgumentParser):
+    group = parser.add_argument_group("Server options")
+    group.add_argument(
+        "--server-logfile",
+        action="store",
+        help="Path where the log file of the server should be stored")
+    group.add_argument(
+        "--server-pidfile",
+        action="store",
+        help="Path where the pidfile of the server should be stored")
+    group.add_argument(
+        "--server-address", action="store", help="Address to listen on")
+    group.add_argument(
+        "--server-port",
+        action="store",
+        type=int,
+        help="Port to listen on")
+
+
+def add_worker_group(parser: argparse.ArgumentParser):
+    group = parser.add_argument_group("Worker group")
+    group.add_argument(
+        "--worker-logfile",
+        action="store",
+        help="Path where the log file of the worker should be stored")
+    group.add_argument(
+        "--worker-pidfile",
+        action="store",
+        help="Path where the pidfile of the worker should be stored")
+    group.add_argument(
+        "--worker-keep-sandboxes",
+        action="store_true",
+        help="Keep the sandboxes after evaluation")
+    group.add_argument(
+        "--worker-name",
+        action="store",
+        help="Name of this worker")
+    group.add_argument(
+        "--worker-num-cores",
+        action="store",
+        type=int,
+        help="Number of cores to use")
+    group.add_argument(
+        "--worker-port",
+        action="store",
+        type=int,
+        help="Port to connect to")
+    group.add_argument(
+        "--worker-address",
+        action="store",
+        help="Address to connect to")
+    group.add_argument(
+        "--worker-pending-requests",
+        action="store",
+        type=int,
+        help="Maximum number of pending requests")
 
 
 def add_execution_group(parser: argparse.ArgumentParser):
@@ -168,10 +225,11 @@ def add_help_group(parser: argparse.ArgumentParser):
 
 def add_bulk_group(parser: argparse.ArgumentParser):
     group = parser.add_argument_group("Bulk options")
-    group.add_argument("--contest-dir",
-                       help="Directory with all the tasks to build")
-    group.add_argument("--contest-yaml",
-                       help="Path to the contest.yaml to get the tasks from")
+    group.add_argument(
+        "--contest-dir", help="Directory with all the tasks to build")
+    group.add_argument(
+        "--contest-yaml",
+        help="Path to the contest.yaml to get the tasks from")
 
 
 def get_parser(bulk: bool) -> argparse.ArgumentParser:
@@ -180,6 +238,8 @@ def get_parser(bulk: bool) -> argparse.ArgumentParser:
         "--version", action="version", version=TASK_MAKER_VERSION)
     add_generic_group(parser, bulk)
     add_remote_group(parser)
+    add_server_group(parser)
+    add_worker_group(parser)
     add_execution_group(parser)
     add_ioi_group(parser)
     add_terry_group(parser)

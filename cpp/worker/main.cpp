@@ -81,8 +81,6 @@ kj::MainFunc Main::getMain() {
                         "Port to connect to")
       .addOptionWithArg({"name"}, util::setString(&Flags::name), "<NAME>",
                         "Name of this worker")
-      .addOptionWithArg({'t', "temp"}, util::setString(&Flags::temp_directory),
-                        "<TEMP>", "Where to store the sandboxes")
       .addOptionWithArg({'r', "pending-requests"},
                         util::setInt(&Flags::pending_requests), "<REQS>",
                         "Maximum number of pending requests")

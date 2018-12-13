@@ -12,8 +12,17 @@ class Config:
             "solutions", "task_dir", "max_depth", "ui", "cache", "dry_run",
             "clean", "format"
         ],
-        "remote":
-        ["server", "run_server", "run_worker", "server_args", "worker_args"],
+        "remote": [
+            "server", "run_server", "run_worker", "storedir", "tempdir",
+            "cache_size"
+        ],
+        "server":
+        ["server_logfile", "server_pidfile", "server_address", "server_port"],
+        "worker": [
+            "worker_logfile", "worker_pidfile", "worker_keep_sandboxes",
+            "worker_name", "worker_num_cores", "worker_port", "worker_address",
+            "worker_pending_requests"
+        ],
         "execution": ["exclusive", "extra_time", "copy_exe"],
         "ioi": ["detailed_checker"],
         "terry": ["arch", "seed"],
@@ -42,9 +51,27 @@ class Config:
         self.server = "127.0.0.1:7070"
         self.run_server = False
         self.run_worker = False
-        self.server_args = "--port=7070 --logfile=/tmp/task-maker-server.log"
-        self.worker_args = "--name=local --server=127.0.0.1:7070 --logfile=/tmp/task-maker-worker.log"
+        self.storedir = "~/.cache/task-maker/files"
+        self.tempdir = "~/.cache/task-maker/temp"
+        self.cache_size = 128
         self._get_host_port()
+        self._resolve_dir()
+
+        # server group
+        self.server_logfile = "/tmp/task-maker-server.log"
+        self.server_pidfile = None  # type: Optional[str]
+        self.server_address = None  # type: Optional[str]
+        self.server_port = 7070
+
+        # worker group
+        self.worker_logfile = "/tmp/task-maker-worker.log"
+        self.worker_pidfile = None  # type: Optional[str]
+        self.worker_keep_sandboxes = False
+        self.worker_name = "local"
+        self.worker_num_cores = None  # type: Optional[int]
+        self.worker_port = 7070
+        self.worker_address = "127.0.0.1"
+        self.worker_pending_requests = None  # type: Optional[int]
 
         # execution group
         self.exclusive = False
@@ -73,6 +100,7 @@ class Config:
             for arg in options:
                 self._apply_arg(arg, args)
         self._get_host_port()
+        self._resolve_dir()
 
     def apply_file(self):
         path = os.path.join(os.path.expanduser("~"), ".task-maker.toml")
@@ -92,6 +120,7 @@ class Config:
                             group, item))
                 setattr(self, item, self._get_value(group, item, value))
         self._get_host_port()
+        self._resolve_dir()
 
     def _apply_arg(self, name, args):
         value = getattr(args, name, None)
@@ -107,6 +136,10 @@ class Config:
         else:
             raise ValueError("Invalid address for the server")
 
+    def _resolve_dir(self):
+        self.storedir = os.path.expanduser(self.storedir)
+        self.tempdir = os.path.expanduser(self.tempdir)
+
     def _get_value(self, group, item, value):
         if item in Config.CUSTOM_TYPES:
             try:
@@ -116,3 +149,7 @@ class Config:
                 raise ValueError("Invalid config value at {}.{}, "
                                  "the valid values are: {}".format(
                                      group, item, ", ".join(valid)))
+        return value
+
+    def __repr__(self):
+        return str(self.__dict__)

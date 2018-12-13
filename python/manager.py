@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 import os.path
-import shlex
 import subprocess
 import time
 
 from task_maker.config import Config
 from task_maker.task_maker_frontend import Frontend
+from typing import List
 
 SERVER_SPAWN_TIME = 1
 MAX_SPAWN_ATTEMPT = 3
@@ -18,9 +18,8 @@ def get_task_maker_path():
     return os.path.abspath(task_maker)
 
 
-def spawn_backend(type: str, args: str, daemonize: bool):
+def spawn_backend(type: str, args: List[str], daemonize: bool):
     task_maker = get_task_maker_path()
-    args = shlex.split(args)
     if daemonize:
         args.append("--daemon")
         streams = subprocess.DEVNULL
@@ -34,11 +33,47 @@ def spawn_backend(type: str, args: str, daemonize: bool):
 
 
 def spawn_server(config: Config):
-    spawn_backend("server", config.server_args, not config.run_server)
+    args = []
+    if config.server_logfile is not None:
+        args += ["--logfile", config.server_logfile]
+    if config.server_pidfile is not None:
+        args += ["--pidfile", config.server_pidfile]
+    if config.storedir is not None:
+        args += ["--store-dir", config.storedir]
+    if config.tempdir is not None:
+        args += ["--temp-dir", config.tempdir]
+    if config.cache_size is not None:
+        args += ["--cache-size", str(config.cache_size)]
+    if config.server_address is not None:
+        args += ["--address", config.server_address]
+    if config.server_port is not None:
+        args += ["--port", str(config.server_port)]
+    spawn_backend("server", args, not config.run_server)
 
 
 def spawn_worker(config: Config):
-    spawn_backend("worker", config.worker_args, not config.run_worker)
+    args = []
+    if config.worker_logfile is not None:
+        args += ["--logfile", config.worker_logfile]
+    if config.worker_pidfile is not None:
+        args += ["--pidfile", config.worker_pidfile]
+    if config.storedir is not None:
+        args += ["--store-dir", config.storedir]
+    if config.tempdir is not None:
+        args += ["--temp-dir", config.tempdir]
+    if config.cache_size is not None:
+        args += ["--cache-size", str(config.cache_size)]
+    if config.worker_keep_sandboxes:
+        args += ["--keep_sandboxes"]
+    if config.worker_name is not None:
+        args += ["--name", config.worker_name]
+    if config.worker_port is not None:
+        args += ["--port", str(config.worker_port)]
+    if config.worker_address is not None:
+        args += ["--server", config.worker_address]
+    if config.worker_pending_requests is not None:
+        args += ["--pending-requests", str(config.worker_pending_requests)]
+    spawn_backend("worker", args, not config.run_worker)
 
 
 def get_frontend(config: Config) -> Frontend:
