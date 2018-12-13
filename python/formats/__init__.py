@@ -416,7 +416,7 @@ def get_solutions(solutions: List[str], directory: str,
     If no prefix is specified, returns all the solutions that:
     - are inside directory
     - and are not graders
-    - and the name does not starts with _
+    - and the name does not starts with . (and it's not __init__.py)
     """
     if solutions:
         paths = []
@@ -430,5 +430,5 @@ def get_solutions(solutions: List[str], directory: str,
         solutions = list_files(
             [directory + "*"], exclude=graders + [directory + "__init__.py"])
         solutions = list(
-            filter(lambda s: not s.startswith(directory + "_"), solutions))
+            filter(lambda s: not s.startswith(directory + "."), solutions))
     return solutions

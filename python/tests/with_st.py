@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from task_maker.tests.test import run_tests
+from task_maker.uis.ioi import IOIUIInterface
 
 
 def test_task():
@@ -29,6 +30,11 @@ def test_task():
                            [(0, "Some files are missing")] * 6)
     interface.add_solution("solution.rs", 100, [5, 45, 50],
                            [(1, "Output is correct")] * 6)
+
+    def check_ignored(ui: IOIUIInterface):
+        assert ".ignoreme.cpp" not in ui.solutions
+
+    interface.set_callback(check_ignored)
     interface.run_checks()
 
 

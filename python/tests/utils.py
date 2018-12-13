@@ -4,9 +4,9 @@ from functools import reduce
 from task_maker.task_maker_frontend import ResultStatus
 from task_maker.tests.test import interface
 from task_maker.uis import SourceFileCompilationStatus
-from task_maker.uis.ioi import TestcaseSolutionStatus
+from task_maker.uis.ioi import TestcaseSolutionStatus, IOIUIInterface
 from task_maker.uis.terry import SolutionInfo
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Callable
 
 
 class TestSolution(ABC):
@@ -156,6 +156,7 @@ class TestInterface:
         self.desc = desc
         self.timelimit = timelimit
         self.memlimit = memlimit
+        self.callback = None  # type: Optional[Callable[[IOIUIInterface], None]]
 
     def add_solution(self, name: str, score: float,
                      st_score: Optional[List[float]] = None,
@@ -214,6 +215,13 @@ class TestInterface:
         """
         self.errors = errors
 
+    def set_callback(self, callback: Callable[[IOIUIInterface], None]):
+        """
+        Set a callback to be run after all the other tests are done, it's a
+        function that takes a IOIUIInterface
+        """
+        self.callback = callback
+
     def run_checks(self):
         """
         Run all the specified tests.
@@ -270,6 +278,9 @@ class TestInterface:
 
         for sol in self.solutions:
             sol.check_solution()
+
+        if self.callback is not None:
+            self.callback(self)
 
 
 class TerryTestInterface:
