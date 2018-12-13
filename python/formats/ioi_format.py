@@ -133,9 +133,12 @@ def gen_testcases(copy_compiled: bool, task: IOITask) -> Dict[int, Subtask]:
 
     def create_subtask(subtask_num: int, testcases: Dict[int, TestCase],
                        score: float) -> None:
-        if testcases:
-            subtask = Subtask("", "", ScoreMode.MIN, score, testcases, [])
-            subtasks[subtask_num] = subtask
+        if subtask_num < 0:
+            return
+        if not testcases:
+            task.warnings.append("Subtask %d has no subtasks" % subtask_num)
+        subtask = Subtask("", "", ScoreMode.MIN, score, testcases, [])
+        subtasks[subtask_num] = subtask
 
     generator = get_generator()
     if not generator:
@@ -345,6 +348,8 @@ def evaluate_task(frontend: Frontend, task: IOITask, solutions: List[Solution],
         evaluate_solutions(frontend, ins, outs, vals, solutions, ui_interface,
                            config)
 
+        for warning in task.warnings:
+            ui_interface.add_warning(warning)
         sanity_pre_checks(task, solutions, frontend, config, ui_interface)
         frontend.evaluate()
         sanity_post_checks(task, solutions, ui_interface)

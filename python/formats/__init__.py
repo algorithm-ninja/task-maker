@@ -192,6 +192,9 @@ class Task(ABC):
         self.name = name
         self.title = title
 
+        # pre-run time warnings (e.g. parsing warnings)
+        self.warnings = []  # type: List[str]
+
 
 class IOITask(Task):
     """
