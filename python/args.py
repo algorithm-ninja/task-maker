@@ -133,6 +133,10 @@ def add_server_group(parser: argparse.ArgumentParser):
         action="store",
         type=int,
         help="Port to listen on")
+    group.add_argument(
+        "--server-verbose",
+        action="store_true",
+        help="Verbose logging for the server")
 
 
 def add_worker_group(parser: argparse.ArgumentParser):
@@ -172,6 +176,10 @@ def add_worker_group(parser: argparse.ArgumentParser):
         action="store",
         type=int,
         help="Maximum number of pending requests")
+    group.add_argument(
+        "--worker-verbose",
+        action="store_true",
+        help="Verbose logging for the worker")
 
 
 def add_execution_group(parser: argparse.ArgumentParser):

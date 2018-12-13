@@ -16,12 +16,14 @@ class Config:
             "server", "run_server", "run_worker", "storedir", "tempdir",
             "cache_size"
         ],
-        "server":
-        ["server_logfile", "server_pidfile", "server_address", "server_port"],
+        "server": [
+            "server_logfile", "server_pidfile", "server_address", "server_port",
+            "server_verbose"
+        ],
         "worker": [
             "worker_logfile", "worker_pidfile", "worker_keep_sandboxes",
             "worker_name", "worker_num_cores", "worker_port", "worker_address",
-            "worker_pending_requests"
+            "worker_pending_requests", "worker_verbose"
         ],
         "execution": ["exclusive", "extra_time", "copy_exe"],
         "ioi": ["detailed_checker"],
@@ -62,6 +64,7 @@ class Config:
         self.server_pidfile = None  # type: Optional[str]
         self.server_address = None  # type: Optional[str]
         self.server_port = 7070
+        self.server_verbose = False
 
         # worker group
         self.worker_logfile = "/tmp/task-maker-worker.log"
@@ -72,6 +75,7 @@ class Config:
         self.worker_port = 7070
         self.worker_address = "127.0.0.1"
         self.worker_pending_requests = None  # type: Optional[int]
+        self.worker_verbose = False
 
         # execution group
         self.exclusive = False

@@ -40,21 +40,15 @@ def run_tests(task_name: str, file: str):
     config.cache = CacheMode.NOTHING
     config.task_dir = task_path
     config.dry_run = True
-    config.server_args = \
-        "--store-dir='{}/files' " \
-        "--temp-dir='{}/temp' " \
-        "--pidfile='{}/server.pid' " \
-        "--logfile={}/server.log " \
-        "--verbose " \
-        "--port=7070".format(temp_dir, temp_dir, temp_dir, temp_dir)
-    config.worker_args = \
-        "--store-dir='{}/files' " \
-        "--temp-dir='{}/temp' " \
-        "--pidfile='{}/worker.pid' " \
-        "--logfile={}/worker.log " \
-        "--verbose " \
-        "--name=local " \
-        "--server=127.0.0.1:7070".format(temp_dir, temp_dir, temp_dir, temp_dir)
+    config.storedir = temp_dir + "/files"
+    config.tempdir = temp_dir + "/temp"
+    config.server_pidfile = temp_dir + "/server.pid"
+    config.server_logfile = temp_dir + "/server.log"
+    config.server_verbose = True
+    config.server_port = 7070
+    config.worker_pidfile = temp_dir + "/worker.pid"
+    config.worker_logfile = temp_dir + "/worker.log"
+    config.worker_verbose = True
     global interface
     setup(config)
     ret = run(config)

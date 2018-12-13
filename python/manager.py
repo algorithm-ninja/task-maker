@@ -48,6 +48,8 @@ def spawn_server(config: Config):
         args += ["--address", config.server_address]
     if config.server_port is not None:
         args += ["--port", str(config.server_port)]
+    if config.server_verbose:
+        args += ["--verbose"]
     spawn_backend("server", args, not config.run_server)
 
 
@@ -73,6 +75,8 @@ def spawn_worker(config: Config):
         args += ["--server", config.worker_address]
     if config.worker_pending_requests is not None:
         args += ["--pending-requests", str(config.worker_pending_requests)]
+    if config.worker_verbose:
+        args += ["--verbose"]
     spawn_backend("worker", args, not config.run_worker)
 
 
