@@ -83,12 +83,12 @@ a worker is the program that executes a command, a client is you!
 
 First start a server:
 ```bash
-task-maker --run-server
+task-maker --run-server --server-address=0.0.0.0
 ```
 
 Then start a worker in each machine, specifying the server to connect to:
 ```bash
-task-maker --run-worker --worker-args="--server server_ip:7070"
+task-maker --run-worker --worker-address=<ip of the server>
 ```
 
 To run the execution remotely just pass:
