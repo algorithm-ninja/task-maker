@@ -15,6 +15,7 @@ def get_checker_execution(frontend: Frontend, config: Config, task: IOITask,
                           output: File, correct_output: File,
                           message: str) -> Execution:
     if checker:
+        checker.prepare(frontend, config)
         check = checker.execute(frontend, message,
                                 ["input", "output", "contestant_output"])
         check.addInput("input", input)
@@ -128,9 +129,9 @@ class CommunicationSolution(Solution):
             pipes_sol_2_m_names.append("pipe_sol%d_2_m" % p)
 
         executions = []
-        for p_in, p_out, p_in_name, p_out_name in zip(
-                pipes_m_2_sol, pipes_sol_2_m, pipes_m_2_sol_names,
-                pipes_sol_2_m_names):
+        for p, p_in, p_out, p_in_name, p_out_name in enumerate(
+                zip(pipes_m_2_sol, pipes_sol_2_m, pipes_m_2_sol_names,
+                    pipes_sol_2_m_names)):
             exec = self.solution.execute(
                 frontend, "Evaluation of %s (process %d) on testcase %d" %
                 (self.solution.name, p, testcase),

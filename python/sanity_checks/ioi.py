@@ -46,18 +46,17 @@ def _get_statement_path():
 
 
 def _get_statement_tex():
-    return list_files(
-        ["statement/*.tex", "testo/*.tex"], valid_extensions=[".tex"])
+    return list_files(["statement/*.tex", "testo/*.tex"],
+                      valid_extensions=[".tex"])
 
 
 def _check_git_has_file(path: str) -> Optional[bool]:
     # git is not installed
     if not find_executable("git"):
         return None
-    proc = subprocess.run(
-        ["git", "ls-files", "--", path],
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.PIPE)
+    proc = subprocess.run(["git", "ls-files", "--", path],
+                          stderr=subprocess.DEVNULL,
+                          stdout=subprocess.PIPE)
     # this is not a git repository
     if proc.returncode != 0:
         return None
@@ -142,8 +141,8 @@ def _setup_execution_callback(interface: IOIUIInterface, execution: Execution,
             interface.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
 
     execution.notifyStart(notify_start)
-    execution.getResult(get_result, skipped)
     execution.stderr(False).getContentsAsString(get_stderr)
+    execution.getResult(get_result, skipped)
 
 
 def _setup_checker_callback(interface: IOIUIInterface, checking: Execution,
@@ -185,8 +184,8 @@ def _setup_checker_callback(interface: IOIUIInterface, checking: Execution,
             interface.add_warning(description + " does not score any points")
 
     checking.notifyStart(notify_start)
-    checking.getResult(get_result, skipped)
     checking.stdout(False).getContentsAsString(get_stdout)
+    checking.getResult(get_result, skipped)
 
 
 def check_att_folder(task: IOITask, solutions: List[Solution],
@@ -254,20 +253,24 @@ def check_sample_cases(task: IOITask, frontend: Frontend, config: Config,
     Check if the sample cases in the statement are valid and the output is
     correct
     """
-    inputs = list_files(
-        [
-            "statement/input*.txt", "statement/{}.input*.txt".format(
-                task.name), "testo/input*.txt", "testo/{}.input*.txt".format(
-                    task.name)
-        ],
-        valid_extensions=[".txt"])
-    outputs = list_files(
-        [
-            "statement/output*.txt", "statement/{}.output*.txt".format(
-                task.name), "testo/output*.txt", "testo/{}.output*.txt".format(
-                    task.name)
-        ],
-        valid_extensions=[".txt"])
+    # Communication tasks does not have output files
+    if task.task_type != TaskType.Batch:
+        return
+
+    # without official solution we cannot solve the input files
+    if not task.official_solution:
+        return
+
+    inputs = list_files([
+        "statement/input*.txt", "statement/{}.input*.txt".format(task.name),
+        "testo/input*.txt", "testo/{}.input*.txt".format(task.name)
+    ],
+                        valid_extensions=[".txt"])
+    outputs = list_files([
+        "statement/output*.txt", "statement/{}.output*.txt".format(task.name),
+        "testo/output*.txt", "testo/{}.output*.txt".format(task.name)
+    ],
+                         valid_extensions=[".txt"])
     num_to_input = dict()  # type: Dict[int, str]
     num_to_output = dict()  # type: Dict[int, str]
     num_to_input_file = dict()  # type: Dict[int, File]
@@ -282,11 +285,11 @@ def check_sample_cases(task: IOITask, frontend: Frontend, config: Config,
             continue
         sample_num = int(match.group(1))
         num_to_input[sample_num] = infile
-        # skip the validations if there is no default validator
-        if not task.default_val:
-            break
         num_to_input_file[sample_num] = frontend.provideFile(
             infile, "Sample input {}".format(infile), False)
+        # skip the validation if there is no default validator
+        if not task.default_val:
+            continue
         validation = task.default_val.source_file.execute(
             frontend, "Validation of sample input {}".format(infile),
             [VALIDATION_INPUT_NAME, "0"])
@@ -299,9 +302,13 @@ def check_sample_cases(task: IOITask, frontend: Frontend, config: Config,
             interface, validation,
             "Validation of sample input {}".format(infile))
 
-    # Communication tasks does not have output files
-    if task.task_type != TaskType.Batch:
-        return
+    # if the output files were not yet generated (e.g. when they are just
+    # copied), the solution is not prepared
+    if not task.official_solution.prepared:
+        task.official_solution.prepare(frontend, config)
+        if task.official_solution.language.need_compilation:
+            # TODO at some point use a centralized system to run the files
+            task.official_solution.compilation.getResult(lambda res: res)
 
     for outfile in outputs:
         match = re.match(r".*output(\d+).txt", outfile)
@@ -314,14 +321,14 @@ def check_sample_cases(task: IOITask, frontend: Frontend, config: Config,
         num_to_output[sample_num] = outfile
         num_to_output_file[sample_num] = frontend.provideFile(
             outfile, "Sample output {}".format(outfile), False)
-        # without official solution we cannot solve the input
-        if not task.official_solution:
-            break
         solving = task.official_solution.execute(
             frontend, "Solving sample output {}".format(outfile), [])
         if config.cache != CacheMode.ALL:
             solving.disableCache()
-        solving.addInput("wait_for_validation", num_to_validation[sample_num])
+        # if the validator is not present we don't wait for it
+        if sample_num in num_to_validation:
+            solving.addInput("wait_for_validation",
+                             num_to_validation[sample_num])
         if task.input_file:
             solving.addInput(task.input_file, num_to_input_file[sample_num])
         else:
@@ -397,7 +404,7 @@ def sanity_pre_checks(task: IOITask, solutions: List[Solution],
     check_att_folder(task, solutions, interface)
     check_sol_folder(solutions, interface)
     check_statement(task, interface)
-    # check_sample_cases(task, frontend, config, interface)
+    check_sample_cases(task, frontend, config, interface)
     check_symlinks(interface)
 
 
