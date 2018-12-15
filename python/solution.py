@@ -129,7 +129,7 @@ class CommunicationSolution(Solution):
             pipes_sol_2_m_names.append("pipe_sol%d_2_m" % p)
 
         executions = []
-        for p, p_in, p_out, p_in_name, p_out_name in enumerate(
+        for p, (p_in, p_out, p_in_name, p_out_name) in enumerate(
                 zip(pipes_m_2_sol, pipes_sol_2_m, pipes_m_2_sol_names,
                     pipes_sol_2_m_names)):
             exec = self.solution.execute(
