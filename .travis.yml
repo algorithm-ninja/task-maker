@@ -17,14 +17,13 @@ matrix:
         - WHAT=test
         - TOOLCHAIN=archlinux
         - RELEASE_FILE=task-maker-${TRAVIS_TAG}_archlinux_amd64.tar.xz
-    - env:
+    - if: NOT branch =~ /^v.*/
+      env:
         - WHAT=test
         - TOOLCHAIN=archlinux-clang
         - ADDRESSSANITIZER=ON
-      branches:
-        except:
-        - /^v.*/
-    - env:
+    - if: NOT branch =~ /^v.*/
+      env:
         - WHAT=test-AUR-package
         - TOOLCHAIN=archlinux
       script:
@@ -33,10 +32,8 @@ matrix:
             -v $(pwd):/build
             edomora97/task-maker-builder-archlinux:latest
             /build/tools/test_aur_package.sh
-      branches:
-        except:
-        - /^v.*/
-    - env:
+    - if: NOT branch =~ /^v.*/
+      env:
         - WHAT=clang-tidy
         - TOOLCHAIN=archlinux-clang
       script:
@@ -52,9 +49,6 @@ matrix:
             --cap-add SYS_PTRACE
             edomora97/task-maker-builder-$TOOLCHAIN:latest
             /build/tools/compile_and_lint.sh
-      branches:
-        except:
-        - /^v.*/
     - os: osx
       env:
         - WHAT=test
