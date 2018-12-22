@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import os.path
-import subprocess
 import time
 
+import os.path
+import subprocess
 from task_maker.config import Config
 from task_maker.task_maker_frontend import Frontend
 from typing import List
@@ -69,6 +69,8 @@ def spawn_worker(config: Config):
         args += ["--keep_sandboxes"]
     if config.worker_name is not None:
         args += ["--name", config.worker_name]
+    if config.worker_num_cores is not None:
+        args += ["--num-cores", str(config.worker_num_cores)]
     if config.worker_port is not None:
         args += ["--port", str(config.worker_port)]
     if config.worker_address is not None:

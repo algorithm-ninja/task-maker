@@ -9,6 +9,9 @@ from task_maker.uis.ioi_curses_ui import print_solutions_result
 
 
 class IOIFinishUI(FinishUI):
+    """
+    FinishUI for IOI-like tasks
+    """
     def __init__(self, config: Config, interface: IOIUIInterface):
         super().__init__(config, interface)
         self.task = interface.task

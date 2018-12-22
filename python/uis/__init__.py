@@ -1,22 +1,29 @@
 #!/usr/bin/env python3
+import time
+
 import curses
 import signal
 import threading
-import time
 import traceback
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from enum import Enum
-from typing import Dict, List, Optional
-
 from task_maker.config import Config
 from task_maker.formats import Task
 from task_maker.printer import StdoutPrinter, Printer, CursesPrinter
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import Result, ResultStatus, Resources
+from typing import Dict, List, Optional
 
 
 class SourceFileCompilationStatus(Enum):
+    """
+    Status of the compilation of a source file
+    - WAITING: the compilation has not started yet
+    - COMPILING: the compilation has started
+    - DONE: the compilation has successfully completed
+    - FAILURE: the compilation failed
+    """
     WAITING = 0
     COMPILING = 1
     DONE = 2
@@ -24,6 +31,9 @@ class SourceFileCompilationStatus(Enum):
 
 
 class SourceFileCompilationResult:
+    """
+    Result information about a compilation of a source file
+    """
     def __init__(self, need_compilation):
         self.need_compilation = need_compilation
         self.status = SourceFileCompilationStatus.WAITING
@@ -32,11 +42,23 @@ class SourceFileCompilationResult:
 
 
 class UIInterface:
+    """
+    This class is the binding between the frontend and the task format and the
+    UIs. The format will register the solutions, the frontend will call its
+    callbacks and the state is stored in this class (and in it's subclasses).
+    The UI will use the data inside this.
+    """
     def __init__(self, task: Task, do_print: bool):
+        """
+        :param task: The task this UIInterface is bound to
+        :param do_print: Whether the logs should be printed to stdout (print
+        interface)
+        """
         self.task = task
         self.non_solutions = dict(
         )  # type: Dict[str, SourceFileCompilationResult]
         self.solutions = dict()  # type: Dict[str, SourceFileCompilationResult]
+        # all the running tasks: (name, monotonic timestamp of start)
         self.running = dict()  # type: Dict[str, float]
         self.warnings = list()  # type: List[str]
         self.errors = list()  # type: List[str]
@@ -47,11 +69,16 @@ class UIInterface:
             self.printer = Printer()
 
     def add_non_solution(self, source_file: SourceFile):
+        """
+        Add a non-solution file to the ui (ie a generator/checker/...)
+        """
         name = source_file.name
         log_prefix = "Compilation of non-solution {} ".format(name).ljust(50)
         self.non_solutions[name] = SourceFileCompilationResult(
             source_file.language.need_compilation)
         self.printer.text(log_prefix + "WAITING\n")
+
+        # TODO: at some point extract those functionality into some wrapper
         if source_file.language.need_compilation:
 
             def notifyStartCompiltion():
@@ -88,6 +115,9 @@ class UIInterface:
             self.non_solutions[name].status = SourceFileCompilationStatus.DONE
 
     def add_solution(self, source_file: SourceFile):
+        """
+        Add a solution to the UI
+        """
         name = source_file.name
         log_prefix = "Compilation of solution {} ".format(name).ljust(50)
         self.solutions[name] = SourceFileCompilationResult(
@@ -130,11 +160,17 @@ class UIInterface:
             self.solutions[name].status = SourceFileCompilationStatus.DONE
 
     def add_warning(self, message: str):
+        """
+        Add a warning message to the list of warnings
+        """
         self.warnings.append(message)
         self.printer.yellow("WARNING  ", bold=True)
         self.printer.text(message.strip() + "\n")
 
     def add_error(self, message: str):
+        """
+        Add an error message to the list of errors, this wont stop anything
+        """
         self.errors.append(message)
         self.printer.red("ERROR  ", bold=True)
         self.printer.text(message.strip() + "\n")
@@ -142,6 +178,12 @@ class UIInterface:
     @contextmanager
     def run_in_ui(self, curses_ui: Optional["CursesUI"],
                   finish_ui: Optional["FinishUI"]):
+        """
+        Wrap a block in the UI's setup/teardown. A curses UI should be stopped
+        before the program exists otherwise the terminal is messed up. This
+        wrapper will start the UIs, yield and stop them after. At the end it
+        will print with the finish ui
+        """
         if curses_ui:
             curses_ui.start()
         try:
@@ -159,6 +201,11 @@ class UIInterface:
 
 
 class FinishUI(ABC):
+    """
+    UI used to print the summary of the execution
+    """
+    # if the time / memory usage is greater of the limit * LIMITS_MARGIN that
+    # time/memory is highlighted
     LIMITS_MARGIN = 0.8
 
     def __init__(self, config: Config, interface: Optional[UIInterface]):
@@ -168,13 +215,22 @@ class FinishUI(ABC):
 
     @abstractmethod
     def print(self):
+        """
+        Print the entire result summary
+        """
         pass
 
     @abstractmethod
     def print_summary(self):
+        """
+        Print only the summary grid with the overview of the results
+        """
         pass
 
     def print_final_messages(self):
+        """
+        Print the warning and error messages
+        """
         if not self.interface:
             return
         if sorted(self.interface.warnings):
@@ -267,21 +323,33 @@ class FinishUI(ABC):
 
 
 class CursesUI(ABC):
+    """
+    Running interface using the curses library to look nice in the terminal
+    """
+    # limit the frame rate
     FPS = 30
 
     def __init__(self, config: Config, interface: UIInterface):
         self.config = config
         self.interface = interface
+        # the ui runs in a different thread
         self.thread = threading.Thread(
             target=curses.wrapper, args=(self._wrapper, ))
         self.stopped = False
         self.errored = False
 
     def start(self):
+        """
+        Start the UI starting the thread and messing up the terminal
+        """
         self.stopped = False
         self.thread.start()
 
     def stop(self):
+        """
+        Stops the thread and wait for it's termination. This will fix the
+        terminal closing curses
+        """
         self.stopped = True
         self.thread.join()
 
@@ -289,12 +357,13 @@ class CursesUI(ABC):
         try:
             curses.start_color()
             curses.use_default_colors()
-            for i in range(1, curses.COLORS):
-                curses.init_pair(i, i, -1)
+            if hasattr(curses, "COLORS"):
+                for i in range(1, curses.COLORS):
+                    curses.init_pair(i, i, -1)
             curses.halfdelay(1)
             pad = curses.newpad(10000, 1000)
             printer = CursesPrinter(pad)
-            loading_chars = "-\\|/"
+            loading_chars = r"◐◓◑◒"
             cur_loading_char = 0
             pos_x, pos_y = 0, 0
             while not self.stopped:
@@ -333,6 +402,10 @@ class CursesUI(ABC):
 
     @abstractmethod
     def _loop(self, printer: CursesPrinter, loading: str):
+        """
+        The UI should inherit from this class and implement this method to print
+        to the screen
+        """
         pass
 
     def _print_running_tasks(self, printer: CursesPrinter):

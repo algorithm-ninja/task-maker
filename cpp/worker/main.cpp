@@ -2,14 +2,12 @@
 #include <capnp/ez-rpc.h>
 #include <thread>
 
-#include "capnp/server.capnp.h"
 #include "util/daemon.hpp"
 #include "util/flags.hpp"
 #include "util/log_manager.hpp"
 #include "util/misc.hpp"
 #include "util/version.hpp"
 #include "worker/executor.hpp"
-#include "worker/manager.hpp"
 
 const size_t EXP_BACKOFF_MIN = 1;
 const size_t EXP_BACKOFF_MAX = 60000;
@@ -86,7 +84,7 @@ kj::MainFunc Main::getMain() {
                         "Maximum number of pending requests")
       .addOptionWithArg(
           {'c', "cache-size"}, util::setUint(&Flags::cache_size), "<SZ>",
-          "Maximum size of the cache, in megabytes. 0 means unlimited")
+          "Maximum size of the cache, in MiB. 0 means unlimited")
       .callAfterParsing(KJ_BIND_METHOD(*this, Run))
       .build();
 }

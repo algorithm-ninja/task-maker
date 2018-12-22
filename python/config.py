@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import os
-from typing import List, Optional
 import pytoml
-
 from task_maker.args import CacheMode, UIS, TaskFormat, Arch
+from typing import List, Optional
 
 
 class Config:
@@ -55,7 +54,7 @@ class Config:
         self.run_worker = False
         self.storedir = "~/.cache/task-maker/files"
         self.tempdir = "~/.cache/task-maker/temp"
-        self.cache_size = 128
+        self.cache_size = 2048  # in MiB
         self._get_host_port()
         self._resolve_dir()
 

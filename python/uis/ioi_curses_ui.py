@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from typing import Dict
-
 from task_maker.config import Config
 from task_maker.formats import IOITask
 from task_maker.printer import CursesPrinter, Printer
@@ -10,15 +8,22 @@ from task_maker.uis import CursesUI, get_max_sol_len, \
 from task_maker.uis.ioi import IOIUIInterface, TestcaseGenerationStatus, \
     SubtaskSolutionResult, TestcaseSolutionStatus, SolutionStatus, \
     TestcaseSolutionInfo
+from typing import Dict
 
 
 def print_solution_column(printer: Printer, solution: str, max_sol_len: int):
+    """
+    Print the solution name padded to fit in the column
+    """
     printer.text("%{}s ".format(max_sol_len) % solution)
 
 
 def print_compilation_status(printer: Printer, solution: str, max_sol_len: int,
                              loading_char: str,
                              status: SourceFileCompilationStatus):
+    """
+    Print the status of the compilation of a file
+    """
     print_solution_column(printer, solution, max_sol_len)
     if status == SourceFileCompilationStatus.WAITING:
         printer.text("...")
@@ -33,6 +38,9 @@ def print_compilation_status(printer: Printer, solution: str, max_sol_len: int,
 
 def print_testcase_generation_status(printer: Printer,
                                      status: TestcaseGenerationStatus):
+    """
+    Print the letter relative to the generation status
+    """
     if status == TestcaseGenerationStatus.WAITING:
         printer.text(".")
     elif status == TestcaseGenerationStatus.GENERATING:
@@ -53,6 +61,9 @@ def print_testcase_generation_status(printer: Printer,
 
 def print_subtask_result(printer: Printer, text: str,
                          result: SubtaskSolutionResult):
+    """
+    Print a string with a color based on the status of a subtask
+    """
     if result == SubtaskSolutionResult.WAITING:
         printer.text(text)
     elif result == SubtaskSolutionResult.RUNNING:
@@ -69,6 +80,9 @@ def print_subtask_result(printer: Printer, text: str,
 
 def print_testcase_solution_result(printer: Printer, loading: str,
                                    info: TestcaseSolutionInfo):
+    """
+    Print the letter relative to the status of solution
+    """
     if info.status == TestcaseSolutionStatus.WAITING:
         printer.text(".")
     elif info.status == TestcaseSolutionStatus.SOLVING:
@@ -120,6 +134,9 @@ def print_testcase_solution_result(printer: Printer, loading: str,
 def print_solutions_result(printer: Printer, task: IOITask,
                            solutions: Dict[str, SolutionStatus],
                            max_sol_len: int, loading: str):
+    """
+    Print the matrix with the solutions' statuses
+    """
     printer.text(" " * max_sol_len + " ")
     max_score = sum(st.max_score for st in task.subtasks.values())
     printer.bold("{:^5.0f}|".format(max_score))
@@ -158,14 +175,16 @@ def print_solutions_result(printer: Printer, task: IOITask,
                 status.testcase_results.items(), status.subtask_results):
             print_subtask_result(printer, "[", st_result)
             for tc_num, testcase in testcases.items():
-                print_testcase_solution_result(printer, loading,
-                                               testcase)
+                print_testcase_solution_result(printer, loading, testcase)
             print_subtask_result(printer, "]", st_result)
 
         printer.text("\n")
 
 
 class IOICursesUI(CursesUI):
+    """
+    UIInterface for IOI-like tasks
+    """
     def __init__(self, config: Config, interface: IOIUIInterface):
         super().__init__(config, interface)
 

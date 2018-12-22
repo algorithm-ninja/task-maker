@@ -43,7 +43,7 @@ kj::MainFunc Main::getMain() {
                         "Port to listen on")
       .addOptionWithArg(
           {'c', "cache-size"}, util::setUint(&Flags::cache_size), "<SZ>",
-          "Maximum size of the cache, in megabytes. 0 means unlimited")
+          "Maximum size of the cache, in MiB. 0 means unlimited")
       .callAfterParsing(KJ_BIND_METHOD(*this, Run))
       .build();
 }

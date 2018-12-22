@@ -10,6 +10,10 @@ from task_maker.uis.terry import TerryUIInterface, SolutionInfo, \
 def print_terry_solution_info(printer: CursesPrinter, solution: str,
                               info: SolutionInfo, max_sol_len: int,
                               loading: str, max_score: float):
+    """
+    Print the status of a solution, including the name and what it's doing.
+    This can be called also if the evaluation has ended.
+    """
     printer.text("{:>{len}} ".format(solution, len=max_sol_len))
     if info.status == SolutionStatus.WAITING:
         printer.text(" ... ")
@@ -53,6 +57,9 @@ def print_terry_solution_info(printer: CursesPrinter, solution: str,
 
 
 class TerryCursesUI(CursesUI):
+    """
+    UIInterface for Terry-like tasks
+    """
     def __init__(self, config: Config, interface: TerryUIInterface):
         super().__init__(config, interface)
 

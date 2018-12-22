@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 from task_maker.config import Config
-from task_maker.formats import TerryTask
 from task_maker.uis import FinishUI, get_max_sol_len
 from task_maker.uis.terry import TerryUIInterface, SolutionInfo
 from task_maker.uis.terry_curses_ui import print_terry_solution_info
 
 
 class TerryFinishUI(FinishUI):
+    """
+    FinishUI for Terry-like tasks
+    """
     def __init__(self, config: Config, interface: TerryUIInterface):
         super().__init__(config, interface)
         self.task = interface.task

@@ -1,26 +1,32 @@
 #!/usr/bin/env python3
-from enum import Enum
 import time
-from typing import List, Dict
 
+from enum import Enum
 from task_maker.formats import IOITask, ScoreMode
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import Execution, Result, ResultStatus
 from task_maker.uis import result_to_str, UIInterface
+from typing import List, Dict, Optional, Callable
 
 
 class TestcaseGenerationStatus(Enum):
-    WAITING = 0
-    GENERATING = 1
-    GENERATED = 2
-    VALIDATING = 3
-    VALIDATED = 4
-    SOLVING = 5
-    DONE = 6
-    FAILURE = 7
+    """
+    Status of the generation of a testcase
+    """
+    WAITING = 0  # waiting to start
+    GENERATING = 1  # started generation of the testcase
+    GENERATED = 2  # the testcase has been generated
+    VALIDATING = 3  # started validation of the testcase
+    VALIDATED = 4  # the testcase has been validated
+    SOLVING = 5  # started the solution
+    DONE = 6  # the solution ended correctly
+    FAILURE = 7  # the process of generation failed
 
 
 class TestcaseSolutionStatus(Enum):
+    """
+    Status of a solution in a testcase
+    """
     WAITING = 0  # waiting to start
     SOLVING = 1  # started the evaluation
     SOLVED = 2  # evaluation ended but the checker didn't start nor finished
@@ -33,14 +39,20 @@ class TestcaseSolutionStatus(Enum):
 
 
 class SubtaskSolutionResult(Enum):
-    WAITING = 0
-    RUNNING = 1
-    ACCEPTED = 2
-    PARTIAL = 3
-    REJECTED = 4
+    """
+    Status of the evaluation of a subtask
+    """
+    WAITING = 0  # the subtask evaluation has not yet started
+    RUNNING = 1  # the subtask evaluation has started
+    ACCEPTED = 2  # all the testcases have been solved
+    PARTIAL = 3  # some testcases have been solved and the score is positive
+    REJECTED = 4  # the score of the subtask is zero
 
 
 class TestcaseSolutionInfo:
+    """
+    Information about a solution of a testcase
+    """
     def __init__(self):
         # to be considered definitive only if checked == True
         self.status = TestcaseSolutionStatus.WAITING
@@ -53,6 +65,9 @@ class TestcaseSolutionInfo:
 
 
 class TestcaseGenerationResult:
+    """
+    Information about the generation of a testcase
+    """
     def __init__(self):
         self.status = TestcaseGenerationStatus.WAITING
         self.generation_result = None  # type: Result
@@ -64,12 +79,15 @@ class TestcaseGenerationResult:
 
 
 class CustomCheckerState:
+    """
+    State of a custom checker in a testcase
+    """
     def __init__(self, solution: str):
         self.solution = solution
         self.result = None  # type: Result
         self.stdout = None  # type: str
         self.stderr = None  # type: str
-        self.callback = None
+        self.callback = None  # type: Optional[Callable[[], None]]
 
     def set_result(self, result: Result):
         self.result = result
@@ -83,7 +101,11 @@ class CustomCheckerState:
         self.stderr = stderr
         self._check()
 
-    def set_callback(self, callback):
+    def set_callback(self, callback: Callable[[], None]):
+        """
+        The callback will be called when the checker has done and all the
+        information are ready
+        """
         self.callback = callback
         self._check()
 
@@ -94,6 +116,10 @@ class CustomCheckerState:
 
 
 class SolutionStatus:
+    """
+    Task status of a solution, this is the source of truth for the evaluation of
+    a solution
+    """
     def __init__(self, source_file: SourceFile, task: IOITask,
                  interface: "IOIUIInterface", subtasks: Dict[int, List[int]]):
         self.interface = interface
@@ -112,6 +138,10 @@ class SolutionStatus:
 
     def update_eval_result(self, subtask: int, testcase: int, result: Result,
                            num: int):
+        """
+        Set the result of the evaluation of a testcase. In case of communication
+        task num is the process number of the evaluator.
+        """
         self.subtask_results[subtask] = SubtaskSolutionResult.RUNNING
         testcase_status = self.testcase_results[subtask][testcase]
         testcase_status.result[num] = result
@@ -141,6 +171,9 @@ class SolutionStatus:
 
     def update_default_check_result(self, subtask: int, testcase: int,
                                     result: Result):
+        """
+        Set the result of the default checker (diff) of a testcase
+        """
         # the default checker is used only in batch type tasks, no need for
         # communication's out-of-order callbacks
         testcase_status = self.testcase_results[subtask][testcase]
@@ -163,6 +196,9 @@ class SolutionStatus:
 
     def update_custom_check_result(self, subtask: int, testcase: int,
                                    state: CustomCheckerState):
+        """
+        Set the result of the custom checker of a testcase
+        """
         # premise: this can be called before update_eval_result on
         # communication or even between difference calls of it.
         # assumption: this method may safely assume that all the next executions
@@ -258,6 +294,9 @@ class SolutionStatus:
 
 
 class IOIUIInterface(UIInterface):
+    """
+    IOI-like task variant of the UI interface
+    """
     def __init__(self, task: IOITask, testcases: Dict[int, List[int]],
                  do_print: bool):
         super().__init__(task, do_print)
@@ -280,6 +319,9 @@ class IOIUIInterface(UIInterface):
 
     def add_generation(self, subtask: int, testcase: int,
                        generation: Execution):
+        """
+        Start tacking the generation of a testcase
+        """
         log_prefix = "Generation of input {} of subtask {} ".format(
             testcase, subtask).ljust(50)
         testcase_status = self.subtasks[subtask][testcase]
@@ -317,6 +359,9 @@ class IOIUIInterface(UIInterface):
 
     def add_validation(self, subtask: int, testcase: int,
                        validation: Execution):
+        """
+        Start tracking the validation of a testcase
+        """
         log_prefix = "Validation of input {} of subtask {} ".format(
             testcase, subtask).ljust(50)
         testcase_status = self.subtasks[subtask][testcase]
@@ -353,6 +398,9 @@ class IOIUIInterface(UIInterface):
         validation.getResult(getResultValidation, skippedValidation)
 
     def add_solving(self, subtask: int, testcase: int, solving: Execution):
+        """
+        Start tracking the execution of the official solution on a testcase
+        """
         log_prefix = "Generation of output {} of subtask {} ".format(
             testcase, subtask).ljust(50)
         testcase_status = self.subtasks[subtask][testcase]
@@ -391,6 +439,9 @@ class IOIUIInterface(UIInterface):
 
     def add_evaluate_solution(self, subtask: int, testcase: int, solution: str,
                               evaluations: List[Execution]):
+        """
+        Start tracking the evaluation of a solution on a testcase
+        """
         self.testing[solution].testcase_results[subtask][
             testcase].result = [None] * len(evaluations)
         started = False
@@ -437,6 +488,9 @@ class IOIUIInterface(UIInterface):
 
     def add_evaluate_checking(self, subtask: int, testcase: int, solution: str,
                               checking: Execution):
+        """
+        Start tracking the checking of a solution in a testcase
+        """
         log_prefix = "Checking {} on case {} ".format(solution,
                                                       testcase).ljust(50)
         has_custom_checker = self.task.checker

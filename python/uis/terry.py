@@ -1,37 +1,47 @@
 #!/usr/bin/env python3
-from enum import Enum
-import json
 import time
-from typing import Optional, Dict, List
 
+import json
+from enum import Enum
 from task_maker.formats import TerryTask
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import Execution, Result, ResultStatus
 from task_maker.uis import UIInterface, result_to_str
+from typing import Optional, Dict, List
 
 
 class SolutionStatus(Enum):
-    WAITING = 0
-    GENERATING = 1
-    GENERATED = 2
-    VALIDATING = 3
-    VALIDATED = 4
-    SOLVING = 5
-    SOLVED = 6
-    CHECKING = 7
-    DONE = 8
-    FAILED = 9
+    """
+    Status of the evaluation of a solution
+    """
+    WAITING = 0  # the evaluation is pending
+    GENERATING = 1  # the input file is generating
+    GENERATED = 2  # the input file has been generated
+    VALIDATING = 3  # the input file is validating
+    VALIDATED = 4  # the input file has been validated
+    SOLVING = 5  # the solution has started
+    SOLVED = 6  # the solution ended well
+    CHECKING = 7  # the checker is running
+    DONE = 8  # the checker has done
+    FAILED = 9  # the evaluation failed
 
 
 class TestcaseStatus(Enum):
-    MISSING = 0
-    CORRECT = 1
-    WRONG = 2
+    """
+    Outcome of a testcase from a solution
+    """
+    MISSING = 0  # the solution didn't answered the testcase
+    CORRECT = 1  # the solution answered well
+    WRONG = 2  # the solution didn't answered well
 
 
 class SolutionInfo:
+    """
+    Information about a solution and it's evaluation
+    """
     def __init__(self):
         self.status = SolutionStatus.WAITING
+        # each solution can be evaluated with different seeds
         self.seed = None
         self.gen_result = None  # type: Optional[Result]
         self.val_result = None  # type: Optional[Result]
@@ -47,6 +57,9 @@ class SolutionInfo:
 
 
 class TerryUIInterface(UIInterface):
+    """
+    Terry-like task variant of the UI interface
+    """
     def __init__(self, task: TerryTask, do_print: bool):
         super().__init__(task, do_print)
         self.task = task
@@ -57,6 +70,9 @@ class TerryUIInterface(UIInterface):
         self.solutions_info[source_file.name] = SolutionInfo()
 
     def add_generation(self, solution: str, seed: int, generation: Execution):
+        """
+        Start tracking the generation of a testcase
+        """
         log_prefix = "Generation of input for {} with seed {} ".format(
             solution, seed).ljust(50)
         info = self.solutions_info[solution]
@@ -97,6 +113,9 @@ class TerryUIInterface(UIInterface):
         generation.getResult(get_result, skipped)
 
     def add_validation(self, solution: str, validation: Execution):
+        """
+        Start tracking the validation of a testcase
+        """
         log_prefix = "Validation of input for {} ".format(solution).ljust(50)
         info = self.solutions_info[solution]
         self.printer.text(log_prefix + "WAITING\n")
@@ -134,6 +153,9 @@ class TerryUIInterface(UIInterface):
         validation.getResult(get_result, skipped)
 
     def add_solving(self, solution: str, solving: Execution):
+        """
+        Start tracking the evaluation of a solution
+        """
         log_prefix = "Running solution {} ".format(solution).ljust(50)
         info = self.solutions_info[solution]
         self.printer.text(log_prefix + "WAITING\n")
@@ -170,6 +192,9 @@ class TerryUIInterface(UIInterface):
         solving.getResult(get_result, skipped)
 
     def add_checking(self, solution: str, checking: Execution):
+        """
+        Start the tracking of a checker
+        """
         log_prefix = "Checking output of solution {} ".format(solution).ljust(
             50)
         info = self.solutions_info[solution]
@@ -212,6 +237,9 @@ class TerryUIInterface(UIInterface):
         checking.getResult(get_result, skipped)
 
     def _compute_score(self, solution: str, check_outcome: str):
+        """
+        Process the checker's outcome and compute the score of a solution
+        """
         info = self.solutions_info[solution]
         try:
             outcome = json.loads(check_outcome)
