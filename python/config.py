@@ -9,15 +9,15 @@ class Config:
     OPTIONS = {
         "generic": [
             "solutions", "task_dir", "max_depth", "ui", "cache", "dry_run",
-            "clean", "format"
+            "clean", "task_info", "format"
         ],
         "remote": [
             "server", "run_server", "run_worker", "storedir", "tempdir",
             "cache_size"
         ],
         "server": [
-            "server_logfile", "server_pidfile", "server_address", "server_port",
-            "server_verbose"
+            "server_logfile", "server_pidfile", "server_address",
+            "server_port", "server_verbose"
         ],
         "worker": [
             "worker_logfile", "worker_pidfile", "worker_keep_sandboxes",
@@ -46,6 +46,7 @@ class Config:
         self.cache = CacheMode.ALL
         self.dry_run = False
         self.clean = False
+        self.task_info = False
         self.format = None  # type: Optional[TaskFormat]
 
         # remote group

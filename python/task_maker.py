@@ -60,6 +60,9 @@ def run(config: Config) -> MainRet:
     if config.clean:
         task_format.clean()
         return MainRet(exitcode=0, interface=None, stopped=False)
+    if config.task_info:
+        task_format.task_info(config)
+        return MainRet(exitcode=0, interface=None, stopped=False)
 
     frontend = get_frontend(config)
 

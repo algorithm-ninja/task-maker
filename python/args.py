@@ -95,6 +95,10 @@ def add_generic_group(parser: argparse.ArgumentParser, bulk: bool):
         help="Clear the task directory and exit",
         action="store_true")
     group.add_argument(
+        "--task-info",
+        help="Show the task information and exit",
+        action="store_true")
+    group.add_argument(
         "--format",
         help="Format of the task",
         action="store",

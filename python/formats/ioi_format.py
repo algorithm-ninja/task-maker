@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import glob
+import json
 import os
+import pprint
 import ruamel.yaml
 import shlex
 from task_maker.args import UIS, CacheMode, Arch
@@ -542,6 +544,14 @@ class IOIFormat(TaskFormat):
         for d in ["cor", "check"]:
             for f in ["checker", "correttore"]:
                 remove_file(os.path.join(d, f))
+
+    @staticmethod
+    def task_info(config: Config):
+        task = get_task(config)
+        if config.ui == UIS.JSON:
+            print(json.dumps(task.to_dict()))
+        elif config.ui != UIS.SILENT:
+            pprint.pprint(task.to_dict())
 
     @staticmethod
     def evaluate_task(frontend: Frontend, config: Config) -> IOIUIInterface:

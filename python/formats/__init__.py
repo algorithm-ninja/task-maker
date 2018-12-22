@@ -236,6 +236,8 @@ class IOITask(Task):
 
     def to_dict(self):
         return {
+            "type":
+                "IOI",
             "name":
                 self.name,
             "title":
@@ -246,10 +248,14 @@ class IOITask(Task):
                     "max_score": subtask.max_score,
                     "cases": {
                         tc_num: {
-                            "generator": testcase.generator.name,
+                            "generator":
+                                testcase.generator.name
+                                if testcase.generator else None,
                             "generator_path":
-                                testcase.generator.source_file.path,
-                            "args": testcase.generator_args
+                                testcase.generator.source_file.path
+                                if testcase.generator else None,
+                            "args":
+                                testcase.generator_args
                         }
                         for tc_num, testcase in subtask.testcases.items()
                     }
@@ -296,6 +302,8 @@ class TerryTask(Task):
 
     def to_dict(self):
         return {
+            "type":
+                "Terry",
             "name":
                 self.name,
             "title":
@@ -337,6 +345,14 @@ class TaskFormat(ABC):
     def clean():
         """
         Perform the task cleanup process.
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def task_info(config: Config):
+        """
+        Print the task information
         """
         pass
 

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import glob
+import json
 import os.path
 import platform
+import pprint
 import random
 from task_maker.args import Arch, CacheMode, UIS
 from task_maker.config import Config
@@ -221,6 +223,14 @@ class TerryFormat(TaskFormat):
 
         for manager in glob.glob("managers/*.*.*"):
             remove_file(manager)
+
+    @staticmethod
+    def task_info(config: Config):
+        task = get_task(config)
+        if config.ui == UIS.JSON:
+            print(json.dumps(task.to_dict()))
+        elif config.ui != UIS.SILENT:
+            pprint.pprint(task.to_dict())
 
     @staticmethod
     def evaluate_task(frontend: Frontend, config: Config):

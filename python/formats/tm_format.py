@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
+import json
 import os.path
+import pprint
 import shlex
-from typing import List, IO, Dict
-from typing import Optional
-
-from task_maker.args import Arch
+from task_maker.args import Arch, UIS
 from task_maker.config import Config
 from task_maker.formats import ioi_format, IOITask, \
     Subtask, Generator, Validator, Constraint, ScoreMode, TestCase, \
     parse_variable, get_write_input_file, \
     get_write_output_file, TaskFormat
-from task_maker.task_maker_frontend import Frontend
 from task_maker.formats.ioi_format import get_generator, \
     get_validator, get_task_without_testcases, get_task_solutions
 from task_maker.source_file import SourceFile
+from task_maker.task_maker_frontend import Frontend
+from typing import List, IO, Dict
+from typing import Optional
 
 
 def parse_cases(gen: IO, task: IOITask, copy_compiled: bool) -> List[Subtask]:
@@ -359,10 +360,24 @@ def write_gen_GEN(task: IOITask):
         f.write(generate_gen_GEN(task.subtasks.values()))
 
 
+def get_task(config: Config):
+    """
+    Get the task from the config
+    """
+    task = get_task_without_testcases(config)
+    with open("gen/cases.gen", "r") as gen:
+        subtasks = parse_cases(gen, task, config.copy_exe)
+
+    for st_num, subtask in enumerate(subtasks):
+        task.subtasks[st_num] = subtask
+    return task
+
+
 class TMFormat(TaskFormat):
     """
     Entry point for task-maker format
     """
+
     @staticmethod
     def clean():
         """
@@ -378,18 +393,21 @@ class TMFormat(TaskFormat):
                     os.remove("gen/GEN")
 
     @staticmethod
+    def task_info(config: Config):
+        task = get_task(config)
+        if config.ui == UIS.JSON:
+            print(json.dumps(task.to_dict()))
+        elif config.ui != UIS.SILENT:
+            pprint.pprint(task.to_dict())
+
+    @staticmethod
     def evaluate_task(frontend: Frontend, config: Config):
         """
         Evaluates the task by building the structure and using the ioi-format
         interface
         """
-        task = get_task_without_testcases(config)
+        task = get_task(config)
         solutions = get_task_solutions(config, task)
-        with open("gen/cases.gen", "r") as gen:
-            subtasks = parse_cases(gen, task, config.copy_exe)
-
-        for st_num, subtask in enumerate(subtasks):
-            task.subtasks[st_num] = subtask
 
         if not config.dry_run:
             write_gen_GEN(task)
