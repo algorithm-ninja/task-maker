@@ -3,13 +3,12 @@ import glob
 import os.path
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Dict, Optional, Union, Any
-
 from task_maker.config import Config
-from task_maker.task_maker_frontend import Frontend
-from task_maker.source_file import SourceFile
 from task_maker.languages import GraderInfo, LanguageManager, Dependency, \
     Language
+from task_maker.source_file import SourceFile
+from task_maker.task_maker_frontend import Frontend
+from typing import List, Dict, Optional, Union, Any
 
 # Name of the input file on disk when doing the validation process
 VALIDATION_INPUT_NAME = "tm_input_file"
@@ -42,6 +41,7 @@ class Constraint:
     """
     Defines a CONSTRAINT in a cases.gen file (TM-format).
     """
+
     def __init__(self, name: str, lower_bound: Optional[float],
                  upper_bound: Optional[float], more_or_equal: bool,
                  less_or_equal: bool):
@@ -88,6 +88,7 @@ class Generator:
     a specific SourceFile. Optionally can contain a specification about its
     parameters (the names of them, in order).
     """
+
     def __init__(self, name: str, source_file: Optional[SourceFile],
                  args_spec: Optional[List[str]]):
         self.name = name
@@ -95,8 +96,8 @@ class Generator:
         self.source_file = source_file
 
     def __repr__(self):
-        return "<Generator %s [%s]>" % (self.name,
-                                        " ".join(self.args_spec or []))
+        return "<Generator %s [%s]>" % (self.name, " ".join(self.args_spec
+                                                            or []))
 
 
 class Validator:
@@ -104,6 +105,7 @@ class Validator:
     Defines a validator of testcases. Like Generator it's composed of a name, a
     SourceFile and optionally a list with the names of the parameters
     """
+
     def __init__(self, name: str, source_file: SourceFile,
                  args_spec: Optional[List[str]]):
         self.name = name
@@ -140,6 +142,7 @@ class TestCase:
     the path of where to write the files to disk.
     Note that a generator and a static file cannot be specified together.
     """
+
     def __init__(self, generator: Optional[Generator],
                  validator: Optional[Validator], generator_args: List[str],
                  extra_deps: List[Dependency], input_file: Optional[str],
@@ -169,6 +172,7 @@ class Subtask:
     ScoreMode is used with a max_score parameter. With TM-format it's also
     possible to specify some constraints for the problem variables.
     """
+
     def __init__(self, name: str, description: str, score_mode: ScoreMode,
                  max_score: float, testcases: Dict[int, TestCase],
                  constraints: List[Constraint]):
@@ -188,6 +192,7 @@ class Task(ABC):
     Abstract class of a Task, each task format should derive from this base
     class.
     """
+
     def __init__(self, name: str, title: str):
         self.name = name
         self.title = title
@@ -208,6 +213,7 @@ class IOITask(Task):
     The subtasks are 0-based numbered, the testcases as well but their numbers
     wont reset at each subtask. The time limit is expressed in seconds.
     """
+
     def __init__(self, name: str, title: str, subtasks: Dict[int, Subtask],
                  official_solution: Optional["SourceFile"],
                  grader_map: Dict[Language, GraderInfo],
@@ -228,6 +234,44 @@ class IOITask(Task):
         self.default_gen = None  # type: Optional[Generator]
         self.default_val = None  # type: Optional[Validator]
 
+    def to_dict(self):
+        return {
+            "name":
+                self.name,
+            "title":
+                self.title,
+            "subtasks": {
+                st_num: {
+                    "name": subtask.name,
+                    "max_score": subtask.max_score,
+                    "cases": {
+                        tc_num: {
+                            "generator": testcase.generator.name,
+                            "generator_path":
+                                testcase.generator.source_file.path,
+                            "args": testcase.generator_args
+                        }
+                        for tc_num, testcase in subtask.testcases.items()
+                    }
+                }
+                for st_num, subtask in self.subtasks.items()
+            },
+            "official_solution":
+                self.official_solution.name if self.official_solution else None,
+            "checker":
+                self.checker.name if self.checker else None,
+            "time_limit":
+                self.time_limit,
+            "memory_limit":
+                self.memory_limit_kb,
+            "input_file":
+                self.input_file,
+            "output_file":
+                self.output_file,
+            "task_type":
+                self.task_type.name
+        }
+
     def __repr__(self):
         return "<Task name=%s title=%s>" % (self.name, self.title)
 
@@ -241,6 +285,7 @@ class TerryTask(Task):
     An official solution can be provided, it will be compiled and put alongside
     the checker.
     """
+
     def __init__(self, name: str, title: str, max_score: float):
         super().__init__(name, title)
         self.max_score = max_score
@@ -248,6 +293,24 @@ class TerryTask(Task):
         self.validator = None  # type: Optional[SourceFile]
         self.official_solution = None  # type: Optional[SourceFile]
         self.checker = None  # type: SourceFile
+
+    def to_dict(self):
+        return {
+            "name":
+                self.name,
+            "title":
+                self.title,
+            "max_score":
+                self.max_score,
+            "generator":
+                self.generator.path if self.generator else None,
+            "validator":
+                self.validator.path if self.validator else None,
+            "official_solution":
+                self.official_solution.path if self.official_solution else None,
+            "checker":
+                self.checker.path if self.checker else None,
+        }
 
     def __repr__(self):
         return "<TerryTask name={} title={}>".format(self.name, self.title)
@@ -259,6 +322,7 @@ class TaskFormat(ABC):
     should derive from this class. The main function will call one of those
     abstract methods to do the action associated to this format.
     """
+
     @staticmethod
     @abstractmethod
     def evaluate_task(frontend: Frontend, config: Config):
@@ -430,8 +494,8 @@ def get_solutions(solutions: List[str], directory: str,
                 paths.append("{}{}*".format(directory, sol))
         solutions = list_files(paths)
     else:
-        solutions = list_files(
-            [directory + "*"], exclude=graders + [directory + "__init__.py"])
+        solutions = list_files([directory + "*"],
+                               exclude=graders + [directory + "__init__.py"])
         solutions = list(
             filter(lambda s: not s.startswith(directory + "."), solutions))
     return solutions

@@ -69,10 +69,7 @@ class IOIFinishUIJSON(FinishUI):
     def print(self):
         res = {
             "action": "result",
-            "task": {
-                "name": self.task.name,
-                "title": self.task.title
-            },
+            "task": self.task.to_dict(),
             "subtasks": self._get_subtasks(),
             "solutions": get_compilations(self.interface.solutions),
             "non_solutions": get_compilations(self.interface.non_solutions),

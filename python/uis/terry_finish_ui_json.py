@@ -40,10 +40,7 @@ class TerryFinishUIJSON(FinishUI):
     def print(self):
         res = {
             "action": "result",
-            "task": {
-                "name": self.task.name,
-                "title": self.task.title
-            },
+            "task": self.task.to_dict(),
             "solutions": get_compilations(self.interface.solutions),
             "non_solutions": get_compilations(self.interface.non_solutions),
             "testing": self._get_testing()
