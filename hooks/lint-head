@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+SCRIPTPATH=$(dirname $(readlink -f $0))
+WORKDIR=${SCRIPTPATH}/..
+
+cd $WORKDIR
+
+FILES=$(git diff-tree --no-commit-id --name-only -r HEAD | grep -P "\.[ch]pp")
+SKIPPEDFILES=(cpp/util/sha256.hpp cpp/util/sha256.cpp)
+
+ret=0
+for file in ${FILES}; do
+  if [[ " ${SKIPPEDFILES[@]} " =~ " ${file} " ]]; then
+    echo "== Skipped ${file} =="
+    continue
+  fi
+  $SCRIPTPATH/lint-cpp-file $file
+  ret=$((ret+$?))
+done
+
+exit $ret

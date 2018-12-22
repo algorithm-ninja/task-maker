@@ -49,7 +49,8 @@ matrix:
             --cap-add SYS_PTRACE
             edomora97/task-maker-builder-$TOOLCHAIN:latest
             /build/tools/compile_and_lint.sh
-    - os: osx
+    - if: NOT branch =~ /^v.*/
+      os: osx
       env:
         - WHAT=test
         - TOOLCHAIN=osx
