@@ -336,14 +336,13 @@ def evaluate_task(frontend: Frontend, task: IOITask, solutions: List[Solution],
         task,
         dict((st_num, [tc for tc in st.testcases.keys()])
              for st_num, st in task.subtasks.items()),
-        config.ui == UIS.PRINT or config.ui == UIS.JSON,
-        config.ui == UIS.JSON)
+        config.ui in [UIS.PRINT, UIS.JSON], config.ui == UIS.JSON)
     curses_ui = None
     finish_ui = None
     if config.ui == UIS.CURSES:
         curses_ui = IOICursesUI(config, ui_interface)
     if config.ui != UIS.SILENT and config.bulk_number is None:
-        if config.ui == UIS.PRINT:
+        if config.ui in [UIS.PRINT, UIS.CURSES]:
             finish_ui = IOIFinishUI(config, ui_interface)
         elif config.ui == UIS.JSON:
             finish_ui = IOIFinishUIJSON(config, ui_interface)
@@ -373,6 +372,7 @@ def generate_inputs(
     return 3 dicts: one for input, one for output and one for validations.
     Each dict has (subtask number, test case number) -> File
     """
+
     def add_non_solution(source: SourceFile):
         if not source.prepared:
             source.prepare(frontend, config)
@@ -508,6 +508,7 @@ class IOIFormat(TaskFormat):
     """
     Entry point for the IOI format.
     """
+
     @staticmethod
     def clean():
         """
@@ -516,6 +517,7 @@ class IOIFormat(TaskFormat):
         The files removed are: input/output files, bin directory, compiled
         checkers
         """
+
         def remove_dir(path: str, pattern: str) -> None:
             if not os.path.exists(path):
                 return
@@ -524,8 +526,8 @@ class IOIFormat(TaskFormat):
             try:
                 os.rmdir(path)
             except OSError:
-                print(
-                    "Directory %s not empty, kept non-%s files" % (path, pattern))
+                print("Directory %s not empty, kept non-%s files" % (path,
+                                                                     pattern))
 
         def remove_file(path: str) -> None:
             try:
