@@ -2,9 +2,15 @@
 
 from os.path import join, isdir, dirname, exists
 from task_maker.args import TaskFormat
+from typing import Tuple, Optional
 
 
-def find_task_dir(task_dir: str, max_depth: int, hint: TaskFormat):
+def find_task_dir(task_dir: str, max_depth: int,
+                  hint: TaskFormat) -> Tuple[str, Optional[TaskFormat]]:
+    """
+    Find the root directory of the task which should be a parent folder of
+    task_dir. It must be at most max_depth directories above the current one.
+    """
     if task_dir.endswith("/"):
         task_dir = task_dir[:-1]
     current_format = detect_format(task_dir, hint)
@@ -13,7 +19,11 @@ def find_task_dir(task_dir: str, max_depth: int, hint: TaskFormat):
     return find_task_dir(dirname(task_dir), max_depth - 1, hint)
 
 
-def detect_format(task_dir: str, hint: TaskFormat):
+def detect_format(task_dir: str, hint: TaskFormat) -> Optional[TaskFormat]:
+    """
+    Detect the format of the task in task_dir, using hint if it matches the
+    format of the task.
+    """
     valid_formats = []
     if is_tm_format(task_dir):
         valid_formats.append(TaskFormat.TM)
@@ -33,11 +43,17 @@ def detect_format(task_dir: str, hint: TaskFormat):
     return None
 
 
-def is_tm_format(task_dir: str):
+def is_tm_format(task_dir: str) -> bool:
+    """
+    Check if the format could be task-maker
+    """
     return exists(join(task_dir, "gen", "cases.gen"))
 
 
 def is_ioi_format(task_dir: str):
+    """
+    Check if the format could be IOI-like
+    """
     if isdir(join(task_dir, "gen")):
         if exists(join(task_dir, "gen", "GEN")) and \
                 not exists(join(task_dir, "gen", "cases.gen")):
@@ -50,6 +66,9 @@ def is_ioi_format(task_dir: str):
 
 
 def is_terry_format(task_dir: str):
+    """
+    Check if the format could be Terry-like
+    """
     if isdir(join(task_dir, "managers")):
         return True
     return False

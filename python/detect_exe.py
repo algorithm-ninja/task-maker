@@ -25,6 +25,10 @@ _EXE_SIGNATURES = ((b"\x4D\x5A",
 
 
 def get_exeflags(filepath: str) -> int:
+    """
+    Detect if a file is an executable, EXEFLAG_NONE if not a recognized
+    executable, something else if an executable is detected.
+    """
     with open(filepath, "rb") as file:
         buf = b""
         buf_len = 0

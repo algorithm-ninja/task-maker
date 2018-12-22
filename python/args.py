@@ -4,35 +4,49 @@ import argparse
 from enum import Enum
 
 try:
+    # this files comes from the build system
     from task_maker.version import TASK_MAKER_VERSION
 except ImportError:
     TASK_MAKER_VERSION = "unknown"
 
 
 class CacheMode(Enum):
-    ALL = 0
-    REEVALUATE = 1
-    NOTHING = 2
+    """
+    The mode on how the cache should be used
+    """
+    ALL = 0  # cache everything
+    REEVALUATE = 1  # do not cache the evaluations
+    NOTHING = 2  # do not cache anything
 
 
 class UIS(Enum):
-    CURSES = 0
-    PRINT = 1
-    SILENT = 2
+    """
+    Kind of UI to use
+    """
+    CURSES = 0  # animated terminal curses interface
+    PRINT = 1  # print to stdout the information as soon as they arrive
+    SILENT = 2  # do not print
 
 
 class TaskFormat(Enum):
-    IOI = 0
-    TERRY = 1
-    TM = 2
+    """
+    Format of the task
+    """
+    IOI = 0  # IOI-like task
+    TERRY = 1  # Terry-like task
+    TM = 2  # Task-maker format
 
 
 class Arch(Enum):
-    DEFAULT = 0
-    X86_64 = 1
-    I686 = 2
+    """
+    Architecture to target the executables
+    """
+    DEFAULT = 0  # use the default one
+    X86_64 = 1  # force x86-64 64-bit executables
+    I686 = 2  # force i686 32-bit executables
 
 
+# patch the classes for argparse
 for cls in [UIS, CacheMode, TaskFormat, Arch]:
 
     def from_string(cls, name: str):

@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
+import sys
+from collections import namedtuple
+
 import os.path
 import signal
-import sys
-
-from collections import namedtuple
-from typing import Any, Union
-
 from task_maker.args import get_parser, TaskFormat
 from task_maker.config import Config
 from task_maker.detect_format import find_task_dir
@@ -14,12 +12,15 @@ from task_maker.formats import ioi_format, tm_format, terry_format
 from task_maker.help import check_help
 from task_maker.languages import LanguageManager
 from task_maker.manager import get_frontend, spawn_server, spawn_worker
-
+from typing import Any
 
 MainRet = namedtuple("MainRet", ["exitcode", "interface", "stopped"])
 
 
 def get_task_format(fmt: TaskFormat):
+    """
+    Get the format class based on the format of the task.
+    """
     if fmt == TaskFormat.IOI:
         return ioi_format.IOIFormat
     elif fmt == TaskFormat.TM:
@@ -30,6 +31,10 @@ def get_task_format(fmt: TaskFormat):
 
 
 def setup(config: Config):
+    """
+    This function has to be called as soon as possible and exactly once to setup
+    the system.
+    """
     check_help(config)
     if config.run_server:
         return spawn_server(config)
@@ -40,6 +45,9 @@ def setup(config: Config):
 
 
 def run(config: Config) -> MainRet:
+    """
+    Execute task-maker on the given configuration.
+    """
     task_dir, fmt = find_task_dir(config.task_dir, config.max_depth,
                                   config.format)
     if not fmt:
@@ -56,7 +64,8 @@ def run(config: Config) -> MainRet:
     frontend = get_frontend(config)
 
     stopped = False
-    def stop_server(signum: int, _: Any) -> None:
+
+    def stop_server(_1: int, _2: Any) -> None:
         nonlocal stopped
         frontend.stopEvaluation()
         stopped = True
@@ -65,8 +74,8 @@ def run(config: Config) -> MainRet:
     signal.signal(signal.SIGTERM, stop_server)
 
     interface = task_format.evaluate_task(frontend, config)
-    return MainRet(exitcode=len(interface.errors), interface=interface,
-                   stopped=stopped)
+    return MainRet(
+        exitcode=len(interface.errors), interface=interface, stopped=stopped)
 
 
 def main():

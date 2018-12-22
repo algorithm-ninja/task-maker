@@ -14,6 +14,10 @@ def get_checker_execution(frontend: Frontend, config: Config, task: IOITask,
                           checker: Optional[SourceFile], input: Optional[File],
                           output: File, correct_output: File,
                           message: str) -> Execution:
+    """
+    Build the execution of the checker, it could be a custom checker or the
+    default diff one.
+    """
     if checker:
         checker.prepare(frontend, config)
         check = checker.execute(frontend, message,
@@ -36,6 +40,10 @@ def get_checker_execution(frontend: Frontend, config: Config, task: IOITask,
 
 
 class Solution(ABC):
+    """
+    Abstract class that manages a solution.
+    """
+
     def __init__(self, solution: SourceFile, task: IOITask, config: Config):
         self.solution = solution
         self.task = task
@@ -63,6 +71,11 @@ class Solution(ABC):
 
 
 class BatchSolution(Solution):
+    """
+    The task type is Batch, the evaluation consists in executing the solution
+    giving the input, taking the output and checking it.
+    """
+
     def __init__(self, solution: SourceFile, task: IOITask, config: Config,
                  checker: SourceFile):
         super().__init__(solution, task, config)
@@ -105,6 +118,10 @@ class BatchSolution(Solution):
 
 
 class CommunicationSolution(Solution):
+    """
+    The task type is Communication, a number of solutions and a manager are
+    spawned, giving to them an input file.
+    """
     def __init__(self, solution: SourceFile, task: IOITask, config: Config,
                  manager: SourceFile, num_processes: int):
         super().__init__(solution, task, config)

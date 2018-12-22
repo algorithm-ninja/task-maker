@@ -13,12 +13,18 @@ MAX_SPAWN_ATTEMPT = 3
 
 
 def get_task_maker_path():
+    """
+    Get the path of the cpp executable
+    """
     task_maker = os.path.dirname(__file__)
     task_maker = os.path.join(task_maker, "bin", "task-maker")
     return os.path.abspath(task_maker)
 
 
 def spawn_backend(type: str, args: List[str], daemonize: bool):
+    """
+    Spawn a backend service, eventually daemonizing it
+    """
     task_maker = get_task_maker_path()
     if daemonize:
         args.append("--daemon")
@@ -33,6 +39,9 @@ def spawn_backend(type: str, args: List[str], daemonize: bool):
 
 
 def spawn_server(config: Config):
+    """
+    Spawn the server, passing its arguments from the config
+    """
     args = []
     if config.server_logfile is not None:
         args += ["--logfile", config.server_logfile]
@@ -54,6 +63,9 @@ def spawn_server(config: Config):
 
 
 def spawn_worker(config: Config):
+    """
+    Spawn the worker, passing its arguments from the config
+    """
     args = []
     if config.worker_logfile is not None:
         args += ["--logfile", config.worker_logfile]
@@ -83,6 +95,10 @@ def spawn_worker(config: Config):
 
 
 def get_frontend(config: Config) -> Frontend:
+    """
+    Run the frontend module connecting to the server and eventually spawning it
+    if needed.
+    """
     try:
         return Frontend(config.host, config.port)
     except:

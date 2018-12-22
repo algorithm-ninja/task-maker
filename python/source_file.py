@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 import os.path
 from distutils.spawn import find_executable
-from typing import Optional, Dict, List
-
 from task_maker.args import CacheMode, Arch
 from task_maker.config import Config
 from task_maker.detect_exe import get_exeflags, EXEFLAG_NONE
@@ -10,9 +8,13 @@ from task_maker.languages import LanguageManager, Language, CommandType, \
     GraderInfo, Dependency
 from task_maker.task_maker_frontend import Frontend, File, ExecutionGroup, \
     Execution
+from typing import Optional, Dict, List
 
 
 def is_executable(path: str) -> bool:
+    """
+    Check if the file is an executable or a script with a shebang.
+    """
     if get_exeflags(path) != EXEFLAG_NONE:
         return True
     with open(path, "rb") as source:
@@ -22,6 +24,11 @@ def is_executable(path: str) -> bool:
 
 
 class SourceFile:
+    """
+    A SourceFile contains a ref to a source file, this class will manage it's
+    compilation and execution.
+    """
+
     @staticmethod
     def from_file(path: str, unit_name: str, copy_executable: bool,
                   write_to: Optional[str], target_arch: Arch,

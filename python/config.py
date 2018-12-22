@@ -99,6 +99,9 @@ class Config:
         self.bulk_total = None  # type: Optional[int]
 
     def apply_args(self, args):
+        """
+        Apply all the options from Config.OPTIONS using the argparse's result
+        """
         for group, options in Config.OPTIONS.items():
             for arg in options:
                 self._apply_arg(arg, args)
@@ -106,6 +109,9 @@ class Config:
         self._resolve_dir()
 
     def apply_file(self):
+        """
+        Apply the configuration from the ~/.task-maker.toml file
+        """
         path = os.path.join(os.path.expanduser("~"), ".task-maker.toml")
         try:
             with open(path, "r") as f:

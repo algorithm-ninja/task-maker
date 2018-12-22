@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 
-import ruamel.yaml
-from typing import List
-import os
 import sys
 
-from task_maker.uis.bulk_finish_ui import BulkFinishUI
+import os
+import ruamel.yaml
 from task_maker.args import get_parser, UIS
 from task_maker.config import Config
 from task_maker.task_maker import setup, run
+from task_maker.uis.bulk_finish_ui import BulkFinishUI
+from typing import List
 
 
 def get_task_paths(config: Config) -> List[str]:
+    """
+    Get the paths of the tasks that have to be executed
+    """
     if config.contest_yaml:
         yaml_dir = os.path.dirname(config.contest_yaml)
         with open(config.contest_yaml) as f:
@@ -21,6 +24,9 @@ def get_task_paths(config: Config) -> List[str]:
 
 
 def bulk_run(config: Config) -> int:
+    """
+    Run all the tasks using task-maker, will return the exit code to use
+    """
     tasks = get_task_paths(config)
     if not tasks:
         raise ValueError("No tasks found")
