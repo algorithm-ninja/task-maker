@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+
 import time
 
 import curses
+import json
 import signal
 import threading
 import traceback
@@ -34,6 +36,7 @@ class SourceFileCompilationResult:
     """
     Result information about a compilation of a source file
     """
+
     def __init__(self, need_compilation):
         self.need_compilation = need_compilation
         self.status = SourceFileCompilationStatus.WAITING
@@ -48,7 +51,8 @@ class UIInterface:
     callbacks and the state is stored in this class (and in it's subclasses).
     The UI will use the data inside this.
     """
-    def __init__(self, task: Task, do_print: bool):
+
+    def __init__(self, task: Task, do_print: bool, json: bool):
         """
         :param task: The task this UIInterface is bound to
         :param do_print: Whether the logs should be printed to stdout (print
@@ -67,6 +71,7 @@ class UIInterface:
             self.printer = StdoutPrinter()
         else:
             self.printer = Printer()
+        self.ui_printer = UIPrinter(self.printer, json)
 
     def add_non_solution(self, source_file: SourceFile):
         """
@@ -76,13 +81,13 @@ class UIInterface:
         log_prefix = "Compilation of non-solution {} ".format(name).ljust(50)
         self.non_solutions[name] = SourceFileCompilationResult(
             source_file.language.need_compilation)
-        self.printer.text(log_prefix + "WAITING\n")
+        self.ui_printer.compilation_non_solution(name, "WAITING")
 
         # TODO: at some point extract those functionality into some wrapper
         if source_file.language.need_compilation:
 
             def notifyStartCompiltion():
-                self.printer.text(log_prefix + "START\n")
+                self.ui_printer.compilation_non_solution(name, "START")
                 self.non_solutions[
                     name].status = SourceFileCompilationStatus.COMPILING
                 self.running[log_prefix] = time.monotonic()
@@ -90,28 +95,31 @@ class UIInterface:
             def getResultCompilation(result: Result):
                 del self.running[log_prefix]
                 self.non_solutions[name].result = result
-                cached = " [cached]" if result.was_cached else ""
                 if result.status == ResultStatus.SUCCESS:
-                    self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+                    self.ui_printer.compilation_non_solution(
+                        name, "SUCCESS", cached=result.was_cached)
                     self.non_solutions[
                         name].status = SourceFileCompilationStatus.DONE
                 else:
                     self.add_error("Failed to compile " + name)
-                    self.printer.red(log_prefix + "FAIL: {} {}\n".format(
-                        result.status, cached))
+                    self.ui_printer.compilation_non_solution(
+                        name,
+                        "FAIL",
+                        data=result.status,
+                        cached=result.was_cached)
                     self.non_solutions[
                         name].status = SourceFileCompilationStatus.FAILURE
 
             def getStderr(stderr):
-                if stderr:
-                    self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+                self.ui_printer.compilation_non_solution(
+                    name, "STDERR", data=stderr)
                 self.non_solutions[name].stderr = stderr
 
             source_file.compilation_stderr.getContentsAsString(getStderr)
             source_file.compilation.notifyStart(notifyStartCompiltion)
             source_file.compilation.getResult(getResultCompilation)
         else:
-            self.printer.green(log_prefix + "SUCCESS\n")
+            self.ui_printer.compilation_non_solution(name, "SUCCESS")
             self.non_solutions[name].status = SourceFileCompilationStatus.DONE
 
     def add_solution(self, source_file: SourceFile):
@@ -122,12 +130,12 @@ class UIInterface:
         log_prefix = "Compilation of solution {} ".format(name).ljust(50)
         self.solutions[name] = SourceFileCompilationResult(
             source_file.language.need_compilation)
-        self.printer.text(log_prefix + "WAITING\n")
+        self.ui_printer.compilation_solution(name, "WAITING")
 
         if source_file.language.need_compilation:
 
             def notifyStartCompiltion():
-                self.printer.text(log_prefix + "START\n")
+                self.ui_printer.compilation_solution(name, "START")
                 self.solutions[
                     name].status = SourceFileCompilationStatus.COMPILING
                 self.running[log_prefix] = time.monotonic()
@@ -135,28 +143,31 @@ class UIInterface:
             def getResultCompilation(result: Result):
                 del self.running[log_prefix]
                 self.solutions[name].result = result
-                cached = " [cached]" if result.was_cached else ""
                 if result.status == ResultStatus.SUCCESS:
-                    self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+                    self.ui_printer.compilation_solution(
+                        name, "SUCCESS", cached=result.was_cached)
                     self.solutions[
                         name].status = SourceFileCompilationStatus.DONE
                 else:
                     self.add_warning("Failed to compile: " + name)
-                    self.printer.red(log_prefix + "FAIL: {} {}\n".format(
-                        result.status, cached))
+                    self.ui_printer.compilation_solution(
+                        name,
+                        "FAIL",
+                        data=result.status,
+                        cached=result.was_cached)
                     self.solutions[
                         name].status = SourceFileCompilationStatus.FAILURE
 
             def getStderr(stderr):
-                if stderr:
-                    self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+                self.ui_printer.compilation_solution(
+                    name, "STDERR", data=stderr)
                 self.solutions[name].stderr = stderr
 
             source_file.compilation_stderr.getContentsAsString(getStderr)
             source_file.compilation.notifyStart(notifyStartCompiltion)
             source_file.compilation.getResult(getResultCompilation)
         else:
-            self.printer.green(log_prefix + "SUCCESS\n")
+            self.ui_printer.compilation_solution(name, "SUCCESS")
             self.solutions[name].status = SourceFileCompilationStatus.DONE
 
     def add_warning(self, message: str):
@@ -164,8 +175,7 @@ class UIInterface:
         Add a warning message to the list of warnings
         """
         self.warnings.append(message)
-        self.printer.yellow("WARNING  ", bold=True)
-        self.printer.text(message.strip() + "\n")
+        self.ui_printer.warning(message.strip())
 
     def add_error(self, message: str):
         """
@@ -392,7 +402,8 @@ class CursesUI(ABC):
                 pad.refresh(pos_y, pos_x, 0, 0, max_y - 1, max_x - 1)
 
                 if time.monotonic() - last_draw < 1 / CursesUI.FPS:
-                    time.sleep(1 / CursesUI.FPS - (time.monotonic() - last_draw))
+                    time.sleep(1 / CursesUI.FPS -
+                               (time.monotonic() - last_draw))
         except:
             curses.endwin()
             traceback.print_exc()
@@ -417,6 +428,195 @@ class CursesUI(ABC):
             duration = now - start
             printer.text(" - {0: <50} {1: .1f}s\n".format(
                 task.strip(), duration))
+
+
+class UIPrinter:
+    """
+    This class will manage the printing to the console, whether if it's text
+    based or json
+    """
+
+    def __init__(self, printer: Printer, json: bool):
+        self.printer = printer
+        self.json = json
+
+    def compilation_non_solution(self,
+                                 name: str,
+                                 state: str,
+                                 data: str = None,
+                                 cached: bool = False):
+        if self.json:
+            self._json("compilation-non-solution", state, {"name": name}, data,
+                       cached)
+        else:
+            log = ("Compilation of non-solution %s " % name).ljust(50)
+            log += state
+            self._print(log, state, data=data, cached=cached)
+
+    def compilation_solution(self,
+                             name: str,
+                             state: str,
+                             data: str = None,
+                             cached: bool = False):
+        if self.json:
+            self._json("compilation-solution", state, {"name": name}, data,
+                       cached)
+        else:
+            log = ("Compilation of solution %s " % name).ljust(50)
+            log += state
+            self._print(log, state, data=data, cached=cached)
+
+    def generation(self,
+                   testcase: int,
+                   subtask: int,
+                   state: str,
+                   data: str = None,
+                   cached: bool = False):
+        if self.json:
+            self._json("generation", state, {
+                "testcase": testcase,
+                "subtask": subtask
+            }, data, cached)
+        else:
+            log = ("Generation of input %d of subtask %d " %
+                   (testcase, subtask)).ljust(50)
+            log += state
+            self._print(log, state, data=data, cached=cached)
+
+    def validation(self,
+                   testcase: int,
+                   subtask: int,
+                   state: str,
+                   data: str = None,
+                   cached: bool = False):
+        if self.json:
+            self._json("validation", state, {
+                "testcase": testcase,
+                "subtask": subtask
+            }, data, cached)
+        else:
+            log = ("Validation of input %d of subtask %d " %
+                   (testcase, subtask)).ljust(50)
+            log += state
+            self._print(log, state, data=data, cached=cached)
+
+    def solving(self,
+                testcase: int,
+                subtask: int,
+                state: str,
+                data: str = None,
+                cached: bool = False):
+        if self.json:
+            self._json("solving", state, {
+                "testcase": testcase,
+                "subtask": subtask
+            }, data, cached)
+        else:
+            log = ("Generation of output %d of subtask %d " %
+                   (testcase, subtask)).ljust(50)
+            log += state
+            self._print(log, state, data=data, cached=cached)
+
+    def evaluate(self,
+                 solution: str,
+                 num: int,
+                 num_processes: int,
+                 testcase: int,
+                 subtask: int,
+                 state: str,
+                 data: str = None,
+                 cached: bool = False):
+        if self.json:
+            self._json(
+                "evaluate", state, {
+                    "solution": solution,
+                    "num": num,
+                    "num_processes": num_processes,
+                    "testcase": testcase,
+                    "subtask": subtask
+                }, data, cached)
+        else:
+            if num_processes == 1:
+                log = "Evaluate %s on case %d of subtask %d " % (
+                    solution, testcase, subtask)
+            else:
+                log = "Evaluate %s (%d/%d) on case %d of subtask %d " % (
+                    solution, num + 1, num_processes, testcase, subtask)
+            log = log.ljust(50) + state
+            self._print(log, state, data=data, cached=cached)
+
+    def checking(self,
+                 solution: str,
+                 testcase: int,
+                 subtask: int,
+                 state: str,
+                 data: str = None,
+                 cached: bool = False):
+        if self.json:
+            self._json("checking", state, {
+                "solution": solution,
+                "testcase": testcase,
+                "subtask": subtask
+            }, data, cached)
+        else:
+            log = ("Checking solution %s on case %d of subtask %d " %
+                   (solution, testcase, subtask)).ljust(50)
+            log += state
+            self._print(log, state, data=data, cached=cached)
+
+    def warning(self, message: str):
+        if self.json:
+            self._json("warning", "warning", {"message": message})
+        else:
+            self._print("WARNING", "WARNING", data=message)
+
+    def error(self, message: str):
+        if self.json:
+            self._json("error", "error", {"message": message})
+        else:
+            self._print("ERROR", "ERROR", data=message)
+
+    def _print(self,
+               prefix: str,
+               state: str,
+               data: str = None,
+               cached: bool = False):
+        if cached:
+            prefix += " [cached]"
+        if state == "WAITING":
+            self.printer.text(prefix + "\n")
+        elif state == "SKIPPED":
+            self.printer.yellow(prefix + "\n")
+        elif state == "START":
+            self.printer.text(prefix + "\n")
+        elif state == "SUCCESS":
+            self.printer.green(prefix + "\n")
+        elif state == "WARNING":
+            self.printer.yellow(prefix + " " + str(data) + "\n")
+        elif state == "FAIL" or state == "ERROR":
+            self.printer.red(prefix + " " + str(data) + "\n")
+        elif state == "STDERR":
+            if data:
+                self.printer.text(prefix + "\n" + str(data) + "\n")
+        else:
+            raise ValueError("Unknown state " + state)
+
+    def _json(self,
+              action: str,
+              state: str,
+              extra: dict,
+              data: str = None,
+              cached: bool = False):
+        data = {
+            "action": action,
+            "state": state,
+            "data": data,
+            "cached": cached
+        }
+        for k, v in extra.items():
+            data[k] = v
+        res = json.dumps(data)
+        print(res, flush=True)
 
 
 def result_to_str(result: Result) -> str:

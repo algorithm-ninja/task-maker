@@ -53,6 +53,7 @@ class TestcaseSolutionInfo:
     """
     Information about a solution of a testcase
     """
+
     def __init__(self):
         # to be considered definitive only if checked == True
         self.status = TestcaseSolutionStatus.WAITING
@@ -68,6 +69,7 @@ class TestcaseGenerationResult:
     """
     Information about the generation of a testcase
     """
+
     def __init__(self):
         self.status = TestcaseGenerationStatus.WAITING
         self.generation_result = None  # type: Result
@@ -82,6 +84,7 @@ class CustomCheckerState:
     """
     State of a custom checker in a testcase
     """
+
     def __init__(self, solution: str):
         self.solution = solution
         self.result = None  # type: Result
@@ -120,6 +123,7 @@ class SolutionStatus:
     Task status of a solution, this is the source of truth for the evaluation of
     a solution
     """
+
     def __init__(self, source_file: SourceFile, task: IOITask,
                  interface: "IOIUIInterface", subtasks: Dict[int, List[int]]):
         self.interface = interface
@@ -297,9 +301,10 @@ class IOIUIInterface(UIInterface):
     """
     IOI-like task variant of the UI interface
     """
+
     def __init__(self, task: IOITask, testcases: Dict[int, List[int]],
-                 do_print: bool):
-        super().__init__(task, do_print)
+                 do_print: bool, json: bool):
+        super().__init__(task, do_print, json)
 
         self.task = task
         self.subtasks = dict(
@@ -325,32 +330,35 @@ class IOIUIInterface(UIInterface):
         log_prefix = "Generation of input {} of subtask {} ".format(
             testcase, subtask).ljust(50)
         testcase_status = self.subtasks[subtask][testcase]
-        self.printer.text(log_prefix + "WAITING\n")
+        self.ui_printer.generation(testcase, subtask, "WAITING")
 
         def notifyStartGeneration():
-            self.printer.text(log_prefix + "START\n")
+            self.ui_printer.generation(testcase, subtask, "START")
             testcase_status.status = TestcaseGenerationStatus.GENERATING
             self.running[log_prefix] = time.monotonic()
 
         def getResultGeneration(result: Result):
             del self.running[log_prefix]
             testcase_status.generation_result = result
-            cached = " [cached]" if result.was_cached else ""
             if result.status == ResultStatus.SUCCESS:
-                self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+                self.ui_printer.generation(
+                    testcase, subtask, "SUCCESS", cached=result.was_cached)
                 testcase_status.status = TestcaseGenerationStatus.GENERATED
             else:
                 self.add_error("Failed to generate testcase #%d" % testcase)
-                self.printer.red(log_prefix +
-                                 "FAIL: {} {}\n".format(result.status, cached))
+                self.ui_printer.generation(
+                    testcase,
+                    subtask,
+                    "FAIL",
+                    data=result.status,
+                    cached=result.was_cached)
                 testcase_status.status = TestcaseGenerationStatus.FAILURE
 
         def skippedGeneration():
-            self.printer.red(log_prefix + "SKIPPED\n")
+            self.ui_printer.generation(testcase, subtask, "SKIPPED")
 
         def getStderr(stderr):
-            if stderr:
-                self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+            self.ui_printer.generation(testcase, subtask, "STDERR", stderr)
             testcase_status.generation_stderr = stderr
 
         generation.stderr(False).getContentsAsString(getStderr)
@@ -365,32 +373,36 @@ class IOIUIInterface(UIInterface):
         log_prefix = "Validation of input {} of subtask {} ".format(
             testcase, subtask).ljust(50)
         testcase_status = self.subtasks[subtask][testcase]
-        self.printer.text(log_prefix + "WAITING\n")
+        self.ui_printer.validation(testcase, subtask, "WAITING")
 
         def notifyStartValidation():
-            self.printer.text(log_prefix + "START\n")
+            self.ui_printer.validation(testcase, subtask, "START")
             testcase_status.status = TestcaseGenerationStatus.VALIDATING
             self.running[log_prefix] = time.monotonic()
 
         def getResultValidation(result: Result):
             del self.running[log_prefix]
             testcase_status.validation_result = result
-            cached = " [cached]" if result.was_cached else ""
             if result.status == ResultStatus.SUCCESS:
-                self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+                self.ui_printer.validation(
+                    testcase, subtask, "SUCCESS", cached=result.was_cached)
                 testcase_status.status = TestcaseGenerationStatus.VALIDATED
             else:
                 self.add_error("Failed to validate testcase #%d" % testcase)
-                self.printer.red(log_prefix +
-                                 "FAIL: {} {}\n".format(result.status, cached))
+                self.ui_printer.validation(
+                    testcase,
+                    subtask,
+                    "FAIL",
+                    data=result.status,
+                    cached=result.was_cached)
                 testcase_status.status = TestcaseGenerationStatus.FAILURE
 
         def skippedValidation():
-            self.printer.red(log_prefix + "SKIPPED\n")
+            self.ui_printer.validation(testcase, subtask, "SKIPPED")
 
         def getStderr(stderr):
-            if stderr:
-                self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+            self.ui_printer.validation(
+                testcase, subtask, "STDERR", data=stderr)
             testcase_status.validation_stderr = stderr
 
         validation.stderr(False).getContentsAsString(getStderr)
@@ -404,33 +416,36 @@ class IOIUIInterface(UIInterface):
         log_prefix = "Generation of output {} of subtask {} ".format(
             testcase, subtask).ljust(50)
         testcase_status = self.subtasks[subtask][testcase]
-        self.printer.text(log_prefix + "WAITING\n")
+        self.ui_printer.solving(testcase, subtask, "WAITING")
 
         def notifyStartSolving():
-            self.printer.text(log_prefix + "START\n")
+            self.ui_printer.solving(testcase, subtask, "START")
             testcase_status.status = TestcaseGenerationStatus.SOLVING
             self.running[log_prefix] = time.monotonic()
 
         def getResultSolving(result: Result):
             del self.running[log_prefix]
             testcase_status.solution_result = result
-            cached = " [cached]" if result.was_cached else ""
             if result.status == ResultStatus.SUCCESS:
-                self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+                self.ui_printer.solving(
+                    testcase, subtask, "SUCCESS", cached=result.was_cached)
                 testcase_status.status = TestcaseGenerationStatus.DONE
             else:
                 self.add_error(
                     "Failed to generate output of testcase #%d" % testcase)
-                self.printer.red(log_prefix +
-                                 "FAIL: {} {}\n".format(result.status, cached))
+                self.ui_printer.solving(
+                    testcase,
+                    subtask,
+                    "FAIL",
+                    data=result.status,
+                    cached=result.was_cached)
                 testcase_status.status = TestcaseGenerationStatus.FAILURE
 
         def skippedSolving():
-            self.printer.red(log_prefix + "SKIPPED\n")
+            self.ui_printer.solving(testcase, subtask, "SKIPPED")
 
         def getStderr(stderr):
-            if stderr:
-                self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+            self.ui_printer.solving(testcase, subtask, "STDERR", data=stderr)
             testcase_status.solution_stderr = stderr
 
         solving.stderr(False).getContentsAsString(getStderr)
@@ -442,10 +457,13 @@ class IOIUIInterface(UIInterface):
         """
         Start tracking the evaluation of a solution on a testcase
         """
-        self.testing[solution].testcase_results[subtask][
-            testcase].result = [None] * len(evaluations)
+        self.testing[solution].testcase_results[subtask][testcase].result = [
+                                                                                None
+                                                                            ] * len(
+            evaluations)
         started = False
         skipped = False
+        num_processes = len(evaluations)
         for num, evaluation in enumerate(evaluations):
             if len(evaluations) == 1:
                 log_prefix = "Evaluate {} on case {} ".format(
@@ -453,11 +471,13 @@ class IOIUIInterface(UIInterface):
             else:
                 log_prefix = "Evaluate {}/{} on case {} ".format(
                     solution, num, testcase).ljust(50)
-            self.printer.text(log_prefix + "WAITING\n")
+            self.ui_printer.evaluate(solution, num, num_processes, testcase,
+                                     subtask, "WAITING")
 
             def notifyStartEvaluation():
                 nonlocal started
-                self.printer.text(log_prefix + "START\n")
+                self.ui_printer.evaluate(solution, num, num_processes,
+                                         testcase, subtask, "START")
                 if not started and not skipped:
                     self.testing[solution].testcase_results[subtask][
                         testcase].status = TestcaseSolutionStatus.SOLVING
@@ -466,12 +486,25 @@ class IOIUIInterface(UIInterface):
 
             def getResultEvaluation(result: Result):
                 del self.running[log_prefix]
-                cached = " [cached]" if result.was_cached else ""
                 if result.status == ResultStatus.SUCCESS:
-                    self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+                    self.ui_printer.evaluate(
+                        solution,
+                        num,
+                        num_processes,
+                        testcase,
+                        subtask,
+                        "SUCCESS",
+                        cached=result.was_cached)
                 else:
-                    self.printer.red(log_prefix + "FAIL: {} {}\n".format(
-                        result.status, cached))
+                    self.ui_printer.evaluate(
+                        solution,
+                        num,
+                        num_processes,
+                        testcase,
+                        subtask,
+                        "FAIL",
+                        data=result.status,
+                        cached=result.was_cached)
 
                 self.testing[solution].update_eval_result(
                     subtask, testcase, result, num)
@@ -481,7 +514,8 @@ class IOIUIInterface(UIInterface):
                 skipped = True
                 self.testing[solution].testcase_results[subtask][
                     testcase].status = TestcaseSolutionStatus.SKIPPED
-                self.printer.yellow(log_prefix + "SKIPPED\n")
+                self.ui_printer.evaluate(solution, num, num_processes,
+                                         testcase, subtask, "SKIPPED")
 
             evaluation.notifyStart(notifyStartEvaluation)
             evaluation.getResult(getResultEvaluation, skippedEvaluation)
@@ -495,34 +529,48 @@ class IOIUIInterface(UIInterface):
                                                       testcase).ljust(50)
         has_custom_checker = self.task.checker
         custom_checker_state = CustomCheckerState(solution)
-        self.printer.text(log_prefix + "WAITING\n")
+        self.ui_printer.checking(solution, testcase, subtask, "WAITING")
 
         def notifyStartChecking():
-            self.printer.text(log_prefix + "START\n")
+            self.ui_printer.checking(solution, testcase, subtask, "START")
             self.testing[solution].testcase_results[subtask][
                 testcase].status = TestcaseSolutionStatus.CHECKING
             self.running[log_prefix] = time.monotonic()
 
         def getResultChecking(result: Result):
             del self.running[log_prefix]
-            cached = " [cached]" if result.was_cached else ""
             if has_custom_checker:
                 custom_checker_state.set_result(result)
                 if result.status == ResultStatus.SUCCESS:
-                    self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+                    self.ui_printer.checking(
+                        solution,
+                        testcase,
+                        subtask,
+                        "SUCCESS",
+                        cached=result.was_cached)
                 else:
                     self.add_error(
                         "Checker failed for testcase #%d for solution %s" %
                         (testcase, solution))
-                    self.printer.red(log_prefix + "FAIL: {} {}\n".format(
-                        result.status, cached))
+                    self.ui_printer.checking(
+                        solution,
+                        testcase,
+                        subtask,
+                        "FAIL",
+                        data=result.status,
+                        cached=result.was_cached)
             else:
-                self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+                self.ui_printer.checking(
+                    solution,
+                    testcase,
+                    subtask,
+                    "SUCCESS",
+                    cached=result.was_cached)
                 self.testing[solution].update_default_check_result(
                     subtask, testcase, result)
 
         def skippedChecking():
-            self.printer.yellow(log_prefix + "SKIPPED\n")
+            self.ui_printer.checking(solution, testcase, subtask, "SKIPPED")
 
         def getStdout(stdout):
             custom_checker_state.set_stdout(stdout)

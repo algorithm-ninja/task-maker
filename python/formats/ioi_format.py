@@ -2,18 +2,12 @@
 
 import glob
 import os
-import shlex
 import ruamel.yaml
-from typing import Dict, List, Any, Tuple
-from typing import Optional
-
+import shlex
 from task_maker.args import UIS, CacheMode, Arch
 from task_maker.config import Config
-from task_maker.uis.ioi_finish_ui import IOIFinishUI
-from task_maker.uis.ioi_curses_ui import IOICursesUI
-from task_maker.uis.ioi import IOIUIInterface, TestcaseGenerationStatus
-from task_maker.formats import ScoreMode, Subtask, TestCase, IOITask,\
-    TaskFormat, list_files, Validator, Generator, get_options,\
+from task_maker.formats import ScoreMode, Subtask, TestCase, IOITask, \
+    TaskFormat, list_files, Validator, Generator, get_options, \
     VALIDATION_INPUT_NAME, gen_grader_map, get_write_input_file, \
     get_write_output_file, TaskType, get_solutions
 from task_maker.sanitize import sanitize_command
@@ -21,6 +15,11 @@ from task_maker.sanity_checks.ioi import sanity_pre_checks, sanity_post_checks
 from task_maker.solution import Solution, BatchSolution, CommunicationSolution
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import File, Frontend
+from task_maker.uis.ioi import IOIUIInterface, TestcaseGenerationStatus
+from task_maker.uis.ioi_curses_ui import IOICursesUI
+from task_maker.uis.ioi_finish_ui import IOIFinishUI
+from typing import Dict, List, Any, Tuple
+from typing import Optional
 
 
 def load_static_testcases() -> Subtask:
@@ -335,7 +334,9 @@ def evaluate_task(frontend: Frontend, task: IOITask, solutions: List[Solution],
     ui_interface = IOIUIInterface(
         task,
         dict((st_num, [tc for tc in st.testcases.keys()])
-             for st_num, st in task.subtasks.items()), config.ui == UIS.PRINT)
+             for st_num, st in task.subtasks.items()),
+        config.ui == UIS.PRINT or config.ui == UIS.JSON,
+        config.ui == UIS.JSON)
     curses_ui = None
     finish_ui = None
     if config.ui == UIS.CURSES:

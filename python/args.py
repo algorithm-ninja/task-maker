@@ -25,7 +25,8 @@ class UIS(Enum):
     """
     CURSES = 0  # animated terminal curses interface
     PRINT = 1  # print to stdout the information as soon as they arrive
-    SILENT = 2  # do not print
+    JSON = 2  # print json information instead of plain text
+    SILENT = 3  # do not print
 
 
 class TaskFormat(Enum):
