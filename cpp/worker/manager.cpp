@@ -3,9 +3,9 @@
 #include "worker/executor.hpp"
 
 #include <fcntl.h>
-#include <csignal>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <csignal>
 
 #include <thread>
 #include <unordered_set>

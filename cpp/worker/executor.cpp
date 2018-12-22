@@ -318,7 +318,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
                                     request.getExtraTime() * 1000;
     exec_options.wall_limit_millis = limits.getWallTime() * 1200 +  // NOLINT
                                      request.getExtraTime() * 1000;
-    exec_options.memory_limit_kb = limits.getMemory() * 1.2; // NOLINT
+    exec_options.memory_limit_kb = limits.getMemory() * 1.2;  // NOLINT
     exec_options.max_files = limits.getNofiles();
     exec_options.max_procs = limits.getNproc();
     exec_options.max_file_size_kb = limits.getFsize();
