@@ -13,6 +13,7 @@ from task_maker.task_maker_frontend import Frontend
 from task_maker.uis.terry import TerryUIInterface
 from task_maker.uis.terry_curses_ui import TerryCursesUI
 from task_maker.uis.terry_finish_ui import TerryFinishUI
+from task_maker.uis.terry_finish_ui_json import TerryFinishUIJSON
 from typing import Optional, List
 
 
@@ -118,7 +119,10 @@ def evaluate_task(frontend: Frontend, task: TerryTask,
     if config.ui == UIS.CURSES:
         curses_ui = TerryCursesUI(config, ui_interface)
     if config.ui != UIS.SILENT and config.bulk_number is None:
-        finish_ui = TerryFinishUI(config, ui_interface)
+        if config.ui == UIS.JSON:
+            finish_ui = TerryFinishUIJSON(config, ui_interface)
+        else:
+            finish_ui = TerryFinishUI(config, ui_interface)
 
     with ui_interface.run_in_ui(curses_ui, finish_ui):
         task.generator.prepare(frontend, config)

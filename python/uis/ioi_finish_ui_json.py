@@ -8,13 +8,13 @@ from task_maker.uis.ioi import IOIUIInterface, TestcaseGenerationResult, \
 from typing import Any, Optional, Dict
 
 
-def _enum_to_str(val: Any) -> Optional[str]:
+def enum_to_str(val: Any) -> Optional[str]:
     if val is None:
         return None
     return str(val).split(".")[-1]
 
 
-def _resources_to_dict(res: Optional[Resources]) -> Optional[dict]:
+def resources_to_dict(res: Optional[Resources]) -> Optional[dict]:
     if res is None:
         return None
     return {
@@ -25,12 +25,12 @@ def _resources_to_dict(res: Optional[Resources]) -> Optional[dict]:
     }
 
 
-def _result_to_dict(res: Optional[Result]) -> Optional[dict]:
+def result_to_dict(res: Optional[Result]) -> Optional[dict]:
     if res is None:
         return None
     return {
         "status":
-            _enum_to_str(res.status),
+            enum_to_str(res.status),
         "signal":
             res.signal if res.status == ResultStatus.SIGNAL else None,
         "return_code":
@@ -38,11 +38,22 @@ def _result_to_dict(res: Optional[Result]) -> Optional[dict]:
         "error":
             res.error if res.status == ResultStatus.INTERNAL_ERROR else None,
         "resources":
-            _resources_to_dict(res.resources),
+            resources_to_dict(res.resources),
         "was_cached":
             res.was_cached,
         "was_killed":
             res.was_killed
+    }
+
+
+def get_compilations(files: Dict[str, SourceFileCompilationResult]):
+    return {
+        name: {
+            "status": enum_to_str(compilation.status),
+            "stderr": compilation.stderr,
+            "result": result_to_dict(compilation.result)
+        }
+        for name, compilation in files.items()
     }
 
 
@@ -63,9 +74,8 @@ class IOIFinishUIJSON(FinishUI):
                 "title": self.task.title
             },
             "subtasks": self._get_subtasks(),
-            "solutions": self._get_compilations(self.interface.solutions),
-            "non_solutions":
-                self._get_compilations(self.interface.non_solutions),
+            "solutions": get_compilations(self.interface.solutions),
+            "non_solutions": get_compilations(self.interface.non_solutions),
             "testing": self._get_testing(),
             "warnings": self.interface.warnings,
             "errors": self.interface.errors
@@ -86,23 +96,13 @@ class IOIFinishUIJSON(FinishUI):
 
     def _get_testcase(self, testcase: TestcaseGenerationResult):
         return {
-            "status": _enum_to_str(testcase.status),
-            "generation_result": _result_to_dict(testcase.generation_result),
+            "status": enum_to_str(testcase.status),
+            "generation_result": result_to_dict(testcase.generation_result),
             "generation_stderr": testcase.generation_stderr,
-            "validation_result": _result_to_dict(testcase.validation_result),
+            "validation_result": result_to_dict(testcase.validation_result),
             "validation_stderr": testcase.validation_stderr,
-            "solution_result": _result_to_dict(testcase.solution_result),
+            "solution_result": result_to_dict(testcase.solution_result),
             "solution_stderr": testcase.solution_stderr
-        }
-
-    def _get_compilations(self, files: Dict[str, SourceFileCompilationResult]):
-        return {
-            name: {
-                "status": _enum_to_str(compilation.status),
-                "stderr": compilation.stderr,
-                "result": _result_to_dict(compilation.result)
-            }
-            for name, compilation in files.items()
         }
 
     def _get_testing(self):
@@ -124,14 +124,14 @@ class IOIFinishUIJSON(FinishUI):
             "subtask_scores":
                 solution.subtask_scores,
             "subtask_results":
-                [_enum_to_str(res) for res in solution.subtask_results],
+                [enum_to_str(res) for res in solution.subtask_results],
             "testcase_results": {
                 st_num: {
                     tc_num: {
                         "status":
-                            _enum_to_str(testcase.status),
+                            enum_to_str(testcase.status),
                         "result":
-                            [_result_to_dict(res) for res in testcase.result],
+                            [result_to_dict(res) for res in testcase.result],
                         "score":
                             testcase.score,
                         "message":
@@ -139,7 +139,7 @@ class IOIFinishUIJSON(FinishUI):
                         "checker_outcome":
                             testcase.checker_outcome,
                         "checker_result":
-                            _result_to_dict(testcase.checker_result)
+                            result_to_dict(testcase.checker_result)
                     }
                     for tc_num, testcase in subtask.items()
                 }

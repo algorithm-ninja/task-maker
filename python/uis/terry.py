@@ -40,7 +40,7 @@ class SolutionInfo:
     Information about a solution and it's evaluation
     """
 
-    def __init__(self):
+    def __init__(self, source_file: SourceFile):
         self.status = SolutionStatus.WAITING
         # each solution can be evaluated with different seeds
         self.seed = None
@@ -54,6 +54,7 @@ class SolutionInfo:
         self.check_stderr = ""
         self.score = 0.0
         self.message = ""
+        self.source_file = source_file
         self.testcases_status = []  # type: List[TestcaseStatus]
 
 
@@ -69,7 +70,7 @@ class TerryUIInterface(UIInterface):
 
     def add_solution(self, source_file: SourceFile):
         super().add_solution(source_file)
-        self.solutions_info[source_file.name] = SolutionInfo()
+        self.solutions_info[source_file.name] = SolutionInfo(source_file)
 
     def add_generation(self, solution: str, seed: int, generation: Execution):
         """
