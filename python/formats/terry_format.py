@@ -3,8 +3,6 @@ import glob
 import os.path
 import platform
 import random
-from typing import Optional, List
-
 from task_maker.args import Arch, CacheMode, UIS
 from task_maker.config import Config
 from task_maker.formats import get_options, TerryTask, list_files, \
@@ -15,6 +13,7 @@ from task_maker.task_maker_frontend import Frontend
 from task_maker.uis.terry import TerryUIInterface
 from task_maker.uis.terry_curses_ui import TerryCursesUI
 from task_maker.uis.terry_finish_ui import TerryFinishUI
+from typing import Optional, List
 
 
 def get_extension(target_arch: Arch):
@@ -41,8 +40,8 @@ def get_manager(manager: str, target_arch: Arch,
     true and no managers are found, None is returned, otherwise an exception is
     raised.
     """
-    managers = list_files(
-        ["managers/%s.*" % manager], exclude=["managers/%s.*.*" % manager])
+    managers = list_files(["managers/%s.*" % manager],
+                          exclude=["managers/%s.*.*" % manager])
     if len(managers) == 0:
         if not optional:
             raise FileNotFoundError("Missing manager: %s" % manager)
@@ -111,7 +110,9 @@ def evaluate_task(frontend: Frontend, task: TerryTask,
     """
     Build the computation DAG and run it in order to test all the solutions.
     """
-    ui_interface = TerryUIInterface(task, config.ui == UIS.PRINT)
+    ui_interface = TerryUIInterface(
+        task, config.ui == UIS.PRINT or config.ui == UIS.JSON,
+              config.ui == UIS.JSON)
     curses_ui = None
     finish_ui = None
     if config.ui == UIS.CURSES:
@@ -201,11 +202,13 @@ class TerryFormat(TaskFormat):
     """
     Entry point for the terry format
     """
+
     @staticmethod
     def clean():
         """
         Clean all the generated files: all the compiled managers.
         """
+
         def remove_file(path: str) -> None:
             try:
                 os.remove(path)

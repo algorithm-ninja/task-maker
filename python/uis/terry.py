@@ -39,6 +39,7 @@ class SolutionInfo:
     """
     Information about a solution and it's evaluation
     """
+
     def __init__(self):
         self.status = SolutionStatus.WAITING
         # each solution can be evaluated with different seeds
@@ -60,8 +61,9 @@ class TerryUIInterface(UIInterface):
     """
     Terry-like task variant of the UI interface
     """
-    def __init__(self, task: TerryTask, do_print: bool):
-        super().__init__(task, do_print)
+
+    def __init__(self, task: TerryTask, do_print: bool, json: bool):
+        super().__init__(task, do_print, json)
         self.task = task
         self.solutions_info = dict()  # type: Dict[str, SolutionInfo]
 
@@ -77,35 +79,39 @@ class TerryUIInterface(UIInterface):
             solution, seed).ljust(50)
         info = self.solutions_info[solution]
         info.seed = seed
-        self.printer.text(log_prefix + "WAITING\n")
+        self.ui_printer.terry_generation(solution, seed, "WAITING")
 
         def notify_start():
-            self.printer.text(log_prefix + "START\n")
+            self.ui_printer.terry_generation(solution, seed, "START")
             info.status = SolutionStatus.GENERATING
             self.running[log_prefix] = time.monotonic()
 
         def get_result(result: Result):
             del self.running[log_prefix]
             info.gen_result = result
-            cached = " [cached]" if result.was_cached else ""
             if result.status == ResultStatus.SUCCESS:
-                self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+                self.ui_printer.terry_generation(
+                    solution, seed, "SUCCESS", cached=result.was_cached)
                 info.status = SolutionStatus.GENERATED
             else:
                 self.add_error(
                     "Failed to generate input for {} with seed {}".format(
                         solution, seed))
-                self.printer.red(log_prefix +
-                                 "FAIL: {} {}\n".format(result.status, cached))
+                self.ui_printer.terry_generation(
+                    solution,
+                    seed,
+                    "FAIL",
+                    data=result.status,
+                    cached=result.was_cached)
                 info.status = SolutionStatus.FAILED
                 info.message = "Generator failed: " + result_to_str(result)
 
         def skipped():
-            self.printer.red(log_prefix + "SKIPPED\n")
+            self.ui_printer.terry_generation(solution, seed, "SKIPPED")
 
         def get_stderr(stderr: str):
-            if stderr:
-                self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+            self.ui_printer.terry_generation(
+                solution, seed, "STDERR", data=stderr)
             info.gen_stderr = stderr
 
         generation.stderr(False).getContentsAsString(get_stderr)
@@ -118,34 +124,36 @@ class TerryUIInterface(UIInterface):
         """
         log_prefix = "Validation of input for {} ".format(solution).ljust(50)
         info = self.solutions_info[solution]
-        self.printer.text(log_prefix + "WAITING\n")
+        self.ui_printer.terry_validation(solution, "WAITING")
 
         def notify_start():
-            self.printer.text(log_prefix + "START\n")
+            self.ui_printer.terry_validation(solution, "START")
             info.status = SolutionStatus.VALIDATING
             self.running[log_prefix] = time.monotonic()
 
         def get_result(result: Result):
             del self.running[log_prefix]
             info.val_result = result
-            cached = " [cached]" if result.was_cached else ""
             if result.status == ResultStatus.SUCCESS:
-                self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+                self.ui_printer.terry_validation(
+                    solution, "SUCCESS", cached=result.was_cached)
                 info.status = SolutionStatus.VALIDATED
             else:
                 self.add_error(
                     "Failed to validate input for {}".format(solution))
-                self.printer.red(log_prefix +
-                                 "FAIL: {} {}\n".format(result.status, cached))
+                self.ui_printer.terry_validation(
+                    solution,
+                    "FAIL",
+                    data=result.status,
+                    cached=result.was_cached)
                 info.status = SolutionStatus.FAILED
                 info.message = "Validator failed: " + result_to_str(result)
 
         def skipped():
-            self.printer.red(log_prefix + "SKIPPED\n")
+            self.ui_printer.terry_validation(solution, "SKIPPED")
 
         def get_stderr(stderr: str):
-            if stderr:
-                self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+            self.ui_printer.terry_validation(solution, "STDERR", data=stderr)
             info.val_stderr = stderr
 
         validation.stderr(False).getContentsAsString(get_stderr)
@@ -158,33 +166,35 @@ class TerryUIInterface(UIInterface):
         """
         log_prefix = "Running solution {} ".format(solution).ljust(50)
         info = self.solutions_info[solution]
-        self.printer.text(log_prefix + "WAITING\n")
+        self.ui_printer.terry_evaluate(solution, "WAITING")
 
         def notify_start():
-            self.printer.text(log_prefix + "START\n")
+            self.ui_printer.terry_evaluate(solution, "START")
             info.status = SolutionStatus.SOLVING
             self.running[log_prefix] = time.monotonic()
 
         def get_result(result: Result):
             del self.running[log_prefix]
             info.sol_result = result
-            cached = " [cached]" if result.was_cached else ""
             if result.status == ResultStatus.SUCCESS:
-                self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+                self.ui_printer.terry_evaluate(
+                    solution, "SUCCESS", cached=result.was_cached)
                 info.status = SolutionStatus.SOLVED
             else:
                 self.add_error("Solution {} failed".format(solution))
-                self.printer.red(log_prefix +
-                                 "FAIL: {} {}\n".format(result.status, cached))
+                self.ui_printer.terry_evaluate(
+                    solution,
+                    "FAIL",
+                    data=result.status,
+                    cached=result.was_cached)
                 info.status = SolutionStatus.FAILED
                 info.message = "Solution failed: " + result_to_str(result)
 
         def skipped():
-            self.printer.red(log_prefix + "SKIPPED\n")
+            self.ui_printer.terry_evaluate(solution, "SKIPPED")
 
         def get_stderr(stderr: str):
-            if stderr:
-                self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+            self.ui_printer.terry_evaluate(solution, "STDERR", data=stderr)
             info.sol_stderr = stderr
 
         solving.stderr(False).getContentsAsString(get_stderr)
@@ -198,38 +208,42 @@ class TerryUIInterface(UIInterface):
         log_prefix = "Checking output of solution {} ".format(solution).ljust(
             50)
         info = self.solutions_info[solution]
-        self.printer.text(log_prefix + "WAITING\n")
+        self.ui_printer.terry_checking(solution, "WAITING")
 
         def notify_start():
-            self.printer.text(log_prefix + "START\n")
+            self.ui_printer.terry_checking(solution, "START")
             info.status = SolutionStatus.CHECKING
             self.running[log_prefix] = time.monotonic()
 
         def get_result(result: Result):
             del self.running[log_prefix]
             info.check_result = result
-            cached = " [cached]" if result.was_cached else ""
             if result.status == ResultStatus.SUCCESS:
-                self.printer.green(log_prefix + "SUCCESS" + cached + "\n")
+                self.ui_printer.terry_checking(
+                    solution, "SUCCESS", cached=result.was_cached)
                 info.status = SolutionStatus.DONE
             else:
                 self.add_error(
                     "Checker failed on output of solution {}".format(solution))
-                self.printer.red(log_prefix +
-                                 "FAIL: {} {}\n".format(result.status, cached))
+                self.ui_printer.terry_checking(
+                    solution,
+                    "FAIL",
+                    data=result.status,
+                    cached=result.was_cached)
                 info.status = SolutionStatus.FAILED
                 info.message = "Checker failed: " + result_to_str(result)
 
         def skipped():
-            self.printer.red(log_prefix + "SKIPPED\n")
+            self.ui_printer.terry_checking(solution, "SKIPPED")
 
         def get_stderr(stderr: str):
-            if stderr:
-                self.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+            self.ui_printer.terry_checking(solution, "STDERR", data=stderr)
             info.check_stderr = stderr
 
         def get_stdout(stdout: str):
             self._compute_score(solution, stdout)
+            self.ui_printer.terry_solution_outcome(
+                solution, self.solutions_info[solution])
 
         checking.stderr(False).getContentsAsString(get_stderr)
         checking.stdout(False).getContentsAsString(get_stdout)

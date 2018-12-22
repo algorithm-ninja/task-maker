@@ -568,6 +568,9 @@ class IOIUIInterface(UIInterface):
                     cached=result.was_cached)
                 self.testing[solution].update_default_check_result(
                     subtask, testcase, result)
+                self.ui_printer.testcase_outcome(
+                    solution, testcase, subtask,
+                    self.testing[solution].testcase_results[subtask][testcase])
 
         def skippedChecking():
             self.ui_printer.checking(solution, testcase, subtask, "SKIPPED")
@@ -581,6 +584,9 @@ class IOIUIInterface(UIInterface):
         def customCheckerResult():
             self.testing[solution].update_custom_check_result(
                 subtask, testcase, custom_checker_state)
+            self.ui_printer.testcase_outcome(
+                solution, testcase, subtask,
+                self.testing[solution].testcase_results[subtask][testcase])
 
         if has_custom_checker:
             custom_checker_state.set_callback(customCheckerResult)
