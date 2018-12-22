@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-from distutils.spawn import find_executable
+import time
+
 import os.path
 import re
 import subprocess
-import time
-from typing import List, Set, Optional, Dict
-
+from distutils.spawn import find_executable
 from task_maker.args import CacheMode
 from task_maker.config import Config
-from task_maker.formats import IOITask, list_files, VALIDATION_INPUT_NAME, TaskType
+from task_maker.formats import IOITask, list_files, VALIDATION_INPUT_NAME, \
+    TaskType
 from task_maker.languages import Language
 from task_maker.solution import Solution, get_checker_execution
 from task_maker.task_maker_frontend import Frontend, File, Execution, Result, \
     ResultStatus
 from task_maker.uis.ioi import IOIUIInterface
+from typing import List, Set, Optional, Dict
 
 
 def _get_languages(solutions: List[Solution]):
@@ -117,28 +118,20 @@ def _check_tex_statement(task: IOITask, interface: IOIUIInterface):
 def _setup_execution_callback(interface: IOIUIInterface, execution: Execution,
                               description: str):
     log_prefix = "{} ".format(description).ljust(50)
-    interface.printer.text(log_prefix + "WAITING\n")
 
     def notify_start():
-        interface.printer.text(log_prefix + "START\n")
         interface.running[log_prefix] = time.monotonic()
 
     def get_result(result: Result):
         del interface.running[log_prefix]
-        cached = " [cached]" if result.was_cached else ""
-        if result.status == ResultStatus.SUCCESS:
-            interface.printer.green(log_prefix + "SUCCESS" + cached + "\n")
-        else:
+        if result.status != ResultStatus.SUCCESS:
             interface.add_error("{} failed".format(description))
-            interface.printer.red(
-                log_prefix + "FAIL: {} {}\n".format(result.status, cached))
 
     def skipped():
-        interface.printer.red(log_prefix + "SKIPPED\n")
+        pass
 
     def get_stderr(stderr):
-        if stderr:
-            interface.printer.text(log_prefix + "STDERR\n" + stderr + "\n")
+        pass
 
     execution.notifyStart(notify_start)
     execution.stderr(False).getContentsAsString(get_stderr)
@@ -148,24 +141,17 @@ def _setup_execution_callback(interface: IOIUIInterface, execution: Execution,
 def _setup_checker_callback(interface: IOIUIInterface, checking: Execution,
                             description: str, custom_checker: bool):
     log_prefix = "{} ".format(description).ljust(50)
-    interface.printer.text(log_prefix + "WAITING\n")
 
     def notify_start():
-        interface.printer.text(log_prefix + "START\n")
         interface.running[log_prefix] = time.monotonic()
 
     def get_result(result: Result):
         del interface.running[log_prefix]
-        cached = " [cached]" if result.was_cached else ""
-        if result.status == ResultStatus.SUCCESS:
-            interface.printer.green(log_prefix + "SUCCESS" + cached + "\n")
-        else:
+        if result.status != ResultStatus.SUCCESS:
             interface.add_error("{} failed".format(description))
-            interface.printer.red(
-                log_prefix + "FAIL: {} {}\n".format(result.status, cached))
 
     def skipped():
-        interface.printer.red(log_prefix + "SKIPPED\n")
+        pass
 
     def get_stdout(stdout):
         if not custom_checker:

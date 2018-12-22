@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 from task_maker.printer import Printer
+from task_maker.task_maker_frontend import ResultStatus
 
 
 class UIPrinter:
@@ -271,6 +272,8 @@ class UIPrinter:
               extra: dict,
               data: str = None,
               cached: bool = False):
+        if isinstance(data, ResultStatus):
+            data = str(data).split(".")[-1]
         data = {
             "action": action,
             "state": state,

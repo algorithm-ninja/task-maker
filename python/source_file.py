@@ -84,6 +84,7 @@ class SourceFile:
         self.prepared = False
         # set only after `prepare`
         self.executable = None  # type: Optional[File]
+        self.compilation = None  # type: Optional[Execution]
         self.compilation_stderr = None  # type: Optional[File]
         self.compilation_stdout = None  # type: Optional[File]
 

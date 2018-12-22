@@ -18,6 +18,7 @@ from task_maker.task_maker_frontend import File, Frontend
 from task_maker.uis.ioi import IOIUIInterface, TestcaseGenerationStatus
 from task_maker.uis.ioi_curses_ui import IOICursesUI
 from task_maker.uis.ioi_finish_ui import IOIFinishUI
+from task_maker.uis.ioi_finish_ui_json import IOIFinishUIJSON
 from typing import Dict, List, Any, Tuple
 from typing import Optional
 
@@ -342,7 +343,12 @@ def evaluate_task(frontend: Frontend, task: IOITask, solutions: List[Solution],
     if config.ui == UIS.CURSES:
         curses_ui = IOICursesUI(config, ui_interface)
     if config.ui != UIS.SILENT and config.bulk_number is None:
-        finish_ui = IOIFinishUI(config, ui_interface)
+        if config.ui == UIS.PRINT:
+            finish_ui = IOIFinishUI(config, ui_interface)
+        elif config.ui == UIS.JSON:
+            finish_ui = IOIFinishUIJSON(config, ui_interface)
+        else:
+            raise ValueError("Unsupported UI %s" % str(config.ui))
 
     with ui_interface.run_in_ui(curses_ui, finish_ui):
         ins, outs, vals = generate_inputs(frontend, task, ui_interface, config)
