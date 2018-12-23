@@ -142,6 +142,8 @@ class FrontendContext : public capnproto::FrontendContext::Server {
   friend class Execution;
   friend class ExecutionGroup;
   server::Dispatcher& dispatcher_;
+  static uint32_t num_frontends_;
+  uint32_t frontend_id_ = num_frontends_++;
   uint32_t last_file_id_ = 1;
   std::unordered_map<uint32_t, detail::FileInfo> file_info_;
   util::UnionPromiseBuilder builder_;

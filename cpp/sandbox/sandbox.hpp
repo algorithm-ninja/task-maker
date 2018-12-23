@@ -71,6 +71,7 @@ struct ExecutionInfo {
   int64_t memory_usage_kb = 0;
   int32_t status_code = 0;
   int32_t signal = 0;
+  bool killed_external = false;
   bool killed = false;
   char message[8192] = {};
 };

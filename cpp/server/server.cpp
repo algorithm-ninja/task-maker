@@ -52,6 +52,7 @@ kj::Promise<void> ExecutionGroup::createFifo(CreateFifoContext context) {
 }
 
 kj::Promise<void> ExecutionGroup::Finalize(Execution* ex) {
+  request_.setEvaluationId(frontend_context_.frontend_id_);
   if (!finalized_) {
     finalized_ = true;
     KJ_LOG(INFO, "Execution group " + description_,
@@ -474,6 +475,7 @@ kj::Promise<void> FrontendContext::provideFile(ProvideFileContext context) {
   file_info_[id].hash = context.getParams().getHash();
   return kj::READY_NOW;
 }
+
 kj::Promise<void> FrontendContext::addExecution(AddExecutionContext context) {
   KJ_LOG(INFO, "Adding execution " +
                    std::string(context.getParams().getDescription()));
@@ -580,13 +582,14 @@ kj::Promise<void> FrontendContext::getFileContents(
             })
       .exclusiveJoin(forked_early_stop_.addBranch());
 }
+
 kj::Promise<void> FrontendContext::stopEvaluation(
     StopEvaluationContext /*context*/) {
   KJ_LOG(INFO, "Early stop");
   *canceled_ = true;
   evaluation_early_stop_.fulfiller->reject(
       KJ_EXCEPTION(FAILED, "Evaluation stopped"));
-  return kj::READY_NOW;
+  return dispatcher_.Cancel(frontend_id_);
 }
 
 kj::Promise<void> Server::registerFrontend(RegisterFrontendContext context) {
@@ -604,5 +607,7 @@ kj::Promise<void> Server::registerEvaluator(RegisterEvaluatorContext context) {
 kj::Promise<void> Server::requestFile(RequestFileContext context) {
   return util::File::HandleRequestFile(context);
 }
+
+uint32_t FrontendContext::num_frontends_ = 0;
 
 }  // namespace server

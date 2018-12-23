@@ -6,15 +6,16 @@
 
 namespace server {
 
-namespace {
-
 kj::Promise<capnp::Response<capnproto::Evaluator::EvaluateResults>>
-HandleRequest(capnproto::Evaluator::Client evaluator,
-              capnproto::Request::Reader request) {
+Dispatcher::HandleRequest(capnproto::Evaluator::Client evaluator,
+                          capnproto::Request::Reader request) {
   auto req = evaluator.evaluateRequest();
   req.setRequest(request);
+  size_t client = client_cnt_++;
+  running_[client] = std::make_unique<capnproto::Evaluator::Client>(evaluator);
   return req.send().then(
-      [evaluator](auto res) mutable {
+      [evaluator, client, this](auto res) mutable {
+        running_.erase(client);
         auto result = res.getResult();
         kj::Promise<void> load_files = kj::READY_NOW;
         {
@@ -34,13 +35,13 @@ HandleRequest(capnproto::Evaluator::Client evaluator,
         return load_files.then(
             [res = std::move(res)]() mutable { return std::move(res); });
       },
-      [](kj::Exception exc) {
+      [client, this](kj::Exception exc) {
+        running_.erase(client);
         return kj::Promise<
             capnp::Response<capnproto::Evaluator::EvaluateResults>>(
             std::move(exc));
       });
 }
-};  // namespace
 
 kj::Promise<void> Dispatcher::AddEvaluator(
     capnproto::Evaluator::Client evaluator) {
@@ -52,8 +53,8 @@ kj::Promise<void> Dispatcher::AddEvaluator(
       fulfillers_.push_back(std::move(evaluator_promise.fulfiller));
       return std::move(evaluator_promise.promise);
     }
-    request_info = std::move(requests_.back());
-    requests_.pop_back();
+    request_info = std::move(requests_.front());
+    requests_.pop();
   } while (*std::get<3>(request_info));
   auto p = HandleRequest(evaluator, std::get<0>(request_info));
   // Signal execution started
@@ -69,9 +70,20 @@ kj::Promise<void> Dispatcher::AddEvaluator(
           },
           [this, request = std::get<0>(request_info),
            fulfiller = std::move(std::get<1>(request_info)),
-           canceled = std::get<3>(request_info)](
+           canceled = std::get<3>(request_info),
+           retries = std::get<4>(request_info)](
               kj::Exception exc) mutable -> kj::Promise<void> {
             KJ_LOG(WARNING, "Worker failed");
+            if (retries == 0) {
+              fulfiller->reject(kj::cp(exc));
+              KJ_LOG(WARNING, "Retries exhausted");
+              return exc;
+            }
+            if (*canceled) {
+              fulfiller->reject(kj::cp(exc));
+              KJ_LOG(INFO, "Request canceled");
+              return exc;
+            }
             kj::PromiseFulfillerPair<void> dummy_start =
                 kj::newPromiseAndFulfiller<void>();
             dummy_start.promise.then([]() { KJ_LOG(INFO, "Retrying..."); })
@@ -80,7 +92,7 @@ kj::Promise<void> Dispatcher::AddEvaluator(
                 });
             auto ff = fulfiller.get();
             return AddRequest(request, std::move(dummy_start.fulfiller),
-                              canceled)
+                              canceled, retries - 1)
                 .then(
                     [fulfiller = std::move(fulfiller)](auto res) mutable {
                       fulfiller->fulfill(std::move(res));
@@ -96,12 +108,12 @@ kj::Promise<void> Dispatcher::AddEvaluator(
 kj::Promise<capnp::Response<capnproto::Evaluator::EvaluateResults>>
 Dispatcher::AddRequest(capnproto::Request::Reader request,
                        kj::Own<kj::PromiseFulfiller<void>> notify,
-                       const std::shared_ptr<bool>& canceled) {
+                       const std::shared_ptr<bool>& canceled, size_t retries) {
   if (evaluators_.empty()) {
     auto request_promise = kj::newPromiseAndFulfiller<
         capnp::Response<capnproto::Evaluator::EvaluateResults>>();
-    requests_.emplace_back(request, std::move(request_promise.fulfiller),
-                           std::move(notify), canceled);
+    requests_.emplace(request, std::move(request_promise.fulfiller),
+                      std::move(notify), canceled, retries);
     return std::move(request_promise.promise);
   }
   auto evaluator = std::move(evaluators_.back());
@@ -119,11 +131,22 @@ Dispatcher::AddRequest(capnproto::Request::Reader request,
             fulfiller->fulfill();
             return std::move(result);
           },
-          [this, request, canceled, fulfiller = std::move(evaluator_fulfiller)](
-              kj::Exception exc) mutable
+          [this, request, canceled, retries,
+           fulfiller =
+               std::move(evaluator_fulfiller)](kj::Exception exc) mutable
           -> kj::Promise<
               capnp::Response<capnproto::Evaluator::EvaluateResults>> {
             KJ_LOG(WARNING, "Worker failed");
+            if (retries == 0) {
+              fulfiller->reject(kj::cp(exc));
+              KJ_LOG(WARNING, "Retries exhausted");
+              return exc;
+            }
+            if (*canceled) {
+              fulfiller->reject(kj::cp(exc));
+              KJ_LOG(INFO, "Request canceled");
+              return exc;
+            }
             kj::PromiseFulfillerPair<void> dummy_start =
                 kj::newPromiseAndFulfiller<void>();
             dummy_start.promise.then([]() { KJ_LOG(INFO, "Retrying..."); })
@@ -132,9 +155,19 @@ Dispatcher::AddRequest(capnproto::Request::Reader request,
                 });
             fulfiller->reject(KJ_EXCEPTION(FAILED, kj::cp(exc)));
             return AddRequest(request, std::move(dummy_start.fulfiller),
-                              canceled);
+                              canceled, retries - 1);
           })
       .eagerlyEvaluate(nullptr);
+}
+
+kj::Promise<void> Dispatcher::Cancel(uint32_t frontend_id) {
+  util::UnionPromiseBuilder builder;
+  for (auto& kv : running_) {
+    auto req = kv.second->cancelRequestRequest();
+    req.setEvaluationId(frontend_id);
+    builder.AddPromise(req.send().ignoreResult());
+  }
+  return std::move(builder).Finalize();
 }
 
 }  // namespace server

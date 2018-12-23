@@ -53,6 +53,7 @@ struct ProcessRequest {
 struct Request {
   processes @0 :List(ProcessRequest);
   exclusive @1 :Bool; # If set, no other execution should run at the same time.
+  evaluationId @2 :UInt32;
 }
 
 struct ProcessResult {
@@ -82,4 +83,5 @@ struct Result {
 interface Evaluator extends(FileSender) {
   evaluate @0 (request :Request) -> (result :Result);
   id @1 () -> (text :Result);
+  cancelRequest @2 (evaluationId :UInt32) -> ();
 }

@@ -289,6 +289,14 @@ void Unix::Child() {
   _Exit(1);
 }
 
+namespace {
+sig_atomic_t have_signal = 0;
+
+void sig_hdl(int /*sig*/, siginfo_t* /*siginfo*/, void* /*context*/) {
+  have_signal = 1;
+}
+}  // namespace
+
 bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
   close(pipe_fds_[1]);
   ssize_t error_len = 0;
@@ -310,11 +318,26 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
         .count();
   };
 
+  struct sigaction act {};
+  memset(&act, '\0', sizeof(act));
+  act.sa_sigaction = &sig_hdl;
+  act.sa_flags = SA_SIGINFO;
+
+  if (sigaction(SIGTERM, &act, nullptr) < 0) {
+    perror("sigaction");
+    exit(1);
+  }
+  if (sigaction(SIGINT, &act, nullptr) < 0) {
+    perror("sigaction");
+    exit(1);
+  }
+
   int child_status = 0;
   bool has_exited = false;
   struct rusage rusage {};
-  while (!options_->wall_limit_millis ||
-         elapsed_millis() < options_->wall_limit_millis) {
+  int64_t limit = options_->wall_limit_millis;
+  while (!limit || elapsed_millis() < limit) {
+    if (have_signal) limit = 1;
     if (options_->memory_limit_kb != 0 &&
         memory_usage > options_->memory_limit_kb) {
       break;
@@ -352,9 +375,8 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
     struct rusage rusage_prewait {};
     getrusage(RUSAGE_CHILDREN, &rusage_prewait);
 #endif
-    if (options_->wall_limit_millis != 0 ||
-        (options_->memory_limit_kb != 0 &&
-         memory_usage > options_->memory_limit_kb)) {
+    if (limit != 0 || (options_->memory_limit_kb != 0 &&
+                       memory_usage > options_->memory_limit_kb)) {
       if (kill(child_pid_, SIGKILL) == -1) {
         // This should never happen.
         perror("kill");
@@ -392,6 +414,10 @@ bool Unix::Wait(ExecutionInfo* info, std::string* error_msg) {
     strncpy(info->message, strsignal(info->signal), sizeof(info->message));
   } else if (info->status_code != 0) {
     strncpy(info->message, "Non-zero return code", sizeof(info->message));
+  }
+  if (have_signal) {
+    info->killed_external = true;
+    strncpy(info->message, "Killed by external signal", sizeof(info->message));
   }
   OnFinish(info);
   return true;

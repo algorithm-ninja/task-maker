@@ -27,7 +27,8 @@ namespace {
 
 kj::Promise<sandbox::ExecutionInfo> RunSandbox(
     const sandbox::ExecutionOptions& exec_options,
-    kj::LowLevelAsyncIoProvider* async_io_provider) {
+    kj::LowLevelAsyncIoProvider* async_io_provider, uint32_t frontend_id,
+    std::unordered_map<uint32_t, std::set<int>>* running) {
   KJ_LOG(INFO, "Starting sandbox");
   int options_pipe[2];
   int ret = pipe(options_pipe);
@@ -58,6 +59,9 @@ kj::Promise<sandbox::ExecutionInfo> RunSandbox(
   close(options_pipe[0]);
   close(outcome_pipe[1]);
   KJ_ASSERT(pid != -1, strerror(errno));
+
+  (*running)[frontend_id].insert(pid);
+
   kj::Own<kj::AsyncOutputStream> out =
       async_io_provider->wrapOutputFd(options_pipe[1]);
   kj::Own<kj::AsyncInputStream> in =
@@ -66,12 +70,13 @@ kj::Promise<sandbox::ExecutionInfo> RunSandbox(
       kj::heap<sandbox::ExecutionOptions>(exec_options);
   return out->write(ex_opts.get(), sizeof(exec_options))
       .attach(std::move(out), std::move(ex_opts))
-      .then([fd = options_pipe[1], outcome_pipe, pid,
-             in = std::move(in)]() mutable {
+      .then([fd = options_pipe[1], outcome_pipe, pid, in = std::move(in),
+             running, frontend_id]() mutable {
         close(fd);
         auto promise = in->readAllBytes();
         return promise.attach(std::move(in))
-            .then([pid, fd = outcome_pipe[0]](const kj::Array<kj::byte>& data) {
+            .then([pid, fd = outcome_pipe[0], running,
+                   frontend_id](const kj::Array<kj::byte>& data) {
               close(fd);
               size_t error_sz =
                   *reinterpret_cast<const size_t*>(data.begin());  // NOLINT
@@ -84,6 +89,7 @@ kj::Promise<sandbox::ExecutionInfo> RunSandbox(
               memcpy(&outcome, msg, sizeof(outcome));
               int ret = 0;
               int err = waitpid(pid, &ret, 0);
+              (*running)[frontend_id].erase(pid);
               KJ_ASSERT(err != -1, strerror(errno));
               KJ_ASSERT(ret == 0, "Sandbox failed");
               return outcome;
@@ -360,19 +366,21 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
             ->ScheduleTask(
                 request_.getExclusive() ? manager_->NumCores() : num_processes,
                 std::function<kj::Promise<kj::Array<sandbox::ExecutionInfo>>()>(
-                    [this, exec_options_v, num_processes]() {
+                    [this, frontend_id = request_.getEvaluationId(),
+                     exec_options_v, num_processes]() {
                       kj::Vector<kj::Promise<sandbox::ExecutionInfo>> info_(
                           num_processes);
                       for (size_t i = 0; i < num_processes; i++) {
                         info_.add(RunSandbox(
                             exec_options_v[i],
-                            &manager_->Client().getLowLevelIoProvider()));
+                            &manager_->Client().getLowLevelIoProvider(),
+                            frontend_id, &running_));
                       }
                       return kj::joinPromises(info_.releaseAsArray());
                     }))
             .then(
                 [result_, exec_options_v, stdout_paths, stderr_paths, request_,
-                 sandbox_dirs, tmp = std::move(tmp), num_processes,
+                 sandbox_dirs, tmp = std::move(tmp), num_processes, fail,
                  this](kj::Array<sandbox::ExecutionInfo> outcomes) mutable {
                   KJ_LOG(INFO, "Sandbox done, processing results");
                   for (size_t i = 0; i < num_processes; i++) {
@@ -382,6 +390,10 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
                     auto& stdout_path = stdout_paths[i];
                     auto& stderr_path = stderr_paths[i];
                     auto& sandbox_dir = sandbox_dirs[i];
+                    if (outcome.killed_external) {
+                      fail("Killed externally");
+                      return;
+                    }
                     result.setWasKilled(outcome.killed);
                     // Resource usage.
                     auto resource_usage = result.initResourceUsage();
@@ -452,6 +464,16 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
         manager_->CancelPending();
         return exc;
       });
-}  // namespace executor
+}
+
+kj::Promise<void> Executor::cancelRequest(CancelRequestContext context) {
+  uint32_t evaluation_id = context.getParams().getEvaluationId();
+  KJ_LOG(INFO,
+         "Cancelling evaluations of frontend " + std::to_string(evaluation_id));
+  for (int pid : running_[evaluation_id]) {
+    kill(pid, SIGINT);
+  }
+  return kj::READY_NOW;
+}
 
 }  // namespace worker

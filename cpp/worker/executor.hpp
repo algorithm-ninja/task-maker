@@ -2,6 +2,8 @@
 #define WORKER_EXECUTOR_HPP
 
 #include <mutex>
+#include <set>
+#include <unordered_map>
 
 #include "capnp/evaluation.capnp.h"
 #include "sandbox/sandbox.hpp"
@@ -25,6 +27,8 @@ class Executor : public capnproto::Evaluator::Server {
     return Execute(request, context.getResults().initResult());
   }
 
+  kj::Promise<void> cancelRequest(CancelRequestContext context) override;
+
   kj::Promise<void> requestFile(RequestFileContext context) override {
     return util::File::HandleRequestFile(context);
   }
@@ -34,6 +38,8 @@ class Executor : public capnproto::Evaluator::Server {
                             capnproto::Result::Builder result_);
 
   static const constexpr char* kBoxDir = "box";
+
+  std::unordered_map<uint32_t, std::set<int>> running_;
 
   capnproto::FileSender::Client server_;
   Manager* manager_;
