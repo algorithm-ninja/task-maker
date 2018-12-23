@@ -74,21 +74,21 @@ kj::Promise<void> Dispatcher::AddEvaluator(
            retries = std::get<4>(request_info)](
               kj::Exception exc) mutable -> kj::Promise<void> {
             KJ_LOG(WARNING, "Worker failed");
-            if (retries == 0) {
-              fulfiller->reject(kj::cp(exc));
-              KJ_LOG(WARNING, "Retries exhausted");
-              return exc;
-            }
             if (*canceled) {
               fulfiller->reject(kj::cp(exc));
               KJ_LOG(INFO, "Request canceled");
+              return exc;
+            }
+            if (retries == 0) {
+              fulfiller->reject(kj::cp(exc));
+              KJ_LOG(WARNING, "Retries exhausted");
               return exc;
             }
             kj::PromiseFulfillerPair<void> dummy_start =
                 kj::newPromiseAndFulfiller<void>();
             dummy_start.promise.then([]() { KJ_LOG(INFO, "Retrying..."); })
                 .detach([](kj::Exception exc) {
-                  KJ_FAIL_ASSERT("dummy_start rejected", exc.getDescription());
+                  KJ_LOG(WARNING, "dummy_start rejected", exc.getDescription());
                 });
             auto ff = fulfiller.get();
             return AddRequest(request, std::move(dummy_start.fulfiller),
@@ -149,7 +149,7 @@ Dispatcher::AddRequest(capnproto::Request::Reader request,
                 kj::newPromiseAndFulfiller<void>();
             dummy_start.promise.then([]() { KJ_LOG(INFO, "Retrying..."); })
                 .detach([](kj::Exception exc) {
-                  KJ_FAIL_ASSERT("dummy_start rejected", exc.getDescription());
+                  KJ_LOG(WARNING, "dummy_start rejected", exc.getDescription());
                 });
             return AddRequest(request, std::move(dummy_start.fulfiller),
                               canceled, retries - 1);
