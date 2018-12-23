@@ -4,6 +4,7 @@
 #include <kj/async.h>
 #include <memory>
 #include <queue>
+#include <set>
 #include <unordered_map>
 #include <vector>
 #include "capnp/evaluation.capnp.h"
@@ -49,6 +50,8 @@ class Dispatcher {
 
   std::unordered_map<size_t, std::unique_ptr<capnproto::Evaluator::Client>>
       running_;
+
+  std::set<uint32_t> canceled_evaluations_;
 
   // TODO: I could not make a Queue<Evaluator, void> work, for some reason
   std::vector<capnproto::Evaluator::Client> evaluators_;

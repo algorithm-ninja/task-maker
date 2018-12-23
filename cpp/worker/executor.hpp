@@ -41,6 +41,8 @@ class Executor : public capnproto::Evaluator::Server {
 
   std::unordered_map<uint32_t, std::set<int>> running_;
 
+  std::set<uint32_t> canceled_evaluations_;
+
   capnproto::FileSender::Client server_;
   Manager* manager_;
   Cache* cache_;

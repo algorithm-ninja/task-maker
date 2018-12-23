@@ -28,6 +28,7 @@ namespace {
 kj::Promise<sandbox::ExecutionInfo> RunSandbox(
     const sandbox::ExecutionOptions& exec_options,
     kj::LowLevelAsyncIoProvider* async_io_provider, uint32_t frontend_id,
+    const std::set<uint32_t>& canceled_frontends,
     std::unordered_map<uint32_t, std::set<int>>* running) {
   KJ_LOG(INFO, "Starting sandbox");
   int options_pipe[2];
@@ -71,15 +72,27 @@ kj::Promise<sandbox::ExecutionInfo> RunSandbox(
   return out->write(ex_opts.get(), sizeof(exec_options))
       .attach(std::move(out), std::move(ex_opts))
       .then([fd = options_pipe[1], outcome_pipe, pid, in = std::move(in),
-             running, frontend_id]() mutable {
+             running, frontend_id, &canceled_frontends]() mutable {
         close(fd);
         auto promise = in->readAllBytes();
         return promise.attach(std::move(in))
-            .then([pid, fd = outcome_pipe[0], running,
+            .then([pid, fd = outcome_pipe[0], running, &canceled_frontends,
                    frontend_id](const kj::Array<kj::byte>& data) {
               close(fd);
+              if (canceled_frontends.count(frontend_id)) {
+                sandbox::ExecutionInfo info;
+                info.killed_external = true;
+                return info;
+              }
+              int ret = 0;
+              int err = waitpid(pid, &ret, 0);
+              (*running)[frontend_id].erase(pid);
+              KJ_ASSERT(err != -1, strerror(errno));
+              KJ_ASSERT(ret == 0, "Sandbox failed");
+              KJ_ASSERT(data.size() >= sizeof(size_t));
               size_t error_sz =
                   *reinterpret_cast<const size_t*>(data.begin());  // NOLINT
+              KJ_ASSERT(data.size() >= sizeof(size_t) + error_sz);
               const char* msg =
                   reinterpret_cast<const char*>(data.begin()) +  // NOLINT
                   sizeof(size_t);
@@ -87,11 +100,6 @@ kj::Promise<sandbox::ExecutionInfo> RunSandbox(
                         std::string(msg, data.size() - sizeof(size_t)));
               sandbox::ExecutionInfo outcome;
               memcpy(&outcome, msg, sizeof(outcome));
-              int ret = 0;
-              int err = waitpid(pid, &ret, 0);
-              (*running)[frontend_id].erase(pid);
-              KJ_ASSERT(err != -1, strerror(errno));
-              KJ_ASSERT(ret == 0, "Sandbox failed");
               return outcome;
             });
       });
@@ -374,7 +382,7 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
                         info_.add(RunSandbox(
                             exec_options_v[i],
                             &manager_->Client().getLowLevelIoProvider(),
-                            frontend_id, &running_));
+                            frontend_id, canceled_evaluations_, &running_));
                       }
                       return kj::joinPromises(info_.releaseAsArray());
                     }))
@@ -456,11 +464,13 @@ kj::Promise<void> Executor::Execute(capnproto::Request::Reader request_,
                   }
                 },
                 [fail](kj::Exception exc) mutable {
+                  KJ_LOG(WARNING, "Execution failed: ", exc.getDescription());
                   fail(exc.getDescription());
                 })
             .eagerlyEvaluate(nullptr);
       },
       [this](kj::Exception exc) -> kj::Promise<void> {
+        KJ_LOG(WARNING, "Execution canceled: ", exc.getDescription());
         manager_->CancelPending();
         return exc;
       });
@@ -470,6 +480,7 @@ kj::Promise<void> Executor::cancelRequest(CancelRequestContext context) {
   uint32_t evaluation_id = context.getParams().getEvaluationId();
   KJ_LOG(INFO,
          "Cancelling evaluations of frontend " + std::to_string(evaluation_id));
+  canceled_evaluations_.insert(evaluation_id);
   for (int pid : running_[evaluation_id]) {
     kill(pid, SIGINT);
   }

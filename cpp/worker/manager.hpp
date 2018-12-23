@@ -35,20 +35,26 @@ class Manager {
     pending_requests_--;
     waiting_tasks_.emplace(size, std::move(pf.fulfiller));
     OnDone();
-    return pf.promise.then([this, f, size]() {
-      kj::Promise<T> ret = f();
-      return ret.then(
-          [size, this](T r) {
-            running_cores_ -= size;
-            OnDone();
-            return r;
-          },
-          [size, this](kj::Exception exc) {
-            running_cores_ -= size;
-            OnDone();
-            return exc;
-          });
-    });
+    return pf.promise.then(
+        [this, f, size]() {
+          kj::Promise<T> ret = f();
+          return ret.then(
+              [size, this](T r) {
+                running_cores_ -= size;
+                OnDone();
+                return r;
+              },
+              [size, this](kj::Exception exc) {
+                KJ_LOG(WARNING, "Task failed: ", exc.getDescription());
+                running_cores_ -= size;
+                OnDone();
+                return exc;
+              });
+        },
+        [](kj::Exception exc) {
+          KJ_LOG(WARNING, "Task preparation failed: ", exc.getDescription());
+          return kj::Promise<T>(std::move(exc));
+        });
   }
 
   // Removes a pending request to the server, typically because of a failure.

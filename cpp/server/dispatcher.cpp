@@ -109,6 +109,9 @@ kj::Promise<capnp::Response<capnproto::Evaluator::EvaluateResults>>
 Dispatcher::AddRequest(capnproto::Request::Reader request,
                        kj::Own<kj::PromiseFulfiller<void>> notify,
                        const std::shared_ptr<bool>& canceled, size_t retries) {
+  if (*canceled || canceled_evaluations_.count(request.getEvaluationId())) {
+    return KJ_EXCEPTION(FAILED, "Enqueueing canceled request");
+  }
   if (evaluators_.empty()) {
     auto request_promise = kj::newPromiseAndFulfiller<
         capnp::Response<capnproto::Evaluator::EvaluateResults>>();
@@ -137,14 +140,9 @@ Dispatcher::AddRequest(capnproto::Request::Reader request,
           -> kj::Promise<
               capnp::Response<capnproto::Evaluator::EvaluateResults>> {
             KJ_LOG(WARNING, "Worker failed");
+            fulfiller->reject(KJ_EXCEPTION(FAILED, kj::cp(exc)));
             if (retries == 0) {
-              fulfiller->reject(kj::cp(exc));
               KJ_LOG(WARNING, "Retries exhausted");
-              return exc;
-            }
-            if (*canceled) {
-              fulfiller->reject(kj::cp(exc));
-              KJ_LOG(INFO, "Request canceled");
               return exc;
             }
             kj::PromiseFulfillerPair<void> dummy_start =
@@ -153,7 +151,6 @@ Dispatcher::AddRequest(capnproto::Request::Reader request,
                 .detach([](kj::Exception exc) {
                   KJ_FAIL_ASSERT("dummy_start rejected", exc.getDescription());
                 });
-            fulfiller->reject(KJ_EXCEPTION(FAILED, kj::cp(exc)));
             return AddRequest(request, std::move(dummy_start.fulfiller),
                               canceled, retries - 1);
           })
@@ -161,6 +158,7 @@ Dispatcher::AddRequest(capnproto::Request::Reader request,
 }
 
 kj::Promise<void> Dispatcher::Cancel(uint32_t frontend_id) {
+  canceled_evaluations_.insert(frontend_id);
   util::UnionPromiseBuilder builder;
   for (auto& kv : running_) {
     auto req = kv.second->cancelRequestRequest();
