@@ -1,6 +1,6 @@
 # Sources
 file(GLOB SOURCES_PY "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
-set(PY_MODULES formats tests uis languages sanity_checks)
+set(PY_MODULES formats tests uis languages sanity_checks statements)
 foreach(module_name ${PY_MODULES})
   file(GLOB SOURCES_PY_${module_name}
             "${CMAKE_CURRENT_SOURCE_DIR}/${module_name}/*.py")
@@ -62,6 +62,15 @@ foreach(module_name ${PY_MODULES})
                              ${SOURCES_${module_name}_MODULE}
                      DEPENDS "${SOURCES_PY_${module_name}}")
 endforeach()
+
+# copy the statement templates
+set(STATEMENTS_TEMPLATES_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/statements/templates")
+set(STATEMENTS_TEMPLATES_DST_DIR "${SOURCES_statements_MODULE}/templates")
+add_custom_command(OUTPUT ${STATEMENTS_TEMPLATES_DST_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${STATEMENTS_TEMPLATES_SRC_DIR}
+    ${STATEMENTS_TEMPLATES_DST_DIR}
+    DEPENDS ${STATEMENTS_TEMPLATES_SRC_DIR})
 
 add_custom_command(OUTPUT ${REQUIREMENTS_TXT_TGT}
                    COMMAND ${CMAKE_COMMAND} -E copy ${REQUIREMENTS_TXT}
@@ -128,6 +137,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.py.in ${VERSION_PY})
 
 add_custom_target(module_files ALL
                   DEPENDS ${MODULES_TGT}
+    ${STATEMENTS_TEMPLATES_DST_DIR}
                           ${REQUIREMENTS_TXT_TGT}
                           "${TESTS_TASKS_TGT}"
                           ${SOURCES_PY_TGT}

@@ -96,6 +96,15 @@ class Language(ABC):
         """
         return False
 
+    def exe_name(self, path: str, write_to: str):
+        """
+        The name of the executable to use
+        """
+        if write_to:
+            return os.path.basename(write_to)
+        else:
+            return os.path.splitext(os.path.basename(path))[0]
+
     def get_execution_command(self, exe_name: str, args: List[str],
                               main=None) -> (CommandType, List[str]):
         """

@@ -242,6 +242,18 @@ def add_terry_group(parser: argparse.ArgumentParser):
         action="store")
 
 
+def add_statement_group(parser: argparse.ArgumentParser):
+    group = parser.add_argument_group("Statement options")
+    group.add_argument(
+        "--no-statement",
+        help="Do not compile the statements",
+        action="store_true")
+    group.add_argument(
+        "--set",
+        help="Set a template variable for the statements",
+        action="append")
+
+
 def add_help_group(parser: argparse.ArgumentParser):
     group = parser.add_argument_group("Help options")
     group.add_argument(
@@ -270,6 +282,7 @@ def get_parser(bulk: bool) -> argparse.ArgumentParser:
     add_execution_group(parser)
     add_ioi_group(parser)
     add_terry_group(parser)
+    add_statement_group(parser)
     add_help_group(parser)
     if bulk:
         add_bulk_group(parser)

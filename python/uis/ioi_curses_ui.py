@@ -2,6 +2,8 @@
 from task_maker.config import Config
 from task_maker.formats import IOITask
 from task_maker.printer import CursesPrinter, Printer
+from task_maker.statements import Statement, StatementCompilationStatus, \
+    StatementDepCompilationStatus
 from task_maker.task_maker_frontend import ResultStatus
 from task_maker.uis import CursesUI, get_max_sol_len, \
     SourceFileCompilationStatus
@@ -181,10 +183,53 @@ def print_solutions_result(printer: Printer, task: IOITask,
         printer.text("\n")
 
 
+def print_statement_result(printer: Printer, name: str, statement: Statement,
+                           max_sol_len: int, loading: str):
+    """
+    Print the row of a statement file, including the dependencies
+    """
+    print_solution_column(printer, name, max_sol_len)
+    if statement.compilation_status == StatementCompilationStatus.WAITING:
+        printer.text("...")
+    elif statement.compilation_status == \
+            StatementCompilationStatus.COMPILING_DEPS:
+        printer.blue("d")
+    elif statement.compilation_status == \
+            StatementCompilationStatus.COMPILED_DEPS:
+        printer.text("D")
+    elif statement.compilation_status == StatementCompilationStatus.COMPILING:
+        printer.text(loading)
+    elif statement.compilation_status == StatementCompilationStatus.DONE:
+        printer.green("OK")
+    elif statement.compilation_status == StatementCompilationStatus.FAILED:
+        printer.red("FAIL")
+    else:
+        raise ValueError("Invalid compilation status " +
+                         str(statement.compilation_status))
+    printer.text(" ")
+    if statement.other_executions:
+        printer.text("[")
+        for dep in statement.other_executions:
+            if dep.status == StatementDepCompilationStatus.WAITING:
+                printer.text(".")
+            elif dep.status == StatementDepCompilationStatus.RUNNING:
+                printer.text(loading)
+            elif dep.status == StatementDepCompilationStatus.DONE:
+                printer.green("✓")
+            elif dep.status == StatementDepCompilationStatus.FAILED:
+                printer.red("F")
+            else:
+                raise ValueError("Invalid dependency status " +
+                                 str(dep.status))
+        printer.text("]")
+    printer.text("\n")
+
+
 class IOICursesUI(CursesUI):
     """
     UIInterface for IOI-like tasks
     """
+
     def __init__(self, config: Config, interface: IOIUIInterface):
         super().__init__(config, interface)
 
@@ -210,6 +255,10 @@ class IOICursesUI(CursesUI):
         for name, result in self.interface.solutions.items():
             print_compilation_status(printer, name, max_sol_len, loading,
                                      result.status)
+        printer.text("\n")
+        for name, statement in self.interface.statements.items():
+            print_statement_result(printer, name, statement, max_sol_len,
+                                   loading)
         printer.text("\n")
 
         printer.blue("Generation: ", bold=True)

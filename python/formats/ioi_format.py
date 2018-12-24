@@ -16,6 +16,7 @@ from task_maker.sanitize import sanitize_command
 from task_maker.sanity_checks.ioi import sanity_pre_checks, sanity_post_checks
 from task_maker.solution import Solution, BatchSolution, CommunicationSolution
 from task_maker.source_file import SourceFile
+from task_maker.statements.oii_tex import OIITexStatement
 from task_maker.task_maker_frontend import File, Frontend
 from task_maker.uis.ioi import IOIUIInterface, TestcaseGenerationStatus
 from task_maker.uis.ioi_curses_ui import IOICursesUI
@@ -243,7 +244,7 @@ def create_task_from_yaml(data: Dict[str, Any]) -> IOITask:
 
     task = IOITask(name, title, {}, None, dict(), None, time_limit,
                    memory_limit, input_file if input_file else "",
-                   output_file if output_file else "", TaskType.Batch)
+                   output_file if output_file else "", TaskType.Batch, data)
     return task
 
 
@@ -355,7 +356,8 @@ def evaluate_task(frontend: Frontend, task: IOITask, solutions: List[Solution],
         ins, outs, vals = generate_inputs(frontend, task, ui_interface, config)
         evaluate_solutions(frontend, ins, outs, vals, solutions, ui_interface,
                            config)
-
+        if not config.no_statement:
+            compile_statements(frontend, config, task, ui_interface)
         for warning in task.warnings:
             ui_interface.add_warning(warning)
         sanity_pre_checks(task, solutions, frontend, config, ui_interface)
@@ -504,6 +506,22 @@ def evaluate_solutions(frontend, inputs: Dict[Tuple[int, int], File],
                                             solution.solution.name, evals)
             interface.add_evaluate_checking(st_num, tc_num,
                                             solution.solution.name, check)
+
+
+def compile_statements(frontend: Frontend, config: Config, task: IOITask,
+                       interface: IOIUIInterface):
+    """
+    Create the statement compilation part of the DAG
+    """
+    tex_files = list_files(["statement/*.tex", "testo/*.tex"],
+                           valid_extensions=[".tex"])
+    for tex_file in tex_files:
+        pdf_file = tex_file.replace(".tex", ".pdf")
+        statement = OIITexStatement(task, tex_file, pdf_file)
+        statement.compile(config, frontend)
+        if not config.dry_run:
+            statement.pdf_file.getContentsToFile(pdf_file, True, True)
+        interface.add_statement(statement)
 
 
 class IOIFormat(TaskFormat):

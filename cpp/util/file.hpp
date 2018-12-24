@@ -14,6 +14,8 @@ namespace util {
 static const constexpr uint32_t kChunkSize = 1024 * 1024;
 static const constexpr uint32_t kInlineChunkThresh = 1024;
 
+  class FileWrapper;
+
 class File {
  public:
   // A non-owning pointer to a sequence of bytes, usually representing a part of
@@ -93,18 +95,9 @@ class File {
 
   // Utility to implement RequestFile methods, given the path and the receiver
   static kj::Promise<void> HandleRequestFile(
-      const std::string& path, capnproto::FileReceiver::Client receiver);
+      FileWrapper *wrapper, capnproto::FileReceiver::Client receiver);
   static kj::Promise<void> HandleRequestFile(
-      const util::SHA256_t& hash, capnproto::FileReceiver::Client receiver) {
-    if (hash.hasContents()) {
-      auto req = receiver.sendChunkRequest();
-      req.setChunk(hash.getContents());
-      return req.send().ignoreResult().then([receiver]() mutable {
-        return receiver.sendChunkRequest().send().ignoreResult();
-      });
-    }
-    return HandleRequestFile(PathForHash(hash), receiver);
-  }
+      const util::SHA256_t &hash, capnproto::FileReceiver::Client receiver);
 
   // Utility to implement RequestFile methods
   template <typename RequestFileContext>
@@ -190,6 +183,42 @@ class TempDir {
   bool keep_ = false;
   bool moved_ = false;
 };
+
+// Wrapper around a File, it can be a path to a file or the content of a file.
+  class FileWrapper {
+    enum class FileWrapperType {
+      PATH = 0, CONTENT = 1
+    };
+
+    FileWrapper() = default;
+    KJ_DISALLOW_COPY(FileWrapper);
+
+  public:
+    ~FileWrapper() = default;
+
+    FileWrapper(FileWrapper &&other) noexcept { *this = std::move(other); }
+
+    FileWrapper &operator=(FileWrapper &&other) noexcept {
+      path_ = std::move(other.path_);
+      content_ = std::move(other.content_);
+      type_ = other.type_;
+      return *this;
+    }
+
+    // Create a wrapper from a file path
+    static FileWrapper FromPath(std::string path);
+
+    // Create a wrapper from a file content
+    static FileWrapper FromContent(std::string content);
+
+    // Returns a ChunkProducer with the content of the wrapped file
+    File::ChunkProducer Read();
+
+  private:
+    std::string path_;
+    std::string content_;
+    FileWrapperType type_{};
+  };
 
 }  // namespace util
 

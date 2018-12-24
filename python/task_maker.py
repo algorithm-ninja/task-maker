@@ -50,6 +50,7 @@ def run(config: Config) -> MainRet:
     """
     task_dir, fmt = find_task_dir(config.task_dir, config.max_depth,
                                   config.format)
+    config.task_dir = task_dir
     if not fmt:
         raise ValueError(
             "Cannot detect format! It's probable that the task is ill-formed")

@@ -200,6 +200,11 @@ class Frontend {
   File* provideFile(const std::string& path, const std::string& description,
                     bool is_executable);
 
+  // Defines a file that is provided by the frontend, loading it from its
+  // content.
+  File *provideFileContent(const std::string &content,
+                           const std::string &description, bool is_executable);
+
   // Creates a new execution with the given description.
   Execution* addExecution(const std::string& description);
 
@@ -217,7 +222,7 @@ class Frontend {
  private:
   capnp::EzRpcClient client_;
   capnproto::FrontendContext::Client frontend_context_;
-  std::unordered_map<util::SHA256_t, std::string, util::SHA256_t::Hasher>
+  std::unordered_map<util::SHA256_t, util::FileWrapper, util::SHA256_t::Hasher>
       known_files_;
   util::UnionPromiseBuilder builder_;
   util::UnionPromiseBuilder finish_builder_;

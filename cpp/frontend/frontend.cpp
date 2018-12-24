@@ -71,19 +71,19 @@ std::unique_ptr<Fifo> Fifo::New(kj::Promise<T>&& p) {
 namespace {
 class FileProvider : public capnproto::FileSender::Server {
  public:
-  explicit FileProvider(
-      std::unordered_map<util::SHA256_t, std::string, util::SHA256_t::Hasher>
-          known_files)
+  explicit FileProvider(std::unordered_map<util::SHA256_t, util::FileWrapper,
+      util::SHA256_t::Hasher>
+                        known_files)
       : known_files_(std::move(known_files)) {}
 
   kj::Promise<void> requestFile(RequestFileContext context) override {
-    std::string path = known_files_.at(context.getParams().getHash());
-    return util::File::HandleRequestFile(path,
+    util::FileWrapper *file = &known_files_.at(context.getParams().getHash());
+    return util::File::HandleRequestFile(file,
                                          context.getParams().getReceiver());
   }
 
  private:
-  std::unordered_map<util::SHA256_t, std::string, util::SHA256_t::Hasher>
+  std::unordered_map<util::SHA256_t, util::FileWrapper, util::SHA256_t::Hasher>
       known_files_;
 };
 
@@ -159,7 +159,24 @@ File* Frontend::provideFile(const std::string& path,
                             bool is_executable) {
   auto req = frontend_context_.provideFileRequest();
   util::SHA256_t hash = util::File::Hash(path);
-  known_files_.emplace(hash, path);
+  known_files_.emplace(hash, util::FileWrapper::FromPath(path));
+  hash.ToCapnp(req.initHash());
+  req.setDescription(description);
+  req.setIsExecutable(is_executable);
+  files_.push_back(File::New(req.send(), this, is_executable));
+  return files_.back().get();
+}
+
+  File *Frontend::provideFileContent(const std::string &content,
+                                     const std::string &description,
+                                     bool is_executable) {
+    auto req = frontend_context_.provideFileRequest();
+    util::SHA256 hasher;
+    // NOLINTNEXTLINE
+    hasher.update(reinterpret_cast<const unsigned char *>(&content[0]),
+                  content.size());
+    util::SHA256_t hash = hasher.finalize();
+    known_files_.emplace(hash, util::FileWrapper::FromContent(content));
   hash.ToCapnp(req.initHash());
   req.setDescription(description);
   req.setIsExecutable(is_executable);
@@ -188,7 +205,7 @@ ExecutionGroup* Frontend::addExecutionGroup(const std::string& description) {
 void Frontend::evaluate() {
   finish_builder_.AddPromise(std::move(builder_).Finalize().then([this]() {
     auto req = frontend_context_.startEvaluationRequest();
-    req.setSender(kj::heap<FileProvider>(known_files_));
+                               req.setSender(kj::heap<FileProvider>(std::move(known_files_)));
     return req.send().ignoreResult();
   }),
                              "Evaluate");

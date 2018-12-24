@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import time
 import curses
 import signal
 import threading
+import time
 import traceback
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -12,6 +12,8 @@ from task_maker.config import Config
 from task_maker.formats import Task
 from task_maker.printer import StdoutPrinter, Printer, CursesPrinter
 from task_maker.source_file import SourceFile
+from task_maker.statements import Statement, StatementCompilationStatus, \
+    StatementDepInfo, StatementDepCompilationStatus
 from task_maker.task_maker_frontend import Result, ResultStatus, Resources
 from task_maker.uis.ui_printer import UIPrinter
 from typing import Dict, List, Optional
@@ -61,6 +63,7 @@ class UIInterface:
         self.non_solutions = dict(
         )  # type: Dict[str, SourceFileCompilationResult]
         self.solutions = dict()  # type: Dict[str, SourceFileCompilationResult]
+        self.statements = dict()  # type: Dict[str, Statement]
         # all the running tasks: (name, monotonic timestamp of start)
         self.running = dict()  # type: Dict[str, float]
         self.warnings = list()  # type: List[str]
@@ -169,6 +172,89 @@ class UIInterface:
             self.ui_printer.compilation_solution(name, "SUCCESS")
             self.solutions[name].status = SourceFileCompilationStatus.DONE
 
+    def add_statement(self, statement: Statement):
+        """
+        Add a statement to the UI
+        """
+        log_prefix = "Compilation of statement %s" % statement.name
+
+        self.ui_printer.compilation_statement(statement.name, "WAITING")
+        self.statements[statement.name] = statement
+
+        def notifyStartCompilation():
+            self.ui_printer.compilation_statement(statement.name, "START")
+            self.running[log_prefix] = time.monotonic()
+            statement.compilation_status = StatementCompilationStatus.COMPILING
+
+        def getResultCompilation(result: Result):
+            del self.running[log_prefix]
+            statement.compilation_result = result
+            if result.status in [
+                ResultStatus.SUCCESS, ResultStatus.RETURN_CODE
+            ]:
+                self.ui_printer.compilation_statement(
+                    statement.name, "SUCCESS", cached=result.was_cached)
+                statement.compilation_status = StatementCompilationStatus.DONE
+            else:
+                self.ui_printer.compilation_statement(
+                    statement.name,
+                    "FAIL",
+                    data=result.status,
+                    cached=result.was_cached)
+                statement.compilation_status = StatementCompilationStatus.FAILED
+                self.add_warning(
+                    "Failed to compile statement %s" % statement.name)
+
+        statement.compilation.notifyStart(notifyStartCompilation)
+        statement.compilation.getResult(getResultCompilation)
+
+        deps_done = 0  # how many dependencies have been completed
+
+        for info in statement.other_executions:
+
+            def register_execution(info: StatementDepInfo):
+                name = "%s (%s)" % (info.name, statement.name)
+                self.ui_printer.statement_dependency(name, "WAITING")
+
+                def notifyStart():
+                    self.ui_printer.statement_dependency(name, "START")
+                    self.running[name] = time.monotonic()
+                    statement.compilation_status = \
+                        StatementCompilationStatus.COMPILING_DEPS
+                    info.status = StatementDepCompilationStatus.RUNNING
+
+                def getResult(result: Result):
+                    nonlocal deps_done
+                    del self.running[name]
+                    info.result = result
+                    deps_done += 1
+                    if result.status == ResultStatus.SUCCESS:
+                        self.ui_printer.statement_dependency(
+                            name, "SUCCESS", cached=result.was_cached)
+                        info.status = StatementDepCompilationStatus.DONE
+                        if statement.compilation_status != \
+                                StatementCompilationStatus.FAILED:
+                            if deps_done == len(statement.other_executions):
+                                statement.compilation_status = \
+                                    StatementCompilationStatus.COMPILED_DEPS
+                    else:
+                        self.ui_printer.statement_dependency(
+                            name,
+                            "FAIL",
+                            data=result.status,
+                            cached=result.was_cached)
+                        info.status = StatementDepCompilationStatus.FAILED
+                        statement.compilation_status = \
+                            StatementCompilationStatus.FAILED
+                        self.add_warning(
+                            "Failed to compile statement dependency: %s" %
+                            info.name)
+
+                info.execution.notifyStart(notifyStart)
+                info.execution.getResult(getResult)
+
+            register_execution(info)
+
     def add_warning(self, message: str):
         """
         Add a warning message to the list of warnings
@@ -181,8 +267,7 @@ class UIInterface:
         Add an error message to the list of errors, this wont stop anything
         """
         self.errors.append(message)
-        self.printer.red("ERROR  ", bold=True)
-        self.printer.text(message.strip() + "\n")
+        self.ui_printer.error(message.strip())
 
     @contextmanager
     def run_in_ui(self, curses_ui: Optional["CursesUI"],
@@ -296,6 +381,22 @@ class FinishUI(ABC):
         self.printer.text("\n")
         if result.stderr:
             self.printer.text(result.stderr)
+
+    def _print_statement(self, name: str, statement: Statement,
+                         max_sol_len: int):
+        if statement.compilation_status == StatementCompilationStatus.DONE:
+            self.printer.green(
+                "{:<{len}}    OK\n".format(name, len=max_sol_len), bold=True)
+        else:
+            self.printer.red(
+                "{:<{len}}    FAIL\n".format(name, len=max_sol_len), bold=True)
+        for dep in statement.other_executions:
+            self.printer.text("{:<{len}}    ".format(
+                dep.name, len=max_sol_len))
+            if dep.status == StatementDepCompilationStatus.DONE:
+                self.printer.green("OK\n")
+            else:
+                self.printer.red("FAIL\n")
 
     def _print_score(self, score: float, max_score: float,
                      individual: List[float]):
@@ -462,10 +563,13 @@ def result_to_str(result: Result) -> str:
 
 
 def get_max_sol_len(interface: UIInterface):
-    if not interface.solutions and not interface.non_solutions:
-        return 0
-    return max(
-        map(
-            len,
-            list(interface.non_solutions.keys()) + list(
-                interface.solutions.keys())))
+    """
+    Compute the maximum length of the source files in the interface
+    """
+    lens = []
+    lens += list(map(len, list(interface.solutions.keys())))
+    lens += list(map(len, list(interface.non_solutions.keys())))
+    lens += list(map(len, list(interface.statements.keys())))
+    for statement in interface.statements.values():
+        lens += [len(oth.name) for oth in statement.other_executions]
+    return max(lens, default=0)

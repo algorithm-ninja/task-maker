@@ -55,10 +55,7 @@ class SourceFile:
         language = LanguageManager.from_file(path)
         dependencies = language.get_dependencies(path)
         grader = grader_map.get(language)
-        if write_to:
-            exe_name = os.path.basename(write_to)
-        else:
-            exe_name = os.path.splitext(os.path.basename(path))[0]
+        exe_name = language.exe_name(path, write_to)
         source_file = SourceFile(path, unit_name, exe_name, dependencies,
                                  language, copy_executable and write_to,
                                  target_arch, grader)

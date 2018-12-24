@@ -1,0 +1,16 @@
+fontenc: T1
+inputenc: utf8
+logo: ""
+location: ""
+date: ""
+description: ""
+title: ""
+name: ""
+infile: ""
+outfile: ""
+time_limit: ""
+memory_limit: ""
+difficulty: ""
+syllabuslevel: ""
+showsummary: False
+showsolutions: False

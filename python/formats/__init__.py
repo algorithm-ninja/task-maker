@@ -219,7 +219,7 @@ class IOITask(Task):
                  grader_map: Dict[Language, GraderInfo],
                  checker: Optional["SourceFile"], time_limit: float,
                  memory_limit_kb: int, input_file: str, output_file: str,
-                 task_type: TaskType):
+                 task_type: TaskType, yaml: Any):
         super().__init__(name, title)
         self.subtasks = subtasks
         self.official_solution = official_solution
@@ -230,6 +230,7 @@ class IOITask(Task):
         self.input_file = input_file
         self.output_file = output_file
         self.task_type = task_type
+        self.yaml = yaml
 
         self.default_gen = None  # type: Optional[Generator]
         self.default_val = None  # type: Optional[Validator]

@@ -40,6 +40,32 @@ class UIPrinter:
             log += state
             self._print(log, state, data=data, cached=cached)
 
+    def compilation_statement(self,
+                              name: str,
+                              state: str,
+                              data: str = None,
+                              cached: bool = False):
+        if self.json:
+            self._json("compilation-statement", state, {"name": name}, data,
+                       cached)
+        else:
+            log = ("Compilation of statement %s " % name).ljust(50)
+            log += state
+            self._print(log, state, data=data, cached=cached)
+
+    def statement_dependency(self,
+                             name: str,
+                             state: str,
+                             data: str = None,
+                             cached: bool = False):
+        if self.json:
+            self._json("statement-dependency", state, {"name": name}, data,
+                       cached)
+        else:
+            log = name.ljust(50)
+            log += state
+            self._print(log, state, data=data, cached=cached)
+
     def generation(self,
                    testcase: int,
                    subtask: int,

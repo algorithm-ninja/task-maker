@@ -1,7 +1,6 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <pybind11/functional.h>
-#include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #pragma GCC diagnostic pop
 
@@ -199,6 +198,9 @@ PYBIND11_MODULE(task_maker_frontend, m) {
       .def("provideFile", &frontend::Frontend::provideFile,
            pybind11::return_value_policy::reference, "path"_a, "description"_a,
            "is_executable"_a = false)
+      .def("provideFileContent", &frontend::Frontend::provideFileContent,
+           pybind11::return_value_policy::reference, "content"_a,
+           "description"_a, "is_executable"_a = false)
       .def("addExecution", &frontend::Frontend::addExecution,
            pybind11::return_value_policy::reference, "description"_a)
       .def("addExecutionGroup", &frontend::Frontend::addExecutionGroup,

@@ -27,6 +27,7 @@ class Config:
         "execution": ["exclusive", "extra_time", "copy_exe"],
         "ioi": ["detailed_checker"],
         "terry": ["arch", "seed"],
+        "statement": ["no_statement", "set"],
         "help": ["help_colors"],
         "bulk": ["contest_dir", "contest_yaml"]
     }
@@ -40,7 +41,8 @@ class Config:
     def __init__(self):
         # generic group
         self.solutions = []  # type: List[str]
-        self.task_dir = os.getcwd()
+        # $PWD for tasks inside symlinks
+        self.task_dir = os.getenv("PWD", os.getcwd())
         self.max_depth = 2
         self.ui = UIS.CURSES
         self.cache = CacheMode.ALL
@@ -88,6 +90,10 @@ class Config:
         # terry group
         self.arch = Arch.DEFAULT
         self.seed = None
+
+        # statement group
+        self.no_statement = False
+        self.set = []
 
         # help group
         self.help_colors = False

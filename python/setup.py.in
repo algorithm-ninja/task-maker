@@ -13,6 +13,7 @@ setup(
     zip_safe=False,
     package_data={
         'task_maker.bin': ['*'],
+                     'task_maker.statements.templates': ['*'],
         'task_maker': ['*.so']
     },
     entry_points={

@@ -29,6 +29,10 @@ class IOIFinishUI(FinishUI):
         self.printer.blue("Solutions\n", bold=False)
         for solution, result in self.interface.solutions.items():
             self._print_compilation(solution, result, max_sol_len)
+        if self.interface.statements:
+            self.printer.blue("Statements\n", bold=False)
+            for name, statement in self.interface.statements.items():
+                self._print_statement(name, statement, max_sol_len)
         self.printer.text("\n")
 
         self.printer.blue("Generation:\n", bold=True)
