@@ -6,7 +6,8 @@ from task_maker.languages import CompiledLanguage, CommandType, \
     LanguageManager, Dependency, make_unique
 from typing import List
 
-ASY_INCLUDE = re.compile('include *(.+);')
+ASY_INCLUDE = re.compile('(?:include|import) *(.+);')
+ASY_GRAPHIC = re.compile(r"""graphic\(['"](.+)['"]\)""")
 
 
 def find_asy_dependency(filename: str, strip=None) -> List[Dependency]:
@@ -20,6 +21,7 @@ def find_asy_dependency(filename: str, strip=None) -> List[Dependency]:
     with open(filename) as file:
         content = file.read()
     includes = ASY_INCLUDE.findall(content)
+    graphics = ASY_GRAPHIC.findall(content)
     dependencies = []  # type: List[Dependency]
     for include in includes:
         file_path = os.path.join(scope, include) + ".asy"
@@ -31,6 +33,10 @@ def find_asy_dependency(filename: str, strip=None) -> List[Dependency]:
             dependency = Dependency(include, file_path)
             dependencies += [dependency]
             dependencies += find_asy_dependency(file_path, strip)
+    for graphic in graphics:
+        file_path = os.path.join(scope, graphic)
+        name = file_path[len(scope) + 1:]
+        dependencies += [Dependency(name, file_path)]
     return dependencies
 
 

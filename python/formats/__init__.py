@@ -8,7 +8,7 @@ from task_maker.languages import GraderInfo, LanguageManager, Dependency, \
     Language
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import Frontend
-from typing import List, Dict, Optional, Union, Any
+from typing import List, Dict, Optional, Union, Any, Tuple
 
 # Name of the input file on disk when doing the validation process
 VALIDATION_INPUT_NAME = "tm_input_file"
@@ -354,6 +354,23 @@ class TaskFormat(ABC):
     def task_info(config: Config):
         """
         Print the task information
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_task(config: Config) -> Task:
+        """
+        Build a Task from the config
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def make_booklet(frontend: Frontend, config: Config,
+                     tasks: List[Tuple[str, Task]]) -> int:
+        """
+        Make the booklet of the specified tasks
         """
         pass
 

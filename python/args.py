@@ -148,10 +148,7 @@ def add_server_group(parser: argparse.ArgumentParser):
     group.add_argument(
         "--server-address", action="store", help="Address to listen on")
     group.add_argument(
-        "--server-port",
-        action="store",
-        type=int,
-        help="Port to listen on")
+        "--server-port", action="store", type=int, help="Port to listen on")
     group.add_argument(
         "--server-verbose",
         action="store_true",
@@ -173,23 +170,16 @@ def add_worker_group(parser: argparse.ArgumentParser):
         action="store_true",
         help="Keep the sandboxes after evaluation")
     group.add_argument(
-        "--worker-name",
-        action="store",
-        help="Name of this worker")
+        "--worker-name", action="store", help="Name of this worker")
     group.add_argument(
         "--worker-num-cores",
         action="store",
         type=int,
         help="Number of cores to use")
     group.add_argument(
-        "--worker-port",
-        action="store",
-        type=int,
-        help="Port to connect to")
+        "--worker-port", action="store", type=int, help="Port to connect to")
     group.add_argument(
-        "--worker-address",
-        action="store",
-        help="Address to connect to")
+        "--worker-address", action="store", help="Address to connect to")
     group.add_argument(
         "--worker-pending-requests",
         action="store",
@@ -269,6 +259,10 @@ def add_bulk_group(parser: argparse.ArgumentParser):
     group.add_argument(
         "--contest-yaml",
         help="Path to the contest.yaml to get the tasks from")
+    group.add_argument(
+        "--make-booklet",
+        help="Build the booklet with the statements of all the tasks",
+        action="store_true")
 
 
 def get_parser(bulk: bool) -> argparse.ArgumentParser:

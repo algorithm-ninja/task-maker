@@ -6,18 +6,19 @@ import os
 import pprint
 import ruamel.yaml
 import shlex
+import signal
 from task_maker.args import UIS, CacheMode, Arch
 from task_maker.config import Config
 from task_maker.formats import ScoreMode, Subtask, TestCase, IOITask, \
     TaskFormat, list_files, Validator, Generator, get_options, \
     VALIDATION_INPUT_NAME, gen_grader_map, get_write_input_file, \
-    get_write_output_file, TaskType, get_solutions
+    get_write_output_file, TaskType, get_solutions, Task
 from task_maker.sanitize import sanitize_command
 from task_maker.sanity_checks.ioi import sanity_pre_checks, sanity_post_checks
 from task_maker.solution import Solution, BatchSolution, CommunicationSolution
 from task_maker.source_file import SourceFile
 from task_maker.statements.oii_tex import OIITexStatement
-from task_maker.task_maker_frontend import File, Frontend
+from task_maker.task_maker_frontend import File, Frontend, Result, ResultStatus
 from task_maker.uis.ioi import IOIUIInterface, TestcaseGenerationStatus
 from task_maker.uis.ioi_curses_ui import IOICursesUI
 from task_maker.uis.ioi_finish_ui import IOIFinishUI
@@ -517,7 +518,7 @@ def compile_statements(frontend: Frontend, config: Config, task: IOITask,
                            valid_extensions=[".tex"])
     for tex_file in tex_files:
         pdf_file = tex_file.replace(".tex", ".pdf")
-        statement = OIITexStatement(task, tex_file, pdf_file)
+        statement = OIITexStatement(task, os.path.abspath(tex_file))
         statement.compile(config, frontend)
         if not config.dry_run:
             statement.pdf_file.getContentsToFile(pdf_file, True, True)
@@ -572,6 +573,10 @@ class IOIFormat(TaskFormat):
             pprint.pprint(task.to_dict())
 
     @staticmethod
+    def get_task(config: Config) -> Task:
+        return get_task(config)
+
+    @staticmethod
     def evaluate_task(frontend: Frontend, config: Config) -> IOIUIInterface:
         """
         Evaluate the task, generating inputs and outputs, compiling all the
@@ -580,3 +585,68 @@ class IOIFormat(TaskFormat):
         task = get_task(config)
         solutions = get_task_solutions(config, task)
         return evaluate_task(frontend, task, solutions, config)
+
+    @staticmethod
+    def make_booklet(frontend: Frontend, config: Config,
+                     tasks: List[Tuple[str, IOITask]]) -> int:
+        # TODO all this method should be rewritten, I feel dirty :/
+        statements = dict()  # type: Dict[str, List[OIITexStatement]]
+        for path, task in tasks:
+            config.task_dir = path
+            os.chdir(path)
+            tex_files = list_files(["statement/*.tex", "testo/*.tex"],
+                                   valid_extensions=[".tex"])
+            for tex_file in tex_files:
+                lang = os.path.basename(tex_file)[:-4]
+                statement = OIITexStatement(task, os.path.abspath(tex_file))
+                if lang not in statements:
+                    statements[lang] = list()
+                statements[lang].append(statement)
+
+        successful_compilations = 0
+        for lang, texts in statements.items():
+
+            def compile_statement(lang, texts):
+                file_name = "booklet_%s.pdf" % lang
+                target_file = os.path.join(config.contest_dir, file_name)
+                compilation, pdf_file, deps = OIITexStatement.compile_booklet(
+                    config, frontend, texts, lang)
+                pdf_file.getContentsToFile(target_file)
+
+                def getCompilationResult(res: Result):
+                    nonlocal successful_compilations
+                    print("Compilation result of %s: %s" % (file_name,
+                                                            res.status))
+                    if res.status == ResultStatus.SUCCESS or \
+                            res.status == ResultStatus.RETURN_CODE:
+                        successful_compilations += 1
+
+                def notifyCompilationStart():
+                    print("Compilation of %s started" % file_name)
+
+                def process_dependency(dep):
+                    def getDepResult(res: Result):
+                        print("Execution of dependency %s: %s" % (dep.name,
+                                                                  res.status))
+
+                    def notifyDepStart():
+                        print("Execution of dependency %s started" % dep.name)
+
+                    dep.execution.notifyStart(notifyDepStart)
+                    dep.execution.getResult(getDepResult)
+
+                compilation.notifyStart(notifyCompilationStart)
+                compilation.getResult(getCompilationResult)
+
+                for dep in deps:
+                    process_dependency(dep)
+
+            compile_statement(lang, texts)
+
+        def stop_server(_1: int, _2: Any) -> None:
+            frontend.stopEvaluation()
+
+        signal.signal(signal.SIGINT, stop_server)
+        signal.signal(signal.SIGTERM, stop_server)
+        frontend.evaluate()
+        return len(statements) - successful_compilations

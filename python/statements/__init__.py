@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from task_maker.config import Config
 from task_maker.task_maker_frontend import Execution, File, Frontend, Result
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 
 class StatementCompilationStatus(Enum):
@@ -47,18 +47,33 @@ class Statement(ABC):
     compile method need the getResult method to be called.
     """
 
-    def __init__(self, path: str, write_pdf_to: Optional[str]):
+    def __init__(self, path: str):
         self.path = path
         self.name = os.path.basename(self.path)
-        self.write_pdf_to = write_pdf_to
         self.compilation = None  # type: Execution
         self.compilation_result = None  # type: Result
         self.compilation_status = StatementCompilationStatus.WAITING
         self.pdf_file = None  # type: Optional[File]
         self.other_executions = []  # type: List[StatementDepInfo]
 
+    @staticmethod
     @abstractmethod
-    def compile(self, config: Config, frontend: Frontend):
+    def compile_booklet(config: Config,
+                        frontend: Frontend,
+                        statements: List["Statement"],
+                        language: Optional[str] = None
+                        ) -> Tuple[Execution, File, List[StatementDepInfo]]:
+        """
+        Compile the booklet composed by the specified statements, the statements
+        should be already compiled (the compile method already called)
+        """
+        pass
+
+    @abstractmethod
+    def compile(self,
+                config: Config,
+                frontend: Frontend,
+                language: Optional[str] = None):
         """
         Compile the statement file by adding some executions to the computation
         DAG.

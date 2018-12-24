@@ -6,9 +6,12 @@ import os
 import ruamel.yaml
 from task_maker.args import get_parser, UIS
 from task_maker.config import Config
-from task_maker.task_maker import setup, run
+from task_maker.detect_format import find_task_dir
+from task_maker.formats import Task
+from task_maker.manager import get_frontend
+from task_maker.task_maker import setup, run, get_task_format
 from task_maker.uis.bulk_finish_ui import BulkFinishUI
-from typing import List
+from typing import List, Tuple
 
 
 def get_task_paths(config: Config) -> List[str]:
@@ -23,6 +26,23 @@ def get_task_paths(config: Config) -> List[str]:
     return [d.path for d in os.scandir(config.contest_dir) if d.is_dir()]
 
 
+def make_booklet(config: Config, tasks: List[str]) -> int:
+    res = []  # type: List[Tuple[str, Task]]
+    task_format = None
+    for path in tasks:
+        task_dir, fmt = find_task_dir(path, config.max_depth, config.format)
+        if not fmt:
+            continue
+        task_format = get_task_format(fmt)
+        config.task_dir = path
+        os.chdir(path)
+        res.append((path, task_format.get_task(config)))
+    if not task_format:
+        raise RuntimeError("No valid task found")
+    frontend = get_frontend(config)
+    return task_format.make_booklet(frontend, config, res)
+
+
 def bulk_run(config: Config) -> int:
     """
     Run all the tasks using task-maker, will return the exit code to use
@@ -30,6 +50,8 @@ def bulk_run(config: Config) -> int:
     tasks = get_task_paths(config)
     if not tasks:
         raise ValueError("No tasks found")
+    if config.make_booklet:
+        return make_booklet(config, tasks)
     config.bulk_total = len(tasks)
     finish_ui = BulkFinishUI(config)
     exitcode = 0

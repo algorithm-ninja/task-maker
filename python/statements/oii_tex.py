@@ -4,8 +4,6 @@ import glob
 import os.path
 import re
 import ruamel.yaml
-import shutil
-import subprocess
 from string import Template
 from task_maker.args import Arch, CacheMode
 from task_maker.config import Config
@@ -14,7 +12,7 @@ from task_maker.languages import Dependency
 from task_maker.source_file import SourceFile
 from task_maker.statements import Statement, StatementDepInfo
 from task_maker.task_maker_frontend import Frontend, Execution, File
-from typing import Optional, NamedTuple, List
+from typing import Optional, NamedTuple, List, Set, Tuple
 
 # Result of the extraction of the \\usepackage
 ExtractPackagesResult = NamedTuple("ExtractPackagesResult",
@@ -44,28 +42,24 @@ def extract_packages(content: str) -> ExtractPackagesResult:
     Extract the packages and remove them from the statement, they will be
     added later at the top of the final tex file
     """
-    extra_packages = re.findall("\\\\usepackage.+", content)
+    extra_packages = re.findall("^\\\\usepackage.+", content, re.MULTILINE)
     content = content.replace("\\usepackage", "% \\usepackage")
     return ExtractPackagesResult(content, extra_packages)
 
 
-def build_tex_file(config: Config, task: IOITask,
-                   tex: ExtractPackagesResult) -> str:
+def get_template_parameters(config: Config,
+                            task: Optional[IOITask],
+                            language: str = None):
     """
-    Build the main TeX file from the statement file, from the task template and
-    using the information from task.yaml, contest.yaml and --set flags
+    Build the mapping dict with the parameters to send to the task and contest
+    templated. The __content, __packages and __tasks parameters are not set.
     """
     template_dir = get_template_dir()
-    template_file_path = os.path.join(template_dir, "task.tpl")
     template_defaults_path = os.path.join(template_dir, "defaults.yaml")
     contest_yaml_path = os.path.join(
         os.path.dirname(config.task_dir), "contest.yaml")
-    with open(template_file_path) as f:
-        template_content = f.read()
     with open(template_defaults_path) as f:
         defaults = ruamel.yaml.safe_load(f)
-
-    template = Template(template_content)
     mapping = defaults
     # apply the options from contest.yaml
     if os.path.exists(contest_yaml_path):
@@ -75,9 +69,10 @@ def build_tex_file(config: Config, task: IOITask,
             if v is not None and k in mapping:
                 mapping[k] = v
     # apply the options from task.yaml
-    for k, v in task.yaml.items():
-        if v is not None and k in mapping:
-            mapping[k] = v
+    if task:
+        for k, v in task.yaml.items():
+            if v is not None and k in mapping:
+                mapping[k] = v
     # apply the options from --set
     for opt in config.set:
         if "=" in opt:
@@ -93,99 +88,78 @@ def build_tex_file(config: Config, task: IOITask,
         mapping["infile"] = "stdin"
     if not mapping["outfile"]:
         mapping["outfile"] = "stdout"
+    if language:
+        mapping["language"] = language
 
     showsummary = True if mapping["showsummary"] else False
     showsolutions = True if mapping["showsolutions"] else False
 
-    mapping["__language"] = "english"
-    mapping["__content"] = tex.content
-    mapping["__packages"] = "\n".join(tex.packages)
+    mapping["__language"] = mapping["language"]
     mapping["__showsummary"] = "showsummary" if showsummary else ""
     mapping["__showsolutions"] = "showsolutions" if showsolutions else ""
+    return mapping
 
-    return template.substitute(mapping)
 
-
-def get_dependencies_via_latexmk(statement_dir: str,
-                                 tex: str) -> List[Dependency]:
+def build_task_tex_file(config: Config,
+                        task: IOITask,
+                        tex: str,
+                        language: Optional[str] = None) -> str:
     """
-    Assuming latexmk is present, the dependencies are found using latexmk -M
-    In order to work latexmk needs all the files, to make this faster all the
-    non-template files are created empty, in a temporary directory. The
-    directory is kept for performance reasons, on my machine the first run takes
-    ~900ms, from the second one it takes ~80ms.
+    Build the TeX file from the statement file, from the task template and
+    using the information from task.yaml, contest.yaml and --set flags.
     """
-    files = [f[len(statement_dir) + 1:] for f in get_files(statement_dir)]
-    tmpdir = "/tmp/task-maker-latexmk-" + os.path.basename(os.getcwd())
-    # create all the files empty
-    for f in files:
-        path = os.path.join(tmpdir, f)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as _:
-            pass
-    # copy the real template files
-    data_dir = os.path.join(get_template_dir(), "data")
-    for f in get_files(data_dir):
-        path = os.path.join(tmpdir, f[len(data_dir) + 1:])
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        shutil.copy(f, path)
-    # create the real statement.tex file
-    with open(os.path.join(tmpdir, "statement.tex"), "w") as f:
-        f.write(tex)
-    # execute latexmk -M in non interactive mode
-    proc = subprocess.run(
-        ["latexmk", "-M", "-f", "-interaction=nonstopmode", "statement.tex"],
-        cwd=tmpdir,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL)
-    # the output is in this form:
-    #
-    #   ...random LaTeX stuff...
-    #   #===Dependents, and related info, for statement.tex:
-    #   statement.dvi :\
-    #       /system/level/deps\
-    #       user/level/deps\
-    #       some/other/dep
-    #   #===End dependents for statement.tex:
-    #   ...other random stuff...
-    #
-    # Will search the indexes of #=== and keep only the lines between them
-    stdout = proc.stdout.decode().split("\n")
-    indexes = [i for i, v in enumerate(stdout) if v.startswith("#===")]
-    # the output is malformed, will use the dumb method
-    if len(indexes) != 2:
-        return get_dependencies_dumb(statement_dir)
-    deps = [
-        d.strip().strip("\\") for d in stdout[indexes[0] + 2:indexes[1]]
-        if not d.strip().startswith("/")
-    ]
-    return [
-        Dependency(d, os.path.join(statement_dir, d)) for d in deps
-        if d != "statement.tex"
-    ]
+    template_dir = get_template_dir()
+    task_template_path = os.path.join(template_dir, "task.tpl")
+    with open(task_template_path) as f:
+        task_template_content = f.read()
+    task_template = Template(task_template_content)
+
+    template_parameters = get_template_parameters(config, task, language)
+    return task_template.substitute(template_parameters, __content=tex)
 
 
-def get_dependencies_dumb(statement_dir: str) -> List[Dependency]:
+def build_contest_tex_file(config: Config,
+                           packages: Set[str],
+                           statement_files: List[str],
+                           language: Optional[str] = None) -> str:
     """
-    If latexmk is not preset on this system all the files in the statement
-    folder are considered dependencies
+    Build the contest TeX file which will include all the statement files.
     """
-    return [
-        Dependency(f[len(statement_dir) + 1:], f)
-        for f in get_files(statement_dir)
-    ]
+    template_dir = get_template_dir()
+
+    contest_template_path = os.path.join(template_dir, "contest.tpl")
+    with open(contest_template_path) as f:
+        contest_template_content = f.read()
+    contest_template = Template(contest_template_content)
+    tasks = ["\\input{%s}" % s for s in statement_files]
+    template_parameters = get_template_parameters(config, None, language)
+    return contest_template.substitute(
+        template_parameters,
+        __packages="\n".join(packages),
+        __tasks="\n".join(tasks))
 
 
 def get_dependencies(statement_dir: str, tex: str) -> List[Dependency]:
     """
-    Search for all the dependencies of the tex file, using latexmk if possible,
-    otherwise a simpler but slower method is used.
+    Search for all the dependencies of the tex file.
     """
-    if shutil.which("latexmk"):
-        return get_dependencies_via_latexmk(statement_dir, tex)
-    else:
-        return get_dependencies_dumb(statement_dir)
+
+    def is_valid_dep(path):
+        ext = os.path.splitext(path)[1]
+        if ext == ".asy":
+            pdf = os.path.basename(path.replace(".asy", ".pdf"))
+            return pdf in tex
+        elif ext == ".pdf":
+            pdf = os.path.basename(path)
+            asy = path.replace(".pdf", ".asy")
+            return pdf in tex and not os.path.exists(asy)
+        else:
+            return True
+
+    return [
+        Dependency(f[len(statement_dir) + 1:], f)
+        for f in get_files(statement_dir) if is_valid_dep(f)
+    ]
 
 
 class OIITexStatement(Statement):
@@ -195,78 +169,115 @@ class OIITexStatement(Statement):
     cmsbooklet.
     """
 
-    def __init__(self, task: IOITask, path: str, write_pdf_to: Optional[str]):
-        super().__init__(path, write_pdf_to)
+    def __init__(self, task: IOITask, path: str):
+        super().__init__(path)
         self.outfile = self.name.replace(".tex", ".pdf")
         self.task = task
         self.compilation = None  # type: Execution
         self.pdf_file = None  # type: File
 
-    def compile(self, config: Config, frontend: Frontend):
-        with open(self.path, "r") as f:
-            content = f.read()
-        process = extract_packages(content)
-        final_tex_file = build_tex_file(config, self.task, process)
-        deps = get_dependencies(os.path.dirname(self.path), final_tex_file)
+    def compile(self,
+                config: Config,
+                frontend: Frontend,
+                language: Optional[str] = None):
+        compilation, pdf_file, other_executions = \
+            OIITexStatement.compile_booklet(config, frontend,
+                                            [self], language)
+        self.compilation = compilation
+        self.pdf_file = pdf_file
+        self.other_executions = other_executions
 
-        self.compilation = frontend.addExecution(
-            "Compilation of statement %s" % self.name)
-        file = frontend.provideFileContent(final_tex_file,
-                                           "Statement file %s" % self.name)
-        self.compilation.addInput(self.name, file)
+    @staticmethod
+    def compile_booklet(config: Config,
+                        frontend: Frontend,
+                        statements: List["OIITexStatement"],
+                        language: Optional[str] = None
+                        ) -> Tuple[Execution, File, List[StatementDepInfo]]:
+        compilation = frontend.addExecution("Compilation of booklet")
+        other_executions = []  # type: List[StatementDepInfo]
+
+        data_dir = os.path.join(get_template_dir(), "data")
+        template_files = set(get_files(data_dir))
+
+        packages = set()  # type: Set[str]
+        statement_files = []  # type: List[str]
+        task_names = list()  # type: List[str]
+        for statement in statements:
+            task_name = statement.task.name
+            task_names.append(task_name)
+            with open(statement.path, "r") as f:
+                content = f.read()
+            tex = extract_packages(content)
+            packages |= set(tex.packages)
+            task_tex_file = build_task_tex_file(config, statement.task,
+                                                tex.content, language)
+            deps = get_dependencies(
+                os.path.dirname(statement.path), task_tex_file)
+
+            file = frontend.provideFileContent(
+                task_tex_file, "Statement file %s" % statement.name)
+
+            compilation.addInput(os.path.join(task_name, statement.name), file)
+            statement_files.append(os.path.join(task_name, statement.name))
+
+            for dep in deps:
+                if os.path.join(data_dir, dep.name) in template_files:
+                    # skip the template files
+                    continue
+                # non asy files, like images or other tex files, they are just
+                # copied inside the sandbox
+                if os.path.splitext(dep.path)[1] != ".asy":
+                    file = frontend.provideFile(
+                        dep.path, "Statement dependency %s" % dep.name)
+                    compilation.addInput(
+                        os.path.join(task_name, dep.name), file)
+                    continue
+                # the asymptote files needs to be compiled into pdf and then
+                # cropped
+                name = dep.name.replace(".asy", ".pdf")
+                # compile the asy file like a normal source file
+                source_file = SourceFile.from_file(dep.path, dep.name, False,
+                                                   None, Arch.DEFAULT, dict())
+                source_file.prepare(frontend, config)
+                other_executions.append(
+                    StatementDepInfo(dep.name, source_file.compilation))
+                # crop the pdf using pdfcrop
+                crop = frontend.addExecution(
+                    "Crop compiled asy file %s" % dep.name)
+                crop.addInput(
+                    "file.pdf",
+                    source_file.executable)  # the "executable" is the pdf file
+                if config.cache == CacheMode.NOTHING:
+                    crop.disableCache()
+                cropped_asy = crop.output("file-crop.pdf")
+                crop.setExecutablePath("pdfcrop")
+                crop.setArgs(["file.pdf"])
+                other_executions.append(
+                    StatementDepInfo("Crop %s" % source_file.exe_name, crop))
+                compilation.addInput(
+                    os.path.join(task_name, name), cropped_asy)
+
         if config.cache == CacheMode.NOTHING:
-            self.compilation.disableCache()
-        self.pdf_file = self.compilation.output(self.outfile)
-        self.compilation.setExecutablePath("latexmk")
-        self.compilation.setArgs(
-            ["-f", "-interaction=nonstopmode", "-pdf", self.name])
-        self.pdf_file = self.pdf_file
+            compilation.disableCache()
 
-        for dep in deps:
-            if not os.path.exists(dep.path):
-                continue
-            # non asy files, like images or other tex files, they are just
-            # copied inside the sandbox
-            if "asy" not in dep.path:
-                file = frontend.provideFile(
-                    dep.path, "Statement dependency %s" % dep.name)
-                self.compilation.addInput(dep.name, file)
-                continue
-            # the asymptote files needs to be compiled into pdf and then cropped
-            path = dep.path.replace(".pdf", ".asy")
-            name = dep.name.replace(".pdf", ".asy")
-            # it's possible that a pdf file is in the asy directory but the
-            # corresponding asy is not, in this skip the recompilation
-            if not os.path.exists(path):
-                pdf = frontend.provideFile(
-                    dep.path, "Already compiled asy file %s" % dep.name)
-                self.compilation.addInput(dep.name, pdf)
-                continue
-
-            # compile the asy file like a normal source file
-            source_file = SourceFile.from_file(path, name, False, None,
-                                               Arch.DEFAULT, dict())
-            source_file.prepare(frontend, config)
-            self.other_executions.append(
-                StatementDepInfo(name, source_file.compilation))
-            # crop the pdf using pdfcrop
-            crop = frontend.addExecution(
-                "Crop compiled asy file %s" % dep.name)
-            crop.addInput(
-                "file.pdf",
-                source_file.executable)  # the "executable" is the pdf file
-            if config.cache == CacheMode.NOTHING:
-                crop.disableCache()
-            cropped_asy = crop.output("file-crop.pdf")
-            crop.setExecutablePath("pdfcrop")
-            crop.setArgs(["file.pdf"])
-            self.other_executions.append(
-                StatementDepInfo("Crop %s" % source_file.exe_name, crop))
-            self.compilation.addInput(dep.name, cropped_asy)
+        pdf_file = compilation.output("booklet.pdf")
+        # TODO eventually use directly latexmk when setting env vars will be
+        #  supported
+        compilation.setExecutablePath("env")
+        compilation.setArgs([
+            "TEXINPUTS=.:%s:" % ":".join(task_names), "latexmk", "-f",
+            "-interaction=nonstopmode", "-pdf", "booklet.tex"
+        ])
+        booklet_tex = build_contest_tex_file(config, packages, statement_files,
+                                             language)
+        booklet = frontend.provideFileContent(booklet_tex,
+                                              "Booklet source file")
+        compilation.addInput("booklet.tex", booklet)
 
         # add the template files to the sandbox
-        data_dir = os.path.join(get_template_dir(), "data")
-        for path in get_files(data_dir):
+        for path in template_files:
             name = path[len(data_dir) + 1:]
             file = frontend.provideFile(path, "Template file %s" % name)
-            self.compilation.addInput(name, file)
+            compilation.addInput(name, file)
+
+        return compilation, pdf_file, other_executions

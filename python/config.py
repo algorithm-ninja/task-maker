@@ -29,7 +29,7 @@ class Config:
         "terry": ["arch", "seed"],
         "statement": ["no_statement", "set"],
         "help": ["help_colors"],
-        "bulk": ["contest_dir", "contest_yaml"]
+        "bulk": ["contest_dir", "contest_yaml", "make_booklet"]
     }
     CUSTOM_TYPES = {
         "ui": UIS,
@@ -101,6 +101,7 @@ class Config:
         # bulk group
         self.contest_dir = os.getcwd()
         self.contest_yaml = None
+        self.make_booklet = False
         # current index in bulk run and total number of bulk tasks
         self.bulk_number = None  # type: Optional[int]
         self.bulk_total = None  # type: Optional[int]
@@ -112,8 +113,7 @@ class Config:
         for group, options in Config.OPTIONS.items():
             for arg in options:
                 self._apply_arg(arg, args)
-        self._get_host_port()
-        self._resolve_dir()
+        self._update_state()
 
     def apply_file(self):
         """
@@ -135,13 +135,17 @@ class Config:
                         "Invalid option in config.file: {}.{}".format(
                             group, item))
                 setattr(self, item, self._get_value(group, item, value))
-        self._get_host_port()
-        self._resolve_dir()
+        self._update_state()
 
     def _apply_arg(self, name, args):
         value = getattr(args, name, None)
         if value is not None and value is not False:
             setattr(self, name, value)
+
+    def _update_state(self):
+        self._get_host_port()
+        self._resolve_dir()
+        self._get_contest_dir()
 
     def _get_host_port(self):
         server_addr = self.server.split(":")
@@ -155,6 +159,10 @@ class Config:
     def _resolve_dir(self):
         self.storedir = os.path.expanduser(self.storedir)
         self.tempdir = os.path.expanduser(self.tempdir)
+
+    def _get_contest_dir(self):
+        if self.contest_yaml:
+            self.contest_dir = os.path.dirname(self.contest_yaml)
 
     def _get_value(self, group, item, value):
         if item in Config.CUSTOM_TYPES:

@@ -8,12 +8,12 @@ from task_maker.config import Config
 from task_maker.formats import ioi_format, IOITask, \
     Subtask, Generator, Validator, Constraint, ScoreMode, TestCase, \
     parse_variable, get_write_input_file, \
-    get_write_output_file, TaskFormat
+    get_write_output_file, TaskFormat, Task
 from task_maker.formats.ioi_format import get_generator, \
     get_validator, get_task_without_testcases, get_task_solutions
 from task_maker.source_file import SourceFile
 from task_maker.task_maker_frontend import Frontend
-from typing import List, IO, Dict
+from typing import List, IO, Dict, Tuple
 from typing import Optional
 
 
@@ -401,6 +401,10 @@ class TMFormat(TaskFormat):
             pprint.pprint(task.to_dict())
 
     @staticmethod
+    def get_task(config: Config) -> Task:
+        return get_task(config)
+
+    @staticmethod
     def evaluate_task(frontend: Frontend, config: Config):
         """
         Evaluates the task by building the structure and using the ioi-format
@@ -413,3 +417,8 @@ class TMFormat(TaskFormat):
             write_gen_GEN(task)
 
         return ioi_format.evaluate_task(frontend, task, solutions, config)
+
+    @staticmethod
+    def make_booklet(frontend: Frontend, config: Config,
+                     tasks: List[Tuple[str, IOITask]]) -> int:
+        return ioi_format.IOIFormat.make_booklet(frontend, config, tasks)
