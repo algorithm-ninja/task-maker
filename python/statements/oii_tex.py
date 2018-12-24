@@ -16,13 +16,9 @@ from task_maker.statements import Statement, StatementDepInfo
 from task_maker.task_maker_frontend import Frontend, Execution, File
 from typing import Optional, NamedTuple, List
 
-
-class ExtractPackagesResult(NamedTuple):
-    """
-    Result of the extraction of the \\usepackage
-    """
-    content: str
-    packages: List[str]
+# Result of the extraction of the \\usepackage
+ExtractPackagesResult = NamedTuple("ExtractPackagesResult",
+                                   [("content", str), ("packages", List[str])])
 
 
 def get_template_dir() -> str:
