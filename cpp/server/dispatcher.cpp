@@ -145,6 +145,10 @@ Dispatcher::AddRequest(capnproto::Request::Reader request,
               KJ_LOG(WARNING, "Retries exhausted");
               return exc;
             }
+            if (*canceled ||
+                canceled_evaluations_.count(request.getEvaluationId())) {
+              return KJ_EXCEPTION(FAILED, "Enqueueing canceled request");
+            }
             kj::PromiseFulfillerPair<void> dummy_start =
                 kj::newPromiseAndFulfiller<void>();
             dummy_start.promise.then([]() { KJ_LOG(INFO, "Retrying..."); })
