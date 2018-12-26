@@ -1,6 +1,6 @@
 # Sources
 file(GLOB SOURCES_PY "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
-set(PY_MODULES formats tests uis languages sanity_checks statements)
+set(PY_MODULES formats tests uis languages sanity_checks statements remote)
 foreach(module_name ${PY_MODULES})
   file(GLOB SOURCES_PY_${module_name}
             "${CMAKE_CURRENT_SOURCE_DIR}/${module_name}/*.py")
