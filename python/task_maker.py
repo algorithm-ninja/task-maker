@@ -4,7 +4,6 @@ import sys
 from collections import namedtuple
 
 import os.path
-import signal
 from task_maker.args import get_parser, TaskFormat
 from task_maker.config import Config
 from task_maker.detect_format import find_task_dir
@@ -12,7 +11,6 @@ from task_maker.formats import ioi_format, tm_format, terry_format
 from task_maker.help import check_help
 from task_maker.languages import LanguageManager
 from task_maker.manager import get_frontend, spawn_server, spawn_worker
-from typing import Any
 
 MainRet = namedtuple("MainRet", ["exitcode", "interface", "stopped"])
 
@@ -67,19 +65,11 @@ def run(config: Config) -> MainRet:
 
     frontend = get_frontend(config)
 
-    stopped = False
-
-    def stop_server(_1: int, _2: Any) -> None:
-        nonlocal stopped
-        frontend.stopEvaluation()
-        stopped = True
-
-    signal.signal(signal.SIGINT, stop_server)
-    signal.signal(signal.SIGTERM, stop_server)
-
     interface = task_format.evaluate_task(frontend, config)
     return MainRet(
-        exitcode=len(interface.errors), interface=interface, stopped=stopped)
+        exitcode=len(interface.errors),
+        interface=interface,
+        stopped=interface.pool.stopped)
 
 
 def main():

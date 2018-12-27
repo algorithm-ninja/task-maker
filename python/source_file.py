@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 import os.path
 from distutils.spawn import find_executable
-from task_maker.args import CacheMode, Arch
-from task_maker.config import Config
+from task_maker.args import Arch
 from task_maker.detect_exe import get_exeflags, EXEFLAG_NONE
 from task_maker.languages import LanguageManager, Language, CommandType, \
     GraderInfo, Dependency
-from task_maker.task_maker_frontend import Frontend, File, ExecutionGroup, \
-    Execution
+from task_maker.remote import ExecutionPool, Execution
+from task_maker.task_maker_frontend import File
 from typing import Optional, Dict, List
 
 
@@ -78,14 +77,18 @@ class SourceFile:
         self.grader = grader
         self.name = os.path.basename(path)
         self.exe_name = exe_name
-        self.prepared = False
+        self.pool = None  # type: ExecutionPool
         # set only after `prepare`
         self.executable = None  # type: Optional[File]
         self.compilation = None  # type: Optional[Execution]
         self.compilation_stderr = None  # type: Optional[File]
         self.compilation_stdout = None  # type: Optional[File]
 
-    def prepare(self, frontend: Frontend, config: Config):
+    @property
+    def prepared(self) -> bool:
+        return self.pool is not None
+
+    def prepare(self, pool: ExecutionPool):
         """
         Prepare the source file for execution, compile the source if needed.
         After this call self.executable will be available. If the source file
@@ -94,17 +97,15 @@ class SourceFile:
         """
         if self.prepared:
             return
+        self.pool = pool
         if self.language.need_compilation:
-            self._compile(frontend, config)
+            self._compile()
         else:
-            self._not_compile(frontend, config)
-        if self.write_bin_to and not config.dry_run:
+            self._not_compile()
+        if self.write_bin_to and not self.pool.config.dry_run:
             self.executable.getContentsToFile(self.write_bin_to, True, True)
-        self.prepared = True
 
-    def _compile(self, frontend, config: Config):
-        source = frontend.provideFile(self.path,
-                                      "Source file for " + self.name, False)
+    def _compile(self):
         compilation_files = [self.name]
         if self.grader:
             compilation_files += [d.name for d in self.grader.files]
@@ -118,69 +119,37 @@ class SourceFile:
         if not cmd:
             raise ValueError("Unexpected empty compiler command")
 
-        self.compilation = frontend.addExecution(
-            "Compilation of %s" % self.name)
-        if config.cache == CacheMode.NOTHING:
-            self.compilation.disableCache()
-        self.compilation.setExecutablePath(cmd[0])
-        self.compilation.setArgs(cmd[1:])
         if self.language.need_unit_name:
             source_name = self.unit_name + self.language.source_extensions[0]
         else:
             source_name = self.name
-        self.compilation.addInput(source_name, source)
-
+        inputs = {
+            source_name:
+                self.pool.frontend.provideFile(
+                    self.path, "Source file for " + self.name, False)
+        }
         for dep in self.dependencies:
-            self.compilation.addInput(
-                dep.name, frontend.provideFile(dep.path, dep.path, False))
+            inputs[dep.name] = self.pool.frontend.provideFile(
+                dep.path, dep.path, False)
         if self.grader:
             for dep in self.grader.files:
-                self.compilation.addInput(
-                    dep.name, frontend.provideFile(dep.path, dep.path, False))
-        self.executable = self.compilation.output(self.exe_name, True)
-        self.compilation_stderr = self.compilation.stderr(False)
-        self.compilation_stdout = self.compilation.stdout(False)
+                inputs[dep.name] = self.pool.frontend.provideFile(
+                    dep.path, dep.path, False)
+        self.compilation = Execution(
+            "Compilation of %s" % self.name,
+            self.pool,
+            cmd[0],
+            cmd[1:],
+            "compilation", {"file": self.name},
+            inputs=inputs,
+            outputs=[(self.exe_name, True)],
+            store_stderr=True,
+            store_stdout=True)
+        self.executable = self.compilation.output(self.exe_name)
 
-    def _not_compile(self, frontend, config: Config):
-        self.executable = frontend.provideFile(
+    def _not_compile(self):
+        self.executable = self.pool.frontend.provideFile(
             self.path, "Source file for " + self.name, True)
-
-    def execute(self,
-                frontend,
-                description: str,
-                args: List[str],
-                group: ExecutionGroup = None) -> Execution:
-        """
-        Prepare an execution for this source file. The .prepare() method must be
-        called first. This method returns an Execution with the group, the
-            executable, the args and the dependencies already set.
-        :param frontend: The frontend
-        :param description: The description for the execution
-        :param args: The command line arguments to pass to the executable
-        :param group: An optional execution group
-        """
-        if not self.prepared:
-            raise ValueError("The source file needs to be prepared first")
-        if group:
-            execution = group.addExecution(description)
-        else:
-            execution = frontend.addExecution(description)
-        cmd_type, cmd = self.language.get_execution_command(
-            self.exe_name, args, self.unit_name)
-        execution.setArgs(cmd[1:])
-        # if the command type is local_file then the executable compiled/copied
-        # otherwise an external command is used to run the program, so it needs
-        # to be copied in the sandbox
-        if cmd_type == CommandType.LOCAL_FILE:
-            execution.setExecutable(cmd[0], self.executable)
-        else:
-            execution.setExecutablePath(cmd[0])
-            execution.addInput(self.exe_name, self.executable)
-        if not self.language.need_compilation:
-            for dep in self.dependencies:
-                execution.addInput(
-                    dep.name, frontend.provideFile(dep.path, dep.path, False))
-        return execution
 
     def __repr__(self):
         return "<SourceFile path=%s language=%s>" % (self.path, self.language)

@@ -5,13 +5,14 @@ import os.path
 import re
 import ruamel.yaml
 from string import Template
-from task_maker.args import Arch, CacheMode
+from task_maker.args import Arch
 from task_maker.config import Config
 from task_maker.formats import IOITask
 from task_maker.languages import Dependency
+from task_maker.remote import ExecutionPool, Execution
 from task_maker.source_file import SourceFile
 from task_maker.statements import Statement, StatementDepInfo
-from task_maker.task_maker_frontend import Frontend, Execution, File
+from task_maker.task_maker_frontend import File
 from typing import Optional, NamedTuple, List, Set, Tuple
 
 # Result of the extraction of the \\usepackage
@@ -139,7 +140,8 @@ def build_contest_tex_file(config: Config,
         __tasks="\n".join(tasks))
 
 
-def get_dependencies(statement_dir: str, tex: str) -> List[Dependency]:
+def get_dependencies(statement_dir: str, tex: str,
+                     logo: str) -> List[Dependency]:
     """
     Search for all the dependencies of the tex file.
     """
@@ -152,7 +154,7 @@ def get_dependencies(statement_dir: str, tex: str) -> List[Dependency]:
         elif ext == ".pdf":
             pdf = os.path.basename(path)
             asy = path.replace(".pdf", ".asy")
-            return pdf in tex and not os.path.exists(asy)
+            return pdf == logo or (pdf in tex and not os.path.exists(asy))
         else:
             return True
 
@@ -176,24 +178,20 @@ class OIITexStatement(Statement):
         self.compilation = None  # type: Execution
         self.pdf_file = None  # type: File
 
-    def compile(self,
-                config: Config,
-                frontend: Frontend,
-                language: Optional[str] = None):
+    def compile(self, pool: ExecutionPool, language: Optional[str] = None):
         compilation, pdf_file, other_executions = \
-            OIITexStatement.compile_booklet(config, frontend,
+            OIITexStatement.compile_booklet(pool,
                                             [self], language)
         self.compilation = compilation
         self.pdf_file = pdf_file
         self.other_executions = other_executions
 
     @staticmethod
-    def compile_booklet(config: Config,
-                        frontend: Frontend,
+    def compile_booklet(pool: ExecutionPool,
                         statements: List["OIITexStatement"],
                         language: Optional[str] = None
                         ) -> Tuple[Execution, File, List[StatementDepInfo]]:
-        compilation = frontend.addExecution("Compilation of booklet")
+        inputs = dict()
         other_executions = []  # type: List[StatementDepInfo]
 
         data_dir = os.path.join(get_template_dir(), "data")
@@ -209,15 +207,18 @@ class OIITexStatement(Statement):
                 content = f.read()
             tex = extract_packages(content)
             packages |= set(tex.packages)
-            task_tex_file = build_task_tex_file(config, statement.task,
+            task_tex_file = build_task_tex_file(pool.config, statement.task,
                                                 tex.content, language)
+            params = get_template_parameters(pool.config, statement.task,
+                                             language)
             deps = get_dependencies(
-                os.path.dirname(statement.path), task_tex_file)
+                os.path.dirname(statement.path), task_tex_file,
+                params.get("logo"))
 
-            file = frontend.provideFileContent(
+            file = pool.frontend.provideFileContent(
                 task_tex_file, "Statement file %s" % statement.name)
 
-            compilation.addInput(os.path.join(task_name, statement.name), file)
+            inputs[os.path.join(task_name, statement.name)] = file
             statement_files.append(os.path.join(task_name, statement.name))
 
             for dep in deps:
@@ -227,10 +228,10 @@ class OIITexStatement(Statement):
                 # non asy files, like images or other tex files, they are just
                 # copied inside the sandbox
                 if os.path.splitext(dep.path)[1] != ".asy":
-                    file = frontend.provideFile(
+                    file = pool.frontend.provideFile(
                         dep.path, "Statement dependency %s" % dep.name)
-                    compilation.addInput(
-                        os.path.join(task_name, dep.name), file)
+                    if os.path.join(task_name, dep.name) not in inputs:
+                        inputs[os.path.join(task_name, dep.name)] = file
                     continue
                 # the asymptote files needs to be compiled into pdf and then
                 # cropped
@@ -238,46 +239,46 @@ class OIITexStatement(Statement):
                 # compile the asy file like a normal source file
                 source_file = SourceFile.from_file(dep.path, dep.name, False,
                                                    None, Arch.DEFAULT, dict())
-                source_file.prepare(frontend, config)
+                source_file.prepare(pool)
                 other_executions.append(
                     StatementDepInfo(dep.name, source_file.compilation))
                 # crop the pdf using pdfcrop
-                crop = frontend.addExecution(
-                    "Crop compiled asy file %s" % dep.name)
-                crop.addInput(
-                    "file.pdf",
-                    source_file.executable)  # the "executable" is the pdf file
-                if config.cache == CacheMode.NOTHING:
-                    crop.disableCache()
-                cropped_asy = crop.output("file-crop.pdf")
-                crop.setExecutablePath("pdfcrop")
-                crop.setArgs(["file.pdf"])
+                crop = Execution(
+                    "Crop compiled asy file %s" % dep.name,
+                    pool,
+                    "pdfcrop", ["file.pdf"],
+                    "cropping", {"file": dep.name},
+                    inputs={"file.pdf": source_file.executable},
+                    outputs=["file-crop.pdf"])
                 other_executions.append(
                     StatementDepInfo("Crop %s" % source_file.exe_name, crop))
-                compilation.addInput(
-                    os.path.join(task_name, name), cropped_asy)
+                inputs[os.path.join(task_name,
+                                    name)] = crop.output("file-crop.pdf")
 
-        if config.cache == CacheMode.NOTHING:
-            compilation.disableCache()
-
-        pdf_file = compilation.output("booklet.pdf")
-        # TODO eventually use directly latexmk when setting env vars will be
-        #  supported
-        compilation.setExecutablePath("env")
-        compilation.setArgs([
-            "TEXINPUTS=.:%s:" % ":".join(task_names), "latexmk", "-f",
-            "-interaction=nonstopmode", "-pdf", "booklet.tex"
-        ])
-        booklet_tex = build_contest_tex_file(config, packages, statement_files,
-                                             language)
-        booklet = frontend.provideFileContent(booklet_tex,
-                                              "Booklet source file")
-        compilation.addInput("booklet.tex", booklet)
+        booklet_tex = build_contest_tex_file(pool.config, packages,
+                                             statement_files, language)
+        booklet = pool.frontend.provideFileContent(booklet_tex,
+                                                   "Booklet source file")
+        inputs["booklet.tex"] = booklet
 
         # add the template files to the sandbox
         for path in template_files:
             name = path[len(data_dir) + 1:]
-            file = frontend.provideFile(path, "Template file %s" % name)
-            compilation.addInput(name, file)
+            file = pool.frontend.provideFile(path, "Template file %s" % name)
+            inputs[name] = file
+
+        # TODO eventually use directly latexmk when setting env vars will be
+        #  supported
+        compilation = Execution(
+            "Compilation of booklet",
+            pool,
+            "env", [
+                "TEXINPUTS=.:%s:" % ":".join(task_names), "latexmk", "-f",
+                "-interaction=nonstopmode", "-pdf", "booklet.tex"
+            ],
+            "compilation", {},
+            inputs=inputs,
+            outputs=["booklet.pdf"])
+        pdf_file = compilation.output("booklet.pdf")
 
         return compilation, pdf_file, other_executions

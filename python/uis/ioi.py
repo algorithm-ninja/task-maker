@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-import time
 
 from enum import Enum
 from task_maker.formats import IOITask, ScoreMode
+from task_maker.remote import Execution
 from task_maker.source_file import SourceFile
-from task_maker.task_maker_frontend import Execution, Result, ResultStatus
+from task_maker.task_maker_frontend import Result, ResultStatus
 from task_maker.uis import result_to_str, UIInterface
 from typing import List, Dict, Optional, Callable
 
@@ -72,6 +72,10 @@ class TestcaseGenerationResult:
 
     def __init__(self):
         self.status = TestcaseGenerationStatus.WAITING
+        self.generation = None  # type: Execution
+        self.validation = None  # type: Execution
+        self.solution = None  # type: Execution
+        # TODO remove _result and _stderr
         self.generation_result = None  # type: Result
         self.generation_stderr = ""
         self.validation_result = None  # type: Result
@@ -327,130 +331,66 @@ class IOIUIInterface(UIInterface):
         """
         Start tacking the generation of a testcase
         """
-        log_prefix = "Generation of input {} of subtask {} ".format(
-            testcase, subtask).ljust(50)
         testcase_status = self.subtasks[subtask][testcase]
-        self.ui_printer.generation(testcase, subtask, "WAITING")
+        testcase_status.generation = generation
 
-        def notifyStartGeneration():
-            self.ui_printer.generation(testcase, subtask, "START")
+        def on_start():
             testcase_status.status = TestcaseGenerationStatus.GENERATING
-            self.running[log_prefix] = time.monotonic()
 
-        def getResultGeneration(result: Result):
-            del self.running[log_prefix]
+        def on_done(result: Result):
             testcase_status.generation_result = result
+            testcase_status.generation_stderr = generation.stderr_content
             if result.status == ResultStatus.SUCCESS:
-                self.ui_printer.generation(
-                    testcase, subtask, "SUCCESS", cached=result.was_cached)
                 testcase_status.status = TestcaseGenerationStatus.GENERATED
             else:
                 self.add_error("Failed to generate testcase #%d" % testcase)
-                self.ui_printer.generation(
-                    testcase,
-                    subtask,
-                    "FAIL",
-                    data=result.status,
-                    cached=result.was_cached)
                 testcase_status.status = TestcaseGenerationStatus.FAILURE
 
-        def skippedGeneration():
-            self.ui_printer.generation(testcase, subtask, "SKIPPED")
-
-        def getStderr(stderr):
-            self.ui_printer.generation(testcase, subtask, "STDERR", stderr)
-            testcase_status.generation_stderr = stderr
-
-        generation.stderr(False).getContentsAsString(getStderr)
-        generation.notifyStart(notifyStartGeneration)
-        generation.getResult(getResultGeneration, skippedGeneration)
+        generation.bind(on_done, on_start)
 
     def add_validation(self, subtask: int, testcase: int,
                        validation: Execution):
         """
         Start tracking the validation of a testcase
         """
-        log_prefix = "Validation of input {} of subtask {} ".format(
-            testcase, subtask).ljust(50)
         testcase_status = self.subtasks[subtask][testcase]
-        self.ui_printer.validation(testcase, subtask, "WAITING")
+        testcase_status.validation = validation
 
-        def notifyStartValidation():
-            self.ui_printer.validation(testcase, subtask, "START")
+        def on_start():
             testcase_status.status = TestcaseGenerationStatus.VALIDATING
-            self.running[log_prefix] = time.monotonic()
 
-        def getResultValidation(result: Result):
-            del self.running[log_prefix]
+        def on_done(result: Result):
             testcase_status.validation_result = result
+            testcase_status.validation_stderr = validation.stderr_content
             if result.status == ResultStatus.SUCCESS:
-                self.ui_printer.validation(
-                    testcase, subtask, "SUCCESS", cached=result.was_cached)
                 testcase_status.status = TestcaseGenerationStatus.VALIDATED
             else:
                 self.add_error("Failed to validate testcase #%d" % testcase)
-                self.ui_printer.validation(
-                    testcase,
-                    subtask,
-                    "FAIL",
-                    data=result.status,
-                    cached=result.was_cached)
                 testcase_status.status = TestcaseGenerationStatus.FAILURE
 
-        def skippedValidation():
-            self.ui_printer.validation(testcase, subtask, "SKIPPED")
-
-        def getStderr(stderr):
-            self.ui_printer.validation(
-                testcase, subtask, "STDERR", data=stderr)
-            testcase_status.validation_stderr = stderr
-
-        validation.stderr(False).getContentsAsString(getStderr)
-        validation.notifyStart(notifyStartValidation)
-        validation.getResult(getResultValidation, skippedValidation)
+        validation.bind(on_done, on_start)
 
     def add_solving(self, subtask: int, testcase: int, solving: Execution):
         """
         Start tracking the execution of the official solution on a testcase
         """
-        log_prefix = "Generation of output {} of subtask {} ".format(
-            testcase, subtask).ljust(50)
         testcase_status = self.subtasks[subtask][testcase]
-        self.ui_printer.solving(testcase, subtask, "WAITING")
+        testcase_status.solution = solving
 
-        def notifyStartSolving():
-            self.ui_printer.solving(testcase, subtask, "START")
+        def on_start():
             testcase_status.status = TestcaseGenerationStatus.SOLVING
-            self.running[log_prefix] = time.monotonic()
 
-        def getResultSolving(result: Result):
-            del self.running[log_prefix]
+        def on_done(result: Result):
             testcase_status.solution_result = result
+            testcase_status.solution_stderr = solving.stderr_content
             if result.status == ResultStatus.SUCCESS:
-                self.ui_printer.solving(
-                    testcase, subtask, "SUCCESS", cached=result.was_cached)
                 testcase_status.status = TestcaseGenerationStatus.DONE
             else:
                 self.add_error(
                     "Failed to generate output of testcase #%d" % testcase)
-                self.ui_printer.solving(
-                    testcase,
-                    subtask,
-                    "FAIL",
-                    data=result.status,
-                    cached=result.was_cached)
                 testcase_status.status = TestcaseGenerationStatus.FAILURE
 
-        def skippedSolving():
-            self.ui_printer.solving(testcase, subtask, "SKIPPED")
-
-        def getStderr(stderr):
-            self.ui_printer.solving(testcase, subtask, "STDERR", data=stderr)
-            testcase_status.solution_stderr = stderr
-
-        solving.stderr(False).getContentsAsString(getStderr)
-        solving.notifyStart(notifyStartSolving)
-        solving.getResult(getResultSolving, skippedSolving)
+        solving.bind(on_done, on_start)
 
     def add_evaluate_solution(self, subtask: int, testcase: int, solution: str,
                               evaluations: List[Execution]):
@@ -463,125 +403,56 @@ class IOIUIInterface(UIInterface):
             evaluations)
         started = False
         skipped = False
-        num_processes = len(evaluations)
         for num, evaluation in enumerate(evaluations):
-            if len(evaluations) == 1:
-                log_prefix = "Evaluate {} on case {} ".format(
-                    solution, testcase).ljust(50)
-            else:
-                log_prefix = "Evaluate {}/{} on case {} ".format(
-                    solution, num, testcase).ljust(50)
-            self.ui_printer.evaluate(solution, num, num_processes, testcase,
-                                     subtask, "WAITING")
 
-            def notifyStartEvaluation():
+            def on_start():
                 nonlocal started
-                self.ui_printer.evaluate(solution, num, num_processes,
-                                         testcase, subtask, "START")
                 if not started and not skipped:
                     self.testing[solution].testcase_results[subtask][
                         testcase].status = TestcaseSolutionStatus.SOLVING
                     started = True
-                self.running[log_prefix] = time.monotonic()
 
-            def getResultEvaluation(result: Result):
-                del self.running[log_prefix]
-                if result.status == ResultStatus.SUCCESS:
-                    self.ui_printer.evaluate(
-                        solution,
-                        num,
-                        num_processes,
-                        testcase,
-                        subtask,
-                        "SUCCESS",
-                        cached=result.was_cached)
-                else:
-                    self.ui_printer.evaluate(
-                        solution,
-                        num,
-                        num_processes,
-                        testcase,
-                        subtask,
-                        "FAIL",
-                        data=result.status,
-                        cached=result.was_cached)
-
+            def on_done(result: Result):
                 self.testing[solution].update_eval_result(
                     subtask, testcase, result, num)
 
-            def skippedEvaluation():
+            def on_skip():
                 nonlocal skipped
                 skipped = True
                 self.testing[solution].testcase_results[subtask][
                     testcase].status = TestcaseSolutionStatus.SKIPPED
-                self.ui_printer.evaluate(solution, num, num_processes,
-                                         testcase, subtask, "SKIPPED")
 
-            evaluation.notifyStart(notifyStartEvaluation)
-            evaluation.getResult(getResultEvaluation, skippedEvaluation)
+            evaluation.bind(on_done, on_start, on_skip)
 
     def add_evaluate_checking(self, subtask: int, testcase: int, solution: str,
                               checking: Execution):
         """
         Start tracking the checking of a solution in a testcase
         """
-        log_prefix = "Checking {} on case {} ".format(solution,
-                                                      testcase).ljust(50)
         has_custom_checker = self.task.checker
         custom_checker_state = CustomCheckerState(solution)
-        self.ui_printer.checking(solution, testcase, subtask, "WAITING")
 
-        def notifyStartChecking():
-            self.ui_printer.checking(solution, testcase, subtask, "START")
+        def on_start():
             self.testing[solution].testcase_results[subtask][
                 testcase].status = TestcaseSolutionStatus.CHECKING
-            self.running[log_prefix] = time.monotonic()
 
-        def getResultChecking(result: Result):
-            del self.running[log_prefix]
+        def on_done(result: Result):
             if has_custom_checker:
                 custom_checker_state.set_result(result)
-                if result.status == ResultStatus.SUCCESS:
-                    self.ui_printer.checking(
-                        solution,
-                        testcase,
-                        subtask,
-                        "SUCCESS",
-                        cached=result.was_cached)
-                else:
+                if result.status != ResultStatus.SUCCESS:
                     self.add_error(
                         "Checker failed for testcase #%d for solution %s" %
                         (testcase, solution))
-                    self.ui_printer.checking(
-                        solution,
-                        testcase,
-                        subtask,
-                        "FAIL",
-                        data=result.status,
-                        cached=result.was_cached)
+                custom_checker_state.set_stdout(checking.stdout_content)
+                custom_checker_state.set_stderr(checking.stderr_content)
             else:
-                self.ui_printer.checking(
-                    solution,
-                    testcase,
-                    subtask,
-                    "SUCCESS",
-                    cached=result.was_cached)
                 self.testing[solution].update_default_check_result(
                     subtask, testcase, result)
                 self.ui_printer.testcase_outcome(
                     solution, testcase, subtask,
                     self.testing[solution].testcase_results[subtask][testcase])
 
-        def skippedChecking():
-            self.ui_printer.checking(solution, testcase, subtask, "SKIPPED")
-
-        def getStdout(stdout):
-            custom_checker_state.set_stdout(stdout)
-
-        def getStderr(stderr):
-            custom_checker_state.set_stderr(stderr)
-
-        def customCheckerResult():
+        def on_checked():
             self.testing[solution].update_custom_check_result(
                 subtask, testcase, custom_checker_state)
             self.ui_printer.testcase_outcome(
@@ -589,8 +460,5 @@ class IOIUIInterface(UIInterface):
                 self.testing[solution].testcase_results[subtask][testcase])
 
         if has_custom_checker:
-            custom_checker_state.set_callback(customCheckerResult)
-            checking.stdout(False).getContentsAsString(getStdout)
-            checking.stderr(False).getContentsAsString(getStderr)
-        checking.notifyStart(notifyStartChecking)
-        checking.getResult(getResultChecking, skippedChecking)
+            custom_checker_state.set_callback(on_checked)
+        checking.bind(on_done, on_start)

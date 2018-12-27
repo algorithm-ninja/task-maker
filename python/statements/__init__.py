@@ -2,8 +2,8 @@
 import os.path
 from abc import ABC, abstractmethod
 from enum import Enum
-from task_maker.config import Config
-from task_maker.task_maker_frontend import Execution, File, Frontend, Result
+from task_maker.remote import ExecutionPool, Execution
+from task_maker.task_maker_frontend import File, Result
 from typing import Optional, List, Tuple
 
 
@@ -58,8 +58,7 @@ class Statement(ABC):
 
     @staticmethod
     @abstractmethod
-    def compile_booklet(config: Config,
-                        frontend: Frontend,
+    def compile_booklet(pool: ExecutionPool,
                         statements: List["Statement"],
                         language: Optional[str] = None
                         ) -> Tuple[Execution, File, List[StatementDepInfo]]:
@@ -70,10 +69,7 @@ class Statement(ABC):
         pass
 
     @abstractmethod
-    def compile(self,
-                config: Config,
-                frontend: Frontend,
-                language: Optional[str] = None):
+    def compile(self, pool: ExecutionPool, language: Optional[str] = None):
         """
         Compile the statement file by adding some executions to the computation
         DAG.

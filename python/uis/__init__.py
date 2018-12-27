@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
+import time
+
 import curses
 import signal
 import threading
-import time
 import traceback
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -11,6 +12,7 @@ from enum import Enum
 from task_maker.config import Config
 from task_maker.formats import Task
 from task_maker.printer import StdoutPrinter, Printer, CursesPrinter
+from task_maker.remote import Execution, ExecutionPool
 from task_maker.source_file import SourceFile
 from task_maker.statements import Statement, StatementCompilationStatus, \
     StatementDepInfo, StatementDepCompilationStatus
@@ -41,6 +43,8 @@ class SourceFileCompilationResult:
     def __init__(self, need_compilation):
         self.need_compilation = need_compilation
         self.status = SourceFileCompilationStatus.WAITING
+        self.execution = None  # type: Execution
+        # TODO remove those vvv
         self.stderr = ""
         self.result = None  # type: Result
 
@@ -64,10 +68,9 @@ class UIInterface:
         )  # type: Dict[str, SourceFileCompilationResult]
         self.solutions = dict()  # type: Dict[str, SourceFileCompilationResult]
         self.statements = dict()  # type: Dict[str, Statement]
-        # all the running tasks: (name, monotonic timestamp of start)
-        self.running = dict()  # type: Dict[str, float]
         self.warnings = list()  # type: List[str]
         self.errors = list()  # type: List[str]
+        self.pool = None  # type: ExecutionPool
 
         if do_print:
             self.printer = StdoutPrinter()
@@ -80,48 +83,30 @@ class UIInterface:
         Add a non-solution file to the ui (ie a generator/checker/...)
         """
         name = source_file.name
-        log_prefix = "Compilation of non-solution {} ".format(name).ljust(50)
         self.non_solutions[name] = SourceFileCompilationResult(
             source_file.language.need_compilation)
-        self.ui_printer.compilation_non_solution(name, "WAITING")
 
-        # TODO: at some point extract those functionality into some wrapper
         if source_file.language.need_compilation:
+            self.non_solutions[name].execution = source_file.compilation
 
-            def notifyStartCompiltion():
-                self.ui_printer.compilation_non_solution(name, "START")
+            def on_start():
                 self.non_solutions[
                     name].status = SourceFileCompilationStatus.COMPILING
-                self.running[log_prefix] = time.monotonic()
 
-            def getResultCompilation(result: Result):
-                del self.running[log_prefix]
+            def on_done(result: Result):
                 self.non_solutions[name].result = result
+                self.non_solutions[
+                    name].stderr = source_file.compilation.stderr_content
                 if result.status == ResultStatus.SUCCESS:
-                    self.ui_printer.compilation_non_solution(
-                        name, "SUCCESS", cached=result.was_cached)
                     self.non_solutions[
                         name].status = SourceFileCompilationStatus.DONE
                 else:
                     self.add_error("Failed to compile " + name)
-                    self.ui_printer.compilation_non_solution(
-                        name,
-                        "FAIL",
-                        data=result.status,
-                        cached=result.was_cached)
                     self.non_solutions[
                         name].status = SourceFileCompilationStatus.FAILURE
 
-            def getStderr(stderr):
-                self.ui_printer.compilation_non_solution(
-                    name, "STDERR", data=stderr)
-                self.non_solutions[name].stderr = stderr
-
-            source_file.compilation_stderr.getContentsAsString(getStderr)
-            source_file.compilation.notifyStart(notifyStartCompiltion)
-            source_file.compilation.getResult(getResultCompilation)
+            source_file.compilation.bind(on_done, on_start)
         else:
-            self.ui_printer.compilation_non_solution(name, "SUCCESS")
             self.non_solutions[name].status = SourceFileCompilationStatus.DONE
 
     def add_solution(self, source_file: SourceFile):
@@ -129,108 +114,69 @@ class UIInterface:
         Add a solution to the UI
         """
         name = source_file.name
-        log_prefix = "Compilation of solution {} ".format(name).ljust(50)
         self.solutions[name] = SourceFileCompilationResult(
             source_file.language.need_compilation)
-        self.ui_printer.compilation_solution(name, "WAITING")
 
         if source_file.language.need_compilation:
+            self.solutions[name].execution = source_file.compilation
 
-            def notifyStartCompiltion():
-                self.ui_printer.compilation_solution(name, "START")
+            def on_start():
                 self.solutions[
                     name].status = SourceFileCompilationStatus.COMPILING
-                self.running[log_prefix] = time.monotonic()
 
-            def getResultCompilation(result: Result):
-                del self.running[log_prefix]
+            def on_done(result: Result):
                 self.solutions[name].result = result
+                self.solutions[
+                    name].stderr = source_file.compilation.stderr_content
                 if result.status == ResultStatus.SUCCESS:
-                    self.ui_printer.compilation_solution(
-                        name, "SUCCESS", cached=result.was_cached)
                     self.solutions[
                         name].status = SourceFileCompilationStatus.DONE
                 else:
                     self.add_warning("Failed to compile: " + name)
-                    self.ui_printer.compilation_solution(
-                        name,
-                        "FAIL",
-                        data=result.status,
-                        cached=result.was_cached)
                     self.solutions[
                         name].status = SourceFileCompilationStatus.FAILURE
 
-            def getStderr(stderr):
-                self.ui_printer.compilation_solution(
-                    name, "STDERR", data=stderr)
-                self.solutions[name].stderr = stderr
-
-            source_file.compilation_stderr.getContentsAsString(getStderr)
-            source_file.compilation.notifyStart(notifyStartCompiltion)
-            source_file.compilation.getResult(getResultCompilation)
+            source_file.compilation.bind(on_done, on_start)
         else:
-            self.ui_printer.compilation_solution(name, "SUCCESS")
             self.solutions[name].status = SourceFileCompilationStatus.DONE
 
     def add_statement(self, statement: Statement):
         """
         Add a statement to the UI
         """
-        log_prefix = "Compilation of statement %s" % statement.name
-
-        self.ui_printer.compilation_statement(statement.name, "WAITING")
         self.statements[statement.name] = statement
 
-        def notifyStartCompilation():
-            self.ui_printer.compilation_statement(statement.name, "START")
-            self.running[log_prefix] = time.monotonic()
+        def on_start():
             statement.compilation_status = StatementCompilationStatus.COMPILING
 
-        def getResultCompilation(result: Result):
-            del self.running[log_prefix]
+        def on_done(result: Result):
             statement.compilation_result = result
             if result.status in [
                 ResultStatus.SUCCESS, ResultStatus.RETURN_CODE
             ]:
-                self.ui_printer.compilation_statement(
-                    statement.name, "SUCCESS", cached=result.was_cached)
                 statement.compilation_status = StatementCompilationStatus.DONE
             else:
-                self.ui_printer.compilation_statement(
-                    statement.name,
-                    "FAIL",
-                    data=result.status,
-                    cached=result.was_cached)
                 statement.compilation_status = StatementCompilationStatus.FAILED
                 self.add_warning(
                     "Failed to compile statement %s" % statement.name)
 
-        statement.compilation.notifyStart(notifyStartCompilation)
-        statement.compilation.getResult(getResultCompilation)
+        statement.compilation.bind(on_done, on_start)
 
         deps_done = 0  # how many dependencies have been completed
 
         for info in statement.other_executions:
 
             def register_execution(info: StatementDepInfo):
-                name = "%s (%s)" % (info.name, statement.name)
-                self.ui_printer.statement_dependency(name, "WAITING")
-
-                def notifyStart():
-                    self.ui_printer.statement_dependency(name, "START")
-                    self.running[name] = time.monotonic()
+                def dep_on_start():
                     statement.compilation_status = \
                         StatementCompilationStatus.COMPILING_DEPS
                     info.status = StatementDepCompilationStatus.RUNNING
 
-                def getResult(result: Result):
+                def dep_on_done(result: Result):
                     nonlocal deps_done
-                    del self.running[name]
                     info.result = result
                     deps_done += 1
                     if result.status == ResultStatus.SUCCESS:
-                        self.ui_printer.statement_dependency(
-                            name, "SUCCESS", cached=result.was_cached)
                         info.status = StatementDepCompilationStatus.DONE
                         if statement.compilation_status != \
                                 StatementCompilationStatus.FAILED:
@@ -238,11 +184,6 @@ class UIInterface:
                                 statement.compilation_status = \
                                     StatementCompilationStatus.COMPILED_DEPS
                     else:
-                        self.ui_printer.statement_dependency(
-                            name,
-                            "FAIL",
-                            data=result.status,
-                            cached=result.was_cached)
                         info.status = StatementDepCompilationStatus.FAILED
                         statement.compilation_status = \
                             StatementCompilationStatus.FAILED
@@ -250,8 +191,7 @@ class UIInterface:
                             "Failed to compile statement dependency: %s" %
                             info.name)
 
-                info.execution.notifyStart(notifyStart)
-                info.execution.getResult(getResult)
+                info.execution.bind(dep_on_done, dep_on_start)
 
             register_execution(info)
 
@@ -522,15 +462,17 @@ class CursesUI(ABC):
     def _print_running_tasks(self, printer: CursesPrinter):
         printer.blue("Running tasks:\n", bold=True)
         running = sorted(
-            (t, n) for n, t in self.interface.running.copy().items())
+            (t, n) for n, t in self.interface.pool.running.copy().items())
         now = time.monotonic()
         for start, task in running:
             duration = now - start
-            printer.text(" - {0: <50} {1: .1f}s\n".format(
-                task.strip(), duration))
+            printer.text(" - {0: <50} {1: .1f}s\n".format(task.name, duration))
 
 
 def result_to_str(result: Result) -> str:
+    """
+    String representation of the result
+    """
     status = result.status
     if status == ResultStatus.SUCCESS:
         return "Success"

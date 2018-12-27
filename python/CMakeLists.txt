@@ -1,6 +1,24 @@
 # Sources
 file(GLOB SOURCES_PY "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
-set(PY_MODULES formats tests uis languages sanity_checks statements remote)
+
+# find all the python modules
+file(GLOB_RECURSE __INIT__PYS "${CMAKE_CURRENT_SOURCE_DIR}/**/__init__.py")
+string(LENGTH "${CMAKE_CURRENT_SOURCE_DIR}" CMAKE_CURRENT_SOURCE_DIR_LEN)
+foreach (init_py ${__INIT__PYS})
+  string(SUBSTRING "${init_py}"
+      ${CMAKE_CURRENT_SOURCE_DIR_LEN}
+      -1
+      path)
+  string(LENGTH ${path} path_len)
+  math(EXPR path_len "${path_len} - 13")
+  string(SUBSTRING "${path}"
+      1
+      ${path_len}
+      path)
+  list(APPEND PY_MODULES "${path}")
+endforeach ()
+message(STATUS "Python modules: ${PY_MODULES}")
+
 foreach(module_name ${PY_MODULES})
   file(GLOB SOURCES_PY_${module_name}
             "${CMAKE_CURRENT_SOURCE_DIR}/${module_name}/*.py")
@@ -64,7 +82,8 @@ foreach(module_name ${PY_MODULES})
 endforeach()
 
 # copy the statement templates
-set(STATEMENTS_TEMPLATES_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/statements/templates")
+set(STATEMENTS_TEMPLATES_SRC_DIR
+    "${CMAKE_CURRENT_SOURCE_DIR}/statements/templates")
 set(STATEMENTS_TEMPLATES_DST_DIR "${SOURCES_statements_MODULE}/templates")
 add_custom_command(OUTPUT ${STATEMENTS_TEMPLATES_DST_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -125,7 +144,11 @@ add_custom_command(OUTPUT ${BIN_DIRECTORY}/task-maker
                    DEPENDS task-maker)
 
 foreach(module_name ${PY_MODULES})
-  set(SETUP_PY_MODULES "${SETUP_PY_MODULES}, 'task_maker.${module_name}'")
+  string(REPLACE "/"
+      "."
+      setup_module_name
+      ${module_name})
+  set(SETUP_PY_MODULES "${SETUP_PY_MODULES}, 'task_maker.${setup_module_name}'")
 endforeach()
 
 # generate setup.py
