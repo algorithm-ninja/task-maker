@@ -384,7 +384,7 @@ class TMFormat(TaskFormat):
         Perform the cleanup for a task-maker task. Removes all the files of a
         ioi-format task, and removes also gen/GEN only if auto-generated.
         """
-        ioi_format.IOIFormat.clean()
+        ioi_format.IOIFormat.clean(has_generator=True)
         if os.path.exists("gen/GEN"):
             with open("gen/GEN") as f:
                 if "tm-allow-delete" not in f.read():

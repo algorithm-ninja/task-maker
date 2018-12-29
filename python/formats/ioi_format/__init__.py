@@ -24,7 +24,7 @@ class IOIFormat(TaskFormat):
     """
 
     @staticmethod
-    def clean():
+    def clean(has_generator=None):
         """
         Remove all the generated files, eventually removing also the
         corresponding directory.
@@ -49,7 +49,7 @@ class IOIFormat(TaskFormat):
             except OSError:
                 pass
 
-        if get_generator():
+        if has_generator or get_generator():
             remove_dir("input", "*.txt")
             remove_dir("output", "*.txt")
         remove_dir("bin", "*")
