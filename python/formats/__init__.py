@@ -511,6 +511,7 @@ def get_solutions(solutions: List[str], directory: str,
     Given some search prefixes (solutions) and a directory where the solutions
     are stored (relative to the task path) returns the list of paths to the
     found solution files:
+    - any absolute path to a file
     - only the solution with name starts with one of the specified prefixes and
     are inside the specified directory
     - or the files that matches the prefix specified (even outside directory)
@@ -522,7 +523,9 @@ def get_solutions(solutions: List[str], directory: str,
     if solutions:
         paths = []
         for sol in solutions:
-            if sol.startswith(directory):
+            if os.path.isabs(sol) and os.path.isfile(sol):
+                paths.append(sol)
+            elif sol.startswith(directory):
                 paths.append(sol + "*")
             else:
                 paths.append("{}{}*".format(directory, sol))
