@@ -81,27 +81,27 @@ def _check_tex_statement(task: IOITask, interface: IOIUIInterface):
     statements = _get_statement_tex()
     if not statements:
         return
-    regex = r".*\{Subtask ([0-9]+)\} *\[(?:\\phantom\{.\})?([0-9]+).*\].*"
-    for statement in statements:
+
+    def check_oii_format(statement, content):
+        regex = r".*\{Subtask ([0-9]+)\} *\[(?:\\phantom\{.\})?([0-9]+).*\].*"
         is_non_sequential = False
         is_wrong = False
-        with open(statement, "r") as f:
-            matches = re.findall(regex, f.read())
-            if not matches:
-                continue
-            one_based = int(matches[0][0] == '1')
-            last = -1
-            for subtask, score in matches:
-                subtask = int(subtask) - one_based
-                score = int(score)
-                if subtask != last + 1:
-                    is_non_sequential = True
-                    # if the numbers are screwed up the scores have no sense
-                    break
-                last = subtask
-                from_task = task.subtasks.get(subtask)
-                if not from_task or from_task.max_score != score:
-                    is_wrong = True
+        matches = re.findall(regex, content)
+        if not matches:
+            return
+        one_based = int(matches[0][0] == '1')
+        last = -1
+        for subtask, score in matches:
+            subtask = int(subtask) - one_based
+            score = int(score)
+            if subtask != last + 1:
+                is_non_sequential = True
+                # if the numbers are screwed up the scores have no sense
+                break
+            last = subtask
+            from_task = task.subtasks.get(subtask)
+            if not from_task or from_task.max_score != score:
+                is_wrong = True
         if is_non_sequential:
             interface.add_warning(
                 "The subtasks in the statement {} are "
@@ -110,6 +110,28 @@ def _check_tex_statement(task: IOITask, interface: IOIUIInterface):
             interface.add_warning(
                 "The subtasks in the statement {} don't match "
                 "the task's ones".format(statement))
+
+    def check_ois_format(statement, content):
+        regex = r".*\\OISubtask\{(\d+)\}\{\d+\}\{.+\}.*"
+        matches = re.findall(regex, content)
+        if not matches:
+            return
+        is_wrong = False
+        if len(matches) != len(task.subtasks):
+            is_wrong = True
+        for score, subtask in zip(matches, task.subtasks.values()):
+            if score != subtask.max_score:
+                is_wrong = True
+        if is_wrong:
+            interface.add_warning(
+                "The subtasks in the statement {} don't match "
+                "the task's ones".format(statement))
+
+    for statement in statements:
+        with open(statement, "r") as f:
+            content = f.read()
+            check_oii_format(statement, content)
+            check_ois_format(statement, content)
 
 
 def _setup_execution_callback(interface: IOIUIInterface, execution: Execution,
