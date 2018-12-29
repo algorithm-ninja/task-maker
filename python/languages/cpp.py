@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-from typing import List
-
 from task_maker.args import Arch
 from task_maker.languages import CompiledLanguage, CommandType, \
     LanguageManager, make_unique
 from task_maker.languages.c import find_c_dependency
+from typing import List
 
 
 class LanguageCPP(CompiledLanguage):
@@ -29,7 +28,7 @@ class LanguageCPP(CompiledLanguage):
             cmd += ["-DEVAL"]
         if target_arch == Arch.I686:
             cmd += ["-m32"]
-        cmd += ["-O2", "-std=c++14", "-Wall", "-o", exe_name]
+        cmd += ["-O2", "-std=c++14", "-Wall", "-ggdb3", "-o", exe_name]
         cmd += source_filenames
         return CommandType.SYSTEM, cmd
 

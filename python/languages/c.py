@@ -2,12 +2,11 @@
 import os.path
 import re
 import subprocess
-from typing import List
 from distutils.spawn import find_executable
-
 from task_maker.args import Arch
 from task_maker.languages import CompiledLanguage, CommandType, \
     LanguageManager, Dependency, make_unique
+from typing import List
 
 CXX_INCLUDE = re.compile('#include *["<](.+)[">]')
 
@@ -104,7 +103,7 @@ class LanguageC(CompiledLanguage):
             cmd += ["-DEVAL"]
         if target_arch == Arch.I686:
             cmd += ["-m32"]
-        cmd += ["-O2", "-std=c11", "-Wall", "-o", exe_name]
+        cmd += ["-O2", "-std=c11", "-Wall", "-ggdb3", "-o", exe_name]
         cmd += source_filenames
         return CommandType.SYSTEM, cmd
 
