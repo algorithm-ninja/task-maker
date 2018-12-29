@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 
+import sys
+
 import os.path
 import pytest
 import shutil
-import sys
-
 import subprocess
 import traceback
-from typing import Union
-
 from task_maker.args import UIS, CacheMode
 from task_maker.config import Config
-from task_maker.uis.ioi import IOIUIInterface
 from task_maker.task_maker import run, setup
+from task_maker.uis.ioi import IOIUIInterface
+from task_maker.uis.terry import TerryUIInterface
+from typing import Union
 
-interface = None  # type: Union[IOIUIInterface]
+interface = None  # type: Union[IOIUIInterface, TerryUIInterface]
 
 
 def run_tests(task_name: str, file: str):

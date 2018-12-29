@@ -96,7 +96,7 @@ class TestSolutionNotCompile(TestSolution):
         solution = interface.solutions[self.name]
         assert solution.status == SourceFileCompilationStatus.FAILURE
         if self.message:
-            assert self.message in solution.stderr
+            assert self.message in solution.execution.stderr_content
 
     def __repr__(self):
         return "<TestSolutionNotCompile name=%s>" % self.name
@@ -158,7 +158,9 @@ class TestInterface:
         self.memlimit = memlimit
         self.callback = None  # type: Optional[Callable[[IOIUIInterface], None]]
 
-    def add_solution(self, name: str, score: float,
+    def add_solution(self,
+                     name: str,
+                     score: float,
                      st_score: Optional[List[float]] = None,
                      tc_outcome: Optional[List[Tuple[float, str]]] = None):
         """
@@ -245,27 +247,29 @@ class TestInterface:
             assert self.errors in interface.errors
         if not self.generation_errors:
             for testcase in testcases:
-                if testcase.generation_result:
-                    assert testcase.generation_result.status == \
+                if testcase.generation and testcase.generation.result:
+                    assert testcase.generation.result.status == \
                            ResultStatus.SUCCESS
         else:
-            assert any(self.generation_errors in testcase.generation_stderr
-                       for testcase in testcases)
+            assert any(
+                self.generation_errors in testcase.generation.stderr_content
+                for testcase in testcases)
         if not self.validation_errors:
             for testcase in testcases:
-                if testcase.validation_result:
-                    assert testcase.validation_result.status == \
+                if testcase.generation and testcase.validation.result:
+                    assert testcase.validation.result.status == \
                            ResultStatus.SUCCESS
         else:
-            assert any(self.validation_errors in testcase.validation_stderr
-                       for testcase in testcases)
+            assert any(
+                self.validation_errors in testcase.validation.stderr_content
+                for testcase in testcases)
         if not self.solution_errors:
             for testcase in testcases:
-                if testcase.solution_result:
-                    assert testcase.solution_result.status == \
+                if testcase.generation and testcase.solution.result:
+                    assert testcase.solution.result.status == \
                            ResultStatus.SUCCESS
         else:
-            assert any(self.solution_errors in testcase.solution_stderr
+            assert any(self.solution_errors in testcase.solution.stderr_content
                        for testcase in testcases)
         if self.checker_errors:
             for status in interface.testing.values():
@@ -288,6 +292,7 @@ class TerryTestInterface:
     Interface to test a terry task, it contains all the testing information
     about the task.
     """
+
     def __init__(self, name: str, desc: str, max_score: float):
         self.solutions = []  # type: List[TerryTestSolution]
         self.generator_name = None  # type: Optional[str]
@@ -322,7 +327,9 @@ class TerryTestInterface:
         """
         self.error = error
 
-    def add_solution(self, name: str, score: float,
+    def add_solution(self,
+                     name: str,
+                     score: float,
                      tc_score: Optional[List[float]] = None):
         """
         Add a solution.

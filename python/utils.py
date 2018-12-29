@@ -46,8 +46,19 @@ def get_compilations(files: Dict[str, "SourceFileCompilationResult"]):
     return {
         name: {
             "status": enum_to_str(compilation.status),
-            "stderr": compilation.stderr,
-            "result": result_to_dict(compilation.result)
+            "compilation": get_execution(compilation.execution)
         }
         for name, compilation in files.items()
     }
+
+
+def get_execution(ex: "Execution"):
+    if ex is None:
+        return None
+    res = {}
+    if ex.store_stdout:
+        res["stdout"] = ex.stdout_content
+    if ex.store_stderr:
+        res["stderr"] = ex.stderr_content
+    res["result"] = result_to_dict(ex.result)
+    return res

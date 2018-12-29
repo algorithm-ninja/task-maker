@@ -44,9 +44,6 @@ class SourceFileCompilationResult:
         self.need_compilation = need_compilation
         self.status = SourceFileCompilationStatus.WAITING
         self.execution = None  # type: Execution
-        # TODO remove those vvv
-        self.stderr = ""
-        self.result = None  # type: Result
 
 
 class UIInterface:
@@ -94,9 +91,6 @@ class UIInterface:
                     name].status = SourceFileCompilationStatus.COMPILING
 
             def on_done(result: Result):
-                self.non_solutions[name].result = result
-                self.non_solutions[
-                    name].stderr = source_file.compilation.stderr_content
                 if result.status == ResultStatus.SUCCESS:
                     self.non_solutions[
                         name].status = SourceFileCompilationStatus.DONE
@@ -125,9 +119,6 @@ class UIInterface:
                     name].status = SourceFileCompilationStatus.COMPILING
 
             def on_done(result: Result):
-                self.solutions[name].result = result
-                self.solutions[
-                    name].stderr = source_file.compilation.stderr_content
                 if result.status == ResultStatus.SUCCESS:
                     self.solutions[
                         name].status = SourceFileCompilationStatus.DONE
@@ -291,36 +282,33 @@ class FinishUI(ABC):
                 "{:<{len}}   FAIL ".format(solution, len=max_sol_len),
                 bold=True)
         if result.need_compilation:
-            if not result.result:
+            if not result.execution.result:
                 self.printer.text("  UNKNOWN")
             else:
-                if result.result.status != ResultStatus.INTERNAL_ERROR and \
-                        result.result.status != ResultStatus.MISSING_FILES and \
-                        result.result.status != ResultStatus.INVALID_REQUEST:
+                res = result.execution.result
+                if res.status != ResultStatus.INTERNAL_ERROR and \
+                        res.status != ResultStatus.MISSING_FILES and \
+                        res.status != ResultStatus.INVALID_REQUEST:
                     self.printer.text(" {:>6.3f}s | {:>5.1f}MiB".format(
-                        result.result.resources.cpu_time +
-                        result.result.resources.sys_time,
-                        result.result.resources.memory / 1024))
-                if result.result.status == ResultStatus.RETURN_CODE:
-                    self.printer.text(
-                        " | Exited with %d" % result.result.return_code)
-                elif result.result.status == ResultStatus.SIGNAL:
-                    self.printer.text(
-                        " | Killed with signal %d" % result.result.signal)
-                elif result.result.status == ResultStatus.INTERNAL_ERROR:
-                    self.printer.text(
-                        "  Internal error %s" % result.result.error)
-                elif result.result.status == ResultStatus.MISSING_FILES:
+                        res.resources.cpu_time + res.resources.sys_time,
+                        res.resources.memory / 1024))
+                if res.status == ResultStatus.RETURN_CODE:
+                    self.printer.text(" | Exited with %d" % res.return_code)
+                elif res.status == ResultStatus.SIGNAL:
+                    self.printer.text(" | Killed with signal %d" % res.signal)
+                elif res.status == ResultStatus.INTERNAL_ERROR:
+                    self.printer.text("  Internal error %s" % res.error)
+                elif res.status == ResultStatus.MISSING_FILES:
                     self.printer.text("  Missing files")
-                elif result.result.status == ResultStatus.INVALID_REQUEST:
-                    self.printer.text("  " + result.result.error)
-                elif result.result.status == ResultStatus.SUCCESS:
+                elif res.status == ResultStatus.INVALID_REQUEST:
+                    self.printer.text("  " + res.error)
+                elif res.status == ResultStatus.SUCCESS:
                     pass
                 else:
-                    self.printer.text("  " + result.result.status)
+                    self.printer.text("  " + res.status)
         self.printer.text("\n")
-        if result.stderr:
-            self.printer.text(result.stderr)
+        if result.execution and result.execution.stderr_content:
+            self.printer.text(result.execution.stderr_content)
 
     def _print_statement(self, name: str, statement: Statement,
                          max_sol_len: int):

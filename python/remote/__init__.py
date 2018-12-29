@@ -287,7 +287,7 @@ class Execution:
         self._on_done_cb(self.result)
 
     @property
-    def stdout_content(self):
+    def stdout_content(self) -> str:
         """
         The content of stdout, must be called after the execution has completed
         and only if store_stdout has been set to True
@@ -300,7 +300,7 @@ class Execution:
         return self._stdout
 
     @property
-    def stderr_content(self):
+    def stderr_content(self) -> str:
         """
         The content of stderr, must be called after the execution has completed
         and only if store_stderr has been set to True
@@ -322,7 +322,7 @@ class Execution:
         return self._outputs[path]
 
     @property
-    def result(self):
+    def result(self) -> Result:
         return self._result
 
     def bind(self,

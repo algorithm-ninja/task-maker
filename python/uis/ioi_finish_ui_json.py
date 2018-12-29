@@ -4,7 +4,8 @@ from task_maker.config import Config
 from task_maker.uis import FinishUI
 from task_maker.uis.ioi import IOIUIInterface, TestcaseGenerationResult, \
     SolutionStatus
-from task_maker.utils import get_compilations, enum_to_str, result_to_dict
+from task_maker.utils import get_compilations, enum_to_str, result_to_dict, \
+    get_execution
 
 
 class IOIFinishUIJSON(FinishUI):
@@ -44,12 +45,9 @@ class IOIFinishUIJSON(FinishUI):
     def _get_testcase(self, testcase: TestcaseGenerationResult):
         return {
             "status": enum_to_str(testcase.status),
-            "generation_result": result_to_dict(testcase.generation_result),
-            "generation_stderr": testcase.generation_stderr,
-            "validation_result": result_to_dict(testcase.validation_result),
-            "validation_stderr": testcase.validation_stderr,
-            "solution_result": result_to_dict(testcase.solution_result),
-            "solution_stderr": testcase.solution_stderr
+            "generation": get_execution(testcase.generation),
+            "validation": get_execution(testcase.validation),
+            "solution": get_execution(testcase.solution)
         }
 
     def _get_testing(self):

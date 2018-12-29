@@ -75,13 +75,6 @@ class TestcaseGenerationResult:
         self.generation = None  # type: Execution
         self.validation = None  # type: Execution
         self.solution = None  # type: Execution
-        # TODO remove _result and _stderr
-        self.generation_result = None  # type: Result
-        self.generation_stderr = ""
-        self.validation_result = None  # type: Result
-        self.validation_stderr = ""
-        self.solution_result = None  # type: Result
-        self.solution_stderr = ""
 
 
 class CustomCheckerState:
@@ -338,8 +331,6 @@ class IOIUIInterface(UIInterface):
             testcase_status.status = TestcaseGenerationStatus.GENERATING
 
         def on_done(result: Result):
-            testcase_status.generation_result = result
-            testcase_status.generation_stderr = generation.stderr_content
             if result.status == ResultStatus.SUCCESS:
                 testcase_status.status = TestcaseGenerationStatus.GENERATED
             else:
@@ -360,8 +351,6 @@ class IOIUIInterface(UIInterface):
             testcase_status.status = TestcaseGenerationStatus.VALIDATING
 
         def on_done(result: Result):
-            testcase_status.validation_result = result
-            testcase_status.validation_stderr = validation.stderr_content
             if result.status == ResultStatus.SUCCESS:
                 testcase_status.status = TestcaseGenerationStatus.VALIDATED
             else:
@@ -381,8 +370,6 @@ class IOIUIInterface(UIInterface):
             testcase_status.status = TestcaseGenerationStatus.SOLVING
 
         def on_done(result: Result):
-            testcase_status.solution_result = result
-            testcase_status.solution_stderr = solving.stderr_content
             if result.status == ResultStatus.SUCCESS:
                 testcase_status.status = TestcaseGenerationStatus.DONE
             else:

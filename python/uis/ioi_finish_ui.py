@@ -12,6 +12,7 @@ class IOIFinishUI(FinishUI):
     """
     FinishUI for IOI-like tasks
     """
+
     def __init__(self, config: Config, interface: IOIUIInterface):
         super().__init__(config, interface)
         self.task = interface.task
@@ -73,15 +74,16 @@ class IOIFinishUI(FinishUI):
 
             for tc_num, result in subtask.items():
                 self.printer.text("#{:<2}  ".format(tc_num))
-                if result.generation_result:
-                    if result.generation_result.status == ResultStatus.SUCCESS:
+                if result.generation and result.generation.result:
+                    if result.generation.result.status == ResultStatus.SUCCESS:
                         self.printer.green("Generated")
                     else:
                         self.printer.red("Generation failed ")
                         self.printer.red(
-                            result_to_str(result.generation_result),
+                            result_to_str(result.generation.result),
                             bold=False)
-                        self.printer.text("\n" + result.generation_stderr)
+                        self.printer.text("\n" +
+                                          result.generation.stderr_content)
                         success = False
                 else:
                     if result.status == TestcaseGenerationStatus.FAILURE:
@@ -89,27 +91,29 @@ class IOIFinishUI(FinishUI):
                     else:
                         self.printer.green("Copied")
 
-                if result.validation_result:
+                if result.validation and result.validation.result:
                     self.printer.text(" | ")
-                    if result.validation_result.status == ResultStatus.SUCCESS:
+                    if result.validation.result.status == ResultStatus.SUCCESS:
                         self.printer.green("Validated")
                     else:
                         self.printer.red("Validation failed ")
                         self.printer.red(
-                            result_to_str(result.validation_result),
+                            result_to_str(result.validation.result),
                             bold=False)
-                        self.printer.text("\n" + result.validation_stderr)
+                        self.printer.text("\n" +
+                                          result.validation.stderr_content)
                         success = False
 
-                if result.solution_result:
+                if result.solution and result.solution.result:
                     self.printer.text(" | ")
-                    if result.solution_result.status == ResultStatus.SUCCESS:
+                    if result.solution.result.status == ResultStatus.SUCCESS:
                         self.printer.green("Solved")
                     else:
                         self.printer.red("Solution failed ")
                         self.printer.red(
-                            result_to_str(result.solution_result), bold=False)
-                        self.printer.text("\n" + result.solution_stderr)
+                            result_to_str(result.solution.result), bold=False)
+                        self.printer.text("\n" +
+                                          result.solution.stderr_content)
                         success = False
 
                 self.printer.text("\n")
