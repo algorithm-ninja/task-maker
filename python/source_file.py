@@ -140,7 +140,10 @@ class SourceFile:
             self.pool,
             cmd[0],
             cmd[1:],
-            "compilation", {"file": self.name},
+            "compilation", {
+                "file": self.name,
+                "path": self.path
+            },
             inputs=inputs,
             outputs=[(self.exe_name, True)],
             store_stderr=True,
