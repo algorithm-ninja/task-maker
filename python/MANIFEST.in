@@ -1,0 +1,1 @@
+recursive-include task_maker/statements/templates *

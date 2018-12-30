@@ -1,5 +1,6 @@
 # Sources
 file(GLOB SOURCES_PY "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
+set(MANIFEST_FILE "${CMAKE_CURRENT_SOURCE_DIR}/MANIFEST.in")
 
 # find all the python modules
 file(GLOB_RECURSE __INIT__PYS "${CMAKE_CURRENT_SOURCE_DIR}/**/__init__.py")
@@ -42,6 +43,7 @@ file(MAKE_DIRECTORY ${BIN_DIRECTORY})
 file(WRITE "${BIN_DIRECTORY}/__init__.py" "")
 
 # Compute the target file paths
+set(MANIFEST_FILE_TGT "${CMAKE_CURRENT_BINARY_DIR}/MANIFEST.in")
 string(REGEX
        REPLACE "${CMAKE_CURRENT_SOURCE_DIR}"
                "${SOURCES_MODULE}"
@@ -68,6 +70,10 @@ set(CPP_EXECUTABLES "${BIN_DIRECTORY}/task-maker")
 set(FRONTEND_LIB "${SOURCES_MODULE}/task_maker_frontend.so")
 
 # Copy all the files
+add_custom_command(OUTPUT ${MANIFEST_FILE_TGT}
+    COMMAND ${CMAKE_COMMAND} -E copy ${MANIFEST_FILE}
+    ${MANIFEST_FILE_TGT}
+    DEPENDS "${MANIFEST_FILE}")
 add_custom_command(OUTPUT ${SOURCES_PY_TGT}
                    COMMAND ${CMAKE_COMMAND} -E copy ${SOURCES_PY}
                            ${SOURCES_MODULE}
@@ -143,14 +149,6 @@ add_custom_command(OUTPUT ${BIN_DIRECTORY}/task-maker
                            ${BIN_DIRECTORY}
                    DEPENDS task-maker)
 
-foreach(module_name ${PY_MODULES})
-  string(REPLACE "/"
-      "."
-      setup_module_name
-      ${module_name})
-  set(SETUP_PY_MODULES "${SETUP_PY_MODULES}, 'task_maker.${setup_module_name}'")
-endforeach()
-
 # generate setup.py
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in ${SETUP_PY})
 execute_process(COMMAND chmod 555 ${SETUP_PY})
@@ -160,6 +158,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.py.in ${VERSION_PY})
 
 add_custom_target(module_files ALL
                   DEPENDS ${MODULES_TGT}
+    ${MANIFEST_FILE_TGT}
     ${STATEMENTS_TEMPLATES_DST_DIR}
                           ${REQUIREMENTS_TXT_TGT}
                           "${TESTS_TASKS_TGT}"
