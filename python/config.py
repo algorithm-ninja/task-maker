@@ -2,14 +2,14 @@
 import os
 import pytoml
 from task_maker.args import CacheMode, UIS, TaskFormat, Arch
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 class Config:
     OPTIONS = {
         "generic": [
             "solutions", "task_dir", "max_depth", "ui", "cache", "dry_run",
-            "clean", "task_info", "format"
+            "clean", "task_info", "format", "fuzz_checker"
         ],
         "remote": [
             "server", "run_server", "run_worker", "storedir", "tempdir",
@@ -41,6 +41,7 @@ class Config:
     def __init__(self):
         # generic group
         self.solutions = []  # type: List[str]
+        self.cwd = os.getcwd()
         # $PWD for tasks inside symlinks
         self.task_dir = os.getenv("PWD", os.getcwd())
         self.max_depth = 2
@@ -50,6 +51,7 @@ class Config:
         self.clean = False
         self.task_info = False
         self.format = None  # type: Optional[TaskFormat]
+        self.fuzz_checker = None  # type: Tuple[str, str]
 
         # remote group
         self.server = "127.0.0.1:7070"

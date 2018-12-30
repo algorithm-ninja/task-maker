@@ -422,3 +422,7 @@ class TMFormat(TaskFormat):
     def make_booklet(frontend: Frontend, config: Config,
                      tasks: List[Tuple[str, IOITask]]) -> int:
         return ioi_format.IOIFormat.make_booklet(frontend, config, tasks)
+
+    @staticmethod
+    def fuzz_checker(config: Config):
+        ioi_format.IOIFormat.fuzz_checker(config)

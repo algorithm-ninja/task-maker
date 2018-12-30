@@ -374,6 +374,14 @@ class TaskFormat(ABC):
         """
         pass
 
+    @staticmethod
+    @abstractmethod
+    def fuzz_checker(config: Config):
+        """
+        Start fuzzing the checker of the task, if any.
+        """
+        pass
+
 
 def get_write_input_file(tc_num: int) -> str:
     """

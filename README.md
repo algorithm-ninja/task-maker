@@ -63,6 +63,23 @@ useful files are copied to the `bin/` folder inside the task directory.
 task-maker --copy-exe
 ```
 
+### Fuzzing a checker
+Before a contest it's good practise to check that your checker does not
+behave weirdly with malformed outputs from the contestants. `task-maker`
+provides a simple fuzzer using `radamsa` (which has to be installed where
+the workers are running). It takes an input file and the corresponding
+output file and will try to mutate the output file in order to crash the
+checker. Note that `task-maker` cannot determine if the checker behave
+_correctly_ (i.e. gives the correct score), it only checks if the checker
+crashes or not, and if it prints a valid score (from 0.0 to 1.0).
+
+The results are stored in `fuzz_checker_task_name` in the current working
+directory. Remember to clean it before each run!
+```bash
+task-maker --fuzz-checker in_file out_file
+```
+
+
 ### Clean the task directory
 If you want to clean everything, for example after the contest, simply run:
 ```bash

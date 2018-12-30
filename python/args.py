@@ -104,6 +104,12 @@ def add_generic_group(parser: argparse.ArgumentParser, bulk: bool):
         action="store",
         choices=list(TaskFormat),
         type=TaskFormat)
+    group.add_argument(
+        "--fuzz-checker",
+        action="store",
+        nargs=2,
+        metavar=("INPUT_FILE", "OUTPUT_FILE"),
+        help="Fuzz the checker mutating the output file with radamsa")
 
 
 def add_remote_group(parser: argparse.ArgumentParser):

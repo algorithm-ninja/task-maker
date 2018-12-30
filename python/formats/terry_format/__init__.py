@@ -57,3 +57,8 @@ class TerryFormat(TaskFormat):
     def make_booklet(frontend: Frontend, config: Config,
                      tasks: List[Tuple[str, Task]]) -> int:
         raise NotImplementedError("Terry booklets are not supported yet")
+
+    @staticmethod
+    def fuzz_checker(config: Config):
+        raise NotImplementedError(
+            "Fuzzing Terry checkers is not supported yet")

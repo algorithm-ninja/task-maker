@@ -62,6 +62,9 @@ def run(config: Config) -> MainRet:
     if config.task_info:
         task_format.task_info(config)
         return MainRet(exitcode=0, interface=None, stopped=False)
+    if config.fuzz_checker:
+        ret = task_format.fuzz_checker(config)
+        return MainRet(exitcode=ret, interface=None, stopped=True)
 
     frontend = get_frontend(config)
 

@@ -7,6 +7,7 @@ from task_maker.args import UIS
 from task_maker.config import Config
 from task_maker.formats import IOITask, TaskFormat, list_files, Task
 from task_maker.formats.ioi_format.execution import evaluate_task
+from task_maker.formats.ioi_format.fuzz_checker import fuzz_checker
 from task_maker.formats.ioi_format.parsing import get_generator, get_task, \
     get_task_solutions
 from task_maker.printer import StdoutPrinter, Printer
@@ -121,3 +122,7 @@ class IOIFormat(TaskFormat):
 
         pool.start()
         return len(statements) - successful_compilations
+
+    @staticmethod
+    def fuzz_checker(config: Config):
+        fuzz_checker(config)
