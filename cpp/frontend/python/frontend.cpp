@@ -118,6 +118,20 @@ PYBIND11_MODULE(task_maker_frontend, m) {
                  });
            },
            "callback"_a)
+      .def("getContentsAsBytes",
+           [](frontend::File &f, std::function<void(pybind11::bytes)> cb) {
+             f.getContentsAsString(
+                 [cb = destroy_with_gil(cb)](std::string s) mutable {
+                   pybind11::gil_scoped_acquire acquire;
+                   try {
+                     (*cb)(s);
+                   } catch (pybind11::error_already_set &exc) {
+                     std::cerr << __FILE__ << ":" << __LINE__ << " "
+                               << exc.what() << std::endl;
+                     _Exit(1);
+                   }
+                 });
+           })
       .def("getContentsToFile", &frontend::File::getContentsToFile, "path"_a,
            "overwrite"_a = true, "exist_ok"_a = true);
 

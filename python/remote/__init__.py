@@ -47,13 +47,19 @@ class ExecutionPool:
         """
 
         def stop_server(_1: int, _2: Any) -> None:
-            self.frontend.stopEvaluation()
-            self.stopped = True
+            self.stop()
 
         signal.signal(signal.SIGINT, stop_server)
         signal.signal(signal.SIGTERM, stop_server)
 
         self.frontend.evaluate()
+
+    def stop(self):
+        """
+        Stop the current evaluation
+        """
+        self.frontend.stopEvaluation()
+        self.stopped = True
 
 
 class Execution:
@@ -82,6 +88,8 @@ class Execution:
                  stderr_fifo: Union[Fifo, None] = None,
                  store_stdout: bool = False,
                  store_stderr: bool = False,
+                 store_stdout_bytes: bool = False,
+                 store_stderr_bytes: bool = False,
                  inputs: Dict[str, File] = None,
                  outputs: Iterable[Union[str, Tuple[str, bool]]] = ()):
         """
@@ -128,11 +136,15 @@ class Execution:
         self.stderr_fifo = stderr_fifo
         self.store_stdout = store_stdout
         self.store_stderr = store_stderr
+        self.store_stdout_bytes = store_stdout_bytes
+        self.store_stderr_bytes = store_stderr_bytes
 
         self.stdout = None  # type: Optional[File]
         self.stderr = None  # type: Optional[File]
         self._stdout = None  # type: Optional[str]
         self._stderr = None  # type: Optional[str]
+        self._stdout_bytes = None  # type: Optional[bytes]
+        self._stderr_bytes = None  # type: Optional[bytes]
         self._outputs = dict()  # type: Dict[str, File]
         if not inputs:
             inputs = dict()
@@ -233,6 +245,10 @@ class Execution:
             self.stdout.getContentsAsString(self._get_stdout_internal)
         if self.store_stderr:
             self.stderr.getContentsAsString(self._get_stderr_internal)
+        if self.store_stdout_bytes:
+            self.stdout.getContentsAsBytes(self._get_stdout_bytes_internal)
+        if self.store_stderr_bytes:
+            self.stderr.getContentsAsBytes(self._get_stderr_bytes_internal)
 
         self._execution.notifyStart(self._notify_start_internal)
         # getResult should be the last thing done on _execution
@@ -275,12 +291,24 @@ class Execution:
         self._stderr = stderr
         self._on_done_internal()
 
+    def _get_stdout_bytes_internal(self, stdout: bytes):
+        self._stdout_bytes = stdout
+        self._on_done_internal()
+
+    def _get_stderr_bytes_internal(self, stderr: bytes):
+        self._stderr_bytes = stderr
+        self._on_done_internal()
+
     def _on_done_internal(self):
         if not self._on_done_cb:
             return
         if self.store_stdout and self._stdout is None:
             return
         if self.store_stderr and self._stderr is None:
+            return
+        if self.store_stdout_bytes and self._stdout_bytes is None:
+            return
+        if self.store_stderr_bytes and self._stderr_bytes is None:
             return
         if self.result is None:
             return
@@ -311,6 +339,32 @@ class Execution:
             raise RuntimeError("stderr_content must be called after "
                                "the execution has completed")
         return self._stderr
+
+    @property
+    def stdout_content_bytes(self) -> bytes:
+        """
+        The content of stdout as bytes, must be called after the execution has
+        completed and only if store_stdout_bytes has been set to True
+        """
+        if not self.store_stdout_bytes:
+            raise ValueError("Stdout was not captured as bytes")
+        if not self.result:
+            raise RuntimeError("stdout_content_bytes must be called after "
+                               "the execution has completed")
+        return self._stdout_bytes
+
+    @property
+    def stderr_content_bytes(self) -> bytes:
+        """
+        The content of stderr as bytes, must be called after the execution has
+        completed and only if store_stderr_bytes has been set to True
+        """
+        if not self.store_stderr_bytes:
+            raise ValueError("Stderr was not captured as bytes")
+        if not self.result:
+            raise RuntimeError("stderr_content_bytes must be called after "
+                               "the execution has completed")
+        return self._stderr_bytes
 
     def output(self, path: str) -> File:
         """

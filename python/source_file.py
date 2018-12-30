@@ -88,6 +88,17 @@ class SourceFile:
     def prepared(self) -> bool:
         return self.pool is not None
 
+    def unprepare(self):
+        """
+        Unprepare the source file. Useful for recompiling it in a different
+        execution pool.
+        """
+        self.pool = None
+        self.executable = None
+        self.compilation = None
+        self.compilation_stderr = None
+        self.compilation_stdout = None
+
     def prepare(self, pool: ExecutionPool):
         """
         Prepare the source file for execution, compile the source if needed.
