@@ -9,6 +9,8 @@ from task_maker.remote import ExecutionPool, Execution
 from task_maker.task_maker_frontend import File
 from typing import Optional, Dict, List
 
+COMPILATION_STDERR_LIMIT = 1024
+
 
 def is_executable(path: str) -> bool:
     """
@@ -157,6 +159,8 @@ class SourceFile:
             },
             inputs=inputs,
             outputs=[(self.exe_name, True)],
+            stdout_limit=COMPILATION_STDERR_LIMIT,
+            stderr_limit=COMPILATION_STDERR_LIMIT,
             store_stderr=True,
             store_stdout=True)
         self.executable = self.compilation.output(self.exe_name)

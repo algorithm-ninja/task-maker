@@ -105,7 +105,7 @@ PYBIND11_MODULE(task_maker_frontend, m) {
   pybind11::class_<frontend::File>(m, "File")
       .def("getContentsAsString",
            [](frontend::File& f, std::function<void(std::string)> cb,
-              uint64_t limit = 0xffffffffffffffff) {
+              uint64_t limit) {
              f.getContentsAsString(
                  [cb = destroy_with_gil(cb)](std::string s) mutable {
                    pybind11::gil_scoped_acquire acquire;
@@ -119,10 +119,10 @@ PYBIND11_MODULE(task_maker_frontend, m) {
                  },
                  limit);
            },
-           "callback"_a, "limit"_a)
+           "callback"_a, "limit"_a = 0xffffffffffffffff)
       .def("getContentsAsBytes",
            [](frontend::File& f, std::function<void(pybind11::bytes)> cb,
-              uint64_t limit = 0xffffffffffffffff) {
+              uint64_t limit) {
              f.getContentsAsString(
                  [cb = destroy_with_gil(cb)](std::string s) mutable {
                    pybind11::gil_scoped_acquire acquire;
@@ -136,7 +136,7 @@ PYBIND11_MODULE(task_maker_frontend, m) {
                  },
                  limit);
            },
-           "callback"_a, "limit"_a)
+           "callback"_a, "limit"_a = 0xffffffffffffffff)
       .def("getContentsToFile", &frontend::File::getContentsToFile, "path"_a,
            "overwrite"_a = true, "exist_ok"_a = true);
 

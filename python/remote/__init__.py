@@ -90,6 +90,8 @@ class Execution:
                  store_stderr: bool = False,
                  store_stdout_bytes: bool = False,
                  store_stderr_bytes: bool = False,
+                 stdout_limit: int = 0xffffffffffffffff,
+                 stderr_limit: int = 0xffffffffffffffff,
                  inputs: Dict[str, File] = None,
                  outputs: Iterable[Union[str, Tuple[str, bool]]] = ()):
         """
@@ -242,13 +244,17 @@ class Execution:
             self._outputs[path] = self._execution.output(path, executable)
 
         if self.store_stdout:
-            self.stdout.getContentsAsString(self._get_stdout_internal)
+            self.stdout.getContentsAsString(self._get_stdout_internal,
+                                            stdout_limit)
         if self.store_stderr:
-            self.stderr.getContentsAsString(self._get_stderr_internal)
+            self.stderr.getContentsAsString(self._get_stderr_internal,
+                                            stderr_limit)
         if self.store_stdout_bytes:
-            self.stdout.getContentsAsBytes(self._get_stdout_bytes_internal)
+            self.stdout.getContentsAsBytes(self._get_stdout_bytes_internal,
+                                           stdout_limit)
         if self.store_stderr_bytes:
-            self.stderr.getContentsAsBytes(self._get_stderr_bytes_internal)
+            self.stderr.getContentsAsBytes(self._get_stderr_bytes_internal,
+                                           stderr_limit)
 
         self._execution.notifyStart(self._notify_start_internal)
         # getResult should be the last thing done on _execution
