@@ -2,7 +2,7 @@
 import os
 import pytoml
 from task_maker.args import CacheMode, UIS, TaskFormat, Arch
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any, Union
 
 
 class Config:
@@ -148,6 +148,7 @@ class Config:
         self._get_host_port()
         self._resolve_dir()
         self._get_contest_dir()
+        self._absolutize()
 
     def _get_host_port(self):
         server_addr = self.server.split(":")
@@ -165,6 +166,32 @@ class Config:
     def _get_contest_dir(self):
         if self.contest_yaml:
             self.contest_dir = os.path.dirname(self.contest_yaml)
+
+    def _absolutize(self):
+        def _do_absolutize(attr: Union[str, int], scope: Any = self):
+            if isinstance(attr, str):
+                val = getattr(scope, attr, None)
+            else:
+                val = scope[attr]
+            if val is not None:
+                val = os.path.abspath(val)
+                if isinstance(attr, str):
+                    setattr(scope, attr, val)
+                else:
+                    scope[attr] = val
+
+        _do_absolutize("task_dir")
+        _do_absolutize("storedir")
+        _do_absolutize("tempdir")
+        _do_absolutize("server_logfile")
+        _do_absolutize("server_pidfile")
+        _do_absolutize("worker_logfile")
+        _do_absolutize("worker_pidfile")
+        _do_absolutize("contest_dir")
+        _do_absolutize("contest_yaml")
+        if self.fuzz_checker:
+            _do_absolutize(0, self.fuzz_checker)
+            _do_absolutize(1, self.fuzz_checker)
 
     def _get_value(self, group, item, value):
         if item in Config.CUSTOM_TYPES:
