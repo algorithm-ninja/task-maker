@@ -140,18 +140,22 @@ int OsAtomicCopy(const std::string& src, const std::string& dst,
   return 0;
 }
 
-util::File::ChunkProducer OsRead(const std::string& path) {
+util::File::ChunkProducer OsRead(const std::string& path, uint64_t limit) {
   kj::AutoCloseFd fd{open(path.c_str(), O_CLOEXEC | O_RDONLY)};  // NOLINT
   if (fd.get() == -1) {
     throw std::system_error(errno, std::system_category(), "Read " + path);
   }
-  return [fd = std::move(fd), path,
+  std::unique_ptr<size_t> alreadyRead = std::make_unique<size_t>(0);
+  return [fd = std::move(fd), path, alreadyRead = std::move(alreadyRead), limit,
           buf = std::array<kj::byte, util::kChunkSize>()]() mutable {
     if (fd.get() == -1) return util::File::Chunk();
     ssize_t amount;
-    while ((amount = read(fd, buf.data(), util::kChunkSize))) {  // NOLINT
+    size_t toRead = util::kChunkSize;
+    if (*alreadyRead + toRead > limit) toRead = limit - *alreadyRead;
+    while ((amount = read(fd, buf.data(), toRead))) {  // NOLINT
       if (amount == -1 && errno == EINTR) continue;
       if (amount == -1) break;
+      *alreadyRead += amount;
       return util::File::Chunk(buf.data(), amount);
     }
     if (amount == -1) {
@@ -219,7 +223,9 @@ std::vector<std::string> File::ListFiles(const std::string& path) {
   return OsListFiles(path);
 }
 
-File::ChunkProducer File::Read(const std::string& path) { return OsRead(path); }
+File::ChunkProducer File::Read(const std::string& path, uint64_t limit) {
+  return OsRead(path, limit);
+}
 File::ChunkReceiver File::Write(const std::string& path, bool overwrite,
                                 bool exist_ok) {
   MakeDirs(BaseDir(path));
@@ -403,68 +409,76 @@ kj::Promise<void> next_chunk(HandleRequestFileData data) {
 }  // namespace
 
 kj::Promise<void> File::HandleRequestFile(
-    FileWrapper *wrapper, capnproto::FileReceiver::Client receiver) {
+    FileWrapper* wrapper, capnproto::FileReceiver::Client receiver,
+    uint64_t amount) {
   // TODO: see if we can easily avoid the extra round-trips while
   // still guaranteeing in-order processing (when capnp implements streams?)
   // Possibly by using UnionPromiseBuilder?
   if (HandleRequestFileData::num_concurrent <
       HandleRequestFileData::max_concurrent) {
     HandleRequestFileData::num_concurrent++;
-    HandleRequestFileData data{wrapper->Read(), receiver};
+    HandleRequestFileData data{wrapper->Read(amount), receiver};
     return next_chunk(std::move(data));
   }
   auto pf = kj::newPromiseAndFulfiller<void>();
   HandleRequestFileData::waiting.push(std::move(pf.fulfiller));
-  return pf.promise.then([wrapper = wrapper, receiver]() mutable {
-    return File::HandleRequestFile(wrapper, receiver);
+  return pf.promise.then([wrapper = wrapper, receiver, amount]() mutable {
+    return File::HandleRequestFile(wrapper, receiver, amount);
   });
 }
 
-  kj::Promise<void> File::HandleRequestFile(
-      const util::SHA256_t &hash, capnproto::FileReceiver::Client receiver) {
-    if (hash.hasContents()) {
-      auto req = receiver.sendChunkRequest();
-      req.setChunk(hash.getContents());
-      return req.send().ignoreResult().then([receiver]() mutable {
-        return receiver.sendChunkRequest().send().ignoreResult();
-      });
-    }
-    util::FileWrapper wrapper = FileWrapper::FromPath(PathForHash(hash));
-    return HandleRequestFile(&wrapper, receiver);
+kj::Promise<void> File::HandleRequestFile(
+    const util::SHA256_t& hash, capnproto::FileReceiver::Client receiver,
+    uint64_t amount) {
+  if (hash.hasContents()) {
+    auto req = receiver.sendChunkRequest();
+    kj::ArrayPtr<const uint8_t> chunk = hash.getContents();
+    if (chunk.size() > amount) chunk = {chunk.begin(), amount};
+    req.setChunk(chunk);
+    return req.send().ignoreResult().then([receiver]() mutable {
+      return receiver.sendChunkRequest().send().ignoreResult();
+    });
+  }
+  util::FileWrapper wrapper = FileWrapper::FromPath(PathForHash(hash));
+  return HandleRequestFile(&wrapper, receiver, amount);
+}
+
+FileWrapper FileWrapper::FromPath(std::string path) {
+  FileWrapper file;
+  file.type_ = FileWrapper::FileWrapperType::PATH;
+  file.path_ = std::move(path);
+  return file;
+}
+
+FileWrapper FileWrapper::FromContent(std::string content) {
+  FileWrapper file;
+  file.type_ = FileWrapper::FileWrapperType::CONTENT;
+  file.content_ = std::move(content);
+  return file;
+}
+
+File::ChunkProducer FileWrapper::Read(uint64_t limit) {
+  if (type_ == FileWrapper::FileWrapperType::PATH) {
+    return File::Read(path_, limit);
   }
 
-  FileWrapper FileWrapper::FromPath(std::string path) {
-    FileWrapper file;
-    file.type_ = FileWrapper::FileWrapperType::PATH;
-    file.path_ = std::move(path);
-    return file;
-  }
-
-  FileWrapper FileWrapper::FromContent(std::string content) {
-    FileWrapper file;
-    file.type_ = FileWrapper::FileWrapperType::CONTENT;
-    file.content_ = std::move(content);
-    return file;
-  }
-
-  File::ChunkProducer FileWrapper::Read() {
-    if (type_ == FileWrapper::FileWrapperType::PATH) return File::Read(path_);
-
-    std::unique_ptr<size_t> pos = std::make_unique<size_t>(0);
-    return [this, pos = std::move(pos)]() mutable {
-      if (*pos < content_.size()) {
-        auto end =
-            std::min(content_.begin() + *pos + util::kChunkSize,
-                     content_.end());
-        size_t amount = end - content_.begin() - *pos;
-        auto chunk = util::File::Chunk(
-            // NOLINTNEXTLINE
-            reinterpret_cast<const kj::byte *>(&content_[0] + *pos), amount);
-        *pos += amount;
-        return chunk;
+  std::unique_ptr<size_t> pos = std::make_unique<size_t>(0);
+  return [this, pos = std::move(pos), limit]() mutable {
+    if (*pos < content_.size() && *pos < limit) {
+      auto end = content_.begin() + *pos + util::kChunkSize;
+      if (end > content_.end()) end = content_.end();
+      if (static_cast<size_t>(end - content_.begin()) > limit) {
+        end = content_.begin() + limit;
       }
-      return util::File::Chunk();
-    };
-  }
+      size_t amount = end - content_.begin() - *pos;
+      auto chunk = util::File::Chunk(
+          // NOLINTNEXTLINE
+          reinterpret_cast<const kj::byte*>(&content_[0] + *pos), amount);
+      *pos += amount;
+      return chunk;
+    }
+    return util::File::Chunk();
+  };
+}
 
 }  // namespace util

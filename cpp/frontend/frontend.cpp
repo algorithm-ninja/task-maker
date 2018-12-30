@@ -78,8 +78,8 @@ class FileProvider : public capnproto::FileSender::Server {
 
   kj::Promise<void> requestFile(RequestFileContext context) override {
     util::FileWrapper* file = &known_files_.at(context.getParams().getHash());
-    return util::File::HandleRequestFile(file,
-                                         context.getParams().getReceiver());
+    return util::File::HandleRequestFile(
+        file, context.getParams().getReceiver(), 0xffffffffffffffff);
   }
 
  private:
@@ -90,12 +90,12 @@ class FileProvider : public capnproto::FileSender::Server {
 }  // namespace
 
 void File::getContentsAsString(
-    const std::function<void(const std::string&)>& callback) {
+    const std::function<void(const std::string&)>& callback, uint64_t limit) {
   auto pf = kj::newPromiseAndFulfiller<void>();
   frontend_.builder_.AddPromise(std::move(pf.promise));
   frontend_.finish_builder_.AddPromise(
       forked_promise.addBranch().then(
-          [this, callback,
+          [this, callback, limit,
            fulfiller = std::move(pf.fulfiller)](auto file) mutable {
             auto req = frontend_.frontend_context_.getFileContentsRequest();
             auto output = kj::heap<std::string>();
@@ -105,6 +105,7 @@ void File::getContentsAsString(
                 [output = std::move(output)](util::File::Chunk data) mutable {
                   *output += std::string(data.asChars().begin(), data.size());
                 }));
+            req.setAmount(limit);
             kj::Promise<void> ret = req.send().ignoreResult().then(
                 [output_ptr, callback]() { callback(*output_ptr); });
             fulfiller->fulfill();

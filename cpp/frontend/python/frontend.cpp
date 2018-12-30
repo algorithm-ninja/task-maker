@@ -104,7 +104,8 @@ PYBIND11_MODULE(task_maker_frontend, m) {
 
   pybind11::class_<frontend::File>(m, "File")
       .def("getContentsAsString",
-           [](frontend::File& f, std::function<void(std::string)> cb) {
+           [](frontend::File& f, std::function<void(std::string)> cb,
+              uint64_t limit = 0xffffffffffffffff) {
              f.getContentsAsString(
                  [cb = destroy_with_gil(cb)](std::string s) mutable {
                    pybind11::gil_scoped_acquire acquire;
@@ -115,23 +116,27 @@ PYBIND11_MODULE(task_maker_frontend, m) {
                                << exc.what() << std::endl;
                      _Exit(1);
                    }
-                 });
+                 },
+                 limit);
            },
-           "callback"_a)
+           "callback"_a, "limit"_a)
       .def("getContentsAsBytes",
-           [](frontend::File &f, std::function<void(pybind11::bytes)> cb) {
+           [](frontend::File& f, std::function<void(pybind11::bytes)> cb,
+              uint64_t limit = 0xffffffffffffffff) {
              f.getContentsAsString(
                  [cb = destroy_with_gil(cb)](std::string s) mutable {
                    pybind11::gil_scoped_acquire acquire;
                    try {
                      (*cb)(s);
-                   } catch (pybind11::error_already_set &exc) {
+                   } catch (pybind11::error_already_set& exc) {
                      std::cerr << __FILE__ << ":" << __LINE__ << " "
                                << exc.what() << std::endl;
                      _Exit(1);
                    }
-                 });
-           })
+                 },
+                 limit);
+           },
+           "callback"_a, "limit"_a)
       .def("getContentsToFile", &frontend::File::getContentsToFile, "path"_a,
            "overwrite"_a = true, "exist_ok"_a = true);
 

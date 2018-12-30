@@ -71,7 +71,8 @@ interface FrontendContext {
   # The following methods should only be called after the computational
   # DAG is fully defined.
   startEvaluation @3 (sender :FileSender);
-  getFileContents @4 (file :File, receiver :FileReceiver);
+  getFileContents @4 (file :File, receiver :FileReceiver,
+                      amount :UInt64 = 0xffffffffffffffff);
   stopEvaluation @5 ();
 }
 

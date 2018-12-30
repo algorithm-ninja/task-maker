@@ -153,6 +153,48 @@ TEST(File, ReadBigFile) {
 }
 
 // NOLINTNEXTLINE
+TEST(File, ReadBigFileWithBigLimit) {
+  std::string testdir = makeTestDir("read");
+  std::string filepath = testdir + "/bigfile";
+  std::string content(util::kChunkSize * 10 + 1, ' ');
+  for (size_t i = 0; i < content.size(); i++) content[i] = i % 250 + 1;
+
+  writeFile(filepath, content);
+  auto reader = util::File::Read(filepath, util::kChunkSize + 1);
+  std::string realContent = readFile(&reader);
+  EXPECT_EQ(util::kChunkSize + 1, realContent.size());
+  EXPECT_THAT(content, StartsWith(realContent));
+}
+
+// NOLINTNEXTLINE
+TEST(File, ReadBigFileWithChunkLimit) {
+  std::string testdir = makeTestDir("read");
+  std::string filepath = testdir + "/bigfile";
+  std::string content(util::kChunkSize * 10 + 1, ' ');
+  for (size_t i = 0; i < content.size(); i++) content[i] = i % 250 + 1;
+
+  writeFile(filepath, content);
+  auto reader = util::File::Read(filepath, util::kChunkSize);
+  std::string realContent = readFile(&reader);
+  EXPECT_EQ(util::kChunkSize, realContent.size());
+  EXPECT_THAT(content, StartsWith(realContent));
+}
+
+// NOLINTNEXTLINE
+TEST(File, ReadBigFileWithSmallLimit) {
+  std::string testdir = makeTestDir("read");
+  std::string filepath = testdir + "/bigfile";
+  std::string content(util::kChunkSize * 10 + 1, ' ');
+  for (size_t i = 0; i < content.size(); i++) content[i] = i % 250 + 1;
+
+  writeFile(filepath, content);
+  auto reader = util::File::Read(filepath, 10);
+  std::string realContent = readFile(&reader);
+  EXPECT_EQ(10, realContent.size());
+  EXPECT_THAT(content, StartsWith(realContent));
+}
+
+// NOLINTNEXTLINE
 TEST(File, ReadNoSuchFile) {
   std::string filepath = "/no/such/file";
   EXPECT_THROW(util::File::Read(filepath), std::system_error);  // NOLINT
@@ -288,7 +330,7 @@ TEST(File, MakeDirs) {
 
 // TODO this tests does not work if the user is root
 // NOLINTNEXTLINE
-//TEST(File, MakeDirsCannot) {
+// TEST(File, MakeDirsCannot) {
 //  std::string testdir = makeTestDir("makeDirs");
 //  std::string dirpath1 = testdir + "/nope";
 //  mkdir(dirpath1.c_str(), 0);

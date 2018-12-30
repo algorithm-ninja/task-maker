@@ -555,7 +555,8 @@ kj::Promise<void> FrontendContext::getFileContents(
         KJ_LOG(INFO, "Sending file with id " + std::to_string(id), hash.Hex());
         auto ff = fulfiller.get();
         return util::File::HandleRequestFile(hash,
-                                             context.getParams().getReceiver())
+                                             context.getParams().getReceiver(),
+                                             context.getParams().getAmount())
             .then(
                 [id, fulfiller = std::move(fulfiller)]() mutable {
                   fulfiller->fulfill();

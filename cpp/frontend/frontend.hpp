@@ -99,7 +99,8 @@ class File {
   // Call the provided callback with the contents of the file as soon as they
   // are available.
   void getContentsAsString(
-      const std::function<void(const std::string&)>& callback);
+      const std::function<void(const std::string&)>& callback,
+      uint64_t limit = 0xffffffffffffffff);
 
   // Write the file to path when it is available.
   void getContentsToFile(const std::string& path, bool overwrite,
@@ -202,8 +203,8 @@ class Frontend {
 
   // Defines a file that is provided by the frontend, loading it from its
   // content.
-  File *provideFileContent(const std::string &content,
-                           const std::string &description, bool is_executable);
+  File* provideFileContent(const std::string& content,
+                           const std::string& description, bool is_executable);
 
   // Creates a new execution with the given description.
   Execution* addExecution(const std::string& description);
