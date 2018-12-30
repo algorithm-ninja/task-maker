@@ -3,6 +3,7 @@
 import time
 
 import os.path
+import signal
 import subprocess
 from task_maker.config import Config
 from task_maker.task_maker_frontend import Frontend
@@ -106,13 +107,24 @@ def get_frontend(config: Config) -> Frontend:
         print("Spawning server and workers", end="", flush=True)
         for _ in range(3):
             print(".", end="", flush=True)
-            time.sleep(SERVER_SPAWN_TIME/3)
+            time.sleep(SERVER_SPAWN_TIME / 3)
         print()
         spawn_worker(config)
         for t in range(MAX_SPAWN_ATTEMPT):
             try:
                 return Frontend(config.host, config.port)
             except:
-                print("Attempt {} failed".format(t+1))
+                print("Attempt {} failed".format(t + 1))
                 time.sleep(1)
         raise RuntimeError("Failed to spawn the server")
+
+
+def stop():
+    proc = subprocess.run(["ps", "ax", "-o", "pid,cmd"],
+                          stdout=subprocess.PIPE)
+    path = get_task_maker_path()
+    running = [p.split()[:2] for p in proc.stdout.decode().splitlines()]
+    pids = [int(pid) for pid, proc in running if proc == path]
+    for pid in pids:
+        print("Sending SIGTERM to pid %d" % pid)
+        os.kill(pid, signal.SIGTERM)

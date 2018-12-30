@@ -127,6 +127,10 @@ def add_remote_group(parser: argparse.ArgumentParser):
         action="store_true",
         help="Run a worker in foreground instead of running a task")
     group.add_argument(
+        "--stop",
+        action="store_true",
+        help="Stop all the running task-maker processes")
+    group.add_argument(
         "--storedir",
         action="store",
         help="Path where the files should be stored")

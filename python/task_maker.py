@@ -10,7 +10,7 @@ from task_maker.detect_format import find_task_dir
 from task_maker.formats import ioi_format, tm_format, terry_format
 from task_maker.help import check_help
 from task_maker.languages import LanguageManager
-from task_maker.manager import get_frontend, spawn_server, spawn_worker
+from task_maker.manager import get_frontend, spawn_server, spawn_worker, stop
 
 MainRet = namedtuple("MainRet", ["exitcode", "interface", "stopped"])
 
@@ -46,6 +46,9 @@ def run(config: Config) -> MainRet:
     """
     Execute task-maker on the given configuration.
     """
+    if config.stop:
+        stop()
+        return MainRet(exitcode=0, interface=None, stopped=True)
     task_dir, fmt = find_task_dir(config.task_dir, config.max_depth,
                                   config.format)
     config.task_dir = task_dir

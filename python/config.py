@@ -12,8 +12,8 @@ class Config:
             "clean", "task_info", "format", "fuzz_checker"
         ],
         "remote": [
-            "server", "run_server", "run_worker", "storedir", "tempdir",
-            "cache_size"
+            "server", "run_server", "run_worker", "stop", "storedir",
+            "tempdir", "cache_size"
         ],
         "server": [
             "server_logfile", "server_pidfile", "server_address",
@@ -57,6 +57,7 @@ class Config:
         self.server = "127.0.0.1:7070"
         self.run_server = False
         self.run_worker = False
+        self.stop = False
         self.storedir = "~/.cache/task-maker/files"
         self.tempdir = "~/.cache/task-maker/temp"
         self.cache_size = 2048  # in MiB
