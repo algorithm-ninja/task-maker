@@ -103,6 +103,9 @@ def get_frontend(config: Config) -> Frontend:
     try:
         return Frontend(config.host, config.port)
     except:
+        if config.no_spawn:
+            raise RuntimeError(
+                "Cannot connect to the server and spawning is forbidden")
         spawn_server(config)
         print("Spawning server and workers", end="", flush=True)
         for _ in range(3):

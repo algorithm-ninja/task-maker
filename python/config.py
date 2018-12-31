@@ -12,8 +12,8 @@ class Config:
             "clean", "task_info", "format", "fuzz_checker"
         ],
         "remote": [
-            "server", "run_server", "run_worker", "stop", "storedir",
-            "tempdir", "cache_size"
+            "server", "no_spawn", "run_server", "run_worker", "stop",
+            "storedir", "tempdir", "cache_size"
         ],
         "server": [
             "server_logfile", "server_pidfile", "server_address",
@@ -55,6 +55,7 @@ class Config:
 
         # remote group
         self.server = "127.0.0.1:7070"
+        self.no_spawn = False
         self.run_server = False
         self.run_worker = False
         self.stop = False

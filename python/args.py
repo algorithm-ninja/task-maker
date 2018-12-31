@@ -119,6 +119,10 @@ def add_remote_group(parser: argparse.ArgumentParser):
         action="store",
         help="address[:port] of the server to connect to")
     group.add_argument(
+        "--no-spawn",
+        action="store_true",
+        help="Never spawn the server and worker, will fail if cannot connect")
+    group.add_argument(
         "--run-server",
         action="store_true",
         help="Run the server in foreground instead of running a task")
