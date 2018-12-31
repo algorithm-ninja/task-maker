@@ -9,7 +9,7 @@ class Config:
     OPTIONS = {
         "generic": [
             "solutions", "task_dir", "max_depth", "ui", "cache", "dry_run",
-            "clean", "task_info", "format", "fuzz_checker"
+            "no_sanity_checks", "clean", "task_info", "format", "fuzz_checker"
         ],
         "remote": [
             "server", "no_spawn", "run_server", "run_worker", "stop",
@@ -48,6 +48,7 @@ class Config:
         self.ui = UIS.CURSES
         self.cache = CacheMode.ALL
         self.dry_run = False
+        self.no_sanity_checks = False
         self.clean = False
         self.task_info = False
         self.format = None  # type: Optional[TaskFormat]

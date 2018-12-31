@@ -49,9 +49,11 @@ def evaluate_task(frontend: Frontend, task: IOITask, solutions: List[Solution],
             compile_statements(pool, task, ui_interface)
         for warning in task.warnings:
             ui_interface.add_warning(warning)
-        sanity_pre_checks(task, solutions, pool, ui_interface)
+        if not config.no_sanity_checks:
+            sanity_pre_checks(task, solutions, pool, ui_interface)
         pool.start()
-        sanity_post_checks(task, solutions, ui_interface)
+        if not config.no_sanity_checks:
+            sanity_post_checks(task, solutions, ui_interface)
 
     return ui_interface
 

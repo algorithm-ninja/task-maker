@@ -91,6 +91,10 @@ def add_generic_group(parser: argparse.ArgumentParser, bulk: bool):
         help="Execute everything but do not touch the task directory",
         action="store_true")
     group.add_argument(
+        "--no-sanity-checks",
+        action="store_true",
+        help="Skip all the sanity checks of the task")
+    group.add_argument(
         "--clean",
         help="Clear the task directory and exit",
         action="store_true")
