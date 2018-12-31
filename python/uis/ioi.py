@@ -128,7 +128,8 @@ class SolutionStatus:
         self.task = task
         self.score = 0.0
         self.subtask_scores = dict((st_num, 0.0) for st_num in subtasks)
-        self.subtask_results = [SubtaskSolutionResult.WAITING] * len(subtasks)
+        self.subtask_results = dict(
+            (st_num, SubtaskSolutionResult.WAITING) for st_num in subtasks)
         self.testcase_results = dict(
         )  # type: Dict[int, Dict[int, TestcaseSolutionInfo]]
 
@@ -284,6 +285,9 @@ class SolutionStatus:
             self.subtask_results[subtask] = SubtaskSolutionResult.REJECTED
         else:
             self.subtask_results[subtask] = SubtaskSolutionResult.PARTIAL
+        self.interface.ui_printer.subtask_outcome(
+            self.source_file.name, subtask, self.subtask_results[subtask],
+            score)
 
     def _get_solution_message(self,
                               testcase_status: TestcaseSolutionInfo) -> str:

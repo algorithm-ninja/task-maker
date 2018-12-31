@@ -261,11 +261,11 @@ class Execution:
         self._execution.getResult(self._get_result_internal,
                                   self._skipped_internal)
         self.pool.ui_printer.print(self.name, self.ui_print_tag, "WAITING",
-                                   self.ui_print_data, False)
+                                   self.ui_print_data)
 
     def _notify_start_internal(self):
         self.pool.ui_printer.print(self.name, self.ui_print_tag, "START",
-                                   self.ui_print_data, False)
+                                   self.ui_print_data)
         self.pool.execution_start(self)
         if self._on_start_cb:
             self._on_start_cb()
@@ -278,14 +278,14 @@ class Execution:
         self.pool.ui_printer.print(self.name, self.ui_print_tag, state, {
             "result": result_to_dict(result),
             **self.ui_print_data
-        }, result.was_cached)
+        })
         self.pool.execution_done(self)
         self._result = result
         self._on_done_internal()
 
     def _skipped_internal(self):
         self.pool.ui_printer.print(self.name, self.ui_print_tag, "SKIPPED",
-                                   self.ui_print_data, False)
+                                   self.ui_print_data)
         if self._on_skip_cb:
             self._on_skip_cb()
 

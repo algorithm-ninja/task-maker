@@ -150,20 +150,21 @@ def print_solutions_result(printer: Printer, task: IOITask,
         print_solution_column(printer, solution, max_sol_len)
         if all([
             s == SubtaskSolutionResult.WAITING
-            for s in status.subtask_results
+            for s in status.subtask_results.values()
         ]):
             printer.text(" ... ")
         elif any([
             s == SubtaskSolutionResult.RUNNING
-            for s in status.subtask_results
+            for s in status.subtask_results.values()
         ]):
             printer.text("  {}  ".format(loading))
         else:
             printer.text(" {:^3.0f} ".format(status.score))
         printer.text("|")
 
-        for score, result in zip(status.subtask_scores.values(),
-                                 status.subtask_results):
+        for st_num in status.subtask_results.keys():
+            score = status.subtask_scores[st_num]
+            result = status.subtask_results[st_num]
             if result == SubtaskSolutionResult.WAITING:
                 printer.text(" ... ")
             elif result == SubtaskSolutionResult.RUNNING:
@@ -173,8 +174,9 @@ def print_solutions_result(printer: Printer, task: IOITask,
                                      result)
 
         printer.text("  ")
-        for (st_num, testcases), st_result in zip(
-                status.testcase_results.items(), status.subtask_results):
+        for st_num in status.subtask_results.keys():
+            testcases = status.testcase_results[st_num]
+            st_result = status.subtask_results[st_num]
             print_subtask_result(printer, "[", st_result)
             for tc_num, testcase in testcases.items():
                 print_testcase_solution_result(printer, loading, testcase)

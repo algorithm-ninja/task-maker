@@ -272,8 +272,7 @@ def check_sample_cases(task: IOITask, pool: ExecutionPool,
             "Validation of sample input {}".format(infile),
             pool,
             task.default_val.source_file, [VALIDATION_INPUT_NAME, "0"],
-            "validation", {
-                "sanity_check": True,
+            "sanity-check-validation", {
                 "sample_testcase": sample_num
             },
             inputs=in_files)
@@ -315,8 +314,7 @@ def check_sample_cases(task: IOITask, pool: ExecutionPool,
             "Solving sample output {}".format(outfile),
             pool,
             task.official_solution, [],
-            "solving", {
-                "sanity_check": True,
+            "sanity-check-solution", {
                 "sample_testcase": sample_num
             },
             inputs=in_files,

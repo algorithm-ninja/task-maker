@@ -69,7 +69,8 @@ class IOIFinishUIJSON(FinishUI):
             "subtask_scores":
                 solution.subtask_scores,
             "subtask_results":
-                [enum_to_str(res) for res in solution.subtask_results],
+                dict((st_num, enum_to_str(res))
+                     for st_num, res in solution.subtask_results.items()),
             "testcase_results": {
                 st_num: {
                     tc_num: {

@@ -74,7 +74,7 @@ def evaluate_solution(pool: ExecutionPool, task: TerryTask,
         "Generation of input for solution {} with seed {}".format(name, seed),
         pool,
         task.generator, [str(seed), "0"],
-        "generation", {
+        "terry-generation", {
             "name": solution.name,
             "seed": seed
         },
@@ -93,7 +93,7 @@ def evaluate_solution(pool: ExecutionPool, task: TerryTask,
             "Validation of input for solution {}".format(name),
             pool,
             task.validator, ["0"],
-            "validation", {
+            "terry-validation", {
                 "name": solution.name,
                 "seed": seed
             },
@@ -107,7 +107,7 @@ def evaluate_solution(pool: ExecutionPool, task: TerryTask,
         "Running solution {}".format(name),
         pool,
         solution, [],
-        "evaluation", {
+        "terry-evaluation", {
             "name": solution.name,
             "seed": seed
         },
@@ -126,7 +126,7 @@ def evaluate_solution(pool: ExecutionPool, task: TerryTask,
         "Checking solution {}".format(name),
         pool,
         task.checker, ["input", "output"],
-        "checking", {
+        "terry-checking", {
             "name": solution.name,
             "seed": seed
         },

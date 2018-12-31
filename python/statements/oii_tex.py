@@ -247,7 +247,7 @@ class OIITexStatement(Statement):
                     "Crop compiled asy file %s" % dep.name,
                     pool,
                     "pdfcrop", ["file.pdf"],
-                    "cropping", {"file": dep.name},
+                    "asy-cropping", {"file": dep.name},
                     inputs={"file.pdf": source_file.executable},
                     outputs=["file-crop.pdf"])
                 other_executions.append(
@@ -276,7 +276,7 @@ class OIITexStatement(Statement):
                 "TEXINPUTS=.:%s:" % ":".join(task_names), "latexmk", "-f",
                 "-interaction=nonstopmode", "-pdf", "booklet.tex"
             ],
-            "compilation", {},
+            "statement-compilation", {"language": language},
             inputs=inputs,
             outputs=["booklet.pdf"])
         pdf_file = compilation.output("booklet.pdf")
