@@ -9,6 +9,7 @@ class TerryFinishUI(FinishUI):
     """
     FinishUI for Terry-like tasks
     """
+
     def __init__(self, config: Config, interface: TerryUIInterface):
         super().__init__(config, interface)
         self.task = interface.task
@@ -54,36 +55,36 @@ class TerryFinishUI(FinishUI):
 
         self.printer.text("{:>10}: {}\n".format("Seed", info.seed))
         self.printer.text("{:>10}:".format("Generation"))
-        if info.gen_result:
-            self._print_resources(info.gen_result.resources)
+        if info.generation.result:
+            self._print_resources(info.generation.result.resources)
         self.printer.text("\n")
-        if info.gen_stderr:
-            self.printer.text(info.gen_stderr)
+        if info.generation.stderr_content:
+            self.printer.text(info.generation.stderr_content)
 
-        if self.task.validator and info.val_result:
+        if self.task.validator and info.validation.result:
             self.printer.text("{:>10}:".format("Validation"))
-            self._print_resources(info.val_result.resources)
+            self._print_resources(info.validation.result.resources)
             self.printer.text("\n")
-            if info.val_stderr:
-                self.printer.text(info.val_stderr)
+            if info.validation.stderr_content:
+                self.printer.text(info.validation.stderr_content)
 
-        if info.sol_result:
+        if info.solution.result:
             self.printer.text("{:>10}:".format("Evaluation"))
-            self._print_resources(info.sol_result.resources)
+            self._print_resources(info.solution.result.resources)
             self.printer.text("\n")
-            if info.sol_stderr:
-                self.printer.text(info.sol_stderr)
+            if info.solution.stderr_content:
+                self.printer.text(info.solution.stderr_content)
 
-        if info.check_result:
+        if info.checking.result:
             self.printer.text("{:>10}:".format("Checker"))
-            self._print_resources(info.check_result.resources)
+            self._print_resources(info.checking.result.resources)
             self.printer.text("\n")
         if info.message:
             self.printer.text("{:>10}: ".format("Message"))
             self.printer.red(info.message, bold=False)
             self.printer.text("\n")
-        if info.check_stderr:
-            self.printer.text(info.check_stderr)
+        if info.checking.stderr_content:
+            self.printer.text(info.checking.stderr_content)
 
     def _print_summary_row(self, solution: str, max_sol_len: int):
         info = self.interface.solutions_info[solution]  # type: SolutionInfo

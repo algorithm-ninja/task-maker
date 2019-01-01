@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import json
 from task_maker.config import Config
-from task_maker.uis import FinishUI, result_to_str
+from task_maker.uis import FinishUI
 from task_maker.uis.ioi_finish_ui_json import get_compilations, enum_to_str
 from task_maker.uis.terry import TerryUIInterface, SolutionInfo
+from task_maker.utils import get_execution
 
 
 def get_solution(solution: SolutionInfo):
@@ -15,14 +16,10 @@ def get_solution(solution: SolutionInfo):
         "seed": solution.seed,
         "score": solution.score,
         "message": solution.message,
-        "generation_result": result_to_str(solution.gen_result),
-        "generation_stderr": solution.gen_stderr,
-        "validation_result": result_to_str(solution.val_result),
-        "validation_stderr": solution.val_stderr,
-        "solution_result": result_to_str(solution.sol_result),
-        "solution_stderr": solution.sol_stderr,
-        "checker_result": result_to_str(solution.check_result),
-        "checker_stderr": solution.check_stderr,
+        "generation": get_execution(solution.generation),
+        "validation": get_execution(solution.validation),
+        "solution": get_execution(solution.solution),
+        "checking": get_execution(solution.checking),
         "testcases_status":
             [enum_to_str(s) for s in solution.testcases_status]
     }

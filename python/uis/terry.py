@@ -44,14 +44,10 @@ class SolutionInfo:
         self.status = SolutionStatus.WAITING
         # each solution can be evaluated with different seeds
         self.seed = None
-        self.gen_result = None  # type: Optional[Result]
-        self.val_result = None  # type: Optional[Result]
-        self.sol_result = None  # type: Optional[Result]
-        self.check_result = None  # type: Optional[Result]
-        self.gen_stderr = ""
-        self.val_stderr = ""
-        self.sol_stderr = ""
-        self.check_stderr = ""
+        self.generation = None  # type: Optional[Execution]
+        self.validation = None  # type: Optional[Execution]
+        self.solution = None  # type: Optional[Execution]
+        self.checking = None  # type: Optional[Execution]
         self.score = 0.0
         self.message = ""
         self.source_file = source_file
@@ -78,13 +74,12 @@ class TerryUIInterface(UIInterface):
         """
         info = self.solutions_info[solution]
         info.seed = seed
+        info.generation = generation
 
         def on_start():
             info.status = SolutionStatus.GENERATING
 
         def on_done(result: Result):
-            info.gen_result = result
-            info.gen_stderr = generation.stderr_content
             if result.status == ResultStatus.SUCCESS:
                 info.status = SolutionStatus.GENERATED
             else:
@@ -101,13 +96,12 @@ class TerryUIInterface(UIInterface):
         Start tracking the validation of a testcase
         """
         info = self.solutions_info[solution]
+        info.validation = validation
 
         def on_start():
             info.status = SolutionStatus.VALIDATING
 
         def on_done(result: Result):
-            info.val_result = result
-            info.val_stderr = validation.stderr_content
             if result.status == ResultStatus.SUCCESS:
                 info.status = SolutionStatus.VALIDATED
             else:
@@ -123,13 +117,12 @@ class TerryUIInterface(UIInterface):
         Start tracking the evaluation of a solution
         """
         info = self.solutions_info[solution]
+        info.solution = solving
 
         def on_start():
             info.status = SolutionStatus.SOLVING
 
         def on_done(result: Result):
-            info.sol_result = result
-            info.sol_stderr = solving.stderr_content
             if result.status == ResultStatus.SUCCESS:
                 info.status = SolutionStatus.SOLVED
             else:
@@ -144,13 +137,12 @@ class TerryUIInterface(UIInterface):
         Start the tracking of a checker
         """
         info = self.solutions_info[solution]
+        info.checking = checking
 
         def on_start():
             info.status = SolutionStatus.CHECKING
 
         def on_done(result: Result):
-            info.check_result = result
-            info.check_stderr = checking.stderr_content
             self._compute_score(solution, checking.stdout_content)
             self.ui_printer.terry_solution_outcome(solution, info)
             if result.status == ResultStatus.SUCCESS:
