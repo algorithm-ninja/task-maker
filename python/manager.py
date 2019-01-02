@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import time
 
 import os.path
@@ -107,17 +108,18 @@ def get_frontend(config: Config) -> Frontend:
             raise RuntimeError(
                 "Cannot connect to the server and spawning is forbidden")
         spawn_server(config)
-        print("Spawning server and workers", end="", flush=True)
+        print(
+            "Spawning server and workers", end="", flush=True, file=sys.stderr)
         for _ in range(3):
-            print(".", end="", flush=True)
+            print(".", end="", flush=True, file=sys.stderr)
             time.sleep(SERVER_SPAWN_TIME / 3)
-        print()
+        print(file=sys.stderr)
         spawn_worker(config)
         for t in range(MAX_SPAWN_ATTEMPT):
             try:
                 return Frontend(config.host, config.port)
             except:
-                print("Attempt {} failed".format(t + 1))
+                print("Attempt {} failed".format(t + 1), file=sys.stderr)
                 time.sleep(1)
         raise RuntimeError("Failed to spawn the server")
 
@@ -129,5 +131,5 @@ def stop():
     running = [p.split()[:2] for p in proc.stdout.decode().splitlines()]
     pids = [int(pid) for pid, proc in running if proc == path]
     for pid in pids:
-        print("Sending SIGTERM to pid %d" % pid)
+        print("Sending SIGTERM to pid %d" % pid, file=sys.stderr)
         os.kill(pid, signal.SIGTERM)
