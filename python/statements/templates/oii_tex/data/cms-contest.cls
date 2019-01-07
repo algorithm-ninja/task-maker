@@ -463,7 +463,7 @@
                 \hfill%
                 \ifthenelse{\equal{\this@contestday}{}}%
                 {}{\makebox[0pt][r]{\kw@Day~\this@contestday}}%
-                \ifthenelse{\equal{\this@syllabuslevel}{None}}%
+                \ifthenelse{\equal{\this@syllabuslevel}{}}%
                 {}{\makebox[0pt][r]{\Level{\this@syllabuslevel}}}%
             }
             \vskip 2.5mm \hrule\vskip 2.5mm%
@@ -498,9 +498,9 @@
             \begin{tabular}{l@{\extracolsep{1cm}}l}
                 %\kw@InputFileName & \texttt{#3} \\
                 %\kw@OutputFileName & \texttt{#4} \\
-                \ifnum\pdfstrcmp{#5}{None}=0 \else \kw@TimeLimit & #5~\kw@seconds\\ \fi
-                \ifnum\pdfstrcmp{#6}{None}=0 \else \kw@MemoryLimit & #6~MiB\\ \fi
-                \ifnum\pdfstrcmp{#7}{None}=0 \else \kw@Difficulty & #7\\ \fi
+                \ifnum\pdfstrcmp{#5}{}=0 \else \kw@TimeLimit & #5~\kw@seconds\\ \fi
+                \ifnum\pdfstrcmp{#6}{}=0 \else \kw@MemoryLimit & #6~MiB\\ \fi
+                \ifnum\pdfstrcmp{#7}{}=0 \else \kw@Difficulty & #7\\ \fi
             \end{tabular}
         }
         \nopagebreak
