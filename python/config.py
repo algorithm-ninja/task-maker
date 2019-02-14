@@ -154,9 +154,9 @@ class Config:
         self._absolutize()
 
     def _get_host_port(self):
-        server_addr = self.server.split(":")
+        server_addr = self.server.rsplit(":", 1)
         if len(server_addr) == 1:
-            self.host, self.port = server_addr[0], 7071
+            self.host, self.port = server_addr[0], 7070
         elif len(server_addr) == 2:
             self.host, self.port = server_addr[0], int(server_addr[1])
         else:
