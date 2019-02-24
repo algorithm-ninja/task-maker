@@ -9,7 +9,7 @@ from task_maker.remote import ExecutionPool, Execution
 from task_maker.task_maker_frontend import File
 from typing import Optional, Dict, List
 
-COMPILATION_STDERR_LIMIT = 1024
+COMPILATION_STDERR_LIMIT = 2**64-1
 
 
 def is_executable(path: str) -> bool:
