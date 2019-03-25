@@ -5,7 +5,7 @@ from task_maker.config import Config
 from task_maker.formats import TerryTask
 from task_maker.remote import ExecutionPool, Execution
 from task_maker.source_file import SourceFile
-from task_maker.task_maker_frontend import Frontend
+from task_maker.task_maker_frontend import Frontend, Resources
 from task_maker.uis.terry import TerryUIInterface
 from task_maker.uis.terry_curses_ui import TerryCursesUI
 from task_maker.uis.terry_finish_ui import TerryFinishUI
@@ -103,6 +103,10 @@ def evaluate_solution(pool: ExecutionPool, task: TerryTask,
         inputs["wait_for_validation"] = validation.stdout
         interface.add_validation(name, validation)
 
+    limits = Resources()
+    limits.cpu_time = 20
+    limits.wall_time = 30
+    limits.memory = 1024*1024
     solving = Execution(
         "Running solution {}".format(name),
         pool,
@@ -111,6 +115,7 @@ def evaluate_solution(pool: ExecutionPool, task: TerryTask,
             "name": solution.name,
             "seed": seed
         },
+        limits=limits,
         cache_on=[CacheMode.ALL],
         can_exclusive=True,
         stdin=input,
