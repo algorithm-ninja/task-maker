@@ -13,7 +13,7 @@ include(AddressSanitizer)
 include(MemorySanitizer)
 include(ThreadSanitizer)
 include(UndefinedSanitizer)
-# include(RemoveFlags)
+include(RemoveFlags)
 
 huntergate(URL
            "https://github.com/ruslo/hunter/archive/v0.23.54.tar.gz"

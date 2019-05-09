@@ -1,4 +1,4 @@
-# add_subdirectory(sandbox/test)
+add_subdirectory(sandbox/test)
 
 add_subdirectory(frontend)
 
@@ -23,14 +23,14 @@ target_link_libraries(cpp_util
 if(TRAVIS)
   target_compile_definitions(cpp_util PRIVATE REMOVE_ALSO_MOUNT_POINTS=1)
 endif()
-# add_executable(union_promise_test util/union_promise_test.cpp)
-# target_link_libraries(union_promise_test cpp_util GTest::Main)
-# add_executable(file_test util/file_test.cpp)
-# target_link_libraries(file_test cpp_util GTest::Main GMock::gmock)
-# add_executable(misc_test util/misc_test.cpp)
-# target_link_libraries(misc_test cpp_util GTest::Main GMock::gmock)
-# add_executable(which_test util/which_test.cpp)
-# target_link_libraries(which_test cpp_util GTest::Main GMock::gmock)
+add_executable(union_promise_test util/union_promise_test.cpp)
+target_link_libraries(union_promise_test cpp_util GTest::Main)
+add_executable(file_test util/file_test.cpp)
+target_link_libraries(file_test cpp_util GTest::Main GMock::gmock)
+add_executable(misc_test util/misc_test.cpp)
+target_link_libraries(misc_test cpp_util GTest::Main GMock::gmock)
+add_executable(which_test util/which_test.cpp)
+target_link_libraries(which_test cpp_util GTest::Main GMock::gmock)
 
 add_library(cpp_sandbox sandbox/sandbox.cpp sandbox/main.cpp)
 
@@ -53,8 +53,8 @@ if(UNIX)
   add_library(cpp_sandbox_unix sandbox/unix.cpp)
   target_link_libraries(cpp_sandbox_unix cpp_sandbox)
 
-  # add_executable(sandbox_unix_test sandbox/unix_test.cpp sandbox/unix.cpp)
-  # target_link_libraries(sandbox_unix_test cpp_sandbox GTest::Main GMock::gmock)
+  add_executable(sandbox_unix_test sandbox/unix_test.cpp sandbox/unix.cpp)
+  target_link_libraries(sandbox_unix_test cpp_sandbox GTest::Main GMock::gmock)
 
   if(APPLE)
     set(CPP_SANDBOXES -Wl,-force_load cpp_sandbox_unix ${CPP_SANDBOXES})
@@ -87,8 +87,8 @@ target_link_libraries(task-maker ${CPP_SANDBOXES} cpp_worker cpp_server)
 target_compile_definitions(task-maker PRIVATE
                            TASK_MAKER_VERSION="${GIT_FULL_VERSION}")
 
-# gtest_discover_tests(sandbox_unix_test)
-# gtest_discover_tests(union_promise_test)
-# gtest_discover_tests(file_test)
-# gtest_discover_tests(misc_test)
-# gtest_discover_tests(which_test)
+gtest_discover_tests(sandbox_unix_test)
+gtest_discover_tests(union_promise_test)
+gtest_discover_tests(file_test)
+gtest_discover_tests(misc_test)
+gtest_discover_tests(which_test)
