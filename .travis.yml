@@ -15,6 +15,10 @@ matrix:
         - RELEASE_FILE=task-maker-${TRAVIS_TAG}_ubuntu18.04_amd64.deb
     - env:
         - WHAT=test
+        - TOOLCHAIN=ubuntu19.04
+        - RELEASE_FILE=task-maker-${TRAVIS_TAG}_ubuntu19.04_amd64.deb
+    - env:
+        - WHAT=test
         - TOOLCHAIN=archlinux
         - RELEASE_FILE=task-maker-${TRAVIS_TAG}_archlinux_amd64.tar.xz
     - if: NOT branch =~ /^v.*/
@@ -67,7 +71,7 @@ matrix:
         - source /tmp/venv/bin/activate
         - wget -O- https://bootstrap.pypa.io/get-pip.py | python3
         - mkdir /tmp/bin
-        - 'export PATH=/tmp/bin:$PATH'
+        - "export PATH=/tmp/bin:$PATH"
         - cmake --version
       script:
         - rm -rf build
@@ -77,8 +81,7 @@ matrix:
         - python build/python/setup.py install
         # run the tests
         - ( cd build && ctest -VV )
-      before_deploy:
-        ./tools/make_release.sh
+      before_deploy: ./tools/make_release.sh
       cache:
         directories:
           - hunter-root
@@ -95,7 +98,7 @@ script:
       -e TRAVIS_TAG=$TRAVIS_TAG
       -v $(pwd):/build
       --cap-add SYS_PTRACE
-      edomora97/task-maker-builder-$TOOLCHAIN:latest
+      edomora97/task-maker-builder-${TOOLCHAIN}:latest
       /build/tools/compile_and_test.sh
 
 before_deploy:
