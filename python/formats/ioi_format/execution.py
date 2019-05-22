@@ -233,8 +233,9 @@ def compile_statements(pool: ExecutionPool, task: IOITask,
                            valid_extensions=[".tex"])
     for tex_file in tex_files:
         pdf_file = tex_file.replace(".tex", ".pdf")
+        language = os.path.split(os.path.splitext(tex_file)[0])[1]
         statement = OIITexStatement(task, os.path.abspath(tex_file))
-        statement.compile(pool)
+        statement.compile(pool, language)
         if not pool.config.dry_run:
             statement.pdf_file.getContentsToFile(pdf_file, True, True)
         interface.add_statement(statement)
