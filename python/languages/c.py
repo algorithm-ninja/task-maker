@@ -103,7 +103,7 @@ class LanguageC(CompiledLanguage):
             cmd += ["-DEVAL"]
         if target_arch == Arch.I686:
             cmd += ["-m32"]
-        cmd += ["-O2", "-std=c11", "-Wall", "-ggdb3", "-o", exe_name]
+        cmd += ["-O2", "-std=c11", "-Wall", "-ggdb3", "-lm", "-o", exe_name]
         cmd += source_filenames
         return CommandType.SYSTEM, cmd
 
